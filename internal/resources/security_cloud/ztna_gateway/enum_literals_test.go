@@ -36,6 +36,7 @@ func TestEnumLiteralsComeFromTheSDK(t *testing.T) {
 		Covered: enumguard.Union(
 			securitycloud.ApiErrorItemCodeValues(),
 			securitycloud.GatewayCreateRequestDatacenterValues(),
+			securitycloud.GatewayStatusStateValues(),
 			securitycloud.RoutingStrategyValues(),
 		),
 		Absent: map[string]string{

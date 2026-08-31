@@ -132,13 +132,19 @@ variable "ipsec_authentication_secret" {
 ### Required
 
 - `contact` (Attributes) **"Contact name"** and **"Contact email"** in the Jamf Security Cloud admin UI — who Jamf should reach about this gateway's operation. (see [below for nested schema](#nestedatt--contact))
-- `egress_region` (String) **"Egress region"** in the Jamf Security Cloud admin UI — the region this gateway is deployed to. Changing it re-provisions the gateway in the new region: connectivity drops, the reported status returns to `PENDING`, and any dedicated egress IP addresses stay stale until provisioning completes. Valid values: `Africa - Cape Town`, `Asia - Hong Kong`, `Asia - Japan`, `Asia - Mumbai`, `Asia - Singapore`, `Australia`, `Europe - Germany`, `Europe - Ireland`, `Europe - UK`, `North America - Canada`, `North America - USA East`, `North America - USA West`, `South America - Brazil`.
+- `egress_region` (String) **"Egress region"** in the Jamf Security Cloud admin UI — the region this gateway is deployed to.
+
+Changing it re-provisions the gateway in the new region: connectivity drops and the reported status returns to `PENDING`. Any dedicated egress IP addresses are replaced in place rather than cleared — measured at around 35 seconds after the change — so for a short window the list is non-empty, entirely plausible and still the old region's. The apply waits for the gateway to report itself operational again, which covers that window.
+
+Note that Jamf's own documentation states the egress region cannot be changed once a gateway is created. The provider allows the change because it was observed to be accepted and to re-provision the gateway, and because replacing the gateway instead would surrender its dedicated IP addresses. Treat a region change as disruptive.
+
+Valid values: `Africa - Cape Town`, `Asia - Hong Kong`, `Asia - Japan`, `Asia - Mumbai`, `Asia - Singapore`, `Australia`, `Europe - Germany`, `Europe - Ireland`, `Europe - UK`, `North America - Canada`, `North America - USA East`, `North America - USA West`, `South America - Brazil`.
 - `name` (String) **"Gateway name"** in the Jamf Security Cloud admin UI.
 - `tenant_ids` (Set of String) IDs of the tenants granted access to this gateway. At least one, and every one must belong to the same organization as the credentials the provider is configured with — a tenant outside it is refused.
 
 ### Optional
 
-- `enabled` (Boolean) Whether the deployment is active. A disabled gateway reports its status as `DISABLED` and carries no traffic. Defaults to `true`.
+- `enabled` (Boolean) Whether the deployment is active. A disabled gateway reports its status as `DISABLED` and carries no traffic. Defaults to `true`. Disabling a gateway reports `PENDING` for a few seconds before it settles, so an apply that disables one waits for `DISABLED` in the same way an apply that enables one waits for `UP` — either way the status recorded is the settled one, not the transient.
 - `ipsec` (Attributes) IPsec tunnel configuration. Present on a dedicated IPsec gateway, absent on a dedicated internet gateway. Adding or removing the whole block replaces the gateway. (see [below for nested schema](#nestedatt--ipsec))
 - `ipsec_source_ip_addresses` (Set of String) **"Jamf Security Cloud IPsec source IP addresses"** in the Jamf Security Cloud admin UI — the addresses IPsec traffic from Jamf Security Cloud originates from, which your firewall must allow. Supply both addresses your egress region offers for dynamic addressing, or one to pin a single source address. Only valid on an IPsec gateway: a dedicated internet gateway must leave this unset.
 
@@ -147,9 +153,15 @@ The accepted addresses are fixed per egress region and are the ones the admin UI
 
 ### Read-Only
 
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisions for a dedicated internet gateway. Empty until provisioning completes, and always empty on an IPsec gateway. Read-only.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisions for a dedicated internet gateway. Allocated within seconds of the gateway being created, which is roughly four and a half minutes before it finishes provisioning — so a populated list means the addresses are reserved, not that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway, wire-confirmed on 2026-08-31. Read-only.
 - `id` (String) Gateway ID assigned by Jamf Security Cloud.
-- `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. Read-only, and live: expect `PENDING` immediately after a create or an egress-region change, settling to `UP` once the infrastructure is provisioned. (see [below for nested schema](#nestedatt--status))
+- `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. Read-only, and live: a create or an egress-region change starts the gateway at `PENDING` — shown as **Pending** in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Available**, once the infrastructure is provisioned.
+
+For a dedicated internet gateway the provider waits for the status to settle before finishing a create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — so state records the settled status rather than the `PENDING` both transitions pass through. An update that does not re-provision the gateway, such as a name or contact change, finds it already settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning naming the status reached, and the status settles on a later refresh.
+
+**Creating** an IPsec gateway waits for `DOWN` as readily as `UP`, because `UP` is not yet within reach: the tunnel's other end is configured from values this resource returns, so the concentrator, its NAT rules and its firewall openings all come afterwards. `DOWN` is the settled status until the tunnel is established, and it is what state records — not the `PENDING` the gateway passes through first. If you configured your side in advance the gateway may reach `UP` directly, which is accepted just the same. **Updating** one waits for `UP`, since by then the tunnel may be established; if it is not, the apply gives up once the gateway has reported `DOWN` for a minute and warns, rather than holding for the whole budget.
+
+`UP` means the gateway reports itself operational. It is a necessary condition for traffic to flow, not a guarantee of it. (see [below for nested schema](#nestedatt--status))
 
 <a id="nestedatt--contact"></a>
 ### Nested Schema for `contact`
@@ -244,7 +256,7 @@ Optional:
 
 Read-Only:
 
-- `state` (String) Overall gateway state: `PENDING` while provisioning, `UP` when operational, `DOWN` when unreachable or degraded, `DISABLED` when `enabled` is `false`.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when `enabled` is `false` (**Disabled** in the admin UI). `DOWN` is **Down** in the admin UI. Every transition drifts through `PENDING` for a few seconds, which is why an apply waits for the settled value rather than recording the first status it reads.
 - `tunnel_state` (String) IPsec tunnel health, `UP` or `DOWN`. Null on a dedicated internet gateway, and on an IPsec gateway until the first tunnel report arrives.
 
 ## Import

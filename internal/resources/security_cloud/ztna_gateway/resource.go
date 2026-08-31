@@ -52,6 +52,14 @@
 // notes that despite the name, the values are IPv4 addresses rather than zone
 // identifiers.
 //
+// The IPsec form this resource builds is Jamf's **Custom IPSec** gateway. The admin
+// UI offers a second kind, **Quick Connect IPSec** — a Linux VM Jamf's documentation
+// walks you through building — and it is not expressible here: its create form takes
+// no cipher suites, no encryption-domain subnets and no IKE domain IDs, while this
+// schema requires `phase_1`, `phase_2`, `jamf_side` and `customer_side`. Anyone
+// looking for Quick Connect in Terraform is looking for something the API surface
+// behind this resource does not offer.
+//
 // Enumerated attributes take the admin UI's labels too, translated to stored
 // values at the boundary; see mappings.go for the tables and their provenance.
 package ztna_gateway
@@ -93,10 +101,31 @@ var (
 	_ resource.ResourceWithConfigValidators = &GatewayResource{}
 )
 
+// Default operation budgets.
+//
+// Create and update are ten minutes rather than the two the rest of the namespace
+// uses, because both wait for the gateway to report itself operational and that
+// wait dominates the call. The 2026-08-31 probe recorded 275 seconds to `UP` on a
+// create and 295 on an egress-region change (see waitForGatewayState), so ten minutes
+// is roughly twice the observed time and the probe's own twenty-minute cap was
+// never approached. A region that provisions more slowly than the one measured is
+// the case the `timeouts` block exists for — raise `create` or `update` there
+// rather than assuming these defaults fit every region.
+//
+// One figure that must not be read into this: Jamf's "Creating a Dedicated Internet
+// Gateway" page says "Provisioning takes up to two business days". In context that is
+// the paid add-on being enabled for the account by the Jamf Account Team, not the
+// per-gateway build — the same page has the gateway itself become ready "after a
+// short period", which matches the 275 seconds measured. Ten minutes is sized against
+// the per-gateway build. Nothing Terraform does can wait out an account entitlement,
+// and stretching these defaults towards two days would only turn a missing
+// entitlement into a two-day hang.
+//
+// Read and delete do not wait for anything and keep the namespace's defaults.
 const (
-	defaultCreateTimeout = 120 * time.Second
+	defaultCreateTimeout = 600 * time.Second
 	defaultReadTimeout   = 60 * time.Second
-	defaultUpdateTimeout = 120 * time.Second
+	defaultUpdateTimeout = 600 * time.Second
 	defaultDeleteTimeout = 120 * time.Second
 )
 
@@ -159,16 +188,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"egress_region": schema.StringAttribute{
-				MarkdownDescription: "**\"Egress region\"** in the Jamf Security Cloud admin UI — the region this " +
-					"gateway is deployed to. Changing it re-provisions the gateway in the new region: connectivity " +
-					"drops, the reported status returns to `PENDING`, and any dedicated egress IP addresses stay " +
-					"stale until provisioning completes. Valid values: " + markdownList(egressRegionValues()) + ".",
-				Required: true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(egressRegionValues()...),
-				},
-			},
+			"egress_region": egressRegionAttribute(),
 			"contact": schema.SingleNestedAttribute{
 				MarkdownDescription: "**\"Contact name\"** and **\"Contact email\"** in the Jamf Security Cloud " +
 					"admin UI — who Jamf should reach about this gateway's operation.",
@@ -192,7 +212,10 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the deployment is active. A disabled gateway reports its status as " +
-					"`DISABLED` and carries no traffic. Defaults to `true`.",
+					"`DISABLED` and carries no traffic. Defaults to `true`. Disabling a gateway reports " +
+					"`PENDING` for a few seconds before it settles, so an apply that disables one waits for " +
+					"`DISABLED` in the same way an apply that enables one waits for `UP` — either way the " +
+					"status recorded is the settled one, not the transient.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
@@ -226,7 +249,10 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
 				MarkdownDescription: "The private egress IP addresses Jamf provisions for a dedicated internet " +
-					"gateway. Empty until provisioning completes, and always empty on an IPsec gateway. Read-only.",
+					"gateway. Allocated within seconds of the gateway being created, which is roughly four and a " +
+					"half minutes before it finishes provisioning — so a populated list means the addresses are " +
+					"reserved, not that the gateway reports itself operational. Read `status` for that. Always " +
+					"empty on an IPsec gateway, wire-confirmed on 2026-08-31. Read-only.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -238,6 +264,43 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				Update: true,
 				Delete: true,
 			}),
+		},
+	}
+}
+
+// egressRegionAttribute builds the egress-region attribute.
+//
+// The provider treats the region as updatable, which diverges from Jamf's own
+// documentation. The "Creating a Dedicated Internet Gateway" page states flatly that
+// "The egress region cannot be changed once the gateway is created". Wire-probed
+// against production EU on 2026-08-31: a request changing only the region was
+// accepted with a 204 and the gateway re-provisioned, taking new dedicated egress
+// addresses in the new region. So the documented prohibition does not hold, and the
+// operation works.
+//
+// Keeping it updatable is the lesser risk. Marking it RequiresReplace to match the
+// documentation would destroy and recreate a paid gateway — surrendering its
+// dedicated IP addresses back to the account's allotment, and refusing the destroy
+// outright while anything still references it — to avoid an in-place change that has
+// been observed to succeed. The description below therefore says what the provider
+// does and what was observed, and does not claim Jamf supports it.
+func egressRegionAttribute() schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: "**\"Egress region\"** in the Jamf Security Cloud admin UI — the region this " +
+			"gateway is deployed to.\n\n" +
+			"Changing it re-provisions the gateway in the new region: connectivity drops and the reported " +
+			"status returns to `PENDING`. Any dedicated egress IP addresses are replaced in place rather than " +
+			"cleared — measured at around 35 seconds after the change — so for a short window the list is " +
+			"non-empty, entirely plausible and still the old region's. The apply waits for the gateway to " +
+			"report itself operational again, which covers that window.\n\n" +
+			"Note that Jamf's own documentation states the egress region cannot be changed once a gateway is " +
+			"created. The provider allows the change because it was observed to be accepted and to " +
+			"re-provision the gateway, and because replacing the gateway instead would surrender its " +
+			"dedicated IP addresses. Treat a region change as disruptive.\n\n" +
+			"Valid values: " + markdownList(egressRegionValues()) + ".",
+		Required: true,
+		Validators: []validator.String{
+			stringvalidator.OneOf(egressRegionValues()...),
 		},
 	}
 }
@@ -443,16 +506,61 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 // outside Terraform — noise about a value no configuration can act on. `state`
 // and `tunnel_state` do settle once provisioning finishes, and both are worth
 // reading, so they stay.
+//
+// The values are surfaced as the wire spells them, which is a deliberate exception
+// to STYLE_GUIDE §"Attribute names mirror the Jamf Pro admin UI" — the same rule
+// that has mappings.go translate every other enumerated value on this resource into
+// its admin-UI label.
+//
+// All four labels are known from reading the admin UI directly on 2026-08-31:
+// "Pending", "Available", "Down" and "Disabled". Three of the four are the wire value
+// in sentence case; `UP` is the sole genuine rename. The IPsec and internet sections
+// of the gateway page use the same vocabulary, so these are not per-form labels.
+// Note that Jamf's own "Creating a Dedicated Internet Gateway" page disagrees with
+// the second — it says "after a short period, the status changes to Active". The
+// admin UI is what an operator actually reads, so "Available" is what these
+// descriptions name; the page is stale. This is the second documented-behaviour
+// divergence on this resource, the other being egress-region immutability, so prefer
+// an observation to that page wherever the two conflict.
+//
+// The values are still surfaced as the wire spells them rather than remapped through
+// mappings.go, and now that the mapping is complete that is a decision rather than a
+// gap. Only `UP` differs materially from its label, and this is a read-only status
+// snapshot: an operator reading it in state may equally be comparing it against an API
+// response or a support conversation, so the wire value earns its place, with the
+// label named alongside. Remapping one value of four would also leave the enum half
+// translated. Nothing here should be read as "the mapping was never finished".
 func statusAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway. Read-only, and " +
-			"live: expect `PENDING` immediately after a create or an egress-region change, settling to `UP` once " +
-			"the infrastructure is provisioned.",
+			"live: a create or an egress-region change starts the gateway at `PENDING` — shown as **Pending** " +
+			"in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Available**, once the " +
+			"infrastructure is provisioned.\n\n" +
+			"For a dedicated internet gateway the provider waits for the status to settle before finishing a " +
+			"create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — " +
+			"so state records the settled status rather than the `PENDING` both transitions pass through. An " +
+			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
+			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
+			"naming the status reached, and the status settles on a later refresh.\n\n" +
+			"**Creating** an IPsec gateway waits for `DOWN` as readily as `UP`, because `UP` is not yet within " +
+			"reach: the tunnel's other end is configured from values this resource returns, so the " +
+			"concentrator, its NAT rules and its firewall openings all come afterwards. `DOWN` is the settled " +
+			"status until the tunnel is established, and it is what state records — not the `PENDING` the " +
+			"gateway passes through first. If you configured your side in advance the gateway may reach `UP` " +
+			"directly, which is accepted just the same. **Updating** one waits for `UP`, since by then the " +
+			"tunnel may be established; if it is not, the apply gives up once the gateway has reported `DOWN` " +
+			"for a minute and warns, rather than holding for the whole budget.\n\n" +
+			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +
+			"flow, not a guarantee of it.",
 		Computed: true,
 		Attributes: map[string]schema.Attribute{
 			"state": schema.StringAttribute{
-				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning, `UP` when operational, " +
-					"`DOWN` when unreachable or degraded, `DISABLED` when `enabled` is `false`.",
+				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning (**Pending** in the " +
+					"Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational " +
+					"(**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when " +
+					"`enabled` is `false` (**Disabled** in the admin UI). `DOWN` is **Down** in the admin " +
+					"UI. Every transition drifts through `PENDING` for a few seconds, which is why an apply " +
+					"waits for the settled value rather than recording the first status it reads.",
 				Computed: true,
 			},
 			"tunnel_state": schema.StringAttribute{

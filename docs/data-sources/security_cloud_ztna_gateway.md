@@ -62,7 +62,7 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 ### Read-Only
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Empty while provisioning, and always empty on an IPsec gateway.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational — read `status` for that. Always empty on an IPsec gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
@@ -150,5 +150,5 @@ Read-Only:
 
 Read-Only:
 
-- `state` (String) Overall gateway state.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the gateway is not enabled.
 - `tunnel_state` (String) IPsec tunnel health.
