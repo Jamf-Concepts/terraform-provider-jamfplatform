@@ -119,6 +119,45 @@ func TestAssignResourceModel_EmptyTenantIDReadsAsOAuth(t *testing.T) {
 	}
 }
 
+// TestAssignResourceModel_EmptyClientIDReadsAsNull covers the response-side client
+// ID arriving empty rather than absent. The field used to be a pointer, so absence
+// was a nil deviceSyncAuth *or* a nil clientId; it is a plain string now, so the
+// only way the response can say "no client ID" is an empty one on a present
+// credentials object. Committing "" would present as a configured client ID that is
+// the empty string, so it has to read as null.
+func TestAssignResourceModel_EmptyClientIDReadsAsNull(t *testing.T) {
+	config := jamfProConnector()
+	config.TenantID = nil
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: ""}
+
+	var state UEMConnectResourceModel
+	if diags := assignUEMConnectResourceModel(&state, config, true); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	if state.OAuth == nil {
+		t.Fatal("oauth was not populated")
+	}
+	if !state.OAuth.ClientID.IsNull() {
+		t.Errorf("client_id = %q, want null", state.OAuth.ClientID.ValueString())
+	}
+}
+
+// TestAssignDataSourceModel_EmptyClientIDReadsAsNull is the data source half of the
+// same case: it reads the client ID off the same field, through the same helper.
+func TestAssignDataSourceModel_EmptyClientIDReadsAsNull(t *testing.T) {
+	config := jamfProConnector()
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: ""}
+
+	var state UEMConnectDataSourceModel
+	if diags := assignUEMConnectDataSourceModel(context.Background(), &state, config); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !state.ClientID.IsNull() {
+		t.Errorf("client_id = %q, want null", state.ClientID.ValueString())
+	}
+}
+
 // TestAssignResourceModel_PreservesWriteOnlyRotationCounter pins that a refresh
 // does not wipe the user's rotation counter. The server has never seen it, so
 // nothing in the response can restore it — only preserving it works.

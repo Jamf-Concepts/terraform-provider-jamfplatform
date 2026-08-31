@@ -59,6 +59,11 @@ func jamfProVariant(t *testing.T, body *securitycloud.ConnectorCreateRequestBody
 // discriminator empty would satisfy every field assertion and still send a request
 // with no credentials, no strategy and no URL in it. Marshaling is the only place
 // that shows up.
+//
+// The credentials are asserted here by value rather than only by key: a
+// JamfProCredentials whose fields are dropped or swapped still marshals to a
+// deviceSyncAuth object, so a key-presence check passes on a body carrying the
+// wrong client ID.
 func TestBuildCreateInput_MarshalsTheVariant(t *testing.T) {
 	plan := planWithDefaults()
 	plan.UEMServerURL = types.StringValue("https://example.jamfcloud.com")
@@ -88,6 +93,17 @@ func TestBuildCreateInput_MarshalsTheVariant(t *testing.T) {
 	}
 	if got["vendor"] != securitycloud.ConnectorCreateRequestBodyVendorJamfPro {
 		t.Errorf("vendor = %v", got["vendor"])
+	}
+
+	credentials, ok := got["deviceSyncAuth"].(map[string]any)
+	if !ok {
+		t.Fatalf("deviceSyncAuth did not marshal as an object: %s", encoded)
+	}
+	if credentials["clientId"] != "client-id" {
+		t.Errorf("deviceSyncAuth.clientId = %v, want the plan value", credentials["clientId"])
+	}
+	if credentials["clientSecret"] != "the-secret" {
+		t.Errorf("deviceSyncAuth.clientSecret = %v, want the config value", credentials["clientSecret"])
 	}
 }
 
@@ -158,8 +174,15 @@ func TestBuildCreateInput_OAuthForm(t *testing.T) {
 	if input.DeviceSyncAuth == nil {
 		t.Fatal("no credentials were sent")
 	}
-	if input.DeviceSyncAuth.ClientSecret == nil || *input.DeviceSyncAuth.ClientSecret != "the-secret" {
-		t.Errorf("clientSecret = %v, want the config value", input.DeviceSyncAuth.ClientSecret)
+	if input.DeviceSyncAuth.ClientSecret == nil {
+		t.Error("no clientSecret was sent")
+	} else if *input.DeviceSyncAuth.ClientSecret != "the-secret" {
+		t.Errorf("clientSecret = %q, want the config value", *input.DeviceSyncAuth.ClientSecret)
+	}
+	if input.DeviceSyncAuth.ClientID == nil {
+		t.Error("no clientId was sent")
+	} else if *input.DeviceSyncAuth.ClientID != "client-id" {
+		t.Errorf("clientId = %q, want the plan value", *input.DeviceSyncAuth.ClientID)
 	}
 	if input.URL != "https://example.jamfcloud.com" {
 		t.Errorf("url = %q", input.URL)
