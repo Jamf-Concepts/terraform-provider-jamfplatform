@@ -139,8 +139,8 @@ resources translate that code into a named diagnostic instead of surfacing the r
 Second, **cross-namespace references are server-enforced in both directions**: a DNS
 zone's name servers each name a gateway by ID — a shared, dedicated or grouped gateway, all
 three accepted — and a zone cannot be written before its gateway exists
-(`422 GATEWAY_NOT_FOUND`), so that diagnostic points at `name_servers` rather than the zone;
-conversely a gateway that anything still references refuses to be deleted with a bare
+(`422 GATEWAY_NOT_FOUND`), so that diagnostic points at `authoritative_name_servers` rather than
+the zone; conversely a gateway that anything still references refuses to be deleted with a bare
 `409 CONFLICT` naming nothing, which is a Terraform destroy-ordering trap and gets its own
 diagnostic. That last behaviour is **per construct, not a namespace rule** — a device group
 that a ZTNA app still names deletes cleanly and silently empties the app's assignment instead

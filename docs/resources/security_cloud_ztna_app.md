@@ -6,6 +6,7 @@ description: |-
   Manages a Jamf Security Cloud access policy application — one entry on the Access policy page. An application is defined by the host names and address ranges its traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting to that traffic.
   An application is either predefined, based on one of the Jamf-maintained definitions the jamfplatform_security_cloud_ztna_predefined_apps data source lists, or custom, defined entirely by you. Set predefined_app_id for the first and name for the second. The choice cannot be changed afterwards — Terraform replaces the application instead.
   Host names and address ranges may belong to only one application across the whole tenant, so two applications cannot claim the same one. Misconfiguring an application can cut end users off from the resources it covers.
+  See the Jamf Security Cloud guide ../guides/security-cloud for what that tenant-wide uniqueness means in practice — how overlapping host names are resolved, and why renaming an application by replacing it fails — and for a worked example taking one internal application all the way from a device group to a device that can reach it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -20,6 +21,8 @@ Manages a Jamf Security Cloud access policy application — one entry on the **A
 An application is either **predefined**, based on one of the Jamf-maintained definitions the `jamfplatform_security_cloud_ztna_predefined_apps` data source lists, or **custom**, defined entirely by you. Set `predefined_app_id` for the first and `name` for the second. The choice cannot be changed afterwards — Terraform replaces the application instead.
 
 Host names and address ranges may belong to only one application across the whole tenant, so two applications cannot claim the same one. Misconfiguring an application can cut end users off from the resources it covers.
+
+See the [Jamf Security Cloud guide](../guides/security-cloud) for what that tenant-wide uniqueness means in practice — how overlapping host names are resolved, and why renaming an application by replacing it fails — and for a worked example taking one internal application all the way from a device group to a device that can reach it.
 
 **Required Jamf permissions**
 

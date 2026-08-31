@@ -14,16 +14,28 @@ This guide is the Terraform half: which portal pages the provider reaches, the o
 
 | In the portal | Constructs |
 |---|---|
-| **Devices > Device groups** | `jamfplatform_security_cloud_device_group` (resource, data source, list resource), `..._device_groups` |
+| **Devices > Device groups** | `jamfplatform_security_cloud_device_group` (resource, data source, list resource), `..._device_groups` (data source) |
 | **Devices > Activation profiles > Deployment** | `jamfplatform_security_cloud_activation_profile_deploy` (action) |
-| **Policies > Access > Access policy** | `jamfplatform_security_cloud_ztna_app`, `..._ztna_predefined_apps`, `..._content_categories` |
-| **Integrations > Access gateways** | `jamfplatform_security_cloud_ztna_gateway`, `..._ztna_grouped_gateway`, `..._ztna_shared_gateways` |
-| **Integrations > Custom DNS > DNS zones** | `jamfplatform_security_cloud_dns_zone` |
-| **Integrations > Custom DNS > Search domain** | `jamfplatform_security_cloud_dns_search_domain` |
-| **Integrations > Custom DNS > Hostname mapping** | `jamfplatform_security_cloud_dns_hostname_mappings` |
-| **Integrations > UEM Connect** | `jamfplatform_security_cloud_uem_connect`, `..._uem_connect_synchronize` (action) |
+| **Policies > Access > Access policy** | `jamfplatform_security_cloud_ztna_app` (resource, data source, list resource), `..._ztna_apps` (data source), `..._ztna_predefined_apps` (data source), `..._content_categories` (data source) |
+| **Integrations > Access gateways** | `jamfplatform_security_cloud_ztna_gateway` (resource, data source, list resource), `..._ztna_gateways` (data source), `..._ztna_grouped_gateway` (resource, data source, list resource), `..._ztna_grouped_gateways` (data source), `..._ztna_shared_gateways` (data source) |
+| **Integrations > Custom DNS > DNS zones** | `jamfplatform_security_cloud_dns_zone` (resource, data source, list resource), `..._dns_zones` (data source) |
+| **Integrations > Custom DNS > Search domain** | `jamfplatform_security_cloud_dns_search_domain` (resource, data source) |
+| **Integrations > Custom DNS > Hostname mapping** | `jamfplatform_security_cloud_dns_hostname_mappings` (resource, data source) |
+| **Integrations > UEM Connect** | `jamfplatform_security_cloud_uem_connect` (resource, data source, list resource), `..._uem_connect_synchronize` (action) |
 
 Three things next door to this are **not** managed here. **Activation profiles** themselves are created in the portal — most of their settings cannot be edited after creation, so Jamf treats them as immutable and the provider offers only the action that deploys one to Jamf Pro. **Content filtering and network security policies** (Jamf Protect's half of the portal) have no constructs yet. And **devices** arrive by enrolling with Jamf Trust or by syncing from a UEM; nothing here enrols one.
+
+## Build it in this order
+
+The sections below are ordered for reading. A rollout goes in a different order, because each step depends on the one above it:
+
+1. **UEM Connect** — device inventory and group membership have to be syncing before anything downstream is accurate.
+2. **Device groups** — or map them from Jamf Pro groups in step 1.
+3. **Gateways, then custom DNS** — a zone cannot be written before the gateway its name servers name. Written the other way round, Jamf Security Cloud refuses it with `422 GATEWAY_NOT_FOUND`, and the provider reports that against `authoritative_name_servers` rather than against the zone as a whole.
+4. **Access policy** — applications reference the groups, categories and gateways above.
+5. **Activation profile deploy** — nothing above reaches a device until this runs.
+
+Terraform derives most of that from the references between resources, so the order is yours to get right only where there is no reference to derive it from — a zone naming a gateway ID that arrived as a variable, say.
 
 ## End to end: publishing one enterprise app over ZTNA
 
@@ -36,17 +48,13 @@ resource "jamfplatform_security_cloud_device_group" "engineering" {
   name = "Engineering"
 }
 
-# Categories and gateways are both Jamf-maintained catalogues, so resolve them
-# rather than hard-coding an ID or guessing a category's spelling.
+# A gateway is named by an opaque ID, so resolve it from the catalogue rather than
+# hard-coding one. A category is named by its display name, so there is nothing to
+# resolve — the content_categories data source is how you confirm a spelling.
 data "jamfplatform_security_cloud_content_categories" "all" {}
 data "jamfplatform_security_cloud_ztna_shared_gateways" "all" {}
 
 locals {
-  business_category = one([
-    for category in data.jamfplatform_security_cloud_content_categories.all.content_categories :
-    category.display_name if category.display_name == "Business & Industry"
-  ])
-
   nearest_data_center = one([
     for gateway in data.jamfplatform_security_cloud_ztna_shared_gateways.all.shared_gateways :
     gateway.id if gateway.name == "Nearest Data Center"
@@ -54,8 +62,11 @@ locals {
 }
 
 resource "jamfplatform_security_cloud_ztna_app" "wiki" {
-  name     = "Engineering Wiki"
-  category = local.business_category
+  name = "Engineering Wiki"
+
+  # Matched on the category's display name, so the spelling has to be exact —
+  # check it against the content_categories data source above.
+  category = "Business & Industry"
 
   # Traffic matching. A wildcard may replace the whole leading label, and entries
   # must be mutually exclusive — "*.wiki.example.com" already covers a subdomain
@@ -113,7 +124,9 @@ resource "jamfplatform_security_cloud_ztna_app" "github" {
   routing = {
     traffic_routing = "Encrypt and route via ZTNA"
     routing_mode    = "Standard"
-    gateway_id      = local.nearest_data_center
+
+    # Declared in the end-to-end example above.
+    gateway_id = local.nearest_data_center
   }
 }
 ```
@@ -135,6 +148,9 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
   domains = ["example.corp", "*.example.corp"]
 
   # Each name server is paired with the gateway it is reachable through.
+  # local.nearest_data_center comes from the locals block in the end-to-end
+  # example above, and is the shared egress — a name server on your own network
+  # is not reachable through it and needs a dedicated gateway instead.
   authoritative_name_servers = [
     { ip_address = "203.0.113.53", gateway_id = local.nearest_data_center },
     { ip_address = "203.0.113.54", gateway_id = local.nearest_data_center },
@@ -145,7 +161,7 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 Queries matching the zone's domains go to one of its name servers by pseudo-random load balancing. Four rules here are Jamf's, not the provider's, and each one is a plan that applies and then fails to work:
 
 - A **domain belongs to exactly one zone**, tenant-wide, and a name server IP address may appear only once per zone.
-- The name server has to be reachable **through the gateway you name**, and **its address must be publicly routable**. Jamf Security Cloud refuses a reserved address — private, loopback and similar — with `Name server IP address not allowed`. Jamf's own documentation attaches that restriction to the shared "Nearest Data Center" egress, but a dedicated *internet* gateway refuses a private address just the same, so do not plan on one lifting the rule. A name server on an internal address needs a gateway that actually reaches your network, which means the IPsec form below.
+- The name server has to be reachable **through the gateway you name**, and **its address must not be in a reserved range** — Jamf Security Cloud refuses a private or loopback address with `Name server IP address not allowed`. Not every unrouted address is refused: a documentation range such as `203.0.113.0/24` is accepted, which is why the example above uses one. Jamf's own documentation attaches the restriction to the shared "Nearest Data Center" egress, but a dedicated *internet* gateway refuses a private address just the same, so do not plan on one lifting the rule. A name server on an internal address needs a gateway that actually reaches your network, which means the IPsec form below.
 - Reverse lookups work by adding the `.in-addr.arpa` and `.ipv6.arpa` domains to the zone.
 - **Changes to your own infrastructure need the zone changed too** — a new or renumbered name server, or an application on a domain the zone does not match.
 
@@ -171,7 +187,9 @@ resource "jamfplatform_security_cloud_ztna_gateway" "frankfurt" {
   }
 
   # Omitted here, so this is a dedicated internet gateway. Adding or removing the
-  # block replaces the gateway — see "Immutable forms" below.
+  # block replaces the gateway — see "Immutable forms" below. The full IPsec form,
+  # with its jamf_side and customer_side blocks, is on the
+  # jamfplatform_security_cloud_ztna_gateway resource page.
   # ipsec = { ... }
 }
 ```
@@ -248,6 +266,12 @@ Three resources are one-per-tenant, and each behaves slightly differently when y
 - `dns_hostname_mappings` — owns the **whole set**; destroying it removes every mapping, and any mapping added outside Terraform is removed on the next apply.
 - `uem_connect` — creating a second is refused, so **import** where one already exists rather than declaring a new one.
 
+The integration's ID is not a value anyone would have written down, so read it off the data source — `data "jamfplatform_security_cloud_uem_connect" "existing" {}` reports it as `id` — or let `terraform query -generate-config-out=uem_connect.tf` write the import block for you from the list resource:
+
+```shell
+terraform import jamfplatform_security_cloud_uem_connect.jamf_pro 6a91b958619ef153a5a63d72
+```
+
 Declare each of them once. A second instance of any of them in one configuration will fight itself on every apply.
 
 ## Immutable forms
@@ -303,7 +327,7 @@ action "jamfplatform_security_cloud_uem_connect_synchronize" "now" {
 }
 ```
 
-Jamf Security Cloud does not check that either side of a mapping exists, so a wrong group number is accepted and simply never matches. Declaring `group_membership_mapping` at all replaces what it does not mention — an omitted or empty `mappings` clears every mapping.
+Jamf Security Cloud does not check that either side of a mapping exists, so a wrong group number is accepted and simply never matches. The group configuration is replaced wholesale on every apply, so there is no way to leave it unmanaged: declaring `group_membership_mapping` replaces what it does not mention — an omitted or empty `mappings` clears every mapping — and **omitting the block entirely resets the whole group configuration to its defaults**. Manage it, or expect it cleared.
 
 Importing an existing integration has one wrinkle worth knowing in advance: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even though your configuration may not declare them, so run `terraform plan` straight after the import and write in what the plan shows you rather than letting the next apply clear them.
 
@@ -329,7 +353,7 @@ Jamf Security Cloud is reached under **either** scope: set `environment_id` (pre
 
 Two things about authorisation are specific to this namespace:
 
-- **Entitlement is not authentication.** A valid API integration can still be refused with `403 NOT_ENTITLED` when the tenant does not hold the product behind the construct — dedicated gateways, for instance, are a paid add-on. The provider translates that into a named diagnostic rather than surfacing the raw error.
+- **Entitlement is not authentication.** A valid API integration can still be refused with `403 NOT_ENTITLED` when the tenant does not hold the product behind the construct — dedicated gateways, for instance, are a paid add-on. Every resource and action translates that into a named diagnostic; the three read-only catalogues — `..._content_categories`, `..._ztna_predefined_apps` and `..._ztna_shared_gateways` — surface the raw error instead.
 - **Permissions are per construct**, granted in Jamf Account's permission picker. Each resource, data source and action page carries its own table naming the category, the row and the boxes to tick; the capabilities across this namespace are `ztna`, `device-groups`, `content-categories`, `custom-hostname-mappings`, `search-domains` and `uem-connect`.
 
 ## Further reading

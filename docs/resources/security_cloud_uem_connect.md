@@ -8,6 +8,7 @@ description: |-
   Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here — prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
   After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
+  See the Jamf Security Cloud guide ../guides/security-cloud for how a Jamf Pro group is named in a membership mapping, why the order of the mappings decides which group a device joins, and what an import leaves you to reconcile.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -26,6 +27,8 @@ Choose one of two ways to authenticate to Jamf Pro. With `platform_tenant`, Jamf
 The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
 
 After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
+
+See the [Jamf Security Cloud guide](../guides/security-cloud) for how a Jamf Pro group is named in a membership mapping, why the order of the mappings decides which group a device joins, and what an import leaves you to reconcile.
 
 **Required Jamf permissions**
 

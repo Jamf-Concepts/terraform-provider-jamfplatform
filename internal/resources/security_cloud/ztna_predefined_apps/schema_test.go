@@ -5,6 +5,7 @@ package ztna_predefined_apps
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -71,5 +72,35 @@ func TestPredefinedAppsDataSource_IsEntirelyReadOnly(t *testing.T) {
 		if attr.IsRequired() || attr.IsOptional() {
 			t.Errorf("%s must be computed-only; the catalogue takes no arguments", name)
 		}
+	}
+}
+
+// TestPredefinedAppsDataSource_NamesItsConsumer pins the honesty of the schema
+// description in the other direction. It used to disclaim that the construct
+// consuming a template was unbuilt; jamfplatform_security_cloud_ztna_app now ships,
+// so the description has to name it rather than send an operator looking for
+// nothing — and must not carry the retired disclaimer.
+//
+// The one-per-definition claim is pinned here too because it is a wire fact nothing
+// else guards: a second application built from a definition the tenant already uses
+// is refused with `409 CONFLICT "Resource already exists."`, and an operator who
+// reads this catalogue and picks a template freely meets that refusal at apply.
+func TestPredefinedAppsDataSource_NamesItsConsumer(t *testing.T) {
+	d := NewPredefinedAppsDataSource()
+	var resp datasource.SchemaResponse
+	d.(*PredefinedAppsDataSource).Schema(context.Background(), datasource.SchemaRequest{}, &resp)
+
+	description := resp.Schema.GetMarkdownDescription()
+
+	if !strings.Contains(description, "jamfplatform_security_cloud_ztna_app") {
+		t.Errorf("schema description must name the app resource that consumes a template, got: %s", description)
+	}
+
+	if strings.Contains(description, "not yet managed by this provider") {
+		t.Errorf("schema description still carries the retired unbuilt-consumer disclaimer, got: %s", description)
+	}
+
+	if !strings.Contains(description, "one application per definition") {
+		t.Errorf("schema description must say only one application per definition is allowed on a tenant, got: %s", description)
 	}
 }

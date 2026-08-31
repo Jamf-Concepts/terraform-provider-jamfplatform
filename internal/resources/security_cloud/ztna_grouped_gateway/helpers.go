@@ -40,9 +40,11 @@ const (
 // the messages says which member is at fault.
 //
 // `MIXED_DEDICATED_IPS_TYPES` is the one that most needs it: the server's message
-// names `dedicatedIps.enabled`, a wire field with no counterpart on this schema at
-// all, so without a translation the operator has to know it means
-// `dedicated_egress_ips_enabled` on each member gateway.
+// names a wire field that has no counterpart on this schema and none on the
+// gateway resource either, because a gateway's form is derived from whether it
+// declares an `ipsec` block rather than set by a flag. The translation therefore
+// names the block, and the gateway data source as the way to read the form of a
+// member this configuration does not manage.
 //
 // `GATEWAY_NOT_FOUND` is the same ordering trap the DNS zone has for its name
 // servers: a member gateway must exist before the group can name it, and
@@ -71,9 +73,10 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 				path.Root("gateway_ids"),
 				"Member gateways disagree about dedicated egress IPs",
 				"Every member of a grouped gateway must have the same dedicated egress IP setting — either all "+
-					"members have them or none does. The server names the wire field `dedicatedIps.enabled`; on a "+
-					"`jamfplatform_security_cloud_ztna_gateway` that is `dedicated_egress_ips_enabled`. Reported by "+
-					"Jamf Security Cloud: "+detail.Description,
+					"members have them or none does. A gateway's form is set by whether it declares an `ipsec` "+
+					"block, so make every member match; for a gateway this configuration does not manage, read its "+
+					"form with the `jamfplatform_security_cloud_ztna_gateway` data source. Reported by Jamf "+
+					"Security Cloud: "+detail.Description,
 			)
 		case codeSharedGatewayMember:
 			diags.AddAttributeError(
