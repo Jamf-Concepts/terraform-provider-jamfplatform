@@ -242,10 +242,14 @@ provider's credentials. No API lists an environment's tenants, so an environment
 configuration cannot fill it in from data — supply it as an input, or configure the provider with
 `tenant_id`.
 
-**A completed apply is not a usable gateway.** A new one reports `PENDING` and carries no
-`dedicated_egress_ip_addresses` until Jamf finishes provisioning. Changing `egress_region`
-re-provisions it: connectivity drops, status returns to `PENDING`, and the egress addresses stay
-stale until it settles.
+**A completed apply is not a usable gateway.** A new one reports `PENDING` and settles to `UP`
+roughly four and a half minutes later. The egress addresses arrive far sooner — within seconds — so
+`dedicated_egress_ip_addresses` is populated long before the gateway carries any traffic.
+
+Changing `egress_region` re-provisions it: connectivity drops and the status returns to `PENDING`.
+For about half a minute the attribute still holds the **old** region's addresses, then the new ones
+replace them in place — it never empties, so a value read during that window is plausible and wrong.
+Both timings come from a single EU measurement; treat them as orders of magnitude.
 
 ### Short names and fixed addresses
 
