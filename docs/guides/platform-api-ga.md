@@ -40,7 +40,7 @@ terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.4"
+      version = "0.29.0-rc.5"
     }
   }
 }
@@ -343,8 +343,8 @@ reports `USERENROLLMENT`. The attribute is read-only and is retained.
 
 ## Additions since v0.28.1
 
-**No action needed.** The following arrived during the GA cycle, across `v0.29.0-rc.1`,
-`v0.29.0-rc.2` and this pre-release. All of it is additive.
+**No action needed.** The following arrived during the GA cycle, across the `v0.29.0` release
+candidates. All of it is additive relative to `v0.28.1`.
 
 ### Jamf Security Cloud
 
@@ -366,6 +366,15 @@ Two delete behaviours affect destroy ordering. A ZTNA gateway that is still refe
 deleted, and the provider names the referrer in the diagnostic rather than surfacing an
 unqualified `409`. A Security Cloud device group referenced by a ZTNA app deletes successfully and
 empties the app's assignment. The behaviour differs per construct.
+
+New in this pre-release, and the one change here anyone already on `v0.29.0-rc.4` will notice: a
+ZTNA gateway apply now waits for the gateway to report a settled status instead of returning as
+soon as Jamf accepts the write. Creating or re-provisioning a dedicated internet gateway therefore
+takes about five minutes rather than seconds, which is what makes its
+`dedicated_egress_ip_addresses` usable from the same apply — previously the first apply recorded an
+empty list, and a region change recorded the *previous* region's addresses. Raise `create` or
+`update` in the resource's `timeouts` block if a region provisions more slowly than the default ten
+minutes allows. Further detail: [Jamf Security Cloud](security-cloud).
 
 ### Jamf AI Governance
 
