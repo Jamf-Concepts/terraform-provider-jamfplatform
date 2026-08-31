@@ -52,6 +52,14 @@
 // notes that despite the name, the values are IPv4 addresses rather than zone
 // identifiers.
 //
+// The IPsec form this resource builds is Jamf's **Custom IPSec** gateway. The admin
+// UI offers a second kind, **Quick Connect IPSec** — a Linux VM Jamf's documentation
+// walks you through building — and it is not expressible here: its create form takes
+// no cipher suites, no encryption-domain subnets and no IKE domain IDs, while this
+// schema requires `phase_1`, `phase_2`, `jamf_side` and `customer_side`. Anyone
+// looking for Quick Connect in Terraform is looking for something the API surface
+// behind this resource does not offer.
+//
 // Enumerated attributes take the admin UI's labels too, translated to stored
 // values at the boundary; see mappings.go for the tables and their provenance.
 package ztna_gateway
@@ -534,12 +542,13 @@ func statusAttribute() schema.SingleNestedAttribute {
 			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
 			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
 			"naming the status reached, and the status settles on a later refresh.\n\n" +
-			"An IPsec gateway is waited on too, but released early: reaching `UP` there depends on a concentrator " +
-			"answering on your side of the tunnel, which is normally built after the Jamf side, and until it " +
-			"answers the gateway sits at `DOWN`. Rather than hold the apply for the whole budget, a gateway that " +
-			"reports `DOWN` continuously for a minute ends the wait with a warning — so a tunnel that comes up " +
-			"promptly is still recorded as `UP`, and one that is not yet built costs about a minute and a half " +
-			"instead of ten.\n\n" +
+			"**Creating** an IPsec gateway waits for nothing, because the tunnel cannot be up yet: its other end " +
+			"is built from values this resource returns, so the concentrator, its NAT rules and its firewall " +
+			"openings all come afterwards. Expect `PENDING` in state on the first apply, settling to `DOWN` " +
+			"until the tunnel is established and to `UP` once it is — a later refresh records it. **Updating** " +
+			"one does wait, since by then the tunnel may already be up; if it is down, the apply gives up after " +
+			"the gateway has reported `DOWN` for a minute and warns rather than holding for the whole budget." +
+			"\n\n" +
 			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +
 			"flow, not a guarantee of it.",
 		Computed: true,

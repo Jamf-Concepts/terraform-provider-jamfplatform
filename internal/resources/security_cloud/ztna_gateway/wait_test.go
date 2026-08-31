@@ -341,6 +341,7 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 	cases := []struct {
 		name      string
 		plan      GatewayResourceModel
+		op        gatewayWaitOperation
 		wantWait  bool
 		wantState string
 	}{
@@ -357,8 +358,22 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 			wantState: securitycloud.GatewayStatusStateDisabled,
 		},
 		{
-			name:      "an enabled ipsec gateway waits too, and is released early by the DOWN dwell",
+			name:     "creating an enabled ipsec gateway waits for nothing: the tunnel cannot be up yet",
+			plan:     GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
+			op:       gatewayWaitCreate,
+			wantWait: false,
+		},
+		{
+			name:      "updating an enabled ipsec gateway does wait, since the tunnel may already be up",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
+			op:        gatewayWaitUpdate,
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateUp,
+		},
+		{
+			name:      "creating an enabled internet gateway waits: nothing external gates it",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(true)},
+			op:        gatewayWaitCreate,
 			wantWait:  true,
 			wantState: securitycloud.GatewayStatusStateUp,
 		},
@@ -384,7 +399,11 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			plan := tc.plan
-			gotState, gotWait := gatewayWaitTarget(&plan)
+			op := tc.op
+			if op == (gatewayWaitOperation{}) {
+				op = gatewayWaitUpdate
+			}
+			gotState, gotWait := gatewayWaitTarget(&plan, op)
 			if gotWait != tc.wantWait {
 				t.Fatalf("gatewayWaitTarget wait = %v, want %v", gotWait, tc.wantWait)
 			}

@@ -379,36 +379,40 @@ func waitForGatewayState(ctx context.Context, read gatewayReader, id, want strin
 //
 // `enabled` chooses the target rather than deciding whether to wait, because both
 // transitions drift through PENDING for a few seconds and an apply that records the
-// transient is what this whole wait exists to prevent. Measured 2026-08-31 on one
-// dedicated internet gateway: enabling settled at UP after 5m21s, disabling settled
-// at DISABLED after 12s.
+// transient is what this wait exists to prevent. Measured 2026-08-31 on one dedicated
+// internet gateway: enabling settled at UP after 5m21s, disabling at DISABLED after
+// 12s. A disabled IPsec gateway waits too — disabling the same day's IPsec probe took
+// it from DOWN through PENDING to DISABLED within 30 seconds, because disabling is a
+// Jamf-side operation that owes nothing to the customer's tunnel.
 //
-// Exactly one combination waits for nothing: an **enabled IPsec** gateway. Its
-// operational state depends on a concentrator on the customer's side of the tunnel,
-// which the apply cannot influence and which is normally built after the Jamf side.
-// The 2026-08-31 IPsec probe pointed one at an unreachable peer and watched it settle
-// at DOWN after 35 to 50 seconds and stay there, never reaching UP, so waiting would
-// burn the whole budget and then warn about a gateway behaving exactly as designed.
-// Jamf's own KB ("Troubleshooting IPSec Tunnel-Down Cases") has Jamf raise an alert
-// whenever a private gateway's tunnel drops, so that condition is already surfaced by
-// the product and does not need an apply to block on it.
+// One combination waits for nothing: **creating** an enabled IPsec gateway. Not
+// because reaching UP is slow, but because it cannot have happened yet. Jamf's own
+// Quick Connect procedure is seven steps, and building the Linux VM, installing
+// strongSwan, configuring NAT and opening the firewall are all steps 2 through 7 —
+// after the gateway exists. The Custom IPSec flow has the same shape, and a Jamf
+// support case has a gateway sitting DOWN until the Jamf-side subnet was added to the
+// customer's AWS config, at which point it went UP. The tunnel's other end is built
+// from values this create returns, so waiting for it during the create is waiting for
+// something the operator cannot yet have done: it would spend the DOWN dwell on every
+// such create and warn every time, with no case in which it could succeed.
 //
-// A **disabled IPsec** gateway does wait, which is a correction rather than an
-// oversight: it was excluded on the assumption that DISABLED might be unreachable for
-// that form, and the same probe disproved it — disabling the DOWN gateway took it
-// through PENDING to DISABLED within 30 seconds, with the tunnel state dropping back
-// to null. Disabling is a Jamf-side operation and does not depend on the customer's
-// tunnel, so the form does not matter to it.
+// Updating an enabled IPsec gateway does wait. There the tunnel may well be
+// established already — the common update is a cipher, a name or a subnet on a working
+// gateway — so UP is reachable, and the DOWN dwell covers the case where the change
+// takes the tunnel down or it was never up.
 //
 // An unknown `enabled` waits for nothing rather than guessing a target. A null one
 // waits for UP, matching the schema default — that default is what stops a null ever
 // arriving here, and TestGatewayWaitTarget_DependsOnTheEnabledDefault fails if it is
 // removed or flipped, because the two have to agree.
-func gatewayWaitTarget(plan *GatewayResourceModel) (want string, wait bool) { //nolint:revive // named results document the pair
+func gatewayWaitTarget(plan *GatewayResourceModel, op gatewayWaitOperation) (want string, wait bool) { //nolint:revive // named results document the pair
 	if plan.Enabled.IsUnknown() {
 		return "", false
 	}
 	if plan.Enabled.IsNull() || plan.Enabled.ValueBool() {
+		if plan.IPSec != nil && op.isCreate {
+			return "", false
+		}
 		return securitycloud.GatewayStatusStateUp, true
 	}
 	return securitycloud.GatewayStatusStateDisabled, true
@@ -420,10 +424,11 @@ func gatewayWaitTarget(plan *GatewayResourceModel) (want string, wait bool) { //
 type gatewayWaitOperation struct {
 	pastTense   string
 	timeoutAttr string
+	isCreate    bool
 }
 
 var (
-	gatewayWaitCreate = gatewayWaitOperation{pastTense: "created", timeoutAttr: "create"}
+	gatewayWaitCreate = gatewayWaitOperation{pastTense: "created", timeoutAttr: "create", isCreate: true}
 	gatewayWaitUpdate = gatewayWaitOperation{pastTense: "updated", timeoutAttr: "update"}
 )
 
