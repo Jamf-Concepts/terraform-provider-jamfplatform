@@ -178,12 +178,22 @@ func TestDefaultAutoDeleteBehaviourIsAccepted(t *testing.T) {
 // ten vendors and this resource accepts one, because everything downstream of
 // vendor — five mapping vocabularies and the group identifier format — was
 // established for Jamf Pro only.
+//
+// The set checked is the create envelope's, not the generic request's. Only the
+// envelope's discriminator enumerates all ten: the spec gave Jamf Pro a dedicated
+// variant and removed JAMF_PRO from the generic request's own enum, so a narrowing
+// measured against that one would compare the chosen vendor to a set it is not in.
 func TestVendorIsJamfProOnly(t *testing.T) {
 	if vendorJamfPro != "JAMF_PRO" {
 		t.Errorf("vendorJamfPro = %q, want JAMF_PRO", vendorJamfPro)
 	}
-	if len(securitycloud.ConnectorCreateRequestVendorValues()) < 2 {
+
+	vendors := securitycloud.ConnectorCreateRequestBodyVendorValues()
+	if len(vendors) < 2 {
 		t.Error("the SDK now enumerates fewer than two vendors; revisit whether the narrowing still makes sense")
+	}
+	if !slices.Contains(vendors, vendorJamfPro) {
+		t.Errorf("the chosen vendor %q is not in the create envelope's vocabulary %v", vendorJamfPro, vendors)
 	}
 }
 

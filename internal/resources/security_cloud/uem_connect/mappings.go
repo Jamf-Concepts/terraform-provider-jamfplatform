@@ -9,15 +9,19 @@ import (
 
 // vendorJamfPro is the only UEM vendor this resource supports.
 //
-// Jamf Security Cloud connects to ten vendors, and the SDK enumerates all ten,
-// but almost everything below this line is vendor-specific: each device-field
-// mapping is a separate server-side enum whose members depend on the vendor, and
-// the group identifier format differs too. Accepting a vendor whose vocabularies
-// have not been established would mean validating an Intune group identifier
-// against Jamf Pro's rule and rejecting valid input at plan time — worse than
-// declining the vendor outright. Widening is additive when another vendor's
-// vocabularies are established.
-const vendorJamfPro = securitycloud.ConnectorCreateRequestVendorJamfPro
+// Jamf Security Cloud connects to ten vendors, but almost everything below this
+// line is vendor-specific: each device-field mapping is a separate server-side
+// enum whose members depend on the vendor, and the group identifier format
+// differs too. Accepting a vendor whose vocabularies have not been established
+// would mean validating an Intune group identifier against Jamf Pro's rule and
+// rejecting valid input at plan time — worse than declining the vendor outright.
+// Widening is additive when another vendor's vocabularies are established.
+//
+// Keyed on the create envelope's own discriminator vocabulary rather than
+// ConnectorCreateRequestVendor, which no longer carries JAMF_PRO: the spec gave
+// Jamf Pro a dedicated variant and dropped it from the generic request's enum, so
+// the envelope's set is the only complete vendor list.
+const vendorJamfPro = securitycloud.ConnectorCreateRequestBodyVendorJamfPro
 
 // authStrategyPlatformTenant and authStrategyOAuth are the two ways a Jamf Pro
 // connector authenticates.
@@ -33,8 +37,8 @@ const vendorJamfPro = securitycloud.ConnectorCreateRequestVendorJamfPro
 // block is present and never round-tripped through state — see the package doc
 // comment.
 const (
-	authStrategyPlatformTenant = securitycloud.ConnectorCreateRequestAuthStrategyM2m
-	authStrategyOAuth          = securitycloud.ConnectorCreateRequestAuthStrategyJamfProOauth
+	authStrategyPlatformTenant = securitycloud.JamfProConnectorCreateRequestAuthStrategyM2m
+	authStrategyOAuth          = securitycloud.JamfProConnectorCreateRequestAuthStrategyJamfProOauth
 )
 
 // uemAutoDeleteBehaviourToWire maps this resource's auto-delete values to the ones

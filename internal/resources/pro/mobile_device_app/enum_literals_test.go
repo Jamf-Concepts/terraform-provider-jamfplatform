@@ -20,7 +20,7 @@ func TestEnumLiteralsComeFromTheSDK(t *testing.T) {
 			proclassic.MobileDeviceApplicationGeneralDeploymentTypeValues(),
 		),
 		Absent: map[string]string{
-			"iOS":  "general.os_type has no generated vocabulary. MobileDeviceApplicationGeneral.OsType is a plain *string with no \"Allowed values\" annotation, and the SDK generates no os_type enum for any construct, so there is no constant to alias",
+			"iOS":  "general.os_type has no generated vocabulary. MobileDeviceApplicationGeneral.OsType is a plain *string with no \"Allowed values\" annotation, and no proclassic construct declares an os_type enum, so there is no constant to alias. pro.MobileDeviceResponseDeviceType carries this spelling but is the *inventory* discriminator — a different vocabulary in a different package, and one that also admits visionOS and watchOS, which this attribute does not",
 			"tvOS": "the other half of general.os_type; see above",
 		},
 	})

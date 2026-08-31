@@ -14,34 +14,46 @@ import (
 // buildConnectorCreateInput builds the create request from the plan, selecting the
 // authentication strategy from whichever block is present.
 //
+// The create body is a vendor-discriminated union, so the return is the envelope
+// rather than the variant. `vendor` is set in two places and both are load-bearing:
+// the envelope's copy is what the SDK's MarshalJSON dispatches on — set it wrong
+// and the whole variant is dropped in favour of a bare `{"vendor":...}` — and the
+// variant's own copy is what reaches the server. Both are written from the same
+// plan attribute so they cannot disagree.
+//
+// Only the Jamf Pro variant is ever built, because vendorJamfPro is the only vendor
+// this resource accepts. That variant is fully typed upstream, unlike the generic
+// one the other nine vendors share, so `authStrategy`, `deviceSyncAuth` and
+// `tenantId` are declared fields rather than the wire-restored additions they used
+// to be — and `authStrategy` is required, which is why it is no longer a pointer.
+//
 // writeOnlyClientSecret comes from the config rather than the plan: a WriteOnly
 // attribute is null in the plan by design, so the value has to be read from
 // req.Config and passed in.
-func buildConnectorCreateInput(plan UEMConnectResourceModel, writeOnlyClientSecret string) (*securitycloud.ConnectorCreateRequest, diag.Diagnostics) {
+func buildConnectorCreateInput(plan UEMConnectResourceModel, writeOnlyClientSecret string) (*securitycloud.ConnectorCreateRequestBody, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	input := &securitycloud.ConnectorCreateRequest{
-		Vendor: plan.UEMVendor.ValueString(),
+	vendor := plan.UEMVendor.ValueString()
+	jamfPro := &securitycloud.JamfProConnectorCreateRequest{
+		Vendor: vendor,
 	}
 	if !plan.UEMServerURL.IsNull() && !plan.UEMServerURL.IsUnknown() {
-		input.URL = plan.UEMServerURL.ValueString()
+		jamfPro.URL = plan.UEMServerURL.ValueString()
 	}
 
 	switch {
 	case plan.PlatformTenant != nil:
-		strategy := authStrategyPlatformTenant
 		tenant := plan.PlatformTenant.TenantID.ValueString()
-		input.AuthStrategy = &strategy
-		input.TenantID = &tenant
+		jamfPro.AuthStrategy = authStrategyPlatformTenant
+		jamfPro.TenantID = &tenant
 	case plan.OAuth != nil:
-		strategy := authStrategyOAuth
 		clientID := plan.OAuth.ClientID.ValueString()
-		input.AuthStrategy = &strategy
-		input.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{
+		jamfPro.AuthStrategy = authStrategyOAuth
+		jamfPro.DeviceSyncAuth = &securitycloud.JamfProCredentials{
 			ClientID: &clientID,
 		}
 		if writeOnlyClientSecret != "" {
-			input.DeviceSyncAuth.ClientSecret = &writeOnlyClientSecret
+			jamfPro.DeviceSyncAuth.ClientSecret = &writeOnlyClientSecret
 		}
 	default:
 		diags.AddError(
@@ -51,7 +63,10 @@ func buildConnectorCreateInput(plan UEMConnectResourceModel, writeOnlyClientSecr
 		)
 	}
 
-	return input, diags
+	return &securitycloud.ConnectorCreateRequestBody{
+		Vendor:  vendor,
+		JAMFPRO: jamfPro,
+	}, diags
 }
 
 // buildSyncSettingsInput builds the sync settings request from the plan.

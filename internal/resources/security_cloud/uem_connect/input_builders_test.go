@@ -4,6 +4,7 @@
 package uem_connect
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -26,19 +27,100 @@ func planWithDefaults() UEMConnectResourceModel {
 	}
 }
 
+// jamfProVariant unwraps the create envelope to the Jamf Pro variant, failing the
+// test if the envelope does not select it.
+//
+// It checks the envelope's own discriminator, not just that the pointer is set:
+// the SDK marshals whichever variant `vendor` names, so an envelope whose
+// discriminator is wrong emits a bare `{"vendor":...}` and silently discards
+// everything the builder assembled. A test reaching straight for body.JAMFPRO
+// would pass through that.
+func jamfProVariant(t *testing.T, body *securitycloud.ConnectorCreateRequestBody) *securitycloud.JamfProConnectorCreateRequest {
+	t.Helper()
+	if body == nil {
+		t.Fatal("no create body was built")
+	}
+	if body.Vendor != securitycloud.ConnectorCreateRequestBodyVendorJamfPro {
+		t.Fatalf("envelope vendor = %q, want JAMF_PRO; the SDK marshals by this field, so any other value drops the variant", body.Vendor)
+	}
+	if body.JAMFPRO == nil {
+		t.Fatal("the envelope selects JAMF_PRO but carries no Jamf Pro variant")
+	}
+	return body.JAMFPRO
+}
+
+// TestBuildCreateInput_MarshalsTheVariant pins that the assembled request actually
+// reaches the wire.
+//
+// The two tests below assert on the Go struct, which is not the same claim: the
+// create body is a discriminated union, and the SDK's MarshalJSON emits the variant
+// the envelope's `vendor` names or, failing that, an object carrying nothing but
+// that field. A builder that filled the variant and left the envelope's
+// discriminator empty would satisfy every field assertion and still send a request
+// with no credentials, no strategy and no URL in it. Marshaling is the only place
+// that shows up.
+//
+// The credentials are asserted here by value rather than only by key: a
+// JamfProCredentials whose fields are dropped or swapped still marshals to a
+// deviceSyncAuth object, so a key-presence check passes on a body carrying the
+// wrong client ID.
+func TestBuildCreateInput_MarshalsTheVariant(t *testing.T) {
+	plan := planWithDefaults()
+	plan.UEMServerURL = types.StringValue("https://example.jamfcloud.com")
+	plan.OAuth = &OAuthModel{
+		ClientID:     types.StringValue("client-id"),
+		ClientSecret: types.StringNull(),
+	}
+
+	body, diags := buildConnectorCreateInput(plan, "the-secret")
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	for _, key := range []string{"vendor", "authStrategy", "url", "deviceSyncAuth"} {
+		if _, ok := got[key]; !ok {
+			t.Errorf("%q is absent from the marshaled body — the envelope did not select the variant: %s", key, encoded)
+		}
+	}
+	if got["vendor"] != securitycloud.ConnectorCreateRequestBodyVendorJamfPro {
+		t.Errorf("vendor = %v", got["vendor"])
+	}
+
+	credentials, ok := got["deviceSyncAuth"].(map[string]any)
+	if !ok {
+		t.Fatalf("deviceSyncAuth did not marshal as an object: %s", encoded)
+	}
+	if credentials["clientId"] != "client-id" {
+		t.Errorf("deviceSyncAuth.clientId = %v, want the plan value", credentials["clientId"])
+	}
+	if credentials["clientSecret"] != "the-secret" {
+		t.Errorf("deviceSyncAuth.clientSecret = %v, want the config value", credentials["clientSecret"])
+	}
+}
+
 // TestBuildCreateInput_PlatformTenantForm pins the platform-tenant request shape,
 // including that no credentials are sent.
 func TestBuildCreateInput_PlatformTenantForm(t *testing.T) {
 	plan := planWithDefaults()
 	plan.PlatformTenant = &PlatformTenantModel{TenantID: types.StringValue("ff584e5b")}
 
-	input, diags := buildConnectorCreateInput(plan, "")
+	body, diags := buildConnectorCreateInput(plan, "")
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
+	input := jamfProVariant(t, body)
 
-	if input.AuthStrategy == nil || *input.AuthStrategy != securitycloud.ConnectorCreateRequestAuthStrategyM2m {
-		t.Errorf("authStrategy = %v, want M2M", input.AuthStrategy)
+	if input.AuthStrategy != securitycloud.JamfProConnectorCreateRequestAuthStrategyM2m {
+		t.Errorf("authStrategy = %q, want M2M", input.AuthStrategy)
 	}
 	if input.TenantID == nil || *input.TenantID != "ff584e5b" {
 		t.Errorf("tenantId = %v", input.TenantID)
@@ -57,11 +139,11 @@ func TestBuildCreateInput_PlatformTenantSendsNoURL(t *testing.T) {
 	plan.PlatformTenant = &PlatformTenantModel{TenantID: types.StringValue("ff584e5b")}
 	plan.UEMServerURL = types.StringUnknown()
 
-	input, diags := buildConnectorCreateInput(plan, "")
+	body, diags := buildConnectorCreateInput(plan, "")
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if input.URL != "" {
+	if input := jamfProVariant(t, body); input.URL != "" {
 		t.Errorf("url = %q, want empty", input.URL)
 	}
 }
@@ -77,13 +159,14 @@ func TestBuildCreateInput_OAuthForm(t *testing.T) {
 		ClientSecret: types.StringNull(),
 	}
 
-	input, diags := buildConnectorCreateInput(plan, "the-secret")
+	body, diags := buildConnectorCreateInput(plan, "the-secret")
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
+	input := jamfProVariant(t, body)
 
-	if input.AuthStrategy == nil || *input.AuthStrategy != securitycloud.ConnectorCreateRequestAuthStrategyJamfProOauth {
-		t.Errorf("authStrategy = %v, want JAMF_PRO_OAUTH", input.AuthStrategy)
+	if input.AuthStrategy != securitycloud.JamfProConnectorCreateRequestAuthStrategyJamfProOauth {
+		t.Errorf("authStrategy = %q, want JAMF_PRO_OAUTH", input.AuthStrategy)
 	}
 	if input.TenantID != nil {
 		t.Errorf("tenantId was sent for the OAuth form: %v", *input.TenantID)
@@ -91,8 +174,15 @@ func TestBuildCreateInput_OAuthForm(t *testing.T) {
 	if input.DeviceSyncAuth == nil {
 		t.Fatal("no credentials were sent")
 	}
-	if input.DeviceSyncAuth.ClientSecret == nil || *input.DeviceSyncAuth.ClientSecret != "the-secret" {
-		t.Errorf("clientSecret = %v, want the config value", input.DeviceSyncAuth.ClientSecret)
+	if input.DeviceSyncAuth.ClientSecret == nil {
+		t.Error("no clientSecret was sent")
+	} else if *input.DeviceSyncAuth.ClientSecret != "the-secret" {
+		t.Errorf("clientSecret = %q, want the config value", *input.DeviceSyncAuth.ClientSecret)
+	}
+	if input.DeviceSyncAuth.ClientID == nil {
+		t.Error("no clientId was sent")
+	} else if *input.DeviceSyncAuth.ClientID != "client-id" {
+		t.Errorf("clientId = %q, want the plan value", *input.DeviceSyncAuth.ClientID)
 	}
 	if input.URL != "https://example.jamfcloud.com" {
 		t.Errorf("url = %q", input.URL)

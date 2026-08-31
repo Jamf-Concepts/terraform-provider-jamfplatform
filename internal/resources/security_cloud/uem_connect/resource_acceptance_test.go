@@ -214,7 +214,7 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 				`, tenant),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
-					resource.TestCheckResourceAttr(resourceName, "uem_vendor", securitycloud.ConnectorCreateRequestVendorJamfPro),
+					resource.TestCheckResourceAttr(resourceName, "uem_vendor", securitycloud.ConnectorCreateRequestBodyVendorJamfPro),
 					resource.TestCheckResourceAttr(resourceName, "platform_tenant.tenant_id", tenant),
 					// The address is not configured on this form; Jamf Security Cloud
 					// derives it from the tenant, so the computed value arriving is
