@@ -335,6 +335,28 @@ top-level `activation_conditions` and `legacy_payloads`, are superseded by named
 October 2026**. Migrating ahead of that date is recommended; `terraform plan` reports every
 attribute requiring migration.
 
+### Now read-only: `unmanaged_sync_threshold` on `jamfplatform_security_cloud_uem_connect`
+
+**Action needed if the attribute is set: remove it from your configuration.** Like
+`personal_device_enrollment_type` below, this is a Jamf-side behaviour change rather than a
+provider decision — but unlike that one it could not simply be retained, because it was breaking
+every apply.
+
+Jamf Security Cloud does not apply an unmanaged threshold to a Jamf Pro connection; it takes
+device status from Jamf Pro directly. Wire-probed 2026-09-01: every value sent for a `JAMF_PRO`
+connector is accepted and then discarded, and the connector always reports `0`. Because the
+provider defaulted the attribute to `3` and sent it on every write, Terraform saw a value it had
+planned come back different and failed the apply:
+
+```
+Error: Provider produced inconsistent result after apply
+.unmanaged_sync_threshold: was cty.NumberIntVal(3), but now cty.NumberIntVal(0)
+```
+
+The attribute is now `Computed` and always reads `0`. Leaving it in a configuration is an error
+(`Invalid Configuration for Read-Only Attribute`), so delete the line; no state edit is needed.
+Nothing about how your devices are treated changes — the setting never took effect.
+
 ### Retained: `personal_device_enrollment_type`
 
 **No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. This is a Jamf

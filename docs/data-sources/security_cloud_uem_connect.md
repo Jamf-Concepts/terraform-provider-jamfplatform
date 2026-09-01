@@ -77,7 +77,7 @@ output "uem_connect_id" {
 - `uem_auto_delete_behavior` (String) **"Configure UEM auto-delete behavior"** in the Jamf Security Cloud admin UI.
 - `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI.
 - `uem_vendor` (String) **"UEM vendor"** in the Jamf Security Cloud admin UI.
-- `unmanaged_sync_threshold` (Number) How many consecutive syncs a device may be missing from Jamf Pro before Jamf Security Cloud treats it as unmanaged.
+- `unmanaged_sync_threshold` (Number) Days since a device last checked in before Jamf Security Cloud treats it as unmanaged. Reported as `0` for a Jamf Pro connection, which does not use this setting.
 - `user_data_field_mapping` (Attributes) **"User data field mapping"** in the Jamf Security Cloud admin UI. (see [below for nested schema](#nestedatt--user_data_field_mapping))
 
 <a id="nestedatt--timeouts"></a>

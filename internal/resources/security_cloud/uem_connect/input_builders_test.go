@@ -20,7 +20,6 @@ func planWithDefaults() UEMConnectResourceModel {
 		ScheduledSyncEnabled:          types.BoolValue(true),
 		SyncRefreshIntervalMinutes:    types.Int64Value(defaultSyncRefreshIntervalMinutes),
 		UEMAutoDeleteBehaviour:        types.StringValue(defaultUEMAutoDeleteBehaviour),
-		UnmanagedSyncThreshold:        types.Int64Value(defaultUnmanagedSyncThreshold),
 		DeviceRiskUEMSignalingEnabled: types.BoolValue(false),
 		DisableSyncOnAuthError:        types.BoolValue(true),
 		ConcurrentDeviceSyncEnabled:   types.BoolValue(true),
@@ -202,11 +201,13 @@ func TestBuildCreateInput_NoAuthBlockErrors(t *testing.T) {
 // TestBuildSyncSettings_SendsEveryField is the load-bearing test for this file. The
 // settings write is a full replacement, so any field the builder omits is reset to
 // Jamf's default — silently reverting configuration the user did not touch. Every
-// scalar must therefore be present on every write.
+// scalar must therefore be present on every write, with one deliberate exception:
+// deviceUnmanagedThreshold, which Jamf Security Cloud discards for a JAMF_PRO
+// connector, so there is no configuration to revert and sending it only invited a
+// plan/apply mismatch.
 func TestBuildSyncSettings_SendsEveryField(t *testing.T) {
 	plan := planWithDefaults()
-	plan.SyncRefreshIntervalMinutes = types.Int64Value(360)
-	plan.UnmanagedSyncThreshold = types.Int64Value(7)
+	plan.SyncRefreshIntervalMinutes = types.Int64Value(720)
 	plan.DeviceRiskUEMSignalingEnabled = types.BoolValue(true)
 	plan.DisableSyncOnAuthError = types.BoolValue(false)
 	plan.ConcurrentDeviceSyncEnabled = types.BoolValue(false)
@@ -223,11 +224,13 @@ func TestBuildSyncSettings_SendsEveryField(t *testing.T) {
 	if input.Scheduled == nil || *input.Scheduled {
 		t.Error("scheduled was omitted or wrong")
 	}
-	if input.RefreshRateMinutes == nil || *input.RefreshRateMinutes != 360 {
+	if input.RefreshRateMinutes == nil || *input.RefreshRateMinutes != 720 {
 		t.Error("refreshRateMinutes was omitted or wrong")
 	}
-	if input.DeviceUnmanagedThreshold == nil || *input.DeviceUnmanagedThreshold != 7 {
-		t.Error("deviceUnmanagedThreshold was omitted or wrong")
+	if input.DeviceUnmanagedThreshold != nil {
+		t.Error("deviceUnmanagedThreshold was sent; it is the one field this builder must omit, " +
+			"because Jamf Security Cloud discards it for a JAMF_PRO connector and echoing it back " +
+			"as state breaks every apply")
 	}
 	if input.DeviceRiskTagging == nil || !*input.DeviceRiskTagging {
 		t.Error("deviceRiskTagging was omitted or wrong")

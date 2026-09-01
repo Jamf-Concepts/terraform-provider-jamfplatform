@@ -226,7 +226,7 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "scheduled_sync_enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "sync_refresh_interval_minutes", "1440"),
 					resource.TestCheckResourceAttr(resourceName, "uem_auto_delete_behavior", "remove_deleted_or_retired"),
-					resource.TestCheckResourceAttr(resourceName, "unmanaged_sync_threshold", "3"),
+					resource.TestCheckResourceAttr(resourceName, "unmanaged_sync_threshold", "0"),
 					resource.TestCheckResourceAttr(resourceName, "device_risk_uem_signaling_enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "disable_sync_on_auth_error", "true"),
 					resource.TestCheckResourceAttr(resourceName, "concurrent_device_sync_enabled", "true"),
@@ -285,9 +285,8 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 
 						enabled                        = false
 						scheduled_sync_enabled         = false
-						sync_refresh_interval_minutes          = 360
+						sync_refresh_interval_minutes          = 720
 						uem_auto_delete_behavior           = "remove_deleted_or_unmanaged"
-						unmanaged_sync_threshold       = 7
 						device_risk_uem_signaling_enabled  = true
 						disable_sync_on_auth_error     = false
 						concurrent_device_sync_enabled = false
@@ -316,9 +315,9 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "scheduled_sync_enabled", "false"),
-					resource.TestCheckResourceAttr(resourceName, "sync_refresh_interval_minutes", "360"),
+					resource.TestCheckResourceAttr(resourceName, "sync_refresh_interval_minutes", "720"),
 					resource.TestCheckResourceAttr(resourceName, "uem_auto_delete_behavior", "remove_deleted_or_unmanaged"),
-					resource.TestCheckResourceAttr(resourceName, "unmanaged_sync_threshold", "7"),
+					resource.TestCheckResourceAttr(resourceName, "unmanaged_sync_threshold", "0"),
 					resource.TestCheckResourceAttr(resourceName, "device_risk_uem_signaling_enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "disable_sync_on_auth_error", "false"),
 					resource.TestCheckResourceAttr(resourceName, "concurrent_device_sync_enabled", "false"),
@@ -701,10 +700,10 @@ func TestAccResource_SecurityCloudUEMConnect_Validation(t *testing.T) {
 						platform_tenant = {
 							tenant_id = "00000000-0000-0000-0000-000000000000"
 						}
-						unmanaged_sync_threshold = -1
+						unmanaged_sync_threshold = 3
 					}
 				`,
-				ExpectError: regexp.MustCompile(`must be at least 0`),
+				ExpectError: regexp.MustCompile(`Invalid Configuration for Read-Only Attribute`),
 			},
 			{
 				Config: `
