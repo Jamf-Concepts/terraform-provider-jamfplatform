@@ -102,6 +102,30 @@ func TestAtLeastOneCapability_NullCountsAsDisabled(t *testing.T) {
 	}
 }
 
+// TestAtLeastOneCapability_UnknownBlockDefersRatherThanFailing covers the case a
+// naive implementation gets wrong.
+//
+// Reading a child of an unknown parent yields null rather than unknown, so a
+// `capabilities` block taken wholesale from another resource's computed attribute
+// presents as two disabled capabilities. Before the object was checked for unknown
+// first, this configuration was rejected with "No service capability enabled".
+func TestAtLeastOneCapability_UnknownBlockDefersRatherThanFailing(t *testing.T) {
+	s := resourceSchema(t)
+	objectType := s.Type().TerraformType(context.Background()).(tftypes.Object)
+	values := map[string]tftypes.Value{}
+	for name, at := range objectType.AttributeTypes {
+		values[name] = tftypes.NewValue(at, nil)
+	}
+	values["capabilities"] = tftypes.NewValue(objectType.AttributeTypes["capabilities"], tftypes.UnknownValue)
+
+	req := resource.ValidateConfigRequest{Config: tfsdk.Config{Schema: s, Raw: tftypes.NewValue(objectType, values)}}
+	resp := &resource.ValidateConfigResponse{}
+	atLeastOneCapabilityValidator{}.ValidateResource(context.Background(), req, resp)
+	if len(resp.Diagnostics) != 0 {
+		t.Errorf("expected the validator to defer on an unknown capabilities block, got %v", resp.Diagnostics)
+	}
+}
+
 // TestAtLeastOneCapability_UnknownDefersRatherThanFailing keeps the validator
 // quiet when a capability is derived from another resource and is not yet known,
 // so a legitimate plan is not rejected before the value exists.

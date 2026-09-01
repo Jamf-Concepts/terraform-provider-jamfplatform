@@ -48,16 +48,6 @@ func platformWire(label string) (string, bool) {
 	return "", false
 }
 
-// platformLabel converts an API platform value to its provider label, falling
-// back to the raw value so an unrecognised platform surfaces as itself rather
-// than as an empty string.
-func platformLabel(wire string) string {
-	if label, ok := platformLabelByWire[wire]; ok {
-		return label
-	}
-	return wire
-}
-
 // sortedPlatformLabels returns labels in a stable order, for rendering a
 // deterministic request body and a deterministic diagnostic.
 func sortedPlatformLabels(labels []string) []string {

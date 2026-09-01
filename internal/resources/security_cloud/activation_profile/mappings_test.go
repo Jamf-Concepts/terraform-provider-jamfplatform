@@ -58,9 +58,6 @@ func TestPlatformWire_RoundTrip(t *testing.T) {
 		if gotWire != wire {
 			t.Errorf("platformWire(%q) = %q, want %q", label, gotWire, wire)
 		}
-		if gotLabel := platformLabel(wire); gotLabel != label {
-			t.Errorf("platformLabel(%q) = %q, want %q", wire, gotLabel, label)
-		}
 	}
 }
 
@@ -69,14 +66,6 @@ func TestPlatformWire_RoundTrip(t *testing.T) {
 func TestPlatformWire_UnknownLabel(t *testing.T) {
 	if _, ok := platformWire("windows"); ok {
 		t.Error("platformWire accepted a platform Jamf Security Cloud does not take here")
-	}
-}
-
-// TestPlatformLabel_UnknownWireFallsBackToItself keeps an unrecognised platform
-// visible rather than blanking it.
-func TestPlatformLabel_UnknownWireFallsBackToItself(t *testing.T) {
-	if got := platformLabel("ANDROID"); got != "ANDROID" {
-		t.Errorf("platformLabel(%q) = %q, want the value echoed back", "ANDROID", got)
 	}
 }
 

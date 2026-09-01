@@ -23,6 +23,7 @@ reading](#further-reading).
 | In the portal | Constructs |
 |---|---|
 | **Devices > Device groups** | `jamfplatform_security_cloud_device_group` (resource, data source, list resource), `..._device_groups` (data source) |
+| **Devices > Activation profiles** | `jamfplatform_security_cloud_activation_profile` (a deliberately small part of one — see below) |
 | **Devices > Activation profiles > Deployment** | `jamfplatform_security_cloud_activation_profile_deploy` (action) |
 | **Policies > Access > Access policy** | `jamfplatform_security_cloud_ztna_app` (resource, data source, list resource), `..._ztna_apps` (data source), `..._ztna_predefined_apps` (data source), `..._content_categories` (data source) |
 | **Integrations > Access gateways** | `jamfplatform_security_cloud_ztna_gateway` (resource, data source, list resource), `..._ztna_gateways` (data source), `..._ztna_grouped_gateway` (resource, data source, list resource), `..._ztna_grouped_gateways` (data source), `..._ztna_shared_gateways` (data source) |
@@ -451,9 +452,24 @@ letting the next apply clear them.
 ## Getting the configuration onto devices
 
 Nothing above reaches a device on its own. Devices enrol through an **activation profile**
-distributed alongside the Jamf Trust app, and the provider covers one step of that: the portal's
-**Deploy to Jamf Pro** button, which creates the activation profile's configuration profile in Jamf
-Pro and scopes it.
+distributed alongside the Jamf Trust app, and the provider covers two steps of that: minting a
+profile, and the portal's **Deploy to Jamf Pro** button, which creates the activation profile's
+configuration profile in Jamf Pro and scopes it.
+
+`jamfplatform_security_cloud_activation_profile` manages a **deliberately small part** of an
+activation profile — a name, target platforms, two service capabilities, a note and a device group.
+The end user application, the whole authentication step including the identity provider, traffic
+vectoring, in-app secure DNS control, customizable block pages, the expiration date and the device
+location settings are configurable in Jamf Security Cloud and not through Terraform, and a profile
+created here takes the Jamf Security Cloud default for each of them.
+
+Three consequences follow from Jamf Security Cloud returning only the activation code when a
+profile is read, and they are unusual enough to weigh before adopting the resource: changing any
+setting **replaces** the profile and mints a new code, invalidating anything already distributed;
+Terraform **cannot detect** a profile edited or deleted outside Terraform, and reports no changes;
+and destroying a profile **cannot be confirmed** and does not remove it from the Jamf Security Cloud
+list, which therefore grows with every profile Terraform has ever created. Importing an existing
+profile is not supported, for the same reason.
 
 ```hcl
 action "jamfplatform_security_cloud_activation_profile_deploy" "macos" {
@@ -465,9 +481,10 @@ action "jamfplatform_security_cloud_activation_profile_deploy" "macos" {
 }
 ```
 
-- The **activation profile code** is issued during activation profile setup and cannot be created or
-  looked up from Terraform. It is the last path segment of the profile's deployment page, so it is
-  an input.
+- The **activation profile code** is issued when the profile is created. Take it from
+  `jamfplatform_security_cloud_activation_profile.<name>.id` for a Terraform-managed profile, or, for
+  one created in Jamf Security Cloud, read it off the last path segment of the profile's deployment
+  page and pass it as an input. There is no way to look a code up by profile name.
 - There is **one deployment per operating system** (`macos`, `ios_byod`, `ios_supervised`,
   `ios_unsupervised`). Cover more than one by invoking the action once each, naming computer groups
   for `macos` and mobile device groups otherwise.

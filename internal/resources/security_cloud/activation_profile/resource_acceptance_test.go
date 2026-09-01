@@ -95,6 +95,7 @@ func TestAccResource_SecurityCloudActivationProfile_Lifecycle(t *testing.T) {
 	base := activationProfileFields{
 		name:            name,
 		platforms:       []string{"ios"},
+		contentControls: true,
 		networkSecurity: true,
 		note:            note,
 	}
@@ -111,8 +112,12 @@ func TestAccResource_SecurityCloudActivationProfile_Lifecycle(t *testing.T) {
 	replatformed := resumed
 	replatformed.platforms = []string{"ios", "mac"}
 
+	// Flipped off rather than on: the create enables both capabilities so that
+	// both wire fields are exercised for the price of the one profile this file is
+	// allowed to mint, which leaves disabling one as the way to prove a capability
+	// change replaces. network_security stays on, so the config remains valid.
 	recapable := resumed
-	recapable.contentControls = true
+	recapable.contentControls = false
 
 	regrouped := resumed
 	regrouped.deviceGroupID = "tf-acc-no-such-device-group-" + suffix
@@ -131,7 +136,7 @@ func TestAccResource_SecurityCloudActivationProfile_Lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttr(activationProfileAddress, "platforms.#", "1"),
 					resource.TestCheckTypeSetElemAttr(activationProfileAddress, "platforms.*", "ios"),
 					resource.TestCheckResourceAttr(activationProfileAddress, "capabilities.network_security", "true"),
-					resource.TestCheckResourceAttr(activationProfileAddress, "capabilities.content_controls", "false"),
+					resource.TestCheckResourceAttr(activationProfileAddress, "capabilities.content_controls", "true"),
 					resource.TestCheckResourceAttr(activationProfileAddress, "capabilities.note", note),
 					resource.TestCheckNoResourceAttr(activationProfileAddress, "device_group_id"),
 					resource.TestCheckResourceAttr(activationProfileAddress, "paused", "false"),

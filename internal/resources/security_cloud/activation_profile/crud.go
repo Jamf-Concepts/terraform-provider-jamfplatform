@@ -64,6 +64,16 @@ func (r *ActivationProfileResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	if created.Code == "" {
+		resp.Diagnostics.AddError(
+			"Jamf Security Cloud did not return an activation code",
+			"The activation profile was created, but Jamf Security Cloud returned no activation code for it, so "+
+				"Terraform cannot manage it. Find the new profile in Jamf Security Cloud and delete it, then try "+
+				"again.",
+		)
+		return
+	}
+
 	applyReadState(&plan, created)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -150,19 +160,25 @@ func (r *ActivationProfileResource) Update(ctx context.Context, req resource.Upd
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete asks Jamf Security Cloud to delete the activation profile, and trusts
-// the answer.
+// Delete asks Jamf Security Cloud to delete the activation profile.
 //
-// This is the fire-and-trust pattern of STYLE_GUIDE §Delete semantics, for the
-// reason that section gives: destroy-time verification is impossible. The delete
-// is a soft delete — afterwards the item GET still answers 200 and the collection
-// still returns the code — and the bulk endpoint answers 204 for a code that does
-// not exist, for one already deleted, and for one it actually deleted, with no
-// body and no per-code result. So a success here is not evidence anything was
-// deleted, and no amount of polling would make it one.
+// Destroy-time verification is impossible, which is why nothing here polls: the
+// delete is a soft delete — afterwards the item GET still answers 200 and the
+// collection still returns the code — and the bulk endpoint answers 204 for a
+// code that does not exist, for one already deleted, and for one it actually
+// deleted, with no body and no per-code result. A success is therefore not
+// evidence anything was deleted, and no amount of re-reading would make it one.
 //
-// The profile also stays in the tenant's list permanently. Nothing here can
-// change that; the resource documentation says so instead.
+// That justifies not polling. It does not justify treating a refusal as success:
+// wire probing found no status on this endpoint that is misleadingly negative,
+// unlike the classic endpoints STYLE_GUIDE §Delete semantics describes. A refusal
+// here — a missing activation-profiles:delete privilege, or a tenant that has lost
+// entitlement — means nothing was deleted, so it surfaces as an error and leaves
+// the profile in state. Dropping it instead would leave a live activation code
+// accepting enrollments with no Terraform record of it.
+//
+// The profile stays in the tenant's list permanently even on success. Nothing here
+// can change that; the resource documentation says so instead.
 func (r *ActivationProfileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state ActivationProfileResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -188,17 +204,11 @@ func (r *ActivationProfileResource) Delete(ctx context.Context, req resource.Del
 	if helpers.IsNotFoundError(err) {
 		return
 	}
-	if helpers.IsClientError(err) {
-		tflog.Warn(ctx, "activation profile delete refused; dropping from state", map[string]any{
-			"code":  code,
-			"error": err.Error(),
-		})
-		resp.Diagnostics.AddWarning(
-			"Activation profile may not have been deleted",
-			"Jamf Security Cloud refused the deletion of activation profile "+code+", and Terraform has removed "+
-				"it from state anyway. Check Jamf Security Cloud and delete the profile there if it is still "+
-				"active. Reported by Jamf Security Cloud: "+err.Error(),
-		)
+	tflog.Error(ctx, "activation profile delete refused", map[string]any{
+		"code":  code,
+		"error": err.Error(),
+	})
+	if appendWriteDiagnostics(&resp.Diagnostics, err) {
 		return
 	}
 	resp.Diagnostics.AddError("Unable to delete activation profile", err.Error())

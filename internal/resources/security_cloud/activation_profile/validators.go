@@ -37,7 +37,22 @@ func (v atLeastOneCapabilityValidator) MarkdownDescription(ctx context.Context) 
 // whole config: a single unknown value anywhere in the configuration makes a
 // whole-object Get fail, which would silently disable this check on any plan that
 // derives an attribute from another resource.
+//
+// The block itself is checked for unknown before its members, and that order is
+// load-bearing. Reading a child of an unknown parent yields **null**, not
+// unknown, so a `capabilities` block taken wholesale from another resource's
+// computed attribute would present as two disabled capabilities and fail a
+// configuration that is perfectly valid.
 func (v atLeastOneCapabilityValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var capabilities types.Object
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("capabilities"), &capabilities)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if capabilities.IsUnknown() || capabilities.IsNull() {
+		return
+	}
+
 	contentControls := boolAt(ctx, req, resp, path.Root("capabilities").AtName("content_controls"))
 	networkSecurity := boolAt(ctx, req, resp, path.Root("capabilities").AtName("network_security"))
 	if resp.Diagnostics.HasError() {
