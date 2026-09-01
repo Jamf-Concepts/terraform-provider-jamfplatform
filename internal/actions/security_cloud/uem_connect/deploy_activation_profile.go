@@ -77,8 +77,9 @@ func (a *DeployActivationProfileAction) Schema(_ context.Context, _ action.Schem
 			"activation_profile_code": actionschema.StringAttribute{
 				MarkdownDescription: "The code of the activation profile to deploy. Jamf Security Cloud " +
 					"issues it during activation profile setup; it is the last path segment when you open the " +
-					"activation profile's deployment page in the Jamf Security Cloud console. Nothing in this " +
-					"provider can create or look up a code, so it has to be supplied here.",
+					"activation profile's deployment page in the Jamf Security Cloud console. For a profile " +
+					"Terraform manages, use `jamfplatform_security_cloud_activation_profile.<name>.id` instead. " +
+					"There is no way to look a code up by profile name.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),

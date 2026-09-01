@@ -39,12 +39,19 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Pro and scopes it to the Jamf Pro groups you name. One deployment per operating
 # system, so cover more than one by invoking the action once for each.
 
-# The activation profile code is issued by Jamf Security Cloud during activation
-# profile setup and cannot be created or looked up from Terraform, so it is an
-# input.
-variable "activation_profile_code" {
-  description = "Code of the Jamf Security Cloud activation profile to deploy."
-  type        = string
+# The activation profile code is issued when the profile is created. A profile
+# Terraform manages exposes it as its id, so the deploy can take it directly. For
+# a profile created in Jamf Security Cloud instead, read the code off the last
+# path segment of the profile's deployment page and pass it in as an input —
+# there is no way to look a code up by profile name.
+resource "jamfplatform_security_cloud_activation_profile" "field_staff" {
+  name      = "Field Staff"
+  platforms = ["ios", "mac"]
+
+  capabilities = {
+    content_controls = true
+    network_security = true
+  }
 }
 
 resource "jamfplatform_device_group" "tablets" {
@@ -65,7 +72,7 @@ resource "jamfplatform_device_group" "laptops" {
 # written as "mobile_20" — the two are not interchangeable.
 action "jamfplatform_security_cloud_activation_profile_deploy" "supervised_ios" {
   config {
-    activation_profile_code = var.activation_profile_code
+    activation_profile_code = jamfplatform_security_cloud_activation_profile.field_staff.id
     os                      = "ios_supervised"
     jamf_pro_group_ids      = [jamfplatform_device_group.tablets.jamf_pro_id]
   }
@@ -75,7 +82,7 @@ action "jamfplatform_security_cloud_activation_profile_deploy" "supervised_ios" 
 # be refused, and naming this computer group above would be too.
 action "jamfplatform_security_cloud_activation_profile_deploy" "macos" {
   config {
-    activation_profile_code = var.activation_profile_code
+    activation_profile_code = jamfplatform_security_cloud_activation_profile.field_staff.id
     os                      = "macos"
     jamf_pro_group_ids      = [jamfplatform_device_group.laptops.jamf_pro_id]
   }
@@ -108,7 +115,7 @@ resource "terraform_data" "deploy" {
 
 ### Required
 
-- `activation_profile_code` (String) The code of the activation profile to deploy. Jamf Security Cloud issues it during activation profile setup; it is the last path segment when you open the activation profile's deployment page in the Jamf Security Cloud console. Nothing in this provider can create or look up a code, so it has to be supplied here.
+- `activation_profile_code` (String) The code of the activation profile to deploy. Jamf Security Cloud issues it during activation profile setup; it is the last path segment when you open the activation profile's deployment page in the Jamf Security Cloud console. For a profile Terraform manages, use `jamfplatform_security_cloud_activation_profile.<name>.id` instead. There is no way to look a code up by profile name.
 - `os` (String) **"Select your OS"** — which of the activation profile's configuration profiles to deploy. One deployment per operating system: to cover more than one, invoke this action once for each.
 
 Valid values: `ios_byod`, `ios_supervised`, `ios_unsupervised`, `macos`.
