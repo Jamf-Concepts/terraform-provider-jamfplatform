@@ -691,7 +691,7 @@ func TestAccResource_SecurityCloudUEMConnect_Validation(t *testing.T) {
 						sync_refresh_interval_minutes = 0
 					}
 				`,
-				ExpectError: regexp.MustCompile(`must be at least 1`),
+				ExpectError: regexp.MustCompile(`value must be one of`),
 			},
 			{
 				Config: `

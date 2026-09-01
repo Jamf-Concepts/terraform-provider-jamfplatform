@@ -179,10 +179,10 @@ func TestDefaultAutoDeleteBehaviourIsAccepted(t *testing.T) {
 // vendor — five mapping vocabularies and the group identifier format — was
 // established for Jamf Pro only.
 //
-// The set checked is the create envelope's, not the generic request's. Only the
-// envelope's discriminator enumerates all ten: the spec gave Jamf Pro a dedicated
-// variant and removed JAMF_PRO from the generic request's own enum, so a narrowing
-// measured against that one would compare the chosen vendor to a set it is not in.
+// The set checked is the create envelope's discriminator, the only vocabulary that
+// enumerates every vendor. The generic request enum this once had to be
+// distinguished from is gone, the spec having given all ten vendors their own
+// request schema.
 func TestVendorIsJamfProOnly(t *testing.T) {
 	if vendorJamfPro != "JAMF_PRO" {
 		t.Errorf("vendorJamfPro = %q, want JAMF_PRO", vendorJamfPro)

@@ -104,20 +104,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
+
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// Bounds and defaults Jamf Security Cloud applies. Wire-probed against a real
-// Jamf Security Cloud tenant on 2026-09-01, superseding a 2026-08-28 probe whose
-// findings the service has since changed under: the sync interval then accepted
-// any value of 1 or more with no ceiling, and the unmanaged threshold then stored
-// what it was sent.
+// Defaults Jamf Security Cloud applies. Wire-probed against a real Jamf Security
+// Cloud tenant on 2026-09-01, superseding a 2026-08-28 probe whose findings the
+// service has since changed under: the sync interval then accepted any value of 1
+// or more with no ceiling, and the unmanaged threshold then stored what it was
+// sent. Neither holds — the interval is now an enforced enum and the threshold is
+// discarded outright.
 //
-// The interval floor stays declared here because it is the schema's own; the
-// service's accepted set is narrower and is validated separately.
+// The interval's accepted set is not restated here; it comes from the SDK's
+// generated SyncSettingsRefreshRateMinutesValues.
 const (
-	minSyncRefreshIntervalMinutes     = 1
 	defaultSyncRefreshIntervalMinutes = 1440
 	defaultUEMAutoDeleteBehaviour     = "remove_deleted_or_retired"
 )
@@ -201,6 +203,16 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"creates and manages its own credentials on the named tenant and no secret is configured here — " +
 			"prefer it. With `oauth`, supply the client ID and secret of an API integration you created on the " +
 			"Jamf Pro instance yourself.\n\n" +
+			"~> **`platform_tenant` leaves credentials behind when the integration is destroyed.** Jamf Security " +
+			"Cloud creates a Jamf Pro API integration named `JSC Connector` to authenticate with, and that " +
+			"integration survives the destroy — neither Jamf Security Cloud nor this provider removes it, and " +
+			"this provider holds no Jamf Pro credentials for that tenant to remove it with. Each " +
+			"create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro " +
+			"instance, each carrying the 31-privilege `JSC Connector` role — which includes writing " +
+			"configuration profiles, computer and mobile device records, extension attributes and group " +
+			"memberships. Audit **Settings → API roles and clients** on the Jamf Pro instance after any " +
+			"destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled `JSC " +
+			"Connector` integrations against zero live connectors, 88% of every integration on it.\n\n" +
 			"The connection is fixed once created: changing the vendor, the address or the way it authenticates " +
 			"replaces the integration, which briefly interrupts syncing.\n\n" +
 			"After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from " +
@@ -327,13 +339,14 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"sync_refresh_interval_minutes": schema.Int64Attribute{
 				MarkdownDescription: "**\"Sync refresh interval\"** in the Jamf Security Cloud admin UI, in " +
-					"minutes. The admin UI offers a fixed set of intervals; any value of 1 or more is accepted " +
-					"here, but prefer one the admin UI also offers so the two agree. Defaults to 1440 (24 hours).",
+					"minutes. Jamf Security Cloud accepts only the intervals its admin UI offers and rejects " +
+					"anything else, so the accepted values are 60, 120, 240, 480, 720 and 1440. Defaults to 1440 " +
+					"(24 hours).",
 				Optional: true,
 				Computed: true,
 				Default:  int64default.StaticInt64(defaultSyncRefreshIntervalMinutes),
 				Validators: []validator.Int64{
-					int64validator.AtLeast(minSyncRefreshIntervalMinutes),
+					int64validator.OneOf(securitycloud.SyncSettingsRefreshRateMinutesValues()...),
 				},
 			},
 			"uem_auto_delete_behavior": schema.StringAttribute{
