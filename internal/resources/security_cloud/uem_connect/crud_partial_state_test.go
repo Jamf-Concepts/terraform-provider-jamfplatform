@@ -79,7 +79,7 @@ func platformTenantPlan(ctx context.Context, connectorSchema resourceschema.Sche
 	values["scheduled_sync_enabled"] = tftypes.NewValue(tftypes.Bool, true)
 	values["sync_refresh_interval_minutes"] = tftypes.NewValue(tftypes.Number, defaultSyncRefreshIntervalMinutes)
 	values["uem_auto_delete_behavior"] = tftypes.NewValue(tftypes.String, defaultUEMAutoDeleteBehaviour)
-	values["unmanaged_sync_threshold"] = tftypes.NewValue(tftypes.Number, defaultUnmanagedSyncThreshold)
+	values["unmanaged_sync_threshold"] = tftypes.NewValue(tftypes.Number, 0)
 	values["device_risk_uem_signaling_enabled"] = tftypes.NewValue(tftypes.Bool, false)
 	values["disable_sync_on_auth_error"] = tftypes.NewValue(tftypes.Bool, true)
 	values["concurrent_device_sync_enabled"] = tftypes.NewValue(tftypes.Bool, true)

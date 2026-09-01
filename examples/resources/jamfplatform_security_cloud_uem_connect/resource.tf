@@ -39,10 +39,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
 
   sync_refresh_interval_minutes = 720
 
-  # Devices Jamf Pro no longer manages are removed after three consecutive syncs
-  # without them. Use keep_deleted_or_retired to retain them instead.
+  # Devices Jamf Pro no longer reports as managed are removed. Use
+  # keep_deleted_or_retired to retain them instead.
   uem_auto_delete_behavior = "remove_deleted_or_unmanaged"
-  unmanaged_sync_threshold = 3
 
   # Send each device's risk level back to Jamf Pro, so Jamf Pro can act on it.
   device_risk_uem_signaling_enabled = true

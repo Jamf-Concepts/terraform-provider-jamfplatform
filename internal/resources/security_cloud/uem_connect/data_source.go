@@ -89,8 +89,8 @@ func (d *UEMConnectDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed:            true,
 			},
 			"unmanaged_sync_threshold": schema.Int64Attribute{
-				MarkdownDescription: "How many consecutive syncs a device may be missing from Jamf Pro before Jamf " +
-					"Security Cloud treats it as unmanaged.",
+				MarkdownDescription: "Days since a device last checked in before Jamf Security Cloud treats it as " +
+					"unmanaged. Reported as `0` for a Jamf Pro connection, which does not use this setting.",
 				Computed: true,
 			},
 			"device_risk_uem_signaling_enabled": schema.BoolAttribute{

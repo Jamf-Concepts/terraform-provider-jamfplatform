@@ -105,22 +105,20 @@ func buildSyncSettingsInput(plan UEMConnectResourceModel) (*securitycloud.SyncSe
 
 	scheduled := plan.ScheduledSyncEnabled.ValueBool()
 	interval := plan.SyncRefreshIntervalMinutes.ValueInt64()
-	threshold := int(plan.UnmanagedSyncThreshold.ValueInt64())
 	riskTagging := plan.DeviceRiskUEMSignalingEnabled.ValueBool()
 	disableOnAuthError := plan.DisableSyncOnAuthError.ValueBool()
 	concurrent := plan.ConcurrentDeviceSyncEnabled.ValueBool()
 
 	input := &securitycloud.SyncSettings{
-		Vendor:                   plan.UEMVendor.ValueString(),
-		AutoDeviceDeletion:       behaviour,
-		Scheduled:                &scheduled,
-		RefreshRateMinutes:       &interval,
-		DeviceUnmanagedThreshold: &threshold,
-		DeviceRiskTagging:        &riskTagging,
-		DisableSyncOnAuthError:   &disableOnAuthError,
-		ConcurrentSyncEnabled:    &concurrent,
-		DeviceFieldMappings:      buildDeviceFieldMappings(plan.UserDataFieldMapping),
-		GroupSettings:            buildGroupSettings(plan.GroupMembershipMapping),
+		Vendor:                 plan.UEMVendor.ValueString(),
+		AutoDeviceDeletion:     behaviour,
+		Scheduled:              &scheduled,
+		RefreshRateMinutes:     &interval,
+		DeviceRiskTagging:      &riskTagging,
+		DisableSyncOnAuthError: &disableOnAuthError,
+		ConcurrentSyncEnabled:  &concurrent,
+		DeviceFieldMappings:    buildDeviceFieldMappings(plan.UserDataFieldMapping),
+		GroupSettings:          buildGroupSettings(plan.GroupMembershipMapping),
 	}
 
 	return input, diags

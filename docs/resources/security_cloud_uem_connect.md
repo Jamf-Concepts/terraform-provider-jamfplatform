@@ -82,10 +82,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
 
   sync_refresh_interval_minutes = 720
 
-  # Devices Jamf Pro no longer manages are removed after three consecutive syncs
-  # without them. Use keep_deleted_or_retired to retain them instead.
+  # Devices Jamf Pro no longer reports as managed are removed. Use
+  # keep_deleted_or_retired to retain them instead.
   uem_auto_delete_behavior = "remove_deleted_or_unmanaged"
-  unmanaged_sync_threshold = 3
 
   # Send each device's risk level back to Jamf Pro, so Jamf Pro can act on it.
   device_risk_uem_signaling_enabled = true
@@ -196,14 +195,14 @@ resource "jamfplatform_device_group" "field_staff" {
 
 - `keep_deleted_or_retired` — keep deleted or retired devices in Jamf Security Cloud.
 - `remove_deleted_or_retired` — remove deleted or retired devices from Jamf Security Cloud.
-- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro no longer manages, after `unmanaged_sync_threshold` consecutive syncs without them.
+- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro reports as no longer managed.
 - `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI — the full address of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set with `platform_tenant`, which resolves the address from the tenant itself.
-- `unmanaged_sync_threshold` (Number) How many consecutive syncs a device may be missing from Jamf Pro before Jamf Security Cloud treats it as unmanaged. `0` removes it on the first sync it is missing from. Only has an effect when `uem_auto_delete_behavior` is `remove_deleted_or_unmanaged`.
 - `user_data_field_mapping` (Attributes) **"User data field mapping"** in the Jamf Security Cloud admin UI — which Jamf Pro attribute each Jamf Security Cloud device field is populated from. Omit the whole block for the defaults, which is what the admin UI's "Use default data field mapping" checkbox selects. (see [below for nested schema](#nestedatt--user_data_field_mapping))
 
 ### Read-Only
 
 - `id` (String) Integration ID assigned by Jamf Security Cloud.
+- `unmanaged_sync_threshold` (Number) Days since a device last checked in before Jamf Security Cloud treats it as unmanaged. Read-only, and reported as `0`: Jamf Security Cloud does not apply this setting to a Jamf Pro connection, taking device status from Jamf Pro directly instead, so there is nothing for this provider to set. Wire-probed 2026-09-01 — every value sent for a `JAMF_PRO` connector is accepted and then discarded.
 
 <a id="nestedatt--group_membership_mapping"></a>
 ### Nested Schema for `group_membership_mapping`

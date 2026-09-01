@@ -108,23 +108,18 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// Bounds and defaults Jamf Security Cloud applies. Wire-probed against production
-// EU on 2026-08-28.
+// Bounds and defaults Jamf Security Cloud applies. Wire-probed against a real
+// Jamf Security Cloud tenant on 2026-09-01, superseding a 2026-08-28 probe whose
+// findings the service has since changed under: the sync interval then accepted
+// any value of 1 or more with no ceiling, and the unmanaged threshold then stored
+// what it was sent.
 //
-// The sync interval floor is enforced by the server ("must be greater than or
-// equal to 1"); there is no ceiling, and 100000 was accepted. The unmanaged
-// threshold has no server validation at all — -1 was stored — so the floor here
-// is the provider's, not Jamf's: a negative count of syncs cannot mean anything,
-// and storing one would silently disable the grace period.
+// The interval floor stays declared here because it is the schema's own; the
+// service's accepted set is narrower and is validated separately.
 const (
 	minSyncRefreshIntervalMinutes     = 1
 	defaultSyncRefreshIntervalMinutes = 1440
-	minUnmanagedSyncThreshold         = 0
-	// Jamf Security Cloud applies 3 on create but resets an omitted value to 0.
-	// The resource always sends the value, so the create default is the one that
-	// matters and the one declared here.
-	defaultUnmanagedSyncThreshold = 3
-	defaultUEMAutoDeleteBehaviour = "remove_deleted_or_retired"
+	defaultUEMAutoDeleteBehaviour     = "remove_deleted_or_retired"
 )
 
 // jamfProGroupIDPattern is the form Jamf Security Cloud requires of a Jamf Pro
@@ -346,8 +341,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 					"UI — what happens in Jamf Security Cloud to devices that leave Jamf Pro.\n\n" +
 					"- `keep_deleted_or_retired` — keep deleted or retired devices in Jamf Security Cloud.\n" +
 					"- `remove_deleted_or_retired` — remove deleted or retired devices from Jamf Security Cloud.\n" +
-					"- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro no longer manages, after " +
-					"`unmanaged_sync_threshold` consecutive syncs without them.",
+					"- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro reports as no longer managed.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString(defaultUEMAutoDeleteBehaviour),
@@ -356,15 +350,12 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"unmanaged_sync_threshold": schema.Int64Attribute{
-				MarkdownDescription: "How many consecutive syncs a device may be missing from Jamf Pro before Jamf " +
-					"Security Cloud treats it as unmanaged. `0` removes it on the first sync it is missing from. " +
-					"Only has an effect when `uem_auto_delete_behavior` is `remove_deleted_or_unmanaged`.",
-				Optional: true,
+				MarkdownDescription: "Days since a device last checked in before Jamf Security Cloud treats it as " +
+					"unmanaged. Read-only, and reported as `0`: Jamf Security Cloud does not apply this setting to a " +
+					"Jamf Pro connection, taking device status from Jamf Pro directly instead, so there is nothing " +
+					"for this provider to set. Wire-probed 2026-09-01 — every value sent for a `JAMF_PRO` connector " +
+					"is accepted and then discarded.",
 				Computed: true,
-				Default:  int64default.StaticInt64(defaultUnmanagedSyncThreshold),
-				Validators: []validator.Int64{
-					int64validator.AtLeast(minUnmanagedSyncThreshold),
-				},
 			},
 			"device_risk_uem_signaling_enabled": schema.BoolAttribute{
 				MarkdownDescription: "**\"Enable device risk UEM signaling\"** in the Jamf Security Cloud admin UI " +
