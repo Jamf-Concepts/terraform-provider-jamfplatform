@@ -17,7 +17,7 @@ import (
 func TestEnumLiteralsComeFromTheSDK(t *testing.T) {
 	got, err := enumguard.Check(enumguard.Params{
 		Covered: enumguard.Union(
-			pro.CreatePathScopeValues(),
+			pro.CreatePathV2ScopeValues(),
 		),
 	})
 	if err != nil {

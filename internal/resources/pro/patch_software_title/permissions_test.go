@@ -16,7 +16,7 @@ import (
 )
 
 // mergedRegistry is the union of the SDK families this package's resource spans:
-// ProClassic CRUD + Pro v2 extension attributes.
+// ProClassic CRUD + Pro v3 extension attributes.
 var mergedRegistry = permissions.Merge(proclassic.Privileges, pro.Privileges)
 
 // callRe matches a "<receiver>.<Method>(" call. The test filters the captures to
@@ -83,7 +83,7 @@ func TestResourceSDKMethods_KnownToSDK(t *testing.T) {
 
 // TestResourceSDKMethods_MatchCalls fails if the resource's CRUD path calls an
 // SDK method not declared in resourceSDKMethods, or declares one it does not
-// call. The classic CRUD lives in crud.go; the Pro v2 extension-attribute calls
+// call. The classic CRUD lives in crud.go; the Pro v3 extension-attribute calls
 // live in extension_attributes.go (invoked from Create/Read/Update).
 func TestResourceSDKMethods_MatchCalls(t *testing.T) {
 	called := sdkCallsIn(t, mergedRegistry, "crud.go", "extension_attributes.go")

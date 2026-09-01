@@ -7,35 +7,41 @@
 //   proclassic.UpdatePatchSoftwareTitleByID                (PUT, returns 201 empty body → GET after)
 //   proclassic.DeletePatchSoftwareTitleByID
 //   proclassic.ListPatchSoftwareTitles                     (list resource)
-//   pro.ListPatchSoftwareTitleExtensionAttributesV2        (read EAs; v2 config id == classic title id)
-//   pro.UpdatePatchSoftwareTitleConfigurationV2            (accept EAs; merge-patch, accept is one-way)
+//   pro.ListPatchSoftwareTitleExtensionAttributesV3        (read EAs; v3 config id == classic title id)
+//   pro.UpdatePatchSoftwareTitleConfigurationV3            (accept EAs; merge-patch, accept is one-way)
 //
 // DEPRECATION (classic CRUD): the /patchsoftwaretitles classic endpoints are
 // flagged deprecated in the Jamf API spec (the SDK funcs carry `// Deprecated:`
 // pointing at /v2/patch-software-title-configurations). They remain the only
-// functional CRUD surface — the v2 POST requires a softwareTitleId that cannot be
-// minted independently — so this resource intentionally uses them. Revisit if
-// Jamf ships a usable create path on a configurations endpoint, or removes the
-// classic endpoints.
+// functional create surface, and not merely for want of a shipped successor —
+// the configurations POST cannot be one by construction. Wire-probed 2026-09-01
+// on Jamf Pro 11.31.1: its required softwareTitleId is the classic title id
+// itself, the catalogue's name_id is refused (400 SOFTWARE_TITLE_ID_NOT_FOUND on
+// field softwareTitleId), and the only way to mint an id — classic POST to
+// id="0" — creates the v3 configuration in the same act, so a follow-up v3 POST
+// with that id answers 400 ALREADY_EXISTS_FOR_SITE. GET
+// /proclassic/patchsoftwaretitles still answers 200. Revisit only if Jamf gives
+// the configurations surface an id-minting create, or removes the classic
+// endpoints.
 //
-// DEPRECATION (v2 extension-attribute side-channel): as of SDK v0.13.0 the
-// /v2/patch-software-title-configurations endpoints are themselves deprecated,
-// api-spec deprecation-date 2026-07-14. The successor is v3: a live Jamf Pro
-// 11.30.2 tenant serves /v3/patch-software-title-configurations with no
-// Deprecation header, while /v4 returns 403 — so v3 is the top version, not an
-// intermediate step. The SDK's bundled 11.30.0 spec stops at v2 and generates no
-// v3 client, so the migration cannot be made here yet; the two affected calls in
-// extension_attributes.go carry SA1019 suppressions meanwhile. Raised upstream as
-// Jamf-Concepts/jamfplatform-go-sdk#50.
+// EXTENSION-ATTRIBUTE SIDE-CHANNEL (v3): the v2 configurations client was
+// withdrawn from the SDK at this bump and the two calls in
+// extension_attributes.go moved to v3, closing the
+// patch-software-title-configurations half of #311. v3 is the top version rather
+// than an intermediate step — wire-probed 2026-09-01 on Jamf Pro 11.31.1,
+// /pro/v3/patch-software-title-configurations answers 200 with no Deprecation
+// header, /pro/v2 still answers 200 carrying `deprecation: date="Tue, 14 Jul 2026
+// 00:00:00 GMT"` (so the SDK withdrawal was spec-only), and /pro/v4 answers 403
+// BAD_PERMISSIONS, which this repo reads as unrouted rather than unprivileged.
 //
 // Note the two deprecations point in opposite directions: the classic endpoints
-// are deprecated in favour of the configurations endpoints, which are themselves
-// now deprecated. Migrating the classic CRUD onto v3 is therefore a single move
-// once the SDK exposes v3 and a usable create path exists — not two.
+// are deprecated in favour of the configurations endpoints, whose v2 is itself
+// deprecated. Read and update could move to v3 today; create cannot, per the
+// probe above, so the surfaces cannot be retired as one.
 //
-// Status: deprecated by Jamf 2026-07-14; migrate by 2027-01-14 (6mo soft / 3mo
-// before Jamf's announced removal date, which is not yet published). Tracked in
-// #311, blocked on jamfplatform-go-sdk#50. Last reviewed 2026-08-04.
+// Status: extension-attribute side-channel current on v3. Classic CRUD deprecated
+// by Jamf with no published removal date, retained deliberately because the
+// configurations surface has no id-minting create. Last reviewed 2026-09-01.
 
 package patch_software_title
 

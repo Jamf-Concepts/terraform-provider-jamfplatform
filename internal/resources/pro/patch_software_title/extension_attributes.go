@@ -16,20 +16,7 @@ import (
 // eaElementType is the object type of one extension_attributes list element.
 var eaElementType = types.ObjectType{AttrTypes: patchSoftwareTitleEAAttrTypes}
 
-// The v2 patch-software-title-configuration calls below are spec-deprecated as
-// of 2026-07-14 and each carries a //nolint:staticcheck for SA1019.
-//
-// The successor is /v3/patch-software-title-configurations, which a live Jamf
-// Pro 11.30.2 tenant serves without a Deprecation header — but the SDK's bundled
-// spec stops at v2 and generates no v3 client, so there is nothing to migrate to
-// yet. Tracked in #311, blocked upstream on Jamf-Concepts/jamfplatform-go-sdk#50;
-// the migration window is recorded in this package's crud.go annotation.
-//
-// Suppressed rather than left failing because golangci-lint runs staticcheck by
-// default and SA1019 is an error, so the alternative is a red build on every
-// commit for a deprecation we cannot yet act on.
-
-// refreshExtensionAttributes reads the title's extension attributes from the v2
+// refreshExtensionAttributes reads the title's extension attributes from the v3
 // configuration endpoint (keyed by the same id as the classic title) and writes
 // them onto the model. The read is best-effort: a failure here must not break
 // classic CRUD, so it surfaces a Warning and leaves an empty (non-null) list —
@@ -42,7 +29,7 @@ func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Cont
 		return diags
 	}
 
-	eas, err := r.proClient.ListPatchSoftwareTitleExtensionAttributesV2(ctx, id) //nolint:staticcheck // SA1019: no v3 client generated yet — see the note above eaElementType
+	eas, err := r.proClient.ListPatchSoftwareTitleExtensionAttributesV3(ctx, id)
 	if err != nil {
 		diags.AddWarning(
 			"Unable to read patch software title extension attributes",
@@ -70,7 +57,7 @@ func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Cont
 }
 
 // acceptPendingExtensionAttributes accepts every not-yet-accepted extension
-// attribute on the title via a v2 merge-patch. Accepting is one-way (the server
+// attribute on the title via a v3 merge-patch. Accepting is one-way (the server
 // rejects accepted=false), so this only ever sets accepted=true and skips the
 // call entirely when nothing is pending. The caller invokes it only when the
 // user set accept_extension_attributes=true; a failure is therefore fatal (the
@@ -79,17 +66,18 @@ func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Cont
 // categoryID is the title's user-facing category id (always "-1" for "no
 // category" or a positive id) and is re-sent in the same merge-patch. This is
 // load-bearing: the classic /patchsoftwaretitles endpoint clears a category with
-// wire id 0, which leaves the shared v2 configuration's categoryId as the literal
-// "0" — a value the v2 endpoint then rejects on ANY write ("id field must be
-// string of positive numeric value or -1"). Re-asserting the user-facing
-// categoryId (which is always v2-valid) on the accept repairs that divergence so
-// the merge-patch is accepted.
+// wire id 0, which leaves the shared configuration's categoryId as the literal
+// "0" — a value the configurations endpoint then rejects on ANY write ("id field
+// must be string of positive numeric value or -1"), wire-observed on v2 and
+// carried forward by v3, which takes the same merge-patch body. Re-asserting the
+// user-facing categoryId (which is always valid there) on the accept repairs that
+// divergence so the merge-patch is accepted.
 func (r *PatchSoftwareTitleResource) acceptPendingExtensionAttributes(ctx context.Context, id, categoryID string) error {
 	if r.proClient == nil || id == "" {
 		return nil
 	}
 
-	eas, err := r.proClient.ListPatchSoftwareTitleExtensionAttributesV2(ctx, id) //nolint:staticcheck // SA1019: no v3 client generated yet — see the note above eaElementType
+	eas, err := r.proClient.ListPatchSoftwareTitleExtensionAttributesV3(ctx, id)
 	if err != nil {
 		return fmt.Errorf("reading extension attributes before accept: %w", err)
 	}
@@ -114,7 +102,7 @@ func (r *PatchSoftwareTitleResource) acceptPendingExtensionAttributes(ctx contex
 	if cat == "" {
 		cat = "-1"
 	}
-	if _, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV2(ctx, id, &pro.PatchSoftwareTitleConfigurationPatch{ //nolint:staticcheck // SA1019: no v3 client generated yet — see the note above eaElementType
+	if _, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV3(ctx, id, &pro.PatchSoftwareTitleConfigurationPatch{
 		CategoryID:          &cat,
 		ExtensionAttributes: &pending,
 	}); err != nil {
