@@ -143,6 +143,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/activation_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/content_categories"
 	securityclouddevicegroup "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_hostname_mappings"
@@ -515,6 +516,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		aigovernancepolicy.NewPolicyResource,
+		activation_profile.NewActivationProfileResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
 		dns_hostname_mappings.NewHostnameMappingsResource,
 		dns_search_domain.NewSearchDomainResource,
