@@ -33,14 +33,10 @@ import (
 // reachable only through the deprecated V1 endpoint, which still answers but is not
 // adopted here.
 //
-// This is a literal rather than an SDK alias because the SDK generates no constant
-// for it: CreatePathV2.Scope is a bare string carrying its vocabulary in a godoc
-// line, since the schema inlines the enum in its parent and the generator emits
-// constants only for named ones. The V1 CreatePathScope enum that used to supply
-// this went out with the V1 CreatePath type it belonged to. pro.DockItemTypeApp is
-// the SDK's only remaining "APP" and must not be substituted — it is a Dock-item
-// type, a different vocabulary that merely shares the spelling.
-const applicationPathScope = "APP"
+// The narrowing to one value is a real V2 change and not a publish artifact: the
+// same instance served APP, FONT and PLUGIN on V1 minutes either side of the V2
+// refusals.
+const applicationPathScope = pro.CreatePathV2ScopeApp
 
 // reconcileApplicationPaths brings the tenant's user-created application search paths in
 // line with the planned set. It is a no-op when the attribute is unmanaged (null/unknown),
