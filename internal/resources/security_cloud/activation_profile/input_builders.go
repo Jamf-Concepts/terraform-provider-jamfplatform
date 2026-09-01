@@ -22,6 +22,19 @@ import (
 // `vulnerabilityManagement`. The server refuses any request where the two
 // disagree, and setting both is what lights the console's single "Network
 // security" checkbox.
+//
+// The at-least-one-capability rule is asserted here as well as in the config
+// validator, and both are needed. The validator cannot judge a value it has not
+// seen — a capability taken from another resource's computed attribute is
+// unknown at plan time, so the validator defers — while this function runs
+// during apply, where every value is resolved. Without the second check that
+// deferral is permanent and the operator gets the server's unattributed 400
+// instead of the named diagnostic. The wording is shared with the validator via
+// appendNoCapabilityEnabledError so the two cannot drift.
+//
+// A nil `capabilities` block is the same failure rather than a silent omission:
+// the block is Required in the schema, so nil is unreachable from a real plan,
+// and sending no capabilities at all is exactly the request the server refuses.
 func buildCreateRequest(ctx context.Context, model *ActivationProfileResourceModel) (*securitycloud.PublicApiCreateActivationProfileRequest, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -53,18 +66,26 @@ func buildCreateRequest(ctx context.Context, model *ActivationProfileResourceMod
 		Platforms: platforms,
 	}
 
-	if model.Capabilities != nil {
-		contentControls := model.Capabilities.ContentControls.ValueBool()
-		networkSecurity := model.Capabilities.NetworkSecurity.ValueBool()
-		request.Capabilities = securitycloud.PublicApiCapabilities{
-			DataPolicy:              &contentControls,
-			NetworkSecurity:         &networkSecurity,
-			VulnerabilityManagement: &networkSecurity,
-		}
-		if !model.Capabilities.Note.IsNull() && !model.Capabilities.Note.IsUnknown() {
-			note := model.Capabilities.Note.ValueString()
-			request.Capabilities.Note = &note
-		}
+	if model.Capabilities == nil {
+		appendNoCapabilityEnabledError(&diags)
+		return nil, diags
+	}
+
+	contentControls := model.Capabilities.ContentControls.ValueBool()
+	networkSecurity := model.Capabilities.NetworkSecurity.ValueBool()
+	if !contentControls && !networkSecurity {
+		appendNoCapabilityEnabledError(&diags)
+		return nil, diags
+	}
+
+	request.Capabilities = securitycloud.PublicApiCapabilities{
+		DataPolicy:              &contentControls,
+		NetworkSecurity:         &networkSecurity,
+		VulnerabilityManagement: &networkSecurity,
+	}
+	if !model.Capabilities.Note.IsNull() && !model.Capabilities.Note.IsUnknown() {
+		note := model.Capabilities.Note.ValueString()
+		request.Capabilities.Note = &note
 	}
 
 	if !model.DeviceGroup.IsNull() && !model.DeviceGroup.IsUnknown() {

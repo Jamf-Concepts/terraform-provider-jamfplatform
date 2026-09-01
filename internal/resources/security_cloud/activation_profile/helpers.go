@@ -7,6 +7,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 )
 
 // Machine-readable error codes Jamf Security Cloud returns on the activation
@@ -27,6 +28,22 @@ const (
 	codeStateConflict = "STATE_CONFLICT"
 )
 
+// appendNoCapabilityEnabledError raises the field-attributed diagnostic for a
+// profile that enables no service capability.
+//
+// Two paths reach the same rule — the config validator at plan time, and
+// buildCreateRequest once every value is known — so the wording lives here
+// rather than being written out at both, where the two copies would be free to
+// drift and report one server rule as two different errors.
+func appendNoCapabilityEnabledError(diags *diag.Diagnostics) {
+	diags.AddAttributeError(
+		path.Root("capabilities"),
+		"No service capability enabled",
+		"An activation profile must enable at least one service capability. Set `content_controls`, "+
+			"`network_security`, or both.",
+	)
+}
+
 // appendWriteDiagnostics turns a create or state-assertion failure into the most
 // specific diagnostic the error body supports, and reports whether it recognised
 // one.
@@ -43,23 +60,31 @@ const (
 // means the server enforces something the schema does not yet model, and the
 // server's own field-attributed message is more informative than anything this
 // function could add.
+//
+// A detail carrying any other code is surfaced verbatim rather than dropped, but
+// only once some detail in the same response has been recognised. That asymmetry
+// is deliberate: when nothing matched, this function reports false and the caller
+// prints the whole error itself, so repeating a detail here would duplicate it —
+// whereas a response mixing a recognised code with an unrecognised one takes the
+// caller's fallback away, and the unrecognised detail would then be reported
+// nowhere at all.
 func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
 		return false
 	}
-	matched := false
+	var recognised, unrecognised diag.Diagnostics
 	for _, detail := range apiErr.Details() {
 		switch detail.Code {
 		case codeNotEntitled:
-			diags.AddError(
+			recognised.AddError(
 				"Jamf Security Cloud activation profiles not available for this tenant",
 				"The credentials are valid, but this tenant is not entitled to Jamf Security Cloud activation "+
 					"profiles. Confirm the tenant holds Jamf Security Cloud and that the API integration carries "+
 					"the activation profile privileges. Reported by Jamf Security Cloud: "+detail.Description,
 			)
 		case codeStateConflict:
-			diags.AddError(
+			recognised.AddError(
 				"Activation profile has already been deleted",
 				"Jamf Security Cloud reports this activation profile as deleted. Deleting an activation profile is "+
 					"a soft delete that reads back as a healthy profile, so Terraform cannot detect it during a "+
@@ -68,9 +93,17 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 					detail.Description,
 			)
 		default:
-			continue
+			unrecognised.AddError(
+				"Jamf Security Cloud reported a further error",
+				"Jamf Security Cloud reported this alongside the error above, and the provider has no more "+
+					"specific explanation for it. Code "+detail.Code+": "+detail.Description,
+			)
 		}
-		matched = true
 	}
-	return matched
+	if len(recognised) == 0 {
+		return false
+	}
+	diags.Append(recognised...)
+	diags.Append(unrecognised...)
+	return true
 }

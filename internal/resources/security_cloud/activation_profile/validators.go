@@ -19,6 +19,12 @@ import (
 // than the documented error shape, so nothing in the response names a field or
 // decodes into the structured error the rest of this namespace returns. Checking
 // at plan time is the only way the operator sees which attribute is at fault.
+//
+// Plan time is not the only place the rule is checked. A capability derived from
+// another resource is unknown here, and this validator defers rather than
+// failing a configuration it cannot judge; buildCreateRequest re-asserts the
+// same rule during apply, when every value is resolved, using the shared
+// appendNoCapabilityEnabledError so both paths word it identically.
 type atLeastOneCapabilityValidator struct{}
 
 // Description returns a plain-language description of the rule.
@@ -64,12 +70,7 @@ func (v atLeastOneCapabilityValidator) ValidateResource(ctx context.Context, req
 	if contentControls.ValueBool() || networkSecurity.ValueBool() {
 		return
 	}
-	resp.Diagnostics.AddAttributeError(
-		path.Root("capabilities"),
-		"No service capability enabled",
-		"An activation profile must enable at least one service capability. Set `content_controls`, "+
-			"`network_security`, or both.",
-	)
+	appendNoCapabilityEnabledError(&resp.Diagnostics)
 }
 
 // boolAt reads one boolean attribute from the configuration.

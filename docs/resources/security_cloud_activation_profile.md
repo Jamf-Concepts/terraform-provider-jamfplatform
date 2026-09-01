@@ -95,9 +95,12 @@ resource "jamfplatform_security_cloud_activation_profile" "seasonal" {
 }
 
 # The activation code is what reaches a device — as a link, or deployed to a UEM.
+# It is a credential: anyone holding it can enrol a device, so the attribute is
+# sensitive and any output carrying it must be marked sensitive too.
 output "field_staff_activation_code" {
   description = "Activation code end users enrol against."
   value       = jamfplatform_security_cloud_activation_profile.field_staff.id
+  sensitive   = true
 }
 ```
 
@@ -108,7 +111,9 @@ output "field_staff_activation_code" {
 
 - `capabilities` (Attributes) Service capabilities enabled for devices enrolled with this profile. At least one capability must be enabled. Changing them replaces the profile. (see [below for nested schema](#nestedatt--capabilities))
 - `name` (String) Name shown for this activation profile in Jamf Security Cloud. Changing the name replaces the profile and mints a new activation code.
-- `platforms` (Set of String) Device platforms this activation profile targets. Jamf Security Cloud requires at least one and accepts at most two. Note that Jamf Security Cloud does not show this selection anywhere on the profile, and the platforms a profile actually supports are determined by the service capabilities you enable rather than by this value.
+- `platforms` (Set of String) Device platforms this activation profile targets: `ios`, `mac`, or both. Jamf Security Cloud requires at least one and accepts at most two. Note that Jamf Security Cloud does not show this selection anywhere on the profile, and the platforms a profile actually supports are determined by the service capabilities you enable rather than by this value.
+
+The `jamfplatform_security_cloud_activation_profile_deploy` action spells the Mac platform `macos` in its own `os` argument. The two are deliberately different vocabularies: this attribute selects platforms, while that argument selects one deployment form (`ios_byod`, `ios_supervised`, `ios_unsupervised` or `macos`).
 
 ### Optional
 
@@ -118,15 +123,15 @@ output "field_staff_activation_code" {
 
 ### Read-Only
 
-- `id` (String) Activation code identifying this profile. Jamf Security Cloud generates it, and it is the value an enrollment link or a UEM deployment carries.
+- `id` (String, Sensitive) Activation code identifying this profile. Jamf Security Cloud generates it, and it is the value an enrollment link or a UEM deployment carries. Treated as sensitive: the code on its own is enough to enrol a device, so Terraform redacts it from plan and apply output. An output or variable that carries it must be marked sensitive too.
 
 <a id="nestedatt--capabilities"></a>
 ### Nested Schema for `capabilities`
 
 Optional:
 
-- `content_controls` (Boolean) Manage network activity for content filtering and cost control.
-- `network_security` (Boolean) Protect device network connections from cyber threats.
+- `content_controls` (Boolean) **"Content controls"** in Jamf Security Cloud. Manage network activity for content filtering and cost control.
+- `network_security` (Boolean) **"Network security"** in Jamf Security Cloud. Protect device network connections from cyber threats.
 - `note` (String) Free-text note stored alongside the capability selection. Jamf Security Cloud does not display it on the profile.
 
 

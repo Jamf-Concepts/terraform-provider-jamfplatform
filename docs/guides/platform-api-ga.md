@@ -382,6 +382,7 @@ a credential problem, and the provider reports it as such.
 | ZTNA access policy | `ztna_app` (with data sources and list resource), `ztna_predefined_apps` data source |
 | Device groups | `security_cloud_device_group` (with data sources and list resource) — distinct from the Platform Services `jamfplatform_device_group` |
 | UEM Connect | `uem_connect` (with data source and list resource), plus the `uem_connect_synchronize` and `activation_profile_deploy` actions |
+| Activation profiles | `activation_profile` — a deliberately small part of a profile, with no import support and no drift detection; changing any setting replaces the profile and mints a new activation code |
 | Catalogues | `content_categories` data source |
 
 Two delete behaviours affect destroy ordering. A ZTNA gateway that is still referenced cannot be

@@ -9,8 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // resourceSchema builds the resource schema for inspection.
@@ -40,8 +46,9 @@ func TestSchema_AttributeSet(t *testing.T) {
 	}
 }
 
-// TestSchema_RequiredAndComputed checks the required set and that the activation
-// code is server-minted.
+// TestSchema_RequiredAndComputed checks the required set, and that the activation
+// code is both server-minted and treated as a credential: holding it is enough to
+// enrol a device, so `id` must be Sensitive as well as Computed-only.
 func TestSchema_RequiredAndComputed(t *testing.T) {
 	s := resourceSchema(t)
 	for _, name := range []string{"name", "platforms", "capabilities"} {
@@ -57,6 +64,9 @@ func TestSchema_RequiredAndComputed(t *testing.T) {
 	if !s.Attributes["id"].IsComputed() || s.Attributes["id"].IsRequired() || s.Attributes["id"].IsOptional() {
 		t.Error("id should be computed-only — Jamf Security Cloud mints the activation code")
 	}
+	if !s.Attributes["id"].IsSensitive() {
+		t.Error("id should be sensitive — the activation code on its own is enough to enrol a device")
+	}
 }
 
 // TestSchema_EveryConfiguredAttributeRequiresReplace is the structural expression
@@ -66,24 +76,97 @@ func TestSchema_RequiredAndComputed(t *testing.T) {
 // only the activation code when one is read, so nothing configured can be changed
 // in place or refreshed. `paused` is the one exception: the pause and resume
 // operations change it without replacing the profile.
+//
+// The assertion is behavioural rather than nominal: each modifier is invoked with
+// a request representing an update to an existing resource — non-null state, plan
+// and config, and a prior value differing from the planned one — and must answer
+// that replacement is required. A presence check (`len(PlanModifiers) != 0`) would
+// stay green if `RequiresReplace()` were swapped for any other modifier, and since
+// every Jamf Security Cloud acceptance test skips in CI, this is CI's only gate.
+// The modifier counts are exact for the same reason: an added modifier should be a
+// deliberate change, not a silent one.
 func TestSchema_EveryConfiguredAttributeRequiresReplace(t *testing.T) {
+	ctx := context.Background()
 	s := resourceSchema(t)
+	raw := existingResourceRaw(ctx, s)
+	state := tfsdk.State{Schema: s, Raw: raw}
+	plan := tfsdk.Plan{Schema: s, Raw: raw}
+	config := tfsdk.Config{Schema: s, Raw: raw}
 
-	name, ok := s.Attributes["name"].(schema.StringAttribute)
-	if !ok || len(name.PlanModifiers) == 0 {
-		t.Error("name has no plan modifiers; expected RequiresReplace")
+	for _, name := range []string{"name", "device_group_id"} {
+		attribute, ok := s.Attributes[name].(schema.StringAttribute)
+		if !ok {
+			t.Errorf("%q is not a StringAttribute", name)
+			continue
+		}
+		if got := len(attribute.PlanModifiers); got != 1 {
+			t.Errorf("%q has %d plan modifiers, expected exactly 1 (RequiresReplace)", name, got)
+		}
+		for i, modifier := range attribute.PlanModifiers {
+			resp := &planmodifier.StringResponse{}
+			modifier.PlanModifyString(ctx, planmodifier.StringRequest{
+				Path:        path.Root(name),
+				Config:      config,
+				State:       state,
+				Plan:        plan,
+				ConfigValue: types.StringValue("after"),
+				StateValue:  types.StringValue("before"),
+				PlanValue:   types.StringValue("after"),
+			}, resp)
+			if !resp.RequiresReplace {
+				t.Errorf("%q plan modifier %d does not require replacement when the value changes; expected RequiresReplace", name, i)
+			}
+		}
 	}
-	group, ok := s.Attributes["device_group_id"].(schema.StringAttribute)
-	if !ok || len(group.PlanModifiers) == 0 {
-		t.Error("device_group_id has no plan modifiers; expected RequiresReplace")
-	}
+
 	platforms, ok := s.Attributes["platforms"].(schema.SetAttribute)
-	if !ok || len(platforms.PlanModifiers) == 0 {
-		t.Error("platforms has no plan modifiers; expected RequiresReplace")
+	if !ok {
+		t.Fatal("platforms is not a SetAttribute")
 	}
+	if got := len(platforms.PlanModifiers); got != 1 {
+		t.Errorf("platforms has %d plan modifiers, expected exactly 1 (RequiresReplace)", got)
+	}
+	priorSet := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("ios")})
+	plannedSet := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("mac")})
+	for i, modifier := range platforms.PlanModifiers {
+		resp := &planmodifier.SetResponse{}
+		modifier.PlanModifySet(ctx, planmodifier.SetRequest{
+			Path:        path.Root("platforms"),
+			Config:      config,
+			State:       state,
+			Plan:        plan,
+			ConfigValue: plannedSet,
+			StateValue:  priorSet,
+			PlanValue:   plannedSet,
+		}, resp)
+		if !resp.RequiresReplace {
+			t.Errorf("platforms plan modifier %d does not require replacement when the value changes; expected RequiresReplace", i)
+		}
+	}
+
 	capabilities, ok := s.Attributes["capabilities"].(schema.SingleNestedAttribute)
-	if !ok || len(capabilities.PlanModifiers) == 0 {
-		t.Error("capabilities has no plan modifiers; expected RequiresReplace")
+	if !ok {
+		t.Fatal("capabilities is not a SingleNestedAttribute")
+	}
+	if got := len(capabilities.PlanModifiers); got != 1 {
+		t.Errorf("capabilities has %d plan modifiers, expected exactly 1 (RequiresReplace)", got)
+	}
+	priorObject := capabilityObject(t, capabilities, false)
+	plannedObject := capabilityObject(t, capabilities, true)
+	for i, modifier := range capabilities.PlanModifiers {
+		resp := &planmodifier.ObjectResponse{}
+		modifier.PlanModifyObject(ctx, planmodifier.ObjectRequest{
+			Path:        path.Root("capabilities"),
+			Config:      config,
+			State:       state,
+			Plan:        plan,
+			ConfigValue: plannedObject,
+			StateValue:  priorObject,
+			PlanValue:   plannedObject,
+		}, resp)
+		if !resp.RequiresReplace {
+			t.Errorf("capabilities plan modifier %d does not require replacement when the value changes; expected RequiresReplace", i)
+		}
 	}
 
 	paused, ok := s.Attributes["paused"].(schema.BoolAttribute)
@@ -93,6 +176,62 @@ func TestSchema_EveryConfiguredAttributeRequiresReplace(t *testing.T) {
 	if len(paused.PlanModifiers) != 0 {
 		t.Error("paused must not require replacement — pause and resume change it in place")
 	}
+}
+
+// existingResourceRaw builds the raw object of an already-created resource: every
+// attribute null, but the object itself known. The framework's RequiresReplace
+// modifiers read nothing else from a request's State and Plan — they no-op when
+// either raw value is null, which is how they recognise create and destroy — so a
+// known object is what turns the request under test into an update.
+func existingResourceRaw(ctx context.Context, s schema.Schema) tftypes.Value {
+	objectType, ok := s.Type().TerraformType(ctx).(tftypes.Object)
+	if !ok {
+		return tftypes.Value{}
+	}
+	values := make(map[string]tftypes.Value, len(objectType.AttributeTypes))
+	for name, attributeType := range objectType.AttributeTypes {
+		values[name] = tftypes.NewValue(attributeType, nil)
+	}
+	return tftypes.NewValue(objectType, values)
+}
+
+// capabilityObject builds a capabilities object with every boolean set to enabled
+// and every other attribute null, so two calls differing in `enabled` give the
+// changed prior-versus-planned pair the modifier is asked about. Attribute types
+// come from the schema, so an added capability fails here rather than being
+// silently excluded from the comparison.
+func capabilityObject(t *testing.T, capabilities schema.SingleNestedAttribute, enabled bool) types.Object {
+	t.Helper()
+	objectType, ok := capabilities.GetType().(types.ObjectType)
+	if !ok {
+		t.Fatal("capabilities type is not an ObjectType")
+	}
+	attributeTypes := objectType.AttributeTypes()
+	values := make(map[string]attr.Value, len(attributeTypes))
+	for name, attributeType := range attributeTypes {
+		if attributeType.Equal(types.BoolType) {
+			values[name] = types.BoolValue(enabled)
+			continue
+		}
+		values[name] = nullValue(t, attributeType)
+	}
+	object, diags := types.ObjectValue(attributeTypes, values)
+	if diags.HasError() {
+		t.Fatalf("building a capabilities object: %v", diags)
+	}
+	return object
+}
+
+// nullValue returns the null value of an attribute type, so a request can be
+// built from the schema's own types instead of a hand-written list.
+func nullValue(t *testing.T, attributeType attr.Type) attr.Value {
+	t.Helper()
+	ctx := context.Background()
+	value, err := attributeType.ValueFromTerraform(ctx, tftypes.NewValue(attributeType.TerraformType(ctx), nil))
+	if err != nil {
+		t.Fatalf("building a null %T: %v", attributeType, err)
+	}
+	return value
 }
 
 // TestSchema_CapabilityAttributes pins the capability surface, including that the

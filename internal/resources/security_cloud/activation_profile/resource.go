@@ -43,6 +43,14 @@
 // is why the list operation cannot enumerate a tenant and why this package ships
 // no plural data source.
 //
+// The code itself is treated as a secret rather than a plain identifier. Jamf
+// Security Cloud mints it, never reads it back, and holding it is on its own
+// enough to enrol a device into the tenant — the exact shape STYLE_GUIDE
+// §Server-minted secrets describes — so `id` is Computed + Sensitive, and the
+// published example's output carries `sensitive = true` to match. Dropping
+// either would put a live enrollment credential in cleartext plan output, build
+// logs and `-json` artefacts, so neither is a simplification.
+//
 // Three limits follow from the read model being `{"code": "..."}` and nothing
 // else, and they shape every operation below:
 //
@@ -154,8 +162,11 @@ func (r *ActivationProfileResource) Schema(ctx context.Context, _ resource.Schem
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Activation code identifying this profile. Jamf Security Cloud generates it, " +
-					"and it is the value an enrollment link or a UEM deployment carries.",
-				Computed: true,
+					"and it is the value an enrollment link or a UEM deployment carries. Treated as sensitive: " +
+					"the code on its own is enough to enrol a device, so Terraform redacts it from plan and " +
+					"apply output. An output or variable that carries it must be marked sensitive too.",
+				Computed:  true,
+				Sensitive: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -172,10 +183,14 @@ func (r *ActivationProfileResource) Schema(ctx context.Context, _ resource.Schem
 				},
 			},
 			"platforms": schema.SetAttribute{
-				MarkdownDescription: "Device platforms this activation profile targets. Jamf Security Cloud " +
-					"requires at least one and accepts at most two. Note that Jamf Security Cloud does not show " +
-					"this selection anywhere on the profile, and the platforms a profile actually supports are " +
-					"determined by the service capabilities you enable rather than by this value.",
+				MarkdownDescription: "Device platforms this activation profile targets: `ios`, `mac`, or both. " +
+					"Jamf Security Cloud requires at least one and accepts at most two. Note that Jamf Security " +
+					"Cloud does not show this selection anywhere on the profile, and the platforms a profile " +
+					"actually supports are determined by the service capabilities you enable rather than by this " +
+					"value.\n\nThe `jamfplatform_security_cloud_activation_profile_deploy` action spells the Mac " +
+					"platform `macos` in its own `os` argument. The two are deliberately different vocabularies: " +
+					"this attribute selects platforms, while that argument selects one deployment form " +
+					"(`ios_byod`, `ios_supervised`, `ios_unsupervised` or `macos`).",
 				Required:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{
@@ -195,16 +210,18 @@ func (r *ActivationProfileResource) Schema(ctx context.Context, _ resource.Schem
 				},
 				Attributes: map[string]schema.Attribute{
 					"content_controls": schema.BoolAttribute{
-						MarkdownDescription: "Manage network activity for content filtering and cost control.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
+						MarkdownDescription: "**\"Content controls\"** in Jamf Security Cloud. Manage network " +
+							"activity for content filtering and cost control.",
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 					"network_security": schema.BoolAttribute{
-						MarkdownDescription: "Protect device network connections from cyber threats.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
+						MarkdownDescription: "**\"Network security\"** in Jamf Security Cloud. Protect device " +
+							"network connections from cyber threats.",
+						Optional: true,
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 					"note": schema.StringAttribute{
 						MarkdownDescription: "Free-text note stored alongside the capability selection. Jamf " +

@@ -472,9 +472,18 @@ list, which therefore grows with every profile Terraform has ever created. Impor
 profile is not supported, for the same reason.
 
 ```hcl
+resource "jamfplatform_security_cloud_activation_profile" "field_staff" {
+  name      = "Field Staff"
+  platforms = ["mac"]
+
+  capabilities = {
+    network_security = true
+  }
+}
+
 action "jamfplatform_security_cloud_activation_profile_deploy" "macos" {
   config {
-    activation_profile_code = var.activation_profile_code
+    activation_profile_code = jamfplatform_security_cloud_activation_profile.field_staff.id
     os                      = "macos"
     jamf_pro_group_ids      = ["1", "2"]
   }

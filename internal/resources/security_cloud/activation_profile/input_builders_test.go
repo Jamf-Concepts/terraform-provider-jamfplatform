@@ -10,6 +10,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -176,5 +178,66 @@ func TestBuildCreateRequest_UnknownPlatformIsADiagnostic(t *testing.T) {
 	}
 	if _, diags := buildCreateRequest(context.Background(), model); !diags.HasError() {
 		t.Error("expected a diagnostic for an unsupported platform")
+	}
+}
+
+// TestBuildCreateRequest_NoCapabilityEnabledIsAFieldAttributedDiagnostic covers
+// the case the config validator cannot reach.
+//
+// A capability taken from another resource's computed attribute is unknown at
+// plan time, so the validator defers; if it resolves to false the server refuses
+// the create with an unattributed 400 that names no field. This is the last place
+// the rule can be enforced with an attribute path attached, so the diagnostic has
+// to carry one.
+func TestBuildCreateRequest_NoCapabilityEnabledIsAFieldAttributedDiagnostic(t *testing.T) {
+	model := &ActivationProfileResourceModel{
+		Name:      types.StringValue("example"),
+		Platforms: platformSet(t, "mac"),
+		Capabilities: &CapabilitiesModel{
+			ContentControls: types.BoolValue(false),
+			NetworkSecurity: types.BoolValue(false),
+			Note:            types.StringNull(),
+		},
+	}
+
+	request, diags := buildCreateRequest(context.Background(), model)
+	if request != nil {
+		t.Error("a request the server is certain to refuse must not be built")
+	}
+	if !diags.HasError() {
+		t.Fatal("expected a diagnostic when no capability is enabled")
+	}
+	if diags[0].Summary() != "No service capability enabled" {
+		t.Errorf("summary = %q, want the shared no-capability summary", diags[0].Summary())
+	}
+	withPath, ok := diags[0].(diag.DiagnosticWithPath)
+	if !ok {
+		t.Fatalf("diagnostic %T carries no path; it must point at the capabilities block", diags[0])
+	}
+	if !withPath.Path().Equal(path.Root("capabilities")) {
+		t.Errorf("path = %s, want capabilities", withPath.Path())
+	}
+}
+
+// TestBuildCreateRequest_MissingCapabilitiesBlockIsTheSameFailure keeps the nil
+// block from being a silent omission. The block is Required in the schema, so nil
+// is unreachable from a real plan, but sending no capabilities at all is exactly
+// the request the server refuses — so it fails the same way rather than being
+// built and refused on the wire.
+func TestBuildCreateRequest_MissingCapabilitiesBlockIsTheSameFailure(t *testing.T) {
+	model := &ActivationProfileResourceModel{
+		Name:      types.StringValue("example"),
+		Platforms: platformSet(t, "mac"),
+	}
+
+	request, diags := buildCreateRequest(context.Background(), model)
+	if request != nil {
+		t.Error("a request with no capabilities must not be built")
+	}
+	if !diags.HasError() {
+		t.Fatal("expected a diagnostic when the capabilities block is absent")
+	}
+	if diags[0].Summary() != "No service capability enabled" {
+		t.Errorf("summary = %q, want the shared no-capability summary", diags[0].Summary())
 	}
 }

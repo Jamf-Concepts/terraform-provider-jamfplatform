@@ -50,7 +50,10 @@ resource "jamfplatform_security_cloud_activation_profile" "seasonal" {
 }
 
 # The activation code is what reaches a device — as a link, or deployed to a UEM.
+# It is a credential: anyone holding it can enrol a device, so the attribute is
+# sensitive and any output carrying it must be marked sensitive too.
 output "field_staff_activation_code" {
   description = "Activation code end users enrol against."
   value       = jamfplatform_security_cloud_activation_profile.field_staff.id
+  sensitive   = true
 }

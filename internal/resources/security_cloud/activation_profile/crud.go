@@ -18,7 +18,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -32,9 +32,16 @@ import (
 // State is committed before the pause is attempted. The profile exists on the
 // tenant the moment the create succeeds, and returning without state would orphan
 // it — permanently, because a soft-deleted profile cannot be cleaned up and stays
-// in the tenant's list forever. A failed pause is therefore reported as an error
-// against committed state, leaving a running profile Terraform knows about rather
-// than a paused-or-not profile it does not.
+// in the tenant's list forever.
+//
+// It is committed with `paused` false, because that is the state the server is
+// actually in at that moment: the create endpoint mints a running profile, and
+// only a successful pause promotes state to true. So a refused pause — a
+// credential holding activation-profiles:create but not :update, say — leaves
+// state matching reality, and the next plan sees a real diff and retries the
+// pause through Update. Committing the desired value up front would instead leave
+// Terraform asserting a closed profile that is quietly accepting enrollments,
+// with no plan that ever corrects it, because Read cannot refresh `paused`.
 func (r *ActivationProfileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan ActivationProfileResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -75,14 +82,23 @@ func (r *ActivationProfileResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	applyReadState(&plan, created)
+	wantPaused := plan.Paused.ValueBool()
+	plan.Paused = types.BoolValue(false)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if plan.Paused.ValueBool() {
-		r.assertPaused(createCtx, &resp.Diagnostics, created.Code, true)
+	if !wantPaused {
+		return
 	}
+
+	r.assertPaused(createCtx, &resp.Diagnostics, created.Code, true)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Paused = types.BoolValue(true)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 // Read confirms the activation profile still exists.
@@ -194,9 +210,8 @@ func (r *ActivationProfileResource) Delete(ctx context.Context, req resource.Del
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
 	defer cancel()
 
-	code := state.ID.ValueString()
 	err := r.client.DeleteActivationProfilesV1(deleteCtx, &securitycloud.BulkDeleteActivationProfilesRequest{
-		Codes: []string{code},
+		Codes: []string{state.ID.ValueString()},
 	})
 	if err == nil {
 		return
@@ -204,10 +219,6 @@ func (r *ActivationProfileResource) Delete(ctx context.Context, req resource.Del
 	if helpers.IsNotFoundError(err) {
 		return
 	}
-	tflog.Error(ctx, "activation profile delete refused", map[string]any{
-		"code":  code,
-		"error": err.Error(),
-	})
 	if appendWriteDiagnostics(&resp.Diagnostics, err) {
 		return
 	}
