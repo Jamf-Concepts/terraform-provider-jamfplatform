@@ -25,10 +25,22 @@ import (
 )
 
 // applicationPathScope is the only scope value the V2 custom-path create endpoint
-// accepts. The wire enum rejects FONT/PLUGIN, so this resource manages application
-// search paths exclusively (the Fonts/Plug-ins custom paths in the admin UI are not
-// reachable through the V2 API).
-const applicationPathScope = pro.CreatePathScopeApp
+// accepts. Re-probed on Jamf Pro 11.31.1 (2026-09-01): FONT, PLUGIN, an unknown
+// BOGUS and the lower-case "app" are each refused with 400 INVALID_FIELD on field
+// "scope", the description naming the accepted set as "[APP]". So the vocabulary is
+// exactly one value, matched case-sensitively, and this resource manages application
+// search paths exclusively — the Fonts/Plug-ins custom paths in the admin UI are
+// reachable only through the deprecated V1 endpoint, which still answers but is not
+// adopted here.
+//
+// This is a literal rather than an SDK alias because the SDK generates no constant
+// for it: CreatePathV2.Scope is a bare string carrying its vocabulary in a godoc
+// line, since the schema inlines the enum in its parent and the generator emits
+// constants only for named ones. The V1 CreatePathScope enum that used to supply
+// this went out with the V1 CreatePath type it belonged to. pro.DockItemTypeApp is
+// the SDK's only remaining "APP" and must not be substituted — it is a Dock-item
+// type, a different vocabulary that merely shares the spelling.
+const applicationPathScope = "APP"
 
 // reconcileApplicationPaths brings the tenant's user-created application search paths in
 // line with the planned set. It is a no-op when the attribute is unmanaged (null/unknown),

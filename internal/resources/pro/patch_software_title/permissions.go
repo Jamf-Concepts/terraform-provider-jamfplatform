@@ -13,7 +13,7 @@ import (
 // resourceSDKMethods lists the SDK methods the patch software title resource's
 // CRUD path calls. The classic /patchsoftwaretitles CRUD runs through the
 // ProClassic client (crud.go); extension-attribute read + accept run through the
-// Pro v2 client (extension_attributes.go, invoked from Create/Read/Update). It
+// Pro v3 client (extension_attributes.go, invoked from Create/Read/Update). It
 // drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual <client>.<Method> calls in crud.go + extension_attributes.go and
@@ -23,13 +23,13 @@ var resourceSDKMethods = []string{
 	"GetPatchSoftwareTitleByID",
 	"UpdatePatchSoftwareTitleByID",
 	"DeletePatchSoftwareTitleByID",
-	"ListPatchSoftwareTitleExtensionAttributesV2",
-	"UpdatePatchSoftwareTitleConfigurationV2",
+	"ListPatchSoftwareTitleExtensionAttributesV3",
+	"UpdatePatchSoftwareTitleConfigurationV3",
 }
 
 // resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the patch software title resource, appended to its MarkdownDescription.
-// The resource spans two SDK families (ProClassic CRUD + Pro v2 extension
+// The resource spans two SDK families (ProClassic CRUD + Pro v3 extension
 // attributes), so the registries are merged.
 var resourcePrivileges = permissions.Section(
 	permissions.Merge(proclassic.Privileges, pro.Privileges),

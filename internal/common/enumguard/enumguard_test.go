@@ -438,3 +438,50 @@ func build() any {
 		t.Errorf("Restated = %v, want none", got.Restated)
 	}
 }
+
+// TestCheckReportsEmptyCoveredAsVacuous is the other half of the vacuity check,
+// and the half an SDK release can trigger on its own: withdrawing the last
+// vocabulary a package restated leaves the guard called with no Covered set at
+// all. That passed silently until the gate stopped skipping the empty case —
+// Examined stays non-zero from unrelated literals, so nothing else fired.
+func TestCheckReportsEmptyCoveredAsVacuous(t *testing.T) {
+	dir := write(t, "package p\n\nconst codeThing = \"COVERED\"\n")
+
+	got, err := Check(Params{Dir: dir})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if got.Vacuous == "" {
+		t.Fatal("Vacuous is empty, want a finding")
+	}
+	if !strings.Contains(got.Vacuous, "Covered is empty") {
+		t.Errorf("Vacuous = %q, want it to name the empty Covered set", got.Vacuous)
+	}
+	if len(got.Problems()) != 1 {
+		t.Errorf("Problems = %v, want just the vacuity finding", got.Problems())
+	}
+	if got.Examined == 0 {
+		t.Error("Examined = 0, want the literal to have been parsed — the Examined check cannot substitute")
+	}
+}
+
+// TestCheckReportsEmptyCoveredEvenWithExemptions pins that an Absent entry
+// cannot rescue an empty guard. The Promoted arm needs the value to appear in
+// Covered, so with nothing covered it can never fire; the entry is merely stale.
+func TestCheckReportsEmptyCoveredEvenWithExemptions(t *testing.T) {
+	dir := write(t, "package p\n\nconst codeThing = \"COVERED\"\n")
+
+	got, err := Check(Params{
+		Dir:    dir,
+		Absent: map[string]string{"COVERED": "the SDK withdrew the enum"},
+	})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if got.Vacuous == "" {
+		t.Fatal("Vacuous is empty, want a finding")
+	}
+	if len(got.Promoted) != 0 {
+		t.Errorf("Promoted = %v, want none — nothing is covered", got.Promoted)
+	}
+}

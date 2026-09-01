@@ -78,6 +78,11 @@ type Params struct {
 	// Covered is every value the SDK generates for the vocabularies this
 	// package writes — the concatenation of the relevant *Values() helpers.
 	// A literal appearing here is a violation unless Absent excuses it.
+	//
+	// Leaving it empty is itself reported as [Findings.Vacuous]: a caller that
+	// names no vocabulary asserts nothing, so a package with no vocabulary left
+	// to restate must record the gap and drop its test rather than keep a test
+	// that cannot fail.
 	Covered []string
 
 	// Absent maps a value this package must restate to the reason the SDK
@@ -116,9 +121,12 @@ type Findings struct {
 	Promoted []string
 	// Stale are Absent or Ignore entries no literal in the package uses.
 	Stale []string
-	// Vacuous is set when every value in Covered is exempted, so no literal
-	// could ever be reported. A guard that cannot fail is worse than none —
-	// it reads as coverage while asserting nothing — so this is a failure.
+	// Vacuous is set when no literal could ever be reported, for either of the
+	// two reasons that happens: Covered is empty, or every value in it is
+	// exempted. A guard that cannot fail is worse than none — it reads as
+	// coverage while asserting nothing — so this is a failure. The empty case
+	// is the one an SDK release causes on its own, by withdrawing the last
+	// vocabulary a package restated, and it must not pass silently.
 	Vacuous string
 	// Examined is how many string literals were parsed.
 	Examined int
@@ -183,20 +191,22 @@ func Check(p Params) (Findings, error) {
 		}
 	}
 
-	if len(covered) > 0 {
-		live := 0
-		for v := range covered {
-			_, excused := p.Absent[v]
-			_, ignored := p.Ignore[v]
-			if !excused && !ignored {
-				live++
-			}
+	live := 0
+	for v := range covered {
+		_, excused := p.Absent[v]
+		_, ignored := p.Ignore[v]
+		if !excused && !ignored {
+			live++
 		}
-		if live == 0 {
-			out.Vacuous = "every value in Covered is exempted, so this guard cannot fail — " +
-				"name a vocabulary the package could actually restate, or drop the test and " +
-				"record the gap instead"
+	}
+	if live == 0 {
+		cause := "every value in Covered is exempted"
+		if len(covered) == 0 {
+			cause = "Covered is empty"
 		}
+		out.Vacuous = cause + ", so this guard cannot fail — " +
+			"name a vocabulary the package could actually restate, or drop the test and " +
+			"record the gap instead"
 	}
 
 	sort.Strings(out.Restated)

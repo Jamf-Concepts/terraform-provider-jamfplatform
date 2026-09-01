@@ -44,7 +44,7 @@ const (
 // testAccCheckPatchSoftwareTitleDestroy verifies titles created during the test
 // were destroyed.
 //
-// The read goes through the v2 patch software title configurations endpoint. The
+// The read goes through the v3 patch software title configurations endpoint. The
 // resource itself is ProClassic-backed, but the classic by-id read is deprecated
 // in the Jamf API spec, and both endpoints address the same object: wire-probed
 // 2026-08-03, each returns 404 for an id that does not exist, so
@@ -58,7 +58,7 @@ func testAccCheckPatchSoftwareTitleDestroy(t *testing.T) resource.TestCheckFunc 
 			if rs.Type != patchSoftwareType {
 				continue
 			}
-			_, err := c.GetPatchSoftwareTitleConfigurationV2(ctx, rs.Primary.ID) //nolint:staticcheck // SA1019: no v3 client generated yet — see extension_attributes.go
+			_, err := c.GetPatchSoftwareTitleConfigurationV3(ctx, rs.Primary.ID)
 			if err != nil {
 				if helpers.IsNotFoundError(err) {
 					continue

@@ -4,6 +4,13 @@
 // Package computer_inventory_collection_settings implements the
 // jamfplatform_pro_computer_inventory_collection_settings singleton resource and data
 // source backed by the Jamf Pro Computer Inventory Collection Settings V2 API.
+//
+// This package carries no enum_literals_test.go, deliberately, and that is a recorded
+// gap rather than an oversight. The only wire vocabulary it writes is the custom-path
+// scope, and the SDK generates no constants for it (see applicationPathScope in
+// crud.go for the wire evidence and the reason), so internal/common/enumguard would be
+// called with an empty Covered set and could never fail — coverage in name only.
+// Restore the test if the SDK starts generating a named enum for CreatePathV2.Scope.
 package computer_inventory_collection_settings
 
 import (

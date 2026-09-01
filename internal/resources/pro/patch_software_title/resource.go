@@ -42,9 +42,9 @@ var packageIDPattern = regexp.MustCompile(`^[1-9]\d*$`)
 
 // PatchSoftwareTitleResource implements the Terraform resource for Jamf ProClassic
 // patch software titles. CRUD runs over the classic /patchsoftwaretitles endpoint
-// (client); extension-attribute read + accept use the modern v2
+// (client); extension-attribute read + accept use the modern v3
 // /patch-software-title-configurations endpoint (proClient), keyed by the same
-// id (the classic title id equals the v2 configuration id — wire-verified).
+// id (the classic title id equals the configuration id — wire-verified).
 type PatchSoftwareTitleResource struct {
 	client    *proclassic.Client
 	proClient *pro.Client
@@ -87,7 +87,7 @@ func (r *PatchSoftwareTitleResource) IdentitySchema(ctx context.Context, req res
 func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.\n\n" +
-			"> **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints." +
+			"> **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/patch-software-title-configurations`. The classic endpoints remain the only functional create surface: the configurations `POST` requires a `softwareTitleId`, which is the classic title id, and the only call that mints one also creates the configuration — so there is nothing for the provider to migrate create onto. Behaviour may change if Jamf removes the classic endpoints." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -217,7 +217,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 }
 
 // Configure wires both Jamf clients into the resource: the ProClassic client
-// (classic /patchsoftwaretitles CRUD) and the Pro client (v2 extension-attribute
+// (classic /patchsoftwaretitles CRUD) and the Pro client (v3 extension-attribute
 // read + accept). Both are built from the same provider data.
 func (r *PatchSoftwareTitleResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")

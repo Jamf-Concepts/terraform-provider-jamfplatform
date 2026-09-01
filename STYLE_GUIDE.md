@@ -259,8 +259,10 @@ alias it. `Ignore` asserts the value belongs to a **different** vocabulary that 
 spelling, which says nothing about the sets in `Covered`, so it is *not* checked. Filing a
 cross-vocabulary collision under `Absent` therefore reports a spurious promotion. Both maps take
 a per-value reason, for the same reason the comment rule above demands one. An entry no literal in
-the package uses is also a failure, as is a guard whose whole `Covered` set is exempted
-(`Findings.Vacuous`) — that reads as coverage while asserting nothing.
+the package uses is also a failure, as is a guard that asserts nothing (`Findings.Vacuous`) —
+whether because its whole `Covered` set is exempted, or because `Covered` is empty, which is what
+a package is left with when the SDK withdraws the only vocabulary it had. Both read as coverage
+while asserting nothing.
 
 ### Sets vs Lists
 
@@ -1018,7 +1020,7 @@ The PR body closes the issue (`Closes #NNN`) and records the fast-track or slow-
 **While a migration is outstanding**, every call to a deprecated symbol carries a suppression naming the issue, so the reason survives without reading the tracker:
 
 ```go
-//nolint:staticcheck // SA1019: no v4 client generated yet — see #311
+//nolint:staticcheck // SA1019: no v4 client generated yet — see #NNN
 ```
 
 **Closing condition**: the issue closes only when no call site reaches the deprecated method *and* every `SA1019` suppression for that surface is gone — `grep -rn "SA1019" internal/` is the check. A migration that leaves suppressions behind is not finished, because the next audit cannot tell it from an un-started one.
