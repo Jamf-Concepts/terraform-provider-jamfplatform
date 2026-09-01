@@ -17,10 +17,12 @@ import (
 // rejecting valid input at plan time — worse than declining the vendor outright.
 // Widening is additive when another vendor's vocabularies are established.
 //
-// Keyed on the create envelope's own discriminator vocabulary rather than
-// ConnectorCreateRequestVendor, which no longer carries JAMF_PRO: the spec gave
-// Jamf Pro a dedicated variant and dropped it from the generic request's enum, so
-// the envelope's set is the only complete vendor list.
+// Keyed on the create envelope's own discriminator, which is the only vocabulary
+// that enumerates every vendor. It was once contrasted here with a generic
+// ConnectorCreateRequestVendor enum that omitted JAMF_PRO; that type no longer
+// exists — the spec completed the per-vendor create split and gave all ten
+// vendors their own request schema — so the envelope is now the only candidate
+// rather than the better of two.
 const vendorJamfPro = securitycloud.ConnectorCreateRequestBodyVendorJamfPro
 
 // authStrategyPlatformTenant and authStrategyOAuth are the two ways a Jamf Pro

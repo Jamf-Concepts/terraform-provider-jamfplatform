@@ -395,6 +395,32 @@ action "jamfplatform_security_cloud_uem_connect_synchronize" "now" {
 }
 ```
 
+### Destroying a `platform_tenant` integration leaves credentials behind
+
+The convenience of `platform_tenant` — Jamf Security Cloud minting its own Jamf Pro credentials so
+you never handle a secret — has a cost on the way out. Jamf Security Cloud creates a Jamf Pro API
+integration called `JSC Connector`, and **that integration outlives the connector**. Destroying the
+Terraform resource removes the connector on the Jamf Security Cloud side and leaves an enabled set
+of client credentials on the Jamf Pro instance. Nothing cleans it up: Jamf Security Cloud does not,
+and this provider cannot — under `platform_tenant` it holds no Jamf Pro credentials for that tenant
+by design, which is the whole point of the form.
+
+It matters because of what the credentials can do. The `JSC Connector` role carries 31 privileges,
+among them writing macOS and iOS configuration profiles, updating computer and mobile device
+records, creating and deleting extension attributes, and changing static and smart group
+memberships. An orphan is not an inert leftover — it is a live, fleet-wide write credential.
+
+They accumulate one per create, named `JSC Connector`, `JSC Connector (1)`, `JSC Connector (2)` and
+so on. Observed on a test instance on 2026-09-01: **97 enabled `JSC Connector` integrations against
+zero live connectors — 88% of every API integration on it.** Acceptance tests and repeated
+create/destroy cycles are the fastest way to get there.
+
+So after any destroy, audit **Settings → API roles and clients** on the Jamf Pro instance and
+delete the orphans. Confirm on the Jamf Security Cloud side how many connectors actually exist
+first — a tenant holds at most one — and treat every `JSC Connector` integration beyond that as
+deletable. The Jamf Pro API removes them (`DELETE /pro/v1/api-integrations/{id}`, wire-confirmed),
+so this is scriptable if you have a backlog.
+
 `jamfplatform_pro_tenant_id` reaches the Jamf Pro namespace, so it works under a platform
 environment — resolving the Jamf Pro tenant in that environment — and under tenant scope pointed at
 the Jamf Pro tenant. It does **not** work under tenant scope pointed at the Security Cloud tenant,
