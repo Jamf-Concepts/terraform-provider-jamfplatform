@@ -40,7 +40,7 @@ terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.5"
+      version = "0.29.0-rc.6"
     }
   }
 }
@@ -287,7 +287,7 @@ Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
 one or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
 integrations without a platform environment. A tenant-scoped GA integration remains valid for
 single-product access, and `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under
-either scope. Two sets of constructs are out of its reach, for two different reasons:
+either scope. Three sets of constructs are out of its reach, for three different reasons:
 
 - **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
   construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
@@ -296,6 +296,13 @@ either scope. Two sets of constructs are out of its reach, for two different rea
   integration can never hold them and the calls fail with `403 BAD_PERMISSIONS`. The provider
   cannot pre-empt this, as a permission absent from the integration is indistinguishable from any
   other privilege gap — so choose environment scope if the configuration manages either.
+- **Jamf Account** requires a third scope, *organization management*, which neither of these
+  attributes selects. `jamfplatform_account_*` is the only family that scope reaches, and it is the
+  only scope that reaches the family; the provider refuses each direction at configure time with a
+  diagnostic naming the construct. Configure it by setting **neither** `environment_id` nor
+  `tenant_id` and exporting neither variable — the gateway resolves the organization from the access
+  token, so no identifier is supplied. An organization-scoped integration therefore belongs in its
+  own provider block, aliased, or its own workspace.
 
 Three failure modes follow from the change, in decreasing order of how easily they are diagnosed:
 
@@ -452,14 +459,37 @@ deleted, and the provider names the referrer in the diagnostic rather than surfa
 unqualified `409`. A Security Cloud device group referenced by a ZTNA app deletes successfully and
 empties the app's assignment. The behaviour differs per construct.
 
-New in this pre-release, and the one change here anyone already on `v0.29.0-rc.4` will notice: a
-ZTNA gateway apply now waits for the gateway to report a settled status instead of returning as
-soon as Jamf accepts the write. Creating or re-provisioning a dedicated internet gateway therefore
-takes about five minutes rather than seconds, which is what makes its
-`dedicated_egress_ip_addresses` usable from the same apply — previously the first apply recorded an
-empty list, and a region change recorded the *previous* region's addresses. Raise `create` or
-`update` in the resource's `timeouts` block if a region provisions more slowly than the default ten
-minutes allows. Further detail: [Jamf Security Cloud](security-cloud).
+Two behaviours are worth knowing before the first apply. A ZTNA gateway apply waits for the
+gateway to report a settled status rather than returning as soon as Jamf accepts the write, so
+creating or re-provisioning a dedicated internet gateway takes about five minutes rather than
+seconds — which is what makes its `dedicated_egress_ip_addresses` usable from the same apply.
+Raise `create` or `update` in the resource's `timeouts` block if a region provisions more slowly
+than the default ten minutes allows. And **destroying a `uem_connect` connector in
+`platform_tenant` form leaves a live Jamf Pro API integration behind**: Jamf Security Cloud creates
+one named `JSC Connector` to authenticate with, nothing removes it, and the provider holds no Jamf
+Pro credentials for that tenant to remove it with. The role carries 31 privileges, including
+fleet-wide profile and group writes, so audit **Settings > API roles and clients** on the Jamf Pro
+instance after any destroy and delete the orphans. Further detail:
+[Jamf Security Cloud](security-cloud).
+
+### Jamf Account
+
+New in this pre-release. `jamfplatform_account_sso_domain` claims a DNS domain for your Jamf
+Account organization's single sign-on, with singular and plural data sources, a list resource, and
+the `jamfplatform_account_sso_domain_verify` action that re-checks the domain's DNS ownership
+record. This is the provider's first *organization-scoped* family and the only one that scope
+reaches: configure it by setting neither `environment_id` nor `tenant_id`, as described under
+[Scope](#scope). It is served only from the US gateway.
+
+Three things differ from every other resource in the provider, all of them wire behaviour rather
+than design choices. Jamf Account exposes no read, update or patch for a single domain, so every
+attribute is `RequiresReplace` and `terraform import` is **by domain name** rather than by ID —
+the ID is not stable, since reclaiming a domain mints a new one. Verification is an action rather
+than resource state, and it never polls: a failed check returns `200` with the status unchanged,
+still moves the fourteen-day deadline, and the five-minute rate limit is measured from the moment
+the domain was claimed, so the first check straight after a create is always refused. Publish the
+`verification_txt_record` value — exported whole, prefix included, as the console shows it — wait
+five minutes, then run the action.
 
 ### Jamf AI Governance
 
@@ -477,8 +507,17 @@ environment scope, described under [Scope](#scope). Further detail:
 - `environment_id` and the `jamfplatform_pro_tenant_id` data source, both described under
   [Scope](#scope).
 - `custom_headers` and `authorization_header_name`, for networks in which Terraform reaches Jamf
-  through a proxy that authenticates callers itself. See
+  through a proxy that authenticates callers itself. `Cookie`, `Content-Type` and `Accept` are
+  refused in both, because a supplied header replaces rather than adds and would displace a value
+  the provider chose per request. See
   [Reverse proxies and custom headers](reverse-proxy).
+- The `jamfplatform_pro_patch_policy` list resource now names any patch policy it could not
+  enumerate, in a warning on the list result, instead of dropping it silently. A
+  `plan -generate-config-out` run that came back one resource short of the tenant said nothing
+  about it before.
+- `jamfplatform_security_cloud_uem_connect` validates `sync_refresh_interval_minutes` against the
+  intervals the service actually accepts — `60`, `120`, `240`, `480`, `720` and `1440` — at plan
+  time, rather than letting any other value fail the apply with an unattributed `422`.
 - An incorrect `base_url` is now reported as such, rather than presenting as a network failure.
 - Built against Jamf Pro 11.31.0 and Classic API 11.28.0.
 - The required-permission tables throughout this documentation are regenerated against the GA
