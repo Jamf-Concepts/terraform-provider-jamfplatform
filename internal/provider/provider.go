@@ -236,7 +236,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Can also be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. " +
 					"This is the scope Jamf intends new integrations to be created with, and Blueprints and Compliance Benchmarks are moving to it exclusively. " +
 					"Mutually exclusive with the legacy `tenant_id`: an API integration targets one or the other, so setting both is an error, and supplying the ID that does not match the integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer — pick the one your integration was created for rather than treating them as two spellings of the same thing. " +
-					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration (single sign-on, AI Governance, and similar organization-level resources); no resource or data source in this provider uses that scope yet, and each one reports the scope it needs when it is configured.",
+					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration — the scope the `jamfplatform_account_*` resources require, and the only one that reaches them. Each resource and data source reports the scope it needs when it is configured, so a mismatch is named at plan time rather than failing mid-apply.",
 			},
 			"tenant_id": schema.StringAttribute{
 				Optional: true,

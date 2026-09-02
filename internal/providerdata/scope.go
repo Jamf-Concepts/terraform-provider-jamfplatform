@@ -41,12 +41,14 @@ const (
 	// organization-level resources such as single sign-on and AI Governance.
 	//
 	// It is deliberately the zero value, because a provider block setting
-	// neither `environment_id` nor `tenant_id` is exactly this case. No
-	// construct this provider ships can be reached with it yet — the
-	// organization-level resources are not implemented — so RequireScope
-	// currently rejects it everywhere. That is the point: an organization-scoped
-	// integration otherwise produces an opaque gateway error deep in an apply
-	// instead of a named diagnostic at Configure.
+	// neither `environment_id` nor `tenant_id` is exactly this case.
+	//
+	// It is the only scope that reaches the jamfplatform_account_* family, and
+	// RequireScope rejects it everywhere else. Both directions matter: an
+	// organization-scoped integration pointed at a Jamf Pro resource, and an
+	// environment-scoped one pointed at a Jamf Account resource, each otherwise
+	// produce an opaque gateway error deep in an apply instead of a named
+	// diagnostic at Configure.
 	ScopeOrganization ScopeKind = iota
 	// ScopeEnvironment scopes every request to a platform environment — a group
 	// of tenants across product types with interconnected capabilities — sent as
