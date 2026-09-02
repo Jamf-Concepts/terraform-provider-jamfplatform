@@ -734,6 +734,18 @@ package).
 7. **Acceptance tests use `testhelpers.AccPreCheckAccount`, never `AccPreCheck`.** The latter
    skips unless a scope variable is set, and this family requires both to be *unset* — so
    routing these tests through it would skip every one of them while still reporting green.
+8. **Import by domain name is a sanctioned exception to [§Import format](#import-format).**
+   `jamfplatform_account_sso_domain` imports by name, not id, for two reasons that both have to
+   hold before an exception is granted: nothing in the API reads a domain by id (the per-id GET
+   is unrouted), and the id is **not stable** — removing and re-claiming a domain mints a new
+   one. Where an id is neither usable nor stable, the name is the primary key. Note the
+   acceptance harness defaults `ImportStateId` to the `id` attribute, which is exactly the value
+   `ImportState` rejects, so a name-imported construct must set `ImportStateId` explicitly.
+9. **Canonicalise by validator, not by plan modifier.** The server lower-cases a stored domain.
+   Because `domain` is `Required`, [§Plan-modifier rewrites are NOT a valid option for `Required`
+   attributes](#plan-modifier-rewrites-are-not-a-valid-option-for-required-attributes) rules out
+   rewriting the value, so strict acceptance plus a diagnostic naming the spelling to use is the
+   only correct option. Lookups stay case-insensitive so an import still forgives mixed case.
 
 ### Jamf Account shapes that recur
 
