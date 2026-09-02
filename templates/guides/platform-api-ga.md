@@ -12,8 +12,8 @@ date will be announced separately.
 > **This guide is provisional and may change without notice.** The Platform API is still moving
 > ahead of GA, and a late change to it changes this page: the constructs listed as removed, the
 > attribute and scope behaviour, and the version numbers quoted throughout are all subject to
-> revision. Re-read it against the release you are actually upgrading to rather than working from
-> a copy taken earlier.
+> revision. Re-read it against the release you are actually upgrading to, not against a copy
+> taken earlier.
 
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
@@ -62,8 +62,8 @@ validated against your own configuration.
 
 ## Action needed
 
-In summary, per workspace. The first group applies whenever this release is adopted, including
-during the public beta; the second only at GA.
+Per workspace. The first group applies whenever this release is adopted, including during the
+public beta; the second only at GA.
 
 **On upgrading to this release:**
 
@@ -162,9 +162,10 @@ list. The privileges themselves are retained in a new form, described under
 
 ### Actions (configuration edit only)
 
-**Action needed: delete the blocks.** `POST /v2/mdm/commands` was unpublished, and it was the
-only means of queuing an MDM command through the Platform API. Actions hold no state, so removing
-the `action` block and any `lifecycle { action_trigger }` referring to it is sufficient.
+**Action needed: delete the blocks, and any trigger referring to them.** `POST /v2/mdm/commands`
+was unpublished, and it was the only means of queuing an MDM command through the Platform API.
+Actions hold no state, so removing the `action` block and any `lifecycle { action_trigger }`
+naming it is the whole of it.
 
 Removed: `jamfplatform_pro_device_lock`, `jamfplatform_pro_enable_lost_mode`,
 `jamfplatform_pro_disable_lost_mode`, `jamfplatform_pro_play_lost_mode_sound`,
@@ -207,9 +208,9 @@ permissions** table written the way the picker reads — the section, the permis
 to tick, and the API capability behind them. Use those tables to select permissions for the
 replacement integration, granting only what the constructs in use require.
 
-Two consequences of the new model are worth knowing before granting anything. An action covers
-only itself, so an integration that reads a record before modifying it needs the read action as
-well as the update action. And the pre-GA computer and mobile privilege pairs have collapsed into
+Grant with two consequences of the new model in mind. An action covers only itself, so an
+integration that reads a record before modifying it needs the read action as well as the update
+action. And the pre-GA computer and mobile privilege pairs have collapsed into
 single device-level permissions — `devices`, `device-groups`, `extension-attributes`,
 `configuration-profiles`, `enrollment-invitations`, `advanced-device-searches` and
 `prestage-enrollments` — so a computers-only integration is no longer expressible. Jamf's
@@ -226,7 +227,7 @@ School, Jamf Protect or Jamf Security Cloud tenant. Jamf describes it as the leg
 targeting an integration without a platform environment, and it is one integration per tenant per
 product — a Jamf Pro tenant and a Jamf Protect tenant are two integrations to create and two
 credential pairs to rotate. Treat it as the exception, for a deliberately single-product
-integration, rather than the default. An *organization management* scope reaches organization-level
+integration, not the default. An *organization management* scope reaches organization-level
 resources — the `jamfplatform_account_*` family — and is the only scope that reaches them; it is
 configured by setting *neither* `environment_id` nor `tenant_id`, since the gateway resolves the
 organization from the access token. Every resource and data source reports the scope it needs when
@@ -287,7 +288,7 @@ Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
 one or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
 integrations without a platform environment. A tenant-scoped GA integration remains valid for
 single-product access, and `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under
-either scope. Three sets of constructs are out of its reach, for three different reasons:
+either scope. Three sets of constructs are out of its reach, each for a different reason:
 
 - **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
   construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
@@ -304,7 +305,7 @@ either scope. Three sets of constructs are out of its reach, for three different
   token, so no identifier is supplied. An organization-scoped integration therefore belongs in its
   own provider block, aliased, or its own workspace.
 
-Three failure modes follow from the change, in decreasing order of how easily they are diagnosed:
+Three failure modes follow from the change, easiest to diagnose first:
 
 - Retaining `tenant_id` alongside `environment_id` is rejected at configure time with a
   `Conflicting API Integration Scope` error. The old attribute must be removed, not left in place.
@@ -391,9 +392,10 @@ Otherwise the resource behaves as before: patch software titles are now read, up
 through Jamf Pro's `/patch-software-title-configurations` endpoints rather than the deprecated
 ProClassic `/patchsoftwaretitles` ones, and every attribute that remains keeps its meaning.
 `version_packages` still manages only the versions it names, but it now delivers that by reading
-the title's current assignments and rewriting the whole set rather than by the endpoint merging
-each version in turn. An assignment created in the Jamf Pro UI between that read and the write can
-therefore be lost, so avoid editing a title's **Definition** tab while an apply is in flight.
+the title's current assignments and rewriting the whole set, instead of leaving the endpoint to
+merge each version in turn. An assignment created in the Jamf Pro UI between that read and the
+write can therefore be lost, so avoid editing a title's **Definition** tab while an apply is in
+flight.
 
 ### Deprecated, not yet removed: the flat blueprint component attributes
 
@@ -428,9 +430,9 @@ Nothing about how your devices are treated changes — the setting never took ef
 
 ### Retained: `personal_device_enrollment_type`
 
-**No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. This is a Jamf
-Pro deprecation rather than a provider one: Jamf Pro has ignored the value since 11.25 and always
-reports `USERENROLLMENT`. The attribute is read-only and is retained.
+**No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. The deprecation
+is Jamf Pro's, not the provider's: Jamf Pro has ignored the value since 11.25 and always reports
+`USERENROLLMENT`. The attribute is read-only and is retained.
 
 ## Additions since v0.28.1
 
@@ -459,18 +461,18 @@ deleted, and the provider names the referrer in the diagnostic rather than surfa
 unqualified `409`. A Security Cloud device group referenced by a ZTNA app deletes successfully and
 empties the app's assignment. The behaviour differs per construct.
 
-Two behaviours are worth knowing before the first apply. A ZTNA gateway apply waits for the
-gateway to report a settled status rather than returning as soon as Jamf accepts the write, so
-creating or re-provisioning a dedicated internet gateway takes about five minutes rather than
-seconds — which is what makes its `dedicated_egress_ip_addresses` usable from the same apply.
-Raise `create` or `update` in the resource's `timeouts` block if a region provisions more slowly
-than the default ten minutes allows. And **destroying a `uem_connect` connector in
-`platform_tenant` form leaves a live Jamf Pro API integration behind**: Jamf Security Cloud creates
-one named `JSC Connector` to authenticate with, nothing removes it, and the provider holds no Jamf
-Pro credentials for that tenant to remove it with. The role carries 31 privileges, including
-fleet-wide profile and group writes, so audit **Settings > API roles and clients** on the Jamf Pro
-instance after any destroy and delete the orphans. Further detail:
-[Jamf Security Cloud](security-cloud).
+Expect two further things on a first apply. A ZTNA gateway apply waits for the gateway to report
+a settled status instead of returning the moment Jamf accepts the write, so creating or
+re-provisioning a dedicated internet gateway takes about five minutes. That wait is what makes its
+`dedicated_egress_ip_addresses` usable from the same apply. Raise `create` or `update` in the
+resource's `timeouts` block if a region provisions more slowly than the default ten minutes allows.
+
+And **destroying a `uem_connect` connector in `platform_tenant` form leaves a live Jamf Pro API
+integration behind.** Jamf Security Cloud creates one named `JSC Connector` to authenticate with,
+nothing removes it, and the provider holds no Jamf Pro credentials for that tenant to remove it
+with. The role carries 31 privileges, including fleet-wide profile and group writes. Audit
+**Settings > API roles and clients** on the Jamf Pro instance after any destroy and delete the
+orphans. Further detail: [Jamf Security Cloud](security-cloud).
 
 ### Jamf Account
 
@@ -481,14 +483,16 @@ record. This is the provider's first *organization-scoped* family and the only o
 reaches: configure it by setting neither `environment_id` nor `tenant_id`, as described under
 [Scope](#scope). It is served only from the US gateway.
 
-Three things differ from every other resource in the provider, all of them wire behaviour rather
-than design choices. Jamf Account exposes no read, update or patch for a single domain, so every
-attribute is `RequiresReplace` and `terraform import` is **by domain name** rather than by ID —
-the ID is not stable, since reclaiming a domain mints a new one. Verification is an action rather
-than resource state, and it never polls: a failed check returns `200` with the status unchanged,
-still moves the fourteen-day deadline, and the five-minute rate limit is measured from the moment
-the domain was claimed, so the first check straight after a create is always refused. Publish the
-`verification_txt_record` value — exported whole, prefix included, as the console shows it — wait
+Two behaviours here come from the API rather than from any design choice, and both will surprise
+you. Jamf Account exposes no read, update or patch for a single domain, so every attribute is
+`RequiresReplace` and `terraform import` takes the domain **name** in place of an ID. The ID would
+not serve anyway: reclaiming a domain mints a new one.
+
+Verification is an action, not resource state, and it never polls. A failed check returns `200`
+with the status unchanged, so the status code tells you nothing; it still pushes the fourteen-day
+deadline out; and the five-minute rate limit runs from the moment the domain was claimed, which
+means the first check straight after a create is always refused. Publish the
+`verification_txt_record` value (exported whole, prefix included, as the console shows it), wait
 five minutes, then run the action.
 
 ### Jamf AI Governance
@@ -515,9 +519,9 @@ environment scope, described under [Scope](#scope). Further detail:
   enumerate, in a warning on the list result, instead of dropping it silently. A
   `plan -generate-config-out` run that came back one resource short of the tenant said nothing
   about it before.
-- `jamfplatform_security_cloud_uem_connect` validates `sync_refresh_interval_minutes` against the
-  intervals the service actually accepts — `60`, `120`, `240`, `480`, `720` and `1440` — at plan
-  time, rather than letting any other value fail the apply with an unattributed `422`.
+- `jamfplatform_security_cloud_uem_connect` validates `sync_refresh_interval_minutes` at plan time
+  against the intervals the service actually accepts (`60`, `120`, `240`, `480`, `720` and
+  `1440`), instead of letting any other value fail the apply with an unattributed `422`.
 - An incorrect `base_url` is now reported as such, rather than presenting as a network failure.
 - Built against Jamf Pro 11.31.0 and Classic API 11.28.0.
 - The required-permission tables throughout this documentation are regenerated against the GA
