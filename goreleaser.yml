@@ -55,41 +55,24 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 release:
+  # Tags carrying a pre-release suffix (v0.29.0-rc.6) are published as GitHub
+  # pre-releases; a bare version tag (v0.29.0) is published as a full release and
+  # becomes "Latest". Without this, GoReleaser defaults to prerelease: false and
+  # every release candidate ships labelled as production-ready.
+  prerelease: auto
   extra_files:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
   # If you want to manually examine the release before its live, uncomment this line:
   # draft: true
 changelog:
-  use: git
-  sort: asc
-  groups:
-    - title: Breaking Changes
-      regexp: "(?i)^.*(breaking|!:|BREAKING CHANGE).*"
-      order: 0
-    - title: Features
-      regexp: '(?i)^.*feat(\(.+\))?!?:.*'
-      order: 1
-    - title: Bug Fixes
-      regexp: '(?i)^.*fix(\(.+\))?!?:.*'
-      order: 2
-    - title: Performance
-      regexp: '(?i)^.*perf(\(.+\))?!?:.*'
-      order: 3
-    - title: Refactors
-      regexp: '(?i)^.*refactor(\(.+\))?!?:.*'
-      order: 4
-    - title: Documentation
-      regexp: '(?i)^.*docs(\(.+\))?!?:.*'
-      order: 5
-    - title: Tests
-      regexp: '(?i)^.*test(\(.+\))?!?:.*'
-      order: 6
-    - title: Other
-      order: 999
-  filters:
-    exclude:
-      - "^chore"
-      - "^ci"
-      - "Merge pull request"
-      - "Merge branch"
+  # GitHub generates the notes, which is what has actually been appearing on
+  # every release: PR titles, their authors, and a Full Changelog compare link.
+  # GoReleaser's own `use: git` changelog cannot produce any of those, and the
+  # grouped config that used to sit here never reached a published release.
+  #
+  # `github-native` ignores `groups`, `filters` and `sort`, so they are gone
+  # rather than left here looking effective. To categorise the notes, add
+  # .github/release.yml and label the pull requests — GitHub's generator reads
+  # that file; GoReleaser is not involved.
+  use: github-native
