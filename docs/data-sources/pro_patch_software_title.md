@@ -65,7 +65,7 @@ output "patch_software_title_version_packages" {
 - `email_notification` (Boolean) Whether an email notification is sent for new versions.
 - `name_id` (String) Patch catalog key that defines the title.
 - `site_id` (String) Jamf Pro site ID.
-- `source_id` (Number) Patch source ID this title is sourced from.
+- `source_id` (Number) Patch source ID this title is sourced from. Jamf Pro reports the source by name here, so the provider matches that name against the tenant's internal and external patch sources: the value is null, with a warning, when the name matches none of them, matches both an internal and an external source, or those sources cannot be read.
 - `version_packages` (Map of String) Every version→package assignment on the title (software_version → package ID).
 - `web_notification` (Boolean) Whether a Jamf Pro notification is raised for new versions.
 

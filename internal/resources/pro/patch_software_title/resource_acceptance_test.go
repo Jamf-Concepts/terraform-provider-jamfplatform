@@ -475,6 +475,32 @@ func TestAccDataSource_ProPatchSoftwareTitle_ByIDAndName(t *testing.T) {
 	})
 }
 
+// TestAccDataSource_ProPatchSoftwareTitle_AmbiguousSelector asserts the data
+// source's ExactlyOneOf selector validator: supplying both id and name is
+// refused at plan time. The positive cases above cover each selector on its own,
+// which is exactly the coverage a silent removal of the validator would keep
+// green.
+//
+// The diagnostic wraps at ~80 cols, so the regex matches only the summary.
+func TestAccDataSource_ProPatchSoftwareTitle_AmbiguousSelector(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+data "jamfplatform_pro_patch_software_title" "bad" {
+  id   = "1"
+  name = "x"
+}
+`,
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination`),
+			},
+		},
+	})
+}
+
 // TestAccListResource_ProPatchSoftwareTitle_Basic exercises the list resource via
 // the `terraform query` workflow. DisplayName / the filter match on the title's
 // display name.

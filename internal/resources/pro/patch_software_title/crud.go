@@ -22,7 +22,14 @@
 // flagged deprecated in the Jamf API spec (the SDK func carries `// Deprecated:`
 // pointing at /v2/patch-software-title-configurations), so the one remaining
 // call is annotated rather than removed. Revisit only if Jamf gives the
-// configurations surface an id-minting create.
+// configurations surface an id-minting create, and note that its suppression
+// names #311 rather than a successor, because there is none.
+//
+// This move completes the patch-software-title-configurations half of #311
+// (deprecation(pro): computers-inventory v3→v4,
+// patch-software-title-configurations v2→v3 — migrate by 2027-01-14). The
+// computers-inventory half of that issue is still outstanding, so #311 stays
+// open.
 //
 // Everything else moved to v3, wire-probed 2026-09-02 on Jamf Pro 11.31.1 in
 // production EU. Four behaviours drive the code and are easy to get wrong:
@@ -49,6 +56,13 @@
 // absoluteOrderId:asc order is the newest-first order the classic <versions>
 // block used, so no re-sorting).
 //
+// That /definitions read is ADVISORY everywhere. available_versions is plain
+// Computed, informational, and never written by Terraform, while every caller
+// sits either after a write that has already landed (the id-minting create, the
+// merge-patch) or on an object that read cleanly — so a failed catalogue read
+// warns and keeps the value already recorded rather than failing the operation.
+// See readAvailableVersionsBestEffort.
+//
 // /pro/v3 answers 200 with no Deprecation header; /pro/v2 still answers 200
 // carrying `deprecation: date="Tue, 14 Jul 2026 00:00:00 GMT"`; /pro/v4 answers
 // 403 BAD_PERMISSIONS, which this repo reads as unrouted rather than
@@ -65,6 +79,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -76,6 +91,13 @@ import (
 // the title), creating the v3 configuration in the same act.
 // category/site/notifications/version_packages are then applied through a
 // single v3 merge-patch, which answers with the stored configuration.
+//
+// The version catalogue read that follows is best-effort. The title is minted by
+// then, so a fatal catalogue failure would return before the only State.Set and
+// orphan it server-side — the next apply would re-POST the same
+// name_id + source_id. It therefore warns and leaves available_versions empty,
+// which the next Read fills in; the same line the accept side-call sits behind,
+// one screen lower.
 func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan PatchSoftwareTitleResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -91,7 +113,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	created, err := r.client.CreatePatchSoftwareTitleByID(createCtx, "0", buildPatchSoftwareTitleCreateInput(plan)) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles is the only id-minting create — see file header note
+	created, err := r.client.CreatePatchSoftwareTitleByID(createCtx, "0", buildPatchSoftwareTitleCreateInput(plan)) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles is the only id-minting create, and the configurations surface has no successor to migrate to — see #311 and the file header note
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro patch software title", err.Error())
 		return
@@ -126,11 +148,8 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	avail, availDiags := r.readAvailableVersions(createCtx, id.ValueString())
+	avail, availDiags := r.readAvailableVersionsBestEffort(createCtx, id.ValueString(), types.ListNull(types.StringType))
 	resp.Diagnostics.Append(availDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
 	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(createCtx, &plan, got, avail, keysOf(planPackages))...)
 	if resp.Diagnostics.HasError() {
@@ -173,6 +192,13 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 // map comes back null and ImportStateVerify must ignore it (no prior keys to
 // reconstruct the managed subset from) — and source_id, which the v3 payload
 // does not carry, is resolved from the reported patch source name.
+//
+// The version catalogue read is best-effort here too: a title whose
+// configuration reads cleanly should not take a whole plan down because a
+// supplementary catalogue read failed, which is the line refreshExtensionAttributes
+// already draws. The prior state's available_versions is carried through on
+// failure, so a warning never rewrites the attribute to an empty list and
+// claims the title publishes no versions.
 func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state PatchSoftwareTitleResourceModel
 	isImport := req.State.Raw.IsNull()
@@ -240,11 +266,8 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	avail, availDiags := r.readAvailableVersions(readCtx, state.ID.ValueString())
+	avail, availDiags := r.readAvailableVersionsBestEffort(readCtx, state.ID.ValueString(), state.AvailableVersions)
 	resp.Diagnostics.Append(availDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
 	// source_id is carried forward by assignPatchSoftwareTitleResourceModel,
 	// which never touches it. Resolve it from the reported source name only when
@@ -264,7 +287,7 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to determine the patch software title's source_id",
-				fmt.Sprintf("Jamf Pro reports this title's patch source as %q, but the provider could not match that name to a patch source ID: %v", got.PatchSourceName, err),
+				unresolvedSourceIDDetail(got.DisplayName, got.PatchSourceName, err),
 			)
 			return
 		}
@@ -288,7 +311,18 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 // outside Terraform survive — the managed-subset contract version_packages
 // documents. That fold needs the live set, so it costs a read; when neither the
 // plan nor prior state declares any assignment there is nothing to manage and
-// the key is omitted instead, skipping the read.
+// the key is omitted instead, skipping the read. An assignment the provider
+// cannot read back (no version or no package id) cannot be folded in, and a full
+// replacement clears whatever it omits, so how many of those an apply is about
+// to clear is warned about rather than passed over in silence.
+//
+// The version catalogue read after the patch is best-effort, and falls back to
+// the PRIOR STATE's available_versions rather than the plan's: the attribute is
+// plain Computed with no plan modifier, so the planned value is Unknown here and
+// an apply must still write something known or Terraform reports an inconsistent
+// result. Erroring instead would discard a merge-patch that already succeeded,
+// leaving the pre-apply name, category, site, notifications and package
+// assignments in state.
 func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state PatchSoftwareTitleResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -323,7 +357,14 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 			resp.Diagnostics.AddError("Error reading Jamf Pro patch software title package assignments", err.Error())
 			return
 		}
-		desired = unionVersionPackages(assignedPackagesByVersion(live.Packages), planPackages, priorKeys)
+		liveAssigned, unreadable := assignedPackagesByVersionCounted(live.Packages)
+		if unreadable > 0 {
+			resp.Diagnostics.AddWarning(
+				"Patch software title package assignments could not be read in full",
+				fmt.Sprintf("Jamf Pro reported %d package assignment(s) for this title with no software version or no package ID, so the provider cannot carry them over. Because the v3 packages array is a full replacement, this apply clears those assignments.", unreadable),
+			)
+		}
+		desired = unionVersionPackages(liveAssigned, planPackages, priorKeys)
 	}
 
 	got, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV3(updateCtx, plan.ID.ValueString(), buildPatchSoftwareTitleConfigurationPatch(plan, desired))
@@ -332,11 +373,8 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	avail, availDiags := r.readAvailableVersions(updateCtx, plan.ID.ValueString())
+	avail, availDiags := r.readAvailableVersionsBestEffort(updateCtx, plan.ID.ValueString(), state.AvailableVersions)
 	resp.Diagnostics.Append(availDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
 	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(updateCtx, &plan, got, avail, keysOf(planPackages))...)
 	if resp.Diagnostics.HasError() {
@@ -403,15 +441,28 @@ func (r *PatchSoftwareTitleResource) Delete(ctx context.Context, req resource.De
 	}
 }
 
-// readAvailableVersions reads the title's version catalogue from the
-// /definitions sub-resource, which is where v3 keeps it — the configuration
-// body carries only the versions that have a package assigned.
-func (r *PatchSoftwareTitleResource) readAvailableVersions(ctx context.Context, id string) ([]string, diag.Diagnostics) {
+// readAvailableVersionsBestEffort reads the title's version catalogue from the
+// /definitions sub-resource, which is where v3 keeps it — the configuration body
+// carries only the versions that have a package assigned.
+//
+// There is deliberately no fatal variant: no caller may abort on this read.
+// available_versions is plain Computed and informational, and each caller either
+// has a write behind it that already landed or an object that read cleanly. A
+// failure therefore warns, names the endpoint, and yields the fallback value the
+// caller passes — prior state on Read and Update (the only known value there,
+// the planned one being Unknown), and a null list on Create, where the title is
+// new and the next Read fills the catalogue in.
+func (r *PatchSoftwareTitleResource) readAvailableVersionsBestEffort(ctx context.Context, id string, fallback types.List) ([]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	defs, err := r.proClient.ListPatchSoftwareTitleDefinitionsV3(ctx, id, nil, "")
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro patch software title versions", err.Error())
-		return nil, diags
+		diags.AddWarning(
+			"Unable to read patch software title versions",
+			fmt.Sprintf("Jamf Pro did not return this title's version catalogue from GET /pro/v3/patch-software-title-configurations/%s/definitions, so available_versions keeps the value already recorded for it (empty for a title created by this apply). The title itself is unaffected and the next refresh repopulates it: %v", id, err),
+		)
+		prior, priorDiags := stringsFromList(ctx, fallback)
+		diags.Append(priorDiags...)
+		return prior, diags
 	}
 	return definitionVersions(defs), diags
 }

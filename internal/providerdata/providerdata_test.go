@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -366,5 +367,137 @@ func TestEnrollmentWriteLock_StableIdentity(t *testing.T) {
 	// Distinct Data values must not share a lock.
 	if other := New(newFakeClient()).EnrollmentWriteLock(); other == a {
 		t.Error("distinct Data values unexpectedly share one enrollment write lock")
+	}
+}
+
+// The patch source cache is the second provider-instance cache in this file (the
+// Jamf Pro version being the first) and follows the same two rules: a success is
+// read once and shared, an error is not cached. Both catalogue reads are
+// injected, so none of these tests needs a client or a mock server.
+
+// TestPatchSourceCache_ReadsOnce verifies the snapshot is read once per cache
+// and shared. Without it a configuration with N patch software title data
+// sources pays 2N identical catalogue requests on every plan and again on every
+// apply.
+func TestPatchSourceCache_ReadsOnce(t *testing.T) {
+	name := "Jamf"
+	id := 1
+	calls := 0
+	cache := &PatchSourceCache{
+		read: func(_ context.Context, _ *proclassic.Client) (PatchSourceCatalogues, error) {
+			calls++
+			return PatchSourceCatalogues{Internal: []proclassic.IDName{{ID: &id, Name: &name}}}, nil
+		},
+	}
+
+	for i := range 3 {
+		got, err := cache.Catalogues(context.Background())
+		if err != nil {
+			t.Fatalf("call %d: unexpected error %v", i, err)
+		}
+		if len(got.Internal) != 1 || got.Internal[0].Name == nil || *got.Internal[0].Name != "Jamf" {
+			t.Fatalf("call %d: expected the cached snapshot, got %+v", i, got)
+		}
+	}
+	if calls != 1 {
+		t.Errorf("expected exactly 1 catalogue read for a cached success, got %d", calls)
+	}
+}
+
+// TestPatchSourceCache_ErrorIsNotCached verifies a failed read is retried by the
+// next caller. A transient blip or a momentary privilege problem on the first
+// title must not blank every later title's source_id for the rest of the run.
+func TestPatchSourceCache_ErrorIsNotCached(t *testing.T) {
+	name := "Jamf"
+	id := 1
+	calls := 0
+	cache := &PatchSourceCache{
+		read: func(_ context.Context, _ *proclassic.Client) (PatchSourceCatalogues, error) {
+			calls++
+			if calls == 1 {
+				return PatchSourceCatalogues{}, errors.New("transient 503")
+			}
+			return PatchSourceCatalogues{External: []proclassic.IDName{{ID: &id, Name: &name}}}, nil
+		},
+	}
+
+	if _, err := cache.Catalogues(context.Background()); err == nil {
+		t.Fatal("expected the first read's error to surface")
+	}
+
+	got, err := cache.Catalogues(context.Background())
+	if err != nil {
+		t.Fatalf("expected the second read to retry and succeed, got %v", err)
+	}
+	if len(got.External) != 1 {
+		t.Errorf("expected the retried snapshot, got %+v", got)
+	}
+	if calls != 2 {
+		t.Errorf("expected the failed read to be retried (2 reads), got %d", calls)
+	}
+}
+
+// TestPatchSourceCache_NilReceiver verifies a construct that never received a
+// cache reports an unresolved id rather than panicking mid-plan. Resolving a
+// patch source name is best-effort everywhere except import.
+func TestPatchSourceCache_NilReceiver(t *testing.T) {
+	got, err := (*PatchSourceCache)(nil).Catalogues(context.Background())
+	if err == nil {
+		t.Fatal("expected an error from a nil cache")
+	}
+	if len(got.Internal) != 0 || len(got.External) != 0 {
+		t.Errorf("expected an empty snapshot from a nil cache, got %+v", got)
+	}
+	if !strings.Contains(err.Error(), "not configured") {
+		t.Errorf("expected the error to say the provider is not configured, got %q", err)
+	}
+}
+
+// TestConfigurePatchSources_NilProviderData verifies the nil ProviderData the
+// framework passes during early lifecycle yields a nil cache rather than a
+// diagnostic — the same contract ConfigureImpact keeps.
+func TestConfigurePatchSources_NilProviderData(t *testing.T) {
+	noRead := func(context.Context, *proclassic.Client) (PatchSourceCatalogues, error) {
+		t.Fatal("the read must not be invoked while configuring")
+		return PatchSourceCatalogues{}, nil
+	}
+	if got := ConfigurePatchSources(nil, noRead); got != nil {
+		t.Errorf("expected a nil cache for nil providerData, got %v", got)
+	}
+	if got := ConfigurePatchSources("not a Data value", noRead); got != nil {
+		t.Errorf("expected a nil cache for a wrong providerData type, got %v", got)
+	}
+}
+
+// TestConfigurePatchSources_StableIdentity verifies every construct configured
+// from one provider instance shares one cache — the whole point of hanging it
+// off Data — and that distinct Data values do not share one. The read is also
+// asserted to receive a client, since Data builds the classic client itself
+// rather than taking one from the caller.
+func TestConfigurePatchSources_StableIdentity(t *testing.T) {
+	var gotClient *proclassic.Client
+	read := func(_ context.Context, c *proclassic.Client) (PatchSourceCatalogues, error) {
+		gotClient = c
+		return PatchSourceCatalogues{}, nil
+	}
+
+	pd := New(newFakeClient())
+	a := ConfigurePatchSources(pd, read)
+	b := ConfigurePatchSources(pd, read)
+	if a == nil {
+		t.Fatal("expected a cache for a *Data providerData")
+	}
+	if a != b {
+		t.Errorf("expected one shared cache per provider instance, got %p and %p", a, b)
+	}
+	if other := ConfigurePatchSources(New(newFakeClient()), read); other == a {
+		t.Error("distinct Data values unexpectedly share one patch source cache")
+	}
+
+	if _, err := a.Catalogues(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotClient == nil {
+		t.Error("the cache must hand its own classic client to the read")
 	}
 }

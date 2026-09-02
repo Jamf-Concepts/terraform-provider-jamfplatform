@@ -134,10 +134,14 @@ func TestListResourceSDKMethods_KnownToSDK(t *testing.T) {
 }
 
 // TestListResourceSDKMethods_MatchCalls keeps the list resource's privilege list
-// in sync with list_resource.go.
+// in sync with list_resource.go plus the patch source catalogue reads a listing
+// resolves source_id through. Those two reads live in patch_sources.go — the one
+// place they happen for every construct in this package — so the listing's
+// declaration is derived from the same pair of files as the resource's and the
+// data source's.
 func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
-	called := sdkCallsIn(t, mergedRegistry, "list_resource.go")
-	assertMatch(t, listResourceSDKMethods, called, "list_resource.go")
+	called := sdkCallsIn(t, mergedRegistry, "list_resource.go", "patch_sources.go")
+	assertMatch(t, listResourceSDKMethods, called, "list_resource.go+patch_sources.go")
 }
 
 // TestListResourcePrivileges_Rendered guards the list resource table rendered.

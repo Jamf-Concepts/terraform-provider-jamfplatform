@@ -100,7 +100,7 @@ func (r *PatchSoftwareTitleResource) IdentitySchema(ctx context.Context, req res
 func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version: 1,
-		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.\n\n" +
+		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -135,7 +135,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Use `-1` (default) for \"No category assigned\".",
+				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Set `-1` for \"No category assigned\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -146,7 +146,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro site ID. Use `-1` (default) for \"NONE\".",
+				MarkdownDescription: "Jamf Pro site ID (UI \"Site\"). Set `-1` for \"None\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -173,10 +173,11 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"version_packages": schema.MapAttribute{
-				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other server-side assignments are left untouched, and removing a key clears that version's package on the next apply.",
+				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments — an empty map is not accepted.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.Map{
+					mapvalidator.SizeAtLeast(1),
 					mapvalidator.ValueStringsAre(
 						stringvalidator.RegexMatches(packageIDPattern, "must be a positive integer package ID"),
 					),

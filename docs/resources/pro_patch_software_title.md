@@ -17,8 +17,6 @@ description: |-
 
 Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.
 
-
-
 **Required Jamf permissions**
 
 Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
@@ -107,11 +105,11 @@ output "adobe_air_extension_attributes" {
 ### Optional
 
 - `accept_extension_attributes` (Boolean) Accept the extension attribute(s) Jamf attaches to this title (UI "Extension Attribute" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting is one-way** — it cannot be reverted, so setting this back to `false` (or removing it) does not un-accept; it simply stops accepting new ones. Leave unset for titles that have no extension attribute.
-- `category_id` (String) Jamf Pro category ID (UI "Category"). Use `-1` (default) for "No category assigned".
+- `category_id` (String) Jamf Pro category ID (UI "Category"). Set `-1` for "No category assigned" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.
 - `email_notification` (Boolean) Whether an email notification is sent for new versions (UI "Email"). Server-defaulted when omitted.
-- `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "NONE".
+- `site_id` (String) Jamf Pro site ID (UI "Site"). Set `-1` for "None" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `version_packages` (Map of String) Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other server-side assignments are left untouched, and removing a key clears that version's package on the next apply.
+- `version_packages` (Map of String) Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments — an empty map is not accepted.
 - `web_notification` (Boolean) Whether a Jamf Pro notification is raised for new versions (UI "Jamf Pro Notification"). Server-defaulted when omitted.
 
 ### Read-Only

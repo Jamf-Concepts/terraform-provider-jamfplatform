@@ -129,19 +129,41 @@ func definitionVersions(defs []pro.PatchSoftwareTitleDefinition) []string {
 	return out
 }
 
-// assignedPackagesByVersion returns a software_version → package_id map for
-// every package assignment the configuration reports.
-func assignedPackagesByVersion(pkgs []pro.PatchSoftwareTitlePackages) map[string]string {
+// assignedPackagesByVersionCounted returns a software_version → package_id map
+// for every package assignment the configuration reports, plus the number of
+// reported assignments it could not read (no version or no package id, either
+// missing or empty).
+//
+// The count exists because this fold also feeds a write: Update sends the folded
+// set as the v3 `packages` array, which is a FULL REPLACEMENT, so an assignment
+// missing from the fold is cleared server-side. Dropping one silently would
+// break the promise version_packages makes, that assignments made outside
+// Terraform survive an apply — hence a caller that writes must be able to say
+// how many it is about to clear.
+func assignedPackagesByVersionCounted(pkgs []pro.PatchSoftwareTitlePackages) (map[string]string, int) {
 	out := map[string]string{}
+	unreadable := 0
 	for i := range pkgs {
 		if pkgs[i].Version == nil || pkgs[i].PackageID == nil {
+			unreadable++
 			continue
 		}
 		if *pkgs[i].Version == "" || *pkgs[i].PackageID == "" {
+			unreadable++
 			continue
 		}
 		out[*pkgs[i].Version] = *pkgs[i].PackageID
 	}
+	return out, unreadable
+}
+
+// assignedPackagesByVersion returns a software_version → package_id map for
+// every package assignment the configuration reports, discarding the ones it
+// cannot read. It is the read-path form, where a discard only shapes state; a
+// caller folding the map into a write wants assignedPackagesByVersionCounted so
+// the discards can be reported.
+func assignedPackagesByVersion(pkgs []pro.PatchSoftwareTitlePackages) map[string]string {
+	out, _ := assignedPackagesByVersionCounted(pkgs)
 	return out
 }
 
@@ -166,6 +188,19 @@ func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned
 	m, d := types.MapValueFrom(ctx, types.StringType, managed)
 	diags.Append(d...)
 	return m, diags
+}
+
+// stringsFromList reads a Terraform list of strings back into a Go slice,
+// yielding nil for a null or unknown list. It is how a caller recovers the value
+// already held for a Computed list attribute when the read that would refresh it
+// failed — see readAvailableVersionsBestEffort.
+func stringsFromList(ctx context.Context, l types.List) ([]string, diag.Diagnostics) {
+	if l.IsNull() || l.IsUnknown() {
+		return nil, nil
+	}
+	var out []string
+	diags := l.ElementsAs(ctx, &out, false)
+	return out, diags
 }
 
 // orEmpty substitutes an empty slice for nil so a Computed list attribute lands

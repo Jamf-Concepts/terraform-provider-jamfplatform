@@ -7,11 +7,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math/big"
 	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // State upgraders are unit-tested rather than acceptance-tested: the acceptance
@@ -63,6 +65,22 @@ func TestDropRemovedAttributes_RemovesOnlyTheWithdrawnKeys(t *testing.T) {
 	var after map[string]json.RawMessage
 	if err := json.Unmarshal(got, &after); err != nil {
 		t.Fatalf("rewritten state is not valid JSON: %s", err)
+	}
+
+	// Named literals, not removedInV1: every other assertion in this test reads
+	// the list under test, so widening it to include a surviving attribute would
+	// be skipped by the loop below and accounted for by the count above. These
+	// two are the only keys the v1 schema dropped and the only ones allowed to
+	// disappear, so they are spelled out.
+	for _, gone := range []string{"category_name", "site_name"} {
+		if _, ok := after[gone]; ok {
+			t.Errorf("%q must be removed from upgraded state", gone)
+		}
+	}
+	for _, kept := range []string{"version_packages", "available_versions", "source_id", "extension_attributes"} {
+		if _, ok := after[kept]; !ok {
+			t.Errorf("%q must survive the rewrite — only category_name and site_name were withdrawn at v1", kept)
+		}
 	}
 
 	for _, gone := range removedInV1 {
@@ -131,11 +149,17 @@ func TestDropRemovedAttributes_RejectsMalformedState(t *testing.T) {
 }
 
 // TestUpgradeState_V0StateDecodesAtV1 drives the registered upgrader end to end
-// over realistic v0 state and pins that it produces a value against the current
-// schema with no diagnostics. This is the whole reason the upgrader exists: the
-// framework's raw-state decode rejects an attribute the current schema does not
-// declare, so without the rewrite every pre-migration state file fails to load
-// with a framework error rather than a plannable diff.
+// over realistic v0 state and pins both halves of what it must produce: a value
+// against the current schema with no diagnostics, and the surviving attributes
+// still carrying their v0 values.
+//
+// This is the whole reason the upgrader exists: the framework's raw-state decode
+// rejects an attribute the current schema does not declare, so without the
+// rewrite every pre-migration state file fails to load with a framework error
+// rather than a plannable diff. Asserting the carried-across values matters as
+// much as the decode — a rewrite that dropped or blanked them would still decode
+// cleanly and would silently re-plan a live title's category, notifications and
+// package assignments.
 func TestUpgradeState_V0StateDecodesAtV1(t *testing.T) {
 	ctx := context.Background()
 	r := NewPatchSoftwareTitleResource().(*PatchSoftwareTitleResource)
@@ -159,6 +183,67 @@ func TestUpgradeState_V0StateDecodesAtV1(t *testing.T) {
 	if resp.DynamicValue == nil {
 		t.Fatal("expected an upgraded DynamicValue, got nil")
 	}
+
+	var schemaResp resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	schemaType := schemaResp.Schema.Type().TerraformType(ctx)
+
+	decoded, err := resp.DynamicValue.Unmarshal(schemaType)
+	if err != nil {
+		t.Fatalf("the upgraded value does not decode against the current schema: %s", err)
+	}
+	var attrs map[string]tftypes.Value
+	if err := decoded.As(&attrs); err != nil {
+		t.Fatalf("upgraded value is not an object: %s", err)
+	}
+
+	if got := stringAttr(t, attrs, "id"); got != "147" {
+		t.Errorf("id did not survive the upgrade: got %q, want %q", got, "147")
+	}
+
+	var sourceID *big.Float
+	if err := attrs["source_id"].As(&sourceID); err != nil {
+		t.Fatalf("source_id is not a number: %s", err)
+	}
+	if sourceID == nil {
+		t.Error("source_id did not survive the upgrade — it backs a RequiresReplace attribute, so a null here re-plans a destroy")
+	} else if n, _ := sourceID.Int64(); n != 1 {
+		t.Errorf("source_id did not survive the upgrade: got %v, want 1", sourceID)
+	}
+
+	var available []tftypes.Value
+	if err := attrs["available_versions"].As(&available); err != nil {
+		t.Fatalf("available_versions is not a list: %s", err)
+	}
+	if len(available) != 3 {
+		t.Errorf("available_versions did not survive the upgrade: got %d entries, want 3", len(available))
+	}
+
+	var packages map[string]tftypes.Value
+	if err := attrs["version_packages"].As(&packages); err != nil {
+		t.Fatalf("version_packages is not a map: %s", err)
+	}
+	assigned, ok := packages["8.33.2.2"]
+	if !ok {
+		t.Fatalf("version_packages lost its 8.33.2.2 assignment, got keys %v", packages)
+	}
+	var pkgID string
+	if err := assigned.As(&pkgID); err != nil {
+		t.Fatalf("version_packages value is not a string: %s", err)
+	}
+	if pkgID != "1" {
+		t.Errorf("version_packages[8.33.2.2] did not survive the upgrade: got %q, want %q", pkgID, "1")
+	}
+}
+
+// stringAttr reads one string attribute out of a decoded state object.
+func stringAttr(t *testing.T, attrs map[string]tftypes.Value, name string) string {
+	t.Helper()
+	var out string
+	if err := attrs[name].As(&out); err != nil {
+		t.Fatalf("%s is not a string: %s", name, err)
+	}
+	return out
 }
 
 // TestUpgradeState_RawV0StateIsUndecodableWithoutTheRewrite pins the failure the

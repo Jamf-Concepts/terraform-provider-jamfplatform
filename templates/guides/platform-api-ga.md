@@ -71,17 +71,21 @@ during the public beta; the second only at GA.
    them cannot produce a plan of any kind. See [Removed constructs](#removed-constructs).
 2. **Set `base_url` to the GA gateway in the same change as the provider upgrade.** The host and
    the provider version are paired. See [Base URL](#base-url).
-3. Take a state backup, as for any breaking provider upgrade.
+3. **Extend the integration's permissions where a workspace uses
+   `jamfplatform_pro_patch_software_title`.** Its data source, list resource and `terraform import`
+   now read the tenant's patch source catalogues, so two read permissions must be added. See
+   [Attribute removals and deprecations](#attribute-removals-and-deprecations).
+4. Take a state backup, as for any breaking provider upgrade.
 
-Existing beta credentials and `tenant_id` continue to work through this upgrade. Nothing else is
-required to adopt the release before GA.
+Existing beta credentials and `tenant_id` continue to work through this upgrade, and nothing else
+is required to adopt the release before GA.
 
 **At GA:**
 
-4. **Register a replacement API integration and update the provider credentials.** Record the
+5. **Register a replacement API integration and update the provider credentials.** Record the
    permissions held by each beta integration beforehand, so the equivalents can be selected. See
    [API integration credentials](#api-integration-credentials).
-5. **Replace `tenant_id` with `environment_id`.** Register the replacement as
+6. **Replace `tenant_id` with `environment_id`.** Register the replacement as
    environment-scoped unless single-product access is deliberately what you want: tenant scope is
    the legacy option, costs one integration per tenant per product, and cannot hold the blueprint
    or compliance-benchmark permissions at all. See [Scope](#scope).
@@ -328,21 +332,59 @@ corresponding data source.
 
 ### Removed: `category_name` and `site_name` on `jamfplatform_pro_patch_software_title`
 
-**Action needed only if either attribute is referenced: read the name from the object that owns
-it.** Both were read-only display names, and the Jamf Pro endpoints this resource now uses report
-category and site by ID alone:
+**Action needed if either attribute is referenced: read the name from the object that owns it.**
+Both were read-only display names, and the Jamf Pro endpoints this resource now uses report
+category and site by ID alone. Where the category is managed by Terraform, read the name from that
+resource. Where it is not — the usual case, since these attributes were read-only and the
+assignment is commonly made in the Jamf Pro UI — look it up by the ID the title reports:
 
 ```hcl
-# category_name = jamfplatform_pro_patch_software_title.example.category_name
-category_name = jamfplatform_pro_category.example.name
+# the category is managed by Terraform
+output "category_name" {
+  # value = jamfplatform_pro_patch_software_title.example.category_name
+  value = jamfplatform_pro_category.example.name
+}
+
+# the category is not managed by Terraform
+data "jamfplatform_pro_category" "title" {
+  id = jamfplatform_pro_patch_software_title.example.category_id
+}
+
+output "category_name" {
+  value = data.jamfplatform_pro_category.title.name
+}
 ```
+
+`jamfplatform_pro_site` covers `site_name` the same way, selected by either `id` or `name`.
 
 State migrates automatically — the provider strips both attributes during the state upgrade, so
 no `terraform state` surgery is needed. They have also been removed from the corresponding data
-source. Nothing else about the resource changes: patch software titles are now read, updated and
-deleted through Jamf Pro's `/patch-software-title-configurations` endpoints rather than the
-deprecated ProClassic `/patchsoftwaretitles` ones, and every other attribute behaves as before,
-`version_packages` included — an assignment made outside Terraform still survives an apply.
+source.
+
+**Grant two further permissions.** The data source, the list resource and `terraform import`
+resolve a title's `source_id` from the tenant's patch source catalogues, because the endpoints
+this resource now uses name its patch source without numbering it. An integration reaching this
+resource through any of those three paths therefore needs **App lifecycle management → External
+patch sources → Read** and **App lifecycle management → Internal patch sources → Read** alongside
+**Patch titles**. Without them the read fails with `403 BAD_PERMISSIONS`, reported as `Unable to
+determine the patch software title's source_id`. Planning and applying a title already in state
+is unaffected, as `source_id` is carried forward rather than resolved again. The **Required Jamf
+permissions** table on each of the three documentation pages lists the full set.
+
+**`category_id` and `site_id` no longer accept `"0"`.** Use `-1`, the default, for "No category
+assigned" and "NONE"; a configuration setting either attribute to `"0"` is now rejected at plan
+time. This is the reverse of the retired endpoint's convention, under which `0` cleared the
+assignment and `-1` was a silent no-op. A title whose state still holds `"0"` needs no state edit,
+as the next refresh reads it back as `-1`; only a configuration setting the value explicitly has to
+change.
+
+Otherwise the resource behaves as before: patch software titles are now read, updated and deleted
+through Jamf Pro's `/patch-software-title-configurations` endpoints rather than the deprecated
+ProClassic `/patchsoftwaretitles` ones, and every attribute that remains keeps its meaning.
+`version_packages` still manages only the versions it names, but it now delivers that by reading
+the title's current assignments and rewriting the whole set rather than by the endpoint merging
+each version in turn. An assignment created in the Jamf Pro UI between that read and the write can
+therefore be lost, so avoid editing a title's **Definition** tab while an apply is in flight.
 
 ### Deprecated, not yet removed: the flat blueprint component attributes
 

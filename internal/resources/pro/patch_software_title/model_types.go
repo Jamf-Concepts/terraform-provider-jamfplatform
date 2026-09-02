@@ -64,8 +64,14 @@ var patchSoftwareTitleEAAttrTypes = map[string]attr.Type{
 
 // PatchSoftwareTitleDataSourceModel represents the Terraform data source model.
 // Lookup is by ID or by exact display name — exactly one of the two must be
-// supplied. See data_source.go (lookupByName). SourceID is resolved from the
-// patch source name the v3 payload reports (see resolveSourceID).
+// supplied. See data_source.go (lookupByName).
+//
+// SourceID is not read but resolved, from the patch source name the payload
+// reports, and the resolution is best-effort: it is null with a warning whenever
+// the name cannot be matched to exactly one patch source, including when the
+// source catalogues cannot be read at all (see sourceIDFromCatalogues). The
+// managed resource is the one construct where an unresolved name is fatal, on
+// import, because there SourceID defines the title and forces replacement.
 type PatchSoftwareTitleDataSourceModel struct {
 	ID                types.String             `tfsdk:"id"`
 	Name              types.String             `tfsdk:"name"`

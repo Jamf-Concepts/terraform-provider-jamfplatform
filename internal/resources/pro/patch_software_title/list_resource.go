@@ -5,11 +5,9 @@ package patch_software_title
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
@@ -42,10 +40,12 @@ func NewPatchSoftwareTitleListResource() list.ListResource {
 // block is applied client-side via filters.ApplyClassicFilter after the full
 // list is fetched.
 //
-// The classic client is here only to resolve source_id: the v3 configuration
-// names a title's patch source but never numbers it (see resolveSourceID).
+// source_id is resolved, not read: the v3 configuration names a title's patch
+// source but never numbers it. The resolution goes through the shared
+// provider-instance catalogue cache, so a list pays the two catalogue reads once
+// however many titles it returns, and it is best-effort — see List.
 type PatchSoftwareTitleListResource struct {
-	client    *proclassic.Client
+	sources   *providerdata.PatchSourceCache
 	proClient *pro.Client
 }
 
@@ -54,23 +54,16 @@ func (r *PatchSoftwareTitleListResource) Metadata(ctx context.Context, req resou
 	resp.TypeName = req.ProviderTypeName + "_pro_patch_software_title"
 }
 
-// Configure wires both Jamf clients into the list resource: the Pro client for
-// the v3 configurations list, and the ProClassic client for patch-source name
-// resolution.
+// Configure wires the Pro client used for the v3 configurations list, plus the
+// shared patch source catalogue cache source_id resolves through.
 func (r *PatchSoftwareTitleListResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	r.client = client
-
 	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
 	resp.Diagnostics.Append(proDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	r.proClient = proClient
+	r.sources = providerdata.ConfigurePatchSources(req.ProviderData, fetchPatchSourceCatalogues)
 }
 
 // ListResourceConfigSchema describes the supported list filters.
@@ -96,11 +89,17 @@ func (r *PatchSoftwareTitleListResource) ListResourceConfigSchema(ctx context.Co
 // list preview does not require full hydration — consumers needing those should
 // use the singular data source or the managed resource.
 //
-// source_id is not on the payload either, but it resolves from the patch source
-// name through two small tenant-wide catalogue reads, done once for the whole
-// list rather than per item.
+// source_id is not on the payload either. The provider tries to resolve it from
+// the patch source name, out of two small tenant-wide catalogues read once for
+// the whole list, but the attempt can fail without the list failing: a name
+// present in both catalogues cannot be resolved at all, a source renamed or
+// removed since the title was created matches neither, and the catalogues need
+// privileges of their own. Every one of those leaves that title's source_id null
+// and attaches a warning naming the title — a preview reports what it could not
+// determine rather than dropping it, and rather than failing the whole listing
+// over an informational attribute.
 func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
-	if r.client == nil || r.proClient == nil {
+	if r.proClient == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				"Unconfigured Provider",
@@ -128,12 +127,12 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 		return
 	}
 
-	sourceIDs, err := patchSourceIDsByName(listCtx, r.client)
-	if err != nil {
-		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to read Jamf Pro patch sources", err.Error()),
-		})
-		return
+	var (
+		catalogues   providerdata.PatchSourceCatalogues
+		catalogueErr error
+	)
+	if req.IncludeResource {
+		catalogues, catalogueErr = r.sources.Catalogues(listCtx)
 	}
 
 	filter := filters.ClassicFilterModel{}
@@ -148,6 +147,7 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 	}
 
 	results := make([]list.ListResult, 0, maxResults)
+	catalogueWarned := false
 
 	for _, s := range items {
 		if int64(len(results)) >= maxResults {
@@ -171,13 +171,31 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 				return
 			}
 
+			sourceID := types.Int64Null()
+			if catalogueErr != nil {
+				if !catalogueWarned {
+					catalogueWarned = true
+					result.Diagnostics.AddWarning(
+						"Unable to read this tenant's patch sources",
+						unreadableCataloguesWarningDetail(catalogueErr),
+					)
+				}
+			} else if resolved, resolveErr := sourceIDFromCatalogues(catalogues, s.PatchSourceName); resolveErr != nil {
+				result.Diagnostics.AddWarning(
+					"Unable to determine source_id for a patch software title",
+					unresolvedSourceIDWarningDetail(s.DisplayName, s.PatchSourceName, resolveErr),
+				)
+			} else {
+				sourceID = resolved
+			}
+
 			// available_versions and extension_attributes stay null: both cost a
 			// call per item (see method doc).
 			state := PatchSoftwareTitleResourceModel{
 				ID:                        id,
 				Name:                      types.StringValue(s.DisplayName),
 				NameID:                    types.StringValue(s.SoftwareTitleNameID),
-				SourceID:                  sourceIDs[s.PatchSourceName],
+				SourceID:                  sourceID,
 				CategoryID:                refIDValue(s.CategoryID),
 				SiteID:                    refIDValue(s.SiteID),
 				WebNotification:           types.BoolValue(s.UiNotifications),
@@ -224,50 +242,4 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 // filters.ApplyClassicFilter, matching each title's display name.
 func patchSoftwareTitleDisplayName(s pro.PatchSoftwareTitleConfiguration) string {
 	return s.DisplayName
-}
-
-// patchSourceIDsByName builds a patch source name → id lookup from the two
-// classic source catalogues, so a list hydrates source_id for every title
-// without a per-item resolve. A name present in both catalogues is omitted
-// rather than guessed: the two id spaces are separate, and source_id backs a
-// RequiresReplace attribute, so a wrong number is worse than none.
-func patchSourceIDsByName(ctx context.Context, c *proclassic.Client) (map[string]types.Int64, error) {
-	out := map[string]types.Int64{}
-	if c == nil {
-		return out, nil
-	}
-
-	internal, err := c.ListPatchInternalSources(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("listing internal patch sources: %w", err)
-	}
-	external, err := c.ListPatchExternalSources(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("listing external patch sources: %w", err)
-	}
-
-	ambiguous := map[string]bool{}
-	add := func(sources []proclassic.IDName) {
-		for i := range sources {
-			if sources[i].Name == nil || sources[i].ID == nil {
-				continue
-			}
-			name := *sources[i].Name
-			if _, seen := out[name]; seen {
-				ambiguous[name] = true
-				continue
-			}
-			out[name] = types.Int64Value(int64(*sources[i].ID))
-		}
-	}
-	if internal != nil {
-		add(internal.PatchInternalSources)
-	}
-	if external != nil {
-		add(external.PatchExternalSources)
-	}
-	for name := range ambiguous {
-		delete(out, name)
-	}
-	return out, nil
 }
