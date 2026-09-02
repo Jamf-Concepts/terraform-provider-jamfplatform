@@ -366,8 +366,15 @@ func TestAccDataSource_ProPatchPolicy_ByID(t *testing.T) {
 }
 
 // TestAccListResource_ProPatchPolicy_Basic exercises the list resource via the
-// `terraform query` workflow. The classic list endpoint surfaces the policy
-// display name, so DisplayName / the filter match on the name.
+// `terraform query` workflow. The Pro v2 collection surfaces the policy display
+// name, so DisplayName / the filter match on the name.
+//
+// It is also the only check on the assumption the enumeration rests on: that a
+// Pro v2 patch policy id addresses the same policy on the ProClassic by-id path.
+// `include_resource = true` hydrates each result through the classic read using
+// the v2 id, so a mismatch skips hydration (a tflog warning, not an error) and
+// leaves every attribute below null — which is why the assertions cover
+// target_version and not only the name the enumeration already carried.
 func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -414,6 +421,7 @@ func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							{Path: tfjsonpath.New("target_version"), KnownValue: knownvalue.StringExact(accTitleVersion)},
 						},
 					),
 				},
