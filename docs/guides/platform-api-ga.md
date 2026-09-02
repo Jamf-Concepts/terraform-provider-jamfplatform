@@ -12,13 +12,13 @@ date will be announced separately.
 > **This guide is provisional and may change without notice.** The Platform API is still moving
 > ahead of GA, and a late change to it changes this page: the constructs listed as removed, the
 > attribute and scope behaviour, and the version numbers quoted throughout are all subject to
-> revision. Re-read it against the release you are actually upgrading to rather than working from
-> a copy taken earlier.
+> revision. Re-read it against the release you are actually upgrading to, not against a copy
+> taken earlier.
 
 **Action is needed in every configuration built against the public beta.** Nothing carries over
-untouched: the gateway host, the credentials and the scope attribute all change, and several
-constructs have been removed. Upgrade promptly once GA is announced, as the beta gateway is
-retired at that point and all provider versions prior to `v0.29.0-rc.4` are bound to it.
+untouched. The gateway host, the credentials and the scope attribute all change, and several
+constructs have been removed. Upgrade promptly once GA is announced: the beta gateway is retired
+at that point, and every provider version before `v0.29.0-rc.4` is bound to it.
 
 Each section below states the action required, or says explicitly that none is.
 
@@ -31,16 +31,16 @@ environment scope, proxy support and a range of resource behaviour. Continued fe
 ## Installing this pre-release
 
 Terraform does not select a pre-release version automatically. With no `version` constraint, or
-with a range such as `~> 0.29`, Terraform resolves to the latest stable release, currently
-`v0.28.1`; `terraform init -upgrade` will not move a configuration onto a release candidate
-either. The version must be named exactly:
+with a range such as `~> 0.29`, it resolves to the latest stable release, currently `v0.28.1`.
+`terraform init -upgrade` will not move a configuration onto a release candidate either. Name the
+version exactly:
 
 ```hcl
 terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.5"
+      version = "0.29.0-rc.6"
     }
   }
 }
@@ -48,22 +48,22 @@ terraform {
 
 Run `terraform init -upgrade` after editing the constraint.
 
-A stable `v0.29.0` will follow shortly after GA, but not simultaneously with it. Until it is
-released, an explicit pre-release constraint is required: `v0.28.1` remains the latest stable
-release and is bound to the beta gateway, so an unconstrained configuration, or one constrained to
-a range, resolves to a version that cannot reach the API. Relax the constraint to `~> 0.29`, or
-remove it, once the stable release is available.
+A stable `v0.29.0` will follow shortly after GA, but not simultaneously with it. Until then an
+explicit pre-release constraint is required. `v0.28.1` remains the latest stable release and is
+bound to the beta gateway, so an unconstrained configuration, or one constrained to a range,
+resolves to a version that cannot reach the API. Relax the constraint to `~> 0.29`, or remove it,
+once the stable release is available.
 
-This release can be adopted before GA, with no credential work to do so: an existing public-beta
-API integration authenticates against the GA host, and beta credentials remain valid until GA.
-Make the `base_url` change and the state removals described under [Action needed](#action-needed),
-and only the credential replacement is left outstanding at GA, with the remaining changes already
-validated against your own configuration.
+Adopt this release before GA and there is no credential work to do so: an existing public-beta API
+integration authenticates against the GA host, and beta credentials remain valid until GA. Make the
+`base_url` change and the state removals described under [Action needed](#action-needed). Only the
+credential replacement is then left outstanding at GA, with everything else already validated
+against your own configuration.
 
 ## Action needed
 
-In summary, per workspace. The first group applies whenever this release is adopted, including
-during the public beta; the second only at GA.
+Per workspace. The first group applies whenever this release is adopted, including during the
+public beta. The second applies only at GA.
 
 **On upgrading to this release:**
 
@@ -92,15 +92,15 @@ is required to adopt the release before GA.
 
 ## Removed constructs
 
-Several endpoints were unpublished at GA. The provider cannot call an endpoint that is no longer
-available, so the constructs built on those endpoints have been removed.
+Several endpoints were unpublished at GA. The provider cannot call an endpoint that is gone, so the
+constructs built on them have been removed.
 
 ### Managed resources (state edit required)
 
 | Removed resource | Reason | Replacement |
 |---|---|---|
-| `jamfplatform_pro_api_client` | `/v1/api-integrations` unpublished — security hardening | Jamf Account, Platform API integrations UI |
-| `jamfplatform_pro_api_role` | `/v1/api-roles` unpublished — security hardening | Jamf Account, Platform API integrations UI |
+| `jamfplatform_pro_api_client` | `/v1/api-integrations` unpublished, for security hardening | Jamf Account, Platform API integrations UI |
+| `jamfplatform_pro_api_role` | `/v1/api-roles` unpublished, for security hardening | Jamf Account, Platform API integrations UI |
 | `jamfplatform_pro_app_installer` | App Installer endpoints unpublished | None in this provider |
 | `jamfplatform_pro_app_installer_settings` | App Installer endpoints unpublished | None in this provider |
 
@@ -111,9 +111,9 @@ did not itself hold.
 **Action needed: remove the state entries.** All four shipped in `v0.28.1`, so existing state
 files contain them. Terraform requires a schema
 for every resource type present in state before it can complete `plan`, `apply` or `destroy`. Once
-the type is no longer implemented by the provider, every operation in that workspace fails,
-including operations unrelated to these resources. Deleting the `resource` block is not sufficient,
-because the state entry remains. The resulting error is:
+the provider no longer implements the type, every operation in that workspace fails, including
+operations unrelated to these resources. Deleting the `resource` block is not enough: the state
+entry remains. The error looks like this:
 
 ```
 Error: no schema available for jamfplatform_pro_api_client.example while reading state;
@@ -121,8 +121,8 @@ this is a bug in Terraform and should be reported
 ```
 
 Despite the wording, this is not a Terraform defect. Remove the state entries with
-[`terraform state rm`](https://developer.hashicorp.com/terraform/cli/commands/state/rm), which is
-a state-only operation requiring no schema and therefore works both before and after the upgrade:
+[`terraform state rm`](https://developer.hashicorp.com/terraform/cli/commands/state/rm). It is a
+state-only operation, needs no schema, and works both before and after the upgrade:
 
 ```sh
 # identify the affected addresses
@@ -136,8 +136,8 @@ terraform state rm 'jamfplatform_pro_api_client.example'
 ```
 
 A single address removes every instance of that resource, including instances created by `count`
-or `for_each`. A local backend writes a `terraform.tfstate.<timestamp>.backup` file before making
-the change; take an equivalent backup manually when using a remote backend.
+or `for_each`. A local backend writes a `terraform.tfstate.<timestamp>.backup` file first. On a
+remote backend, take an equivalent backup yourself.
 
 `terraform state rm` only ends Terraform's management of the object. The API client, role, App
 Installer deployment or settings object itself remains in place in Jamf Pro.
@@ -162,9 +162,10 @@ list. The privileges themselves are retained in a new form, described under
 
 ### Actions (configuration edit only)
 
-**Action needed: delete the blocks.** `POST /v2/mdm/commands` was unpublished, and it was the
-only means of queuing an MDM command through the Platform API. Actions hold no state, so removing
-the `action` block and any `lifecycle { action_trigger }` referring to it is sufficient.
+**Action needed: delete the blocks, and any trigger referring to them.** `POST /v2/mdm/commands`
+was unpublished, and it was the only means of queuing an MDM command through the Platform API.
+Actions hold no state, so removing the `action` block and any `lifecycle { action_trigger }`
+naming it is the whole of it.
 
 Removed: `jamfplatform_pro_device_lock`, `jamfplatform_pro_enable_lost_mode`,
 `jamfplatform_pro_disable_lost_mode`, `jamfplatform_pro_play_lost_mode_sound`,
@@ -175,8 +176,8 @@ Removed: `jamfplatform_pro_device_lock`, `jamfplatform_pro_enable_lost_mode`,
 `jamfplatform_pro_trigger_enhanced_log_collection`,
 `jamfplatform_pro_cancel_enhanced_log_collection`.
 
-Three MDM actions are unaffected and continue to function, as none of them used the unpublished
-endpoint: `jamfplatform_pro_send_blank_push`, `jamfplatform_pro_renew_mdm_profile` and
+Three MDM actions are unaffected, because none of them used the unpublished endpoint:
+`jamfplatform_pro_send_blank_push`, `jamfplatform_pro_renew_mdm_profile` and
 `jamfplatform_pro_flush_mdm_commands`.
 
 The underlying capability is retained. The Jamf Pro Classic API continues to serve these commands
@@ -199,40 +200,45 @@ Step-by-step instructions are published at GA:
 Refer to that page for how to register an integration and where to obtain its client ID and
 secret.
 
-**Permissions are organised by capability and action** rather than by product privilege list. The
-API names take the form `compliance-benchmarks:create` or `device-groups:read`, and Jamf Account's
+**Permissions are organised by capability and action**, not by product privilege list. The API
+names take the form `compliance-benchmarks:create` or `device-groups:read`, and Jamf Account's
 permission picker presents the same thing as a named permission with a checkbox per action.
 Resource, data source, list resource and action pages in this documentation carry a **Required Jamf
-permissions** table written the way the picker reads — the section, the permission name, the boxes
+permissions** table written the way the picker reads: the section, the permission name, the boxes
 to tick, and the API capability behind them. Use those tables to select permissions for the
-replacement integration, granting only what the constructs in use require.
+replacement integration, and grant only what the constructs in use require.
 
-Two consequences of the new model are worth knowing before granting anything. An action covers
-only itself, so an integration that reads a record before modifying it needs the read action as
-well as the update action. And the pre-GA computer and mobile privilege pairs have collapsed into
-single device-level permissions — `devices`, `device-groups`, `extension-attributes`,
-`configuration-profiles`, `enrollment-invitations`, `advanced-device-searches` and
-`prestage-enrollments` — so a computers-only integration is no longer expressible. Jamf's
+Grant with two consequences of the new model in mind. An action covers only itself, so an
+integration that reads a record before modifying it needs the read action as well as the update
+action. And the pre-GA computer and mobile privilege pairs have collapsed into single device-level
+permissions: `devices`, `device-groups`, `extension-attributes`, `configuration-profiles`,
+`enrollment-invitations`, `advanced-device-searches` and `prestage-enrollments`. A computers-only
+integration is no longer expressible. Jamf's
 **[Jamf Pro permissions map](https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map)**
 is the reference for the full mapping, including the reverse case: the old computer and mobile
 command privileges split into `device-actions` and `destructive-device-actions`, the latter
 covering erase, unmanage and remove MDM profile.
 
-**Three scope levels are available.** A *platform environment* is a group of tenants across
-product types, and is the scope to prefer for two concrete reasons: one environment-scoped
-integration covers the whole group, and it is the only scope on which the blueprint and
-compliance-benchmark permissions can be selected. A *tenant* scope targets a single Jamf Pro, Jamf
-School, Jamf Protect or Jamf Security Cloud tenant. Jamf describes it as the legacy method of
-targeting an integration without a platform environment, and it is one integration per tenant per
-product — a Jamf Pro tenant and a Jamf Protect tenant are two integrations to create and two
-credential pairs to rotate. Treat it as the exception, for a deliberately single-product
-integration, rather than the default. An *organization management* scope reaches organization-level
-resources — the `jamfplatform_account_*` family — and is the only scope that reaches them; it is
-configured by setting *neither* `environment_id` nor `tenant_id`, since the gateway resolves the
-organization from the access token. Every resource and data source reports the scope it needs when
-it is configured, so pointing an integration at a family it cannot reach is named at plan time
-rather than failing mid-apply. The scope selected determines the provider configuration described
-under [Scope](#scope).
+**Three scope levels are available.**
+
+A *platform environment* is a group of tenants across product types. Prefer it, for two concrete
+reasons: one environment-scoped integration covers the whole group, and it is the only scope on
+which the blueprint and compliance-benchmark permissions can be selected.
+
+A *tenant* scope targets a single Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud
+tenant. It is the legacy method of targeting an integration without a platform
+environment. It costs one integration per tenant per product: a Jamf Pro tenant and a Jamf Protect
+tenant are two integrations to create and two credential pairs to rotate. Treat it as the
+exception, for a deliberately single-product integration.
+
+An *organization management* scope reaches organization-level resources, the
+`jamfplatform_account_*` family, and is the only scope that reaches them. Configure it by setting
+*neither* `environment_id` nor `tenant_id`: the gateway resolves the organization from the access
+token.
+
+Every resource and data source reports the scope it needs when it is configured, so pointing an
+integration at a family it cannot reach is named at plan time, not mid-apply. The scope you select
+determines the provider configuration described under [Scope](#scope).
 
 ## Base URL
 
@@ -241,13 +247,13 @@ directions:
 
 | Provider version | `base_url` |
 |---|---|
-| `v0.29.0-rc.3` and earlier | `https://{region}.apigw.jamf.com` — the beta host. The GA host is not supported on these versions. |
-| `v0.29.0-rc.4` and later | `https://{region}.api.jamfcloud.com` — required. The beta host is retired at GA. |
+| `v0.29.0-rc.3` and earlier | `https://{region}.apigw.jamf.com`, the beta host. The GA host is not supported on these versions. |
+| `v0.29.0-rc.4` and later | `https://{region}.api.jamfcloud.com`, required. The beta host is retired at GA. |
 
 Change the host and upgrade the provider in a single change. Neither the GA host on an earlier
 version nor the beta host on `v0.29.0-rc.4` or later is a supported combination. The GA host is
-already live and accepts a public-beta API integration, so the change can be made and verified
-before GA, independently of the credential replacement.
+already live and accepts a public-beta API integration, so make and verify this change before GA,
+independently of the credential replacement.
 
 ```hcl
 provider "jamfplatform" {
@@ -258,21 +264,20 @@ provider "jamfplatform" {
 The value may also be supplied through `JAMFPLATFORM_BASE_URL`. The region remains mandatory.
 
 Supply the host only. The gateway serves the token endpoint and every API namespace at the root,
-and the `/api` path segment used during the beta has been dropped. A request carrying it receives
-the gateway's `404 page not found` response rather than a JSON error.
+and the `/api` path segment used during the beta is gone. A request carrying it gets the gateway's
+bare `404 page not found`, not a JSON error.
 
 ## Scope
 
 **Action needed at GA for most configurations: replace `tenant_id` with `environment_id`.** Not
-before then — an existing tenant-scoped beta integration keeps working, including against the GA
-gateway host, so this change belongs with the credential replacement rather than with the provider
-upgrade.
+before then. An existing tenant-scoped beta integration keeps working, including against the GA
+gateway host, so this change belongs with the credential replacement, not the provider upgrade.
 
-The scope an API integration targets now travels in a request header rather than a URL path, and
-the provider has gained an `environment_id` attribute alongside `tenant_id`. Public-beta
-integrations were tenant-scoped, so most configurations in use today set `tenant_id` or export
-`JAMFPLATFORM_TENANT_ID`. A GA replacement integration will in most cases be environment-scoped,
-so registering the replacement is accompanied by a provider configuration change:
+The scope an API integration targets now travels in a request header, not a URL path, and the
+provider has gained an `environment_id` attribute alongside `tenant_id`. Public-beta integrations
+were tenant-scoped, so most configurations in use today set `tenant_id` or export
+`JAMFPLATFORM_TENANT_ID`. A GA replacement integration will usually be environment-scoped, so
+registering it comes with a provider configuration change:
 
 ```hcl
 provider "jamfplatform" {
@@ -283,21 +288,28 @@ provider "jamfplatform" {
 ```
 
 Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
-`JAMFPLATFORM_TENANT_ID`. They are mutually exclusive and both optional: an integration targets
-one or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
+`JAMFPLATFORM_TENANT_ID`. They are mutually exclusive and both optional. An integration targets one
+or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
 integrations without a platform environment. A tenant-scoped GA integration remains valid for
 single-product access, and `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under
-either scope. Two sets of constructs are out of its reach, for two different reasons:
+either scope. Three sets of constructs are out of its reach, each for a different reason:
 
 - **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
   construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
 - **Blueprints and compliance benchmarks** are refused by Jamf. Their permissions cannot be
   selected when a tenant-scoped integration is created in Jamf Account at GA, so such an
   integration can never hold them and the calls fail with `403 BAD_PERMISSIONS`. The provider
-  cannot pre-empt this, as a permission absent from the integration is indistinguishable from any
-  other privilege gap — so choose environment scope if the configuration manages either.
+  cannot pre-empt this: a permission absent from the integration is indistinguishable from any
+  other privilege gap. Choose environment scope if the configuration manages either.
+- **Jamf Account** requires a third scope, *organization management*, which neither of these
+  attributes selects. `jamfplatform_account_*` is the only family that scope reaches, and it is the
+  only scope that reaches the family. The provider refuses each direction at configure time with a
+  diagnostic naming the construct. Configure it by setting **neither** `environment_id` nor
+  `tenant_id` and exporting neither variable: the gateway resolves the organization from the access
+  token, so no identifier is supplied. An organization-scoped integration therefore belongs in its
+  own provider block, aliased, or its own workspace.
 
-Three failure modes follow from the change, in decreasing order of how easily they are diagnosed:
+Three failure modes follow from the change, easiest to diagnose first:
 
 - Retaining `tenant_id` alongside `environment_id` is rejected at configure time with a
   `Conflicting API Integration Scope` error. The old attribute must be removed, not left in place.
@@ -308,10 +320,10 @@ Three failure modes follow from the change, in decreasing order of how easily th
 - Supplying the identifier that does not correspond to how the integration was created is refused
   with `403 OWNERSHIP_FORBIDDEN`, even where both identifiers belong to the same customer.
 
-Where a configuration must supply the Jamf Pro tenant identifier to another Jamf product — the
-case this was built for is `jamfplatform_security_cloud_uem_connect` — the
-`jamfplatform_pro_tenant_id` data source resolves it from the configured scope, removing the need
-to transfer the identifier between consoles manually.
+Where a configuration must supply the Jamf Pro tenant identifier to another Jamf product, the
+`jamfplatform_pro_tenant_id` data source resolves it from the configured scope, so the identifier
+never has to be carried between consoles by hand. `jamfplatform_security_cloud_uem_connect` is the
+case it was built for.
 
 ## Attribute removals and deprecations
 
@@ -328,17 +340,16 @@ resource "jamfplatform_cbengine_benchmark" "example" {
 ```
 
 State migrates automatically. The provider folds a singular value into the set during the state
-upgrade, so the benchmark continues to target the same device group; the removal requires a
-configuration edit only, never a re-scope. The attribute has also been removed from the
-corresponding data source.
+upgrade, so the benchmark keeps targeting the same device group. The removal takes a configuration
+edit only, never a re-scope. The attribute is gone from the corresponding data source too.
 
 ### Removed: `category_name` and `site_name` on `jamfplatform_pro_patch_software_title`
 
 **Action needed if either attribute is referenced: read the name from the object that owns it.**
 Both were read-only display names, and the Jamf Pro endpoints this resource now uses report
 category and site by ID alone. Where the category is managed by Terraform, read the name from that
-resource. Where it is not — the usual case, since these attributes were read-only and the
-assignment is commonly made in the Jamf Pro UI — look it up by the ID the title reports:
+resource. Where it is not, which is the usual case since the assignment is commonly made in the
+Jamf Pro UI, look it up by the ID the title reports:
 
 ```hcl
 # the category is managed by Terraform
@@ -359,34 +370,32 @@ output "category_name" {
 
 `jamfplatform_pro_site` covers `site_name` the same way, selected by either `id` or `name`.
 
-State migrates automatically — the provider strips both attributes during the state upgrade, so
-no `terraform state` surgery is needed. They have also been removed from the corresponding data
-source.
+State migrates automatically. The provider strips both attributes during the state upgrade, so no
+`terraform state` surgery is needed. They are gone from the corresponding data source too.
 
 **Grant two further permissions.** The data source, the list resource and `terraform import`
 resolve a title's `source_id` from the tenant's patch source catalogues, because the endpoints
 this resource now uses name its patch source without numbering it. An integration reaching this
-resource through any of those three paths therefore needs **App lifecycle management → External
-patch sources → Read** and **App lifecycle management → Internal patch sources → Read** alongside
+resource through any of those three paths needs **App lifecycle management → External patch
+sources → Read** and **App lifecycle management → Internal patch sources → Read** alongside
 **Patch titles**. Without them the read fails with `403 BAD_PERMISSIONS`, reported as `Unable to
-determine the patch software title's source_id`. Planning and applying a title already in state
-is unaffected, as `source_id` is carried forward rather than resolved again. The **Required Jamf
+determine the patch software title's source_id`. Planning and applying a title already in state is
+unaffected: `source_id` is carried forward, never resolved again. The **Required Jamf
 permissions** table on each of the three documentation pages lists the full set.
 
 **`category_id` and `site_id` no longer accept `"0"`.** Use `-1`, the default, for "No category
-assigned" and "NONE"; a configuration setting either attribute to `"0"` is now rejected at plan
-time. This is the reverse of the retired endpoint's convention, under which `0` cleared the
-assignment and `-1` was a silent no-op. A title whose state still holds `"0"` needs no state edit,
-as the next refresh reads it back as `-1`; only a configuration setting the value explicitly has to
-change.
+assigned" and "NONE". A configuration setting either attribute to `"0"` is now rejected at plan
+time. That is the reverse of the retired endpoint's convention, where `0` cleared the assignment
+and `-1` was a silent no-op. A title whose state still holds `"0"` needs no state edit; the next
+refresh reads it back as `-1`. Only a configuration setting the value explicitly has to change.
 
-Otherwise the resource behaves as before: patch software titles are now read, updated and deleted
-through Jamf Pro's `/patch-software-title-configurations` endpoints rather than the deprecated
+Otherwise the resource behaves as before. Patch software titles are now read, updated and deleted
+through Jamf Pro's `/patch-software-title-configurations` endpoints, in place of the deprecated
 ProClassic `/patchsoftwaretitles` ones, and every attribute that remains keeps its meaning.
 `version_packages` still manages only the versions it names, but it now delivers that by reading
-the title's current assignments and rewriting the whole set rather than by the endpoint merging
-each version in turn. An assignment created in the Jamf Pro UI between that read and the write can
-therefore be lost, so avoid editing a title's **Definition** tab while an apply is in flight.
+the title's current assignments and rewriting the whole set, instead of leaving the endpoint to
+merge each version in turn. An assignment created in the Jamf Pro UI between that read and the
+write can therefore be lost. Do not edit a title's **Definition** tab while an apply is in flight.
 
 ### Deprecated, not yet removed: the flat blueprint component attributes
 
@@ -394,21 +403,19 @@ therefore be lost, so avoid editing a title's **Definition** tab while an apply 
 `jamfplatform_blueprints_blueprint`, together with the
 top-level `activation_conditions` and `legacy_payloads`, are superseded by named, ordered
 `component_blocks`. They remain present and functional, and may be removed on or after **22
-October 2026**. Migrating ahead of that date is recommended; `terraform plan` reports every
-attribute requiring migration.
+October 2026**. Migrate ahead of that date. `terraform plan` reports every attribute that needs it.
 
 ### Now read-only: `unmanaged_sync_threshold` on `jamfplatform_security_cloud_uem_connect`
 
 **Action needed if the attribute is set: remove it from your configuration.** Like
-`personal_device_enrollment_type` below, this is a Jamf-side behaviour change rather than a
-provider decision — but unlike that one it could not simply be retained, because it was breaking
-every apply.
+`personal_device_enrollment_type` below, this is a service behaviour change, not a provider
+decision. Unlike that one it could not be retained, because it was breaking every apply.
 
-Jamf Security Cloud does not apply an unmanaged threshold to a Jamf Pro connection; it takes
-device status from Jamf Pro directly. Wire-probed 2026-09-01: every value sent for a `JAMF_PRO`
-connector is accepted and then discarded, and the connector always reports `0`. Because the
-provider defaulted the attribute to `3` and sent it on every write, Terraform saw a value it had
-planned come back different and failed the apply:
+Jamf Security Cloud does not apply an unmanaged threshold to a Jamf Pro connection. It takes device
+status from Jamf Pro directly. Wire-probed 2026-09-01: every value sent for a `JAMF_PRO` connector
+is accepted and then discarded, and the connector always reports `0`. The provider defaulted the
+attribute to `3` and sent it on every write, so Terraform saw a value it had planned come back
+different and failed the apply:
 
 ```
 Error: Provider produced inconsistent result after apply
@@ -416,14 +423,14 @@ Error: Provider produced inconsistent result after apply
 ```
 
 The attribute is now `Computed` and always reads `0`. Leaving it in a configuration is an error
-(`Invalid Configuration for Read-Only Attribute`), so delete the line; no state edit is needed.
-Nothing about how your devices are treated changes — the setting never took effect.
+(`Invalid Configuration for Read-Only Attribute`), so delete the line. No state edit is needed.
+Nothing about how your devices are treated changes: the setting never took effect.
 
 ### Retained: `personal_device_enrollment_type`
 
-**No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. This is a Jamf
-Pro deprecation rather than a provider one: Jamf Pro has ignored the value since 11.25 and always
-reports `USERENROLLMENT`. The attribute is read-only and is retained.
+**No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. The deprecation
+is Jamf Pro's, not the provider's: Jamf Pro has ignored the value since 11.25 and always reports
+`USERENROLLMENT`. The attribute is read-only and is retained.
 
 ## Additions since v0.28.1
 
@@ -434,37 +441,61 @@ candidates. All of it is additive relative to `v0.28.1`.
 
 A new construct family, `jamfplatform_security_cloud_*`, reached through the same gateway and the
 same credentials as the rest of the provider. A Security Cloud integration may be refused with
-`403 NOT_ENTITLED` despite authenticating correctly; this indicates an entitlement gap rather than
-a credential problem, and the provider reports it as such.
+`403 NOT_ENTITLED` despite authenticating correctly. That is an entitlement gap, not a credential
+problem, and the provider reports it as such.
 
 | Area | Constructs |
 |---|---|
 | Custom DNS | `dns_zone` (with data sources and list resource), `dns_search_domain` and `dns_hostname_mappings` (each with a data source) |
 | ZTNA gateways | `ztna_gateway` and `ztna_grouped_gateway` (both with data sources and list resources), `ztna_shared_gateways` data source |
 | ZTNA access policy | `ztna_app` (with data sources and list resource), `ztna_predefined_apps` data source |
-| Device groups | `security_cloud_device_group` (with data sources and list resource) — distinct from the Platform Services `jamfplatform_device_group` |
+| Device groups | `security_cloud_device_group` (with data sources and list resource), distinct from the Platform Services `jamfplatform_device_group` |
 | UEM Connect | `uem_connect` (with data source and list resource), plus the `uem_connect_synchronize` and `activation_profile_deploy` actions |
-| Activation profiles | `activation_profile` — a deliberately small part of a profile, with no import support and no drift detection; changing any setting replaces the profile and mints a new activation code |
+| Activation profiles | `activation_profile`, a deliberately small part of a profile, with no import support and no drift detection. Changing any setting replaces the profile and mints a new activation code |
 | Catalogues | `content_categories` data source |
 
 Two delete behaviours affect destroy ordering. A ZTNA gateway that is still referenced cannot be
-deleted, and the provider names the referrer in the diagnostic rather than surfacing an
-unqualified `409`. A Security Cloud device group referenced by a ZTNA app deletes successfully and
-empties the app's assignment. The behaviour differs per construct.
+deleted, and the provider names the referrer in the diagnostic instead of surfacing a bare `409`. A
+Security Cloud device group referenced by a ZTNA app deletes successfully and empties the app's
+assignment. The behaviour differs per construct.
 
-New in this pre-release, and the one change here anyone already on `v0.29.0-rc.4` will notice: a
-ZTNA gateway apply now waits for the gateway to report a settled status instead of returning as
-soon as Jamf accepts the write. Creating or re-provisioning a dedicated internet gateway therefore
-takes about five minutes rather than seconds, which is what makes its
-`dedicated_egress_ip_addresses` usable from the same apply — previously the first apply recorded an
-empty list, and a region change recorded the *previous* region's addresses. Raise `create` or
-`update` in the resource's `timeouts` block if a region provisions more slowly than the default ten
-minutes allows. Further detail: [Jamf Security Cloud](security-cloud).
+Expect two further things on a first apply. A ZTNA gateway apply waits for the gateway to report
+a settled status instead of returning the moment the write is accepted, so creating or
+re-provisioning a dedicated internet gateway takes about five minutes. That wait is what makes its
+`dedicated_egress_ip_addresses` usable from the same apply. Raise `create` or `update` in the
+resource's `timeouts` block if a region provisions more slowly than the default ten minutes allows.
+
+And **destroying a `uem_connect` connector in `platform_tenant` form leaves a live Jamf Pro API
+integration behind.** Jamf Security Cloud creates one named `JSC Connector` to authenticate with,
+nothing removes it, and the provider holds no Jamf Pro credentials for that tenant to remove it
+with. The role carries 31 privileges, including fleet-wide profile and group writes. Audit
+**Settings > API roles and clients** on the Jamf Pro instance after any destroy and delete the
+orphans. Further detail: [Jamf Security Cloud](security-cloud).
+
+### Jamf Account
+
+New in this pre-release. `jamfplatform_account_sso_domain` claims a DNS domain for your Jamf
+Account organization's single sign-on, with singular and plural data sources, a list resource, and
+the `jamfplatform_account_sso_domain_verify` action that re-checks the domain's DNS ownership
+record. This is the provider's first *organization-scoped* family and the only one that scope
+reaches: configure it by setting neither `environment_id` nor `tenant_id`, as described under
+[Scope](#scope). It is served only from the US gateway.
+
+Two behaviours here come from the API, not from any design choice, and both will surprise you.
+Jamf Account exposes no read, update or patch for a single domain, so every attribute is
+`RequiresReplace` and `terraform import` takes the domain **name** in place of an ID. The ID would
+not serve anyway: reclaiming a domain mints a new one.
+
+Verification is an action, not resource state, and it never polls. A failed check returns `200`
+with the status unchanged, so the status code tells you nothing. It still pushes the fourteen-day
+deadline out. And the five-minute rate limit runs from the moment the domain was claimed, so the
+first check straight after a create is always refused. Publish the `verification_txt_record` value
+(exported whole, prefix included, as the console shows it), wait five minutes, then run the action.
 
 ### Jamf AI Governance
 
-`jamfplatform_ai_governance_policy` manages the settings delivered to an AI tool — Claude Code,
-Claude Desktop and OpenAI Codex at present — and a blueprint delivers a pinned policy version to
+`jamfplatform_ai_governance_policy` manages the settings delivered to an AI tool: Claude Code,
+Claude Desktop and OpenAI Codex at present. A blueprint then delivers a pinned policy version to
 Macs. It ships with singular and plural data sources and a list resource.
 `jamfplatform_ai_governance_tool` and `jamfplatform_ai_governance_tools` read the product
 catalogue. The settings body is the tool vendor's own JSON, validated at plan time against the
@@ -477,8 +508,17 @@ environment scope, described under [Scope](#scope). Further detail:
 - `environment_id` and the `jamfplatform_pro_tenant_id` data source, both described under
   [Scope](#scope).
 - `custom_headers` and `authorization_header_name`, for networks in which Terraform reaches Jamf
-  through a proxy that authenticates callers itself. See
+  through a proxy that authenticates callers itself. `Cookie`, `Content-Type` and `Accept` are
+  refused in both, because a supplied header replaces instead of adding and would displace a value
+  the provider chose per request. See
   [Reverse proxies and custom headers](reverse-proxy).
+- The `jamfplatform_pro_patch_policy` list resource now names any patch policy it could not
+  enumerate, in a warning on the list result, instead of dropping it silently. A
+  `plan -generate-config-out` run that came back one resource short of the tenant said nothing
+  about it before.
+- `jamfplatform_security_cloud_uem_connect` validates `sync_refresh_interval_minutes` at plan time
+  against the intervals the service actually accepts (`60`, `120`, `240`, `480`, `720` and
+  `1440`), instead of letting any other value fail the apply with an unattributed `422`.
 - An incorrect `base_url` is now reported as such, rather than presenting as a network failure.
 - Built against Jamf Pro 11.31.0 and Classic API 11.28.0.
 - The required-permission tables throughout this documentation are regenerated against the GA

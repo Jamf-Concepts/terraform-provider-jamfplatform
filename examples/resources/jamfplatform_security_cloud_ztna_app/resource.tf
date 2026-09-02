@@ -93,7 +93,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   }
 }
 
-# A predefined application: Jamf owns the name and contributes its own host names,
+# A predefined application: the definition owns the name and contributes its own host names,
 # which do not appear in hostnames. Anything listed here is an addition to them, and
 # an empty hostnames is normal — the definition's own names still match.
 # Only one application per predefined definition is allowed on a tenant.

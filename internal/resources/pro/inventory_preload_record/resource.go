@@ -155,9 +155,9 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 			"purchase_price":     fullReplaceStringAttribute("Purchase price of the device."),
 			"purchasing_contact": fullReplaceStringAttribute("Purchasing contact for the device."),
 			"purchasing_account": fullReplaceStringAttribute("Purchasing account for the device."),
-			"bar_code_1": fullReplaceStringAttribute("Bar code 1 for the device. Per Jamf documentation bar codes apply to computers only; " +
+			"bar_code_1": fullReplaceStringAttribute("Bar code 1 for the device. Documented as applying to computers only; " +
 				"the API does not enforce this."),
-			"bar_code_2": fullReplaceStringAttribute("Bar code 2 for the device. Per Jamf documentation bar codes apply to computers only; " +
+			"bar_code_2": fullReplaceStringAttribute("Bar code 2 for the device. Documented as applying to computers only; " +
 				"the API does not enforce this."),
 			"asset_tag": fullReplaceStringAttribute("Asset tag for the device."),
 			"vendor":    fullReplaceStringAttribute("Vendor the device was purchased from."),

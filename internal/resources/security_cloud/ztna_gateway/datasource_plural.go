@@ -49,7 +49,7 @@ func (d *GatewaysDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security " +
 			"Cloud exposes no query parameters for gateways, so this data source takes no search arguments — " +
-			"filter the result in Terraform. Jamf's own shared gateways are a separate catalogue, read with " +
+			"filter the result in Terraform. Shared gateways are a separate catalogue, read with " +
 			"`jamfplatform_security_cloud_ztna_shared_gateways`." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

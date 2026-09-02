@@ -107,7 +107,7 @@ func (r *DNSZoneResource) IdentitySchema(_ context.Context, _ resource.IdentityS
 func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains " +
-			"are resolved through authoritative name servers of your choice instead of public DNS — Jamf calls this " +
+			"are resolved through authoritative name servers of your choice instead of public DNS — this arrangement is " +
 			"\"split-brain DNS\", and a custom DNS zone is required before enterprise apps on internal private networks " +
 			"become reachable over ZTNA.\n\n" +
 			"Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.\n\n" +
