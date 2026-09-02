@@ -34,6 +34,7 @@ func TestEnumLiteralsComeFromTheSDK(t *testing.T) {
 			blueprints.RecommendedCadenceValueValues(),
 			blueprints.BookmarkItemTypeValues(),
 			blueprints.SwUpdateAutomaticConfigurationStrategyValues(),
+			blueprints.SwUpdateConfigurationEnforcementTypeValues(),
 		),
 	})
 	if err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	ssodomainactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/account/sso_domain"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
 	jamfprotectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/jamf_protect"
 	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
@@ -32,6 +33,7 @@ import (
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	ssodomain "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/account/sso_domain"
 	aigovernancepolicy "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/tool"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
@@ -236,7 +238,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Can also be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. " +
 					"This is the scope Jamf intends new integrations to be created with, and Blueprints and Compliance Benchmarks are moving to it exclusively. " +
 					"Mutually exclusive with the legacy `tenant_id`: an API integration targets one or the other, so setting both is an error, and supplying the ID that does not match the integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer — pick the one your integration was created for rather than treating them as two spellings of the same thing. " +
-					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration (single sign-on, AI Governance, and similar organization-level resources); no resource or data source in this provider uses that scope yet, and each one reports the scope it needs when it is configured.",
+					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration — the scope the `jamfplatform_account_*` resources require, and the only one that reaches them. Each resource and data source reports the scope it needs when it is configured, so a mismatch is named at plan time rather than failing mid-apply.",
 			},
 			"tenant_id": schema.StringAttribute{
 				Optional: true,
@@ -517,6 +519,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_assignment.NewVPPAssignmentResource,
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
+		ssodomain.NewDomainResource,
 		aigovernancepolicy.NewPolicyResource,
 		activation_profile.NewActivationProfileResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
@@ -550,6 +553,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		ssodomain.NewDomainDataSource,
+		ssodomain.NewDomainsDataSource,
 		aigovernancepolicy.NewPolicyDataSource,
 		aigovernancepolicy.NewPoliciesDataSource,
 		tool.NewToolDataSource,
@@ -681,6 +686,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		securityclouddevicegroup.NewDeviceGroupListResource,
+		ssodomain.NewDomainListResource,
 		aigovernancepolicy.NewPolicyListResource,
 		dns_zone.NewDNSZoneListResource,
 		uem_connect.NewUEMConnectListResource,
@@ -760,6 +766,7 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		patchactions.NewRetryPatchPolicyLogsAction,
 		jamfprotectactions.NewSyncPlansAction,
 		jamfprotectactions.NewRetryDeploymentAction,
+		ssodomainactions.NewVerifySSODomainAction,
 	}
 }
 

@@ -24,6 +24,9 @@ internal/
 ├── provider/          # Provider config, registration, logging
 ├── providerdata/      # Shared Data{} carrying SDK client + cached Pro version
 ├── resources/
+│   ├── account/       # Jamf Account — organization-level, flat single tier   (Jamf Account)
+│   │                  #   sso_domain/
+│   │                  #   (folder name = Terraform slug minus `jamfplatform_account_`)
 │   ├── ai_governance/ # policy/, tool/                                      (Jamf AI Governance)
 │   │                  #   (folder name = Terraform slug minus `jamfplatform_ai_governance_`)
 │   ├── blueprints/    # blueprint/, blueprints/, component/, components/    (Platform Services)
@@ -40,6 +43,7 @@ internal/
 │                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
 │                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
 ├── actions/
+│   ├── account/       # sso_domain/ (verify)                                 (Jamf Account)
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
 │   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (send_blank_push, renew_mdm_profile, flush_mdm_commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── functions/         # Provider-defined functions (offline; no SDK client, no provider config)
@@ -164,6 +168,44 @@ matching the scope in use) and skips otherwise — a Pro-only acceptance tenant 
 legitimate environment, not a failure. Full rules:
 [STYLE_GUIDE.md §Jamf Security Cloud Resource Naming](STYLE_GUIDE.md#jamf-security-cloud-resource-naming).
 
+## Jamf Account — one-paragraph orientation
+
+Terraform construct name format: `jamfplatform_account_<x>`; Go package
+`internal/resources/account/<x>/`, flat single tier like `security_cloud/`. This is the provider's
+**organization-level** family — what a practitioner manages at *account.jamf.com → Organization*,
+above and across individual tenants. Today that means **SSO**: a `sso_domain` is a DNS domain the
+organization has claimed and proved ownership of, and a `sso_connection` — surveyed but **not yet
+shipped**, see Fourth below — is an OIDC identity-provider connection that signs users in for one or
+more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud tenants. Family
+facts and the naming rationale are in
+[STYLE_GUIDE.md §Jamf Account Resource Naming](STYLE_GUIDE.md#jamf-account-resource-naming); five
+things drive the design and are easy to get wrong. First, **this is the only family reachable under
+organization scope, and the only scope that reaches it** — wire-probed 2026-09-02 on two
+organization-scoped integrations, while a tenant-scoped one is refused `403 BAD_PERMISSIONS` on the
+same URL in the same region (provably an authorization refusal rather than an unrouted path, because
+another credential answers 200 there). Environment scope is *untested*, not ruled out: the namespace
+exists only on the **US gateway**, so no US environment-scoped integration was available, and
+widening `ConfigureAccount`'s gate is a fresh probe rather than a one-token edit. No organization ID
+travels anywhere — the gateway resolves it from the access token, so there is no `organization_id`
+attribute and no SDK `WithOrganizationID`. Second, **a domain is create/verify/delete only**: `GET`,
+`PUT` and `PATCH` on `/sso/v1/domains/{id}` all answer `403 BAD_PERMISSIONS`, which by this repo's
+law means unrouted — so every attribute is `RequiresReplace`, Read scans the list endpoint, and
+import is by domain **name**. Third, **verification is an action, not resource state, and it is not
+idempotent**: a *failed* verify returns `200` with `domainStatus` unchanged (so the status code says
+nothing), yet still bumps `lastModifiedDate` and pushes `verificationExpirationDate` out 14 days —
+and because the five-minute rate limit is measured from `lastModifiedDate`, which the claim itself
+sets, the first verify after creating a domain is always refused. Fourth, a survey note rather than
+shipped behaviour: **a connection's tenant allow-list is write-only**. Neither read shape echoes
+`enabledProducts` or `enabledEnvironments`, and no endpoint anywhere lists an organization's tenants,
+so the ids can be neither discovered nor drift-checked — which will be documented rather than solved
+when the construct lands. It is not in the provider today: creating a connection is refused
+`500 UPSTREAM_ERROR` server-side, so `sso_domain` and its verify action are all that ship. Fifth,
+**the server attributes almost nothing**: `errors[].field` is populated only for top-level required
+fields, an invalid enum returns `MALFORMED_REQUEST_BODY` with `field: null` and never names the
+value, and a `connectionType`-versus-payload mismatch is an unattributed `500` — so every enum is
+taken from the SDK's own `*Values()` helper rather than a restated list, and the connection's
+discriminator/payload pairing will be validated at plan time the same way once it ships.
+
 ## Jamf AI Governance — one-paragraph orientation
 
 Terraform construct name format: `jamfplatform_ai_governance_<x>`; Go package
@@ -207,7 +249,7 @@ Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whe
 
 ## API integration scope — one-paragraph orientation
 
-Jamf offers three scopes when an API integration is created, and the provider mirrors all three: **Platform environment** (a group of tenants across product types — the *preferred* scope, `environment_id` → `X-Environment-Id`), **Tenant** (a single Jamf Pro / School / Protect / Security Cloud tenant — Jamf's own words are "legacy method for targeting integrations without a platform environment", `tenant_id` → `X-Tenant-Id`), and **Organization management** (SSO, AI Governance and similar organization-level resources — no scope header at all; the gateway resolves the context from the access token). Since SDK v0.17.0 the scope travels in a header rather than the URL path, set by `WithEnvironmentID` / `WithTenantID`. So `environment_id` and `tenant_id` are **mutually exclusive and both optional** — an integration targets one, and supplying the other is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer. `internal/provider/scope.go` resolves which is in play (config beats environment; both-at-once is an error either way; a shadowed env var warns) and selects the SDK option accordingly; `providerdata.New` then reads the scope back off the built client via `Client.Scope()` (SDK v0.18.0), so the gate can never disagree with the header the client actually sends. Whether a given construct can be reached under that scope is then enforced **per construct**, not once in provider Configure, via `providerdata.RequireScope` in `internal/providerdata/scope.go` — because the answer differs per API family and is about to differ more: Jamf Pro works under either scope (gated once inside `configureSub`, covering every `pro/` package and Pro action), Security Cloud likewise works under either and is gated once inside `ConfigureSecurityCloud`, while Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point their call sites drop `ScopeTenant`. Pass the allowed kinds in preference order, environment first — it is the order the diagnostic lists them in. Organization scope is currently rejected everywhere, deliberately: it turns an opaque gateway failure mid-apply into a named diagnostic at Configure, and the organization-level constructs that would accept it are not built yet.
+Jamf offers three scopes when an API integration is created, and the provider mirrors all three: **Platform environment** (a group of tenants across product types — the *preferred* scope, `environment_id` → `X-Environment-Id`), **Tenant** (a single Jamf Pro / School / Protect / Security Cloud tenant — Jamf's own words are "legacy method for targeting integrations without a platform environment", `tenant_id` → `X-Tenant-Id`), and **Organization management** (SSO, AI Governance and similar organization-level resources — no scope header at all; the gateway resolves the context from the access token). Since SDK v0.17.0 the scope travels in a header rather than the URL path, set by `WithEnvironmentID` / `WithTenantID`. So `environment_id` and `tenant_id` are **mutually exclusive and both optional** — an integration targets one, and supplying the other is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer. `internal/provider/scope.go` resolves which is in play (config beats environment; both-at-once is an error either way; a shadowed env var warns) and selects the SDK option accordingly; `providerdata.New` then reads the scope back off the built client via `Client.Scope()` (SDK v0.18.0), so the gate can never disagree with the header the client actually sends. Whether a given construct can be reached under that scope is then enforced **per construct**, not once in provider Configure, via `providerdata.RequireScope` in `internal/providerdata/scope.go` — because the answer differs per API family and is about to differ more: Jamf Pro works under either scope (gated once inside `configureSub`, covering every `pro/` package and Pro action), Security Cloud likewise works under either and is gated once inside `ConfigureSecurityCloud`, while Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point their call sites drop `ScopeTenant`. Pass the allowed kinds in preference order, environment first — it is the order the diagnostic lists them in. Organization scope is **not** a rejected special case: it is the only scope that reaches the `jamfplatform_account_*` family (Jamf Account SSO), gated once inside `ConfigureAccount`, and it is rejected everywhere else. Enforcement runs both ways for the same reason — an organization-scoped integration aimed at a Pro resource, or an environment-scoped one aimed at a Jamf Account resource, each turn an opaque gateway failure mid-apply into a named diagnostic at Configure.
 
 ## Tooling
 
@@ -238,6 +280,8 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
+- `JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID` — **acceptance tests only**. Declares that the configured credentials are an organization-scoped integration, which is what the `jamfplatform_account_*` family requires. There is nothing to compare it against — an organization-scoped request carries no scope header, so no `JAMFPLATFORM_*` variable holds the organization — and that is exactly why the declaration is needed: without it a Pro-only credential set with both scope variables unset looks identical to a real organization integration. `testhelpers.AccPreCheckAccount` additionally requires **both** `JAMFPLATFORM_ENVIRONMENT_ID` and `JAMFPLATFORM_TENANT_ID` to be *unset*, and skips on a non-US base URL, since `/sso/v1` is served only from the US gateway.
+- `JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN` / `JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN` — **acceptance tests only**, both optional, both naming a *claimed* Jamf Account SSO domain. The first must be a **real, already-verified** domain the operator owns; the second a throwaway `.example` one, which can never verify. They cover the two verification outcomes the suite cannot manufacture: re-checking a verified domain is refused `409 CONFLICT` (which the action reports as success), and checking an unverifiable one returns `200` with the status unchanged. The **first-time** unverified→verified transition is untestable by design — the verification key is reissued on every claim, so a DNS record published for an earlier claim is stale against a new one, and automating it would require the suite to write DNS.
 - `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and one carrying `X-Tenant-Id` with `403 BAD_PERMISSIONS`, which this repo reads as an unrouted namespace.
 - `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` — **acceptance tests only**. Client ID (UUID) of a pre-existing Jamf Pro API client holding the AD CS certificate-job privileges. `jamfplatform_pro_pki_adcs` in `OUTBOUND` mode needs one and the provider can no longer create it: the API-client and API-role endpoints were withdrawn at the Platform API GA, so clients are created in Jamf Account. Unset and the two OUTBOUND tests skip.
 - `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched and every Security Cloud acceptance test skips — which is CI's current state, deliberately. The ZTNA gateway tests additionally require the *tenant* form: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).

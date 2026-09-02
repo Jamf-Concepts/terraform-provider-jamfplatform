@@ -8,6 +8,7 @@ package testhelpers
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
@@ -175,4 +176,63 @@ func AccTenantIDOrSkip(t *testing.T) string {
 		t.Skip("JAMFPLATFORM_TENANT_ID must be set for this test; an environment-scoped run has no locally known tenant ID to compare against")
 	}
 	return tenant
+}
+
+// AccPreCheckAccount is the precheck for Jamf Account acceptance tests.
+//
+// It cannot call AccPreCheck, and that is the whole point of its existence:
+// AccPreCheck skips unless one of JAMFPLATFORM_ENVIRONMENT_ID or
+// JAMFPLATFORM_TENANT_ID is set, and a Jamf Account integration is
+// organization-scoped — it sets *neither*. Routing these tests through
+// AccPreCheck would skip every one of them silently, and a suite that skips
+// everywhere still reports green.
+//
+// So this checks the credentials AccPreCheck checks, then requires the opposite
+// of what AccPreCheck requires: both scope variables must be *absent*. A scope
+// variable that is set means the provider will send a scope header and
+// providerdata's gate will refuse every Jamf Account construct at Configure, so
+// the run would fail for a configuration reason rather than a code one — skip
+// instead, and say which variable to unset.
+//
+// JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID is the operator's declaration that the
+// configured credentials really are organization-scoped, mirroring
+// AccPreCheckSecurityCloud's declaration pattern. There is nothing to compare it
+// against — an organization-scoped request carries no scope header, so no
+// JAMFPLATFORM_* variable holds the organization — which is exactly why the
+// declaration is required: without it, a Pro-only credential set with both scope
+// variables unset would look identical to a real organization integration and
+// fail deep in an apply.
+//
+// The namespace is also US-only: /sso/v1 is absent from the EU gateway, where
+// even a bogus route under it returns the gateway's own bare 404. A non-US base
+// URL therefore skips.
+func AccPreCheckAccount(t *testing.T) {
+	t.Helper()
+
+	baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
+	if baseURL == "" {
+		t.Skip("JAMFPLATFORM_BASE_URL must be set for acceptance tests")
+	}
+	if v := os.Getenv("JAMFPLATFORM_CLIENT_ID"); v == "" {
+		t.Skip("JAMFPLATFORM_CLIENT_ID must be set for acceptance tests")
+	}
+	if v := os.Getenv("JAMFPLATFORM_CLIENT_SECRET"); v == "" {
+		t.Skip("JAMFPLATFORM_CLIENT_SECRET must be set for acceptance tests")
+	}
+	if !strings.Contains(baseURL, "us.api.jamfcloud.com") {
+		t.Skipf("Jamf Account SSO is served only from the US gateway; JAMFPLATFORM_BASE_URL is %q", baseURL)
+	}
+	if v := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID"); v != "" {
+		t.Skip("JAMFPLATFORM_ENVIRONMENT_ID is set, but Jamf Account requires an organization-scoped integration, which sends no scope header; unset it to run these tests")
+	}
+	if v := os.Getenv("JAMFPLATFORM_TENANT_ID"); v != "" {
+		t.Skip("JAMFPLATFORM_TENANT_ID is set, but Jamf Account requires an organization-scoped integration, which sends no scope header; unset it to run these tests")
+	}
+	if v := os.Getenv("JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID"); v == "" {
+		t.Skip("JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID must be set to declare that the configured credentials are organization-scoped, for Jamf Account acceptance tests")
+	}
+
+	if err := os.Setenv("TF_ACC", "1"); err != nil {
+		t.Fatalf("setting TF_ACC: %v", err)
+	}
 }

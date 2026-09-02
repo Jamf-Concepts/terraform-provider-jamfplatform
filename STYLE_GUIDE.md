@@ -690,6 +690,84 @@ tf-acc-benchmark-all-rules
 tf-acc-bp-scope-passcode
 ```
 
+## Jamf Account Resource Naming
+
+Resources backed by the `account/` package of `jamfplatform-go-sdk` carry the
+`jamfplatform_account_` prefix. This is the provider's **organization-level** family: the
+objects a practitioner manages at *account.jamf.com → Organization*, above and across
+individual Jamf Pro, School, Protect and Security Cloud tenants.
+
+Three layers disagree about what to call this family, so the choice is recorded rather than
+inferred: the SDK package is `account`, the gateway prefix is `sso`, and the spec bundle is
+`account-sso`. The Terraform name follows the **product surface** a practitioner navigates —
+Jamf Account — because the gateway prefix is a routing artifact and because the family will
+grow past SSO (licensing, deal registrations, distributor operations all live in the same SDK
+package).
+
+### Rules
+
+1. **Terraform construct name**: `jamfplatform_account_<resource>`. The SSO constructs are
+   `jamfplatform_account_sso_connection` and `jamfplatform_account_sso_domain` — the `sso_`
+   qualifier comes from the UI section, because "connection" and "domain" are both ambiguous
+   on their own.
+2. **Do not confuse it with Jamf Pro's SSO.** `jamfplatform_pro_sso_settings` and
+   `jamfplatform_pro_sso_failover_url` configure a single Jamf Pro tenant's own SSO. They are
+   a different product, a different endpoint and a different scope. The prefix is what keeps
+   them apart, which is why the family is not named `jamfplatform_sso_*`.
+3. **Go package path**: `internal/resources/account/<resource>/` — flat, one leaf package per
+   construct family, folder name equal to the Terraform slug minus the `jamfplatform_account_`
+   prefix. Actions live under `internal/actions/account/<resource>/`, one package per resource
+   with a file per verb, as in `internal/actions/pro/mdm/`.
+4. **Organization scope only, via `providerdata.ConfigureAccount`.** Do not hand-roll
+   Configure and do not route through `ConfigurePro` — there is no customer-tenant version to
+   read, and an organization may hold no Jamf Pro tenant at all. The gate is
+   `ScopeOrganization` alone; see [§API integration scope](#api-integration-scope-every-construct-declares-which-scopes-reach-it).
+5. **No organization ID travels anywhere.** An organization-scoped integration authenticates
+   on client id and secret alone, and the gateway resolves the organization from the access
+   token; `/sso/v1` ignores `X-Environment-Id` and `X-Tenant-Id` when either is sent. There is
+   no `organization_id` provider attribute and no SDK `WithOrganizationID`. A
+   `X-Organization-Id` header does exist and is parsed by the gateway, but nothing needs to
+   send it.
+6. **US gateway only.** The namespace is absent from the EU gateway — a bogus route under
+   `/sso/v1` there returns the gateway's own bare `404 page not found`, versus
+   `403 BAD_PERMISSIONS` in US. Acceptance tests skip on a non-US base URL, and the
+   region limitation belongs in user-facing documentation.
+7. **Acceptance tests use `testhelpers.AccPreCheckAccount`, never `AccPreCheck`.** The latter
+   skips unless a scope variable is set, and this family requires both to be *unset* — so
+   routing these tests through it would skip every one of them while still reporting green.
+8. **Import by domain name is a sanctioned exception to [§Import format](#import-format).**
+   `jamfplatform_account_sso_domain` imports by name, not id, for two reasons that both have to
+   hold before an exception is granted: nothing in the API reads a domain by id (the per-id GET
+   is unrouted), and the id is **not stable** — removing and re-claiming a domain mints a new
+   one. Where an id is neither usable nor stable, the name is the primary key. Note the
+   acceptance harness defaults `ImportStateId` to the `id` attribute, which is exactly the value
+   `ImportState` rejects, so a name-imported construct must set `ImportStateId` explicitly.
+9. **Canonicalise by validator, not by plan modifier.** The server lower-cases a stored domain.
+   Because `domain` is `Required`, [§Plan-modifier rewrites are NOT a valid option for `Required`
+   attributes](#plan-modifier-rewrites-are-not-a-valid-option-for-required-attributes) rules out
+   rewriting the value, so strict acceptance plus a diagnostic naming the spelling to use is the
+   only correct option. Lookups stay case-insensitive so an import still forgives mixed case.
+
+### Jamf Account shapes that recur
+
+Wire-probed 2026-09-02 against two organization-scoped integrations.
+
+- **A collection may answer with either an envelope or a bare array.** The SDK's
+  `UnwrapResults` tolerates both, and its own tests pin both shapes after a period when the
+  account lists shipped broken for five days. Do not assume the declared envelope.
+- **No RSQL filter exists on any account collection GET**, so a list resource here is an
+  unfiltered stream — as in AI Governance.
+- **`403 BAD_PERMISSIONS` on a spec-advertised route means unrouted, not unprivileged**, the
+  same law as [§Jamf Security Cloud](#jamf-security-cloud-resource-naming). It is how the
+  absence of a per-id domain read and of any domain update was established. The one case where
+  it can be read as a genuine authorization refusal is when a *different* credential answers
+  `200` on the same URL in the same region — then the route is provably mapped.
+- **`errors[].field` is populated only for top-level required fields.** An invalid enum comes
+  back as `MALFORMED_REQUEST_BODY` with `field: null` and the offending value never named, and
+  a discriminator/payload mismatch is an unattributed `500`. So every enum, and every
+  discriminator-to-payload pairing, must be validated at plan time from the SDK's own
+  `*Values()` helpers — the server will not attribute the mistake for you.
+
 ## Jamf Security Cloud Resource Naming
 
 Resources backed by the `securitycloud/` package of `jamfplatform-go-sdk` carry the
@@ -885,10 +963,11 @@ if resp.Diagnostics.HasError() {
 
 - **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce environment-or-tenant for every `pro/` package and Pro action.
 - **Security Cloud constructs need no call site either** — `providerdata.ConfigureSecurityCloud` applies the same environment-or-tenant gate (see [§Jamf Security Cloud Resource Naming](#jamf-security-cloud-resource-naming)).
-- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`.
+- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`, except AI Governance, which declares `ScopeEnvironment` alone.
+- **Jamf Account constructs need no call site** — `providerdata.ConfigureAccount` applies a `ScopeOrganization`-only gate (see [§Jamf Account Resource Naming](#jamf-account-resource-naming)).
 - **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first.
 - **Do not gate in provider Configure instead.** The answer differs per API family — Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point those call sites simply drop `ScopeTenant` — and a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
-- Organization scope is rejected everywhere today. That is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure.
+- **Organization scope is not a rejected special case.** It is the only scope that reaches the `jamfplatform_account_*` family, and it is rejected everywhere else. That two-way enforcement is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure, in both directions.
 
 Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`. `providerdata.New` derives the scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
 

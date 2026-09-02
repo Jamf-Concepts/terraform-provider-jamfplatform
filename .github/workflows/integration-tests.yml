@@ -99,3 +99,29 @@ jobs:
     with:
       packages: ${{ needs.plan-acc.outputs.packages }}
     secrets: inherit
+
+  # The Jamf Account family runs in a job of its own because its precondition is
+  # the inverse of every other family's: AccPreCheckAccount requires BOTH scope
+  # variables unset (an organization-scoped integration sends no scope header),
+  # while AccPreCheck requires at least one of them set. One env block cannot
+  # satisfy both, so routing these packages through the job above skips every one
+  # of them silently — and a suite that always skips still reports green.
+  #
+  # Shares the acceptance-tenant concurrency group declared in the reusable
+  # workflow, so this job and the one above queue against each other rather than
+  # hitting the estate at the same time.
+  #
+  # The packages are fixed rather than taken from plan-acc: the scope this job
+  # runs under reaches only this family, so anything else in the computed set
+  # would skip here and is already covered by the job above. plan-acc is still
+  # what decides whether to run at all — either it named an account package, or
+  # it fell back to the whole suite, which includes this family.
+  acceptance-account:
+    name: Acceptance (Jamf Account)
+    needs: plan-acc
+    if: needs.plan-acc.outputs.packages == './...' || contains(needs.plan-acc.outputs.packages, 'internal/resources/account/') || contains(needs.plan-acc.outputs.packages, 'internal/actions/account/')
+    uses: ./.github/workflows/acceptance.yml
+    with:
+      packages: "./internal/resources/account/... ./internal/actions/account/..."
+      organization_scope: true
+    secrets: inherit

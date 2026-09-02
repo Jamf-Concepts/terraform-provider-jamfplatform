@@ -26,3 +26,17 @@ jobs:
     with:
       packages: "./..."
     secrets: inherit
+
+  # The Jamf Account family again, under organization scope. `./...` above cannot
+  # cover it: AccPreCheckAccount requires both scope variables unset, which is
+  # the opposite of what AccPreCheck requires, so those suites skip in the job
+  # above whatever package set it is given. Both jobs share the acceptance-tenant
+  # concurrency group declared in the reusable workflow, so they queue rather
+  # than run together.
+  full-account:
+    name: Full Suite (Jamf Account)
+    uses: ./.github/workflows/acceptance.yml
+    with:
+      packages: "./internal/resources/account/... ./internal/actions/account/..."
+      organization_scope: true
+    secrets: inherit

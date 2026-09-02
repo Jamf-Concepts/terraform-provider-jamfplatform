@@ -226,11 +226,13 @@ School, Jamf Protect or Jamf Security Cloud tenant. Jamf describes it as the leg
 targeting an integration without a platform environment, and it is one integration per tenant per
 product — a Jamf Pro tenant and a Jamf Protect tenant are two integrations to create and two
 credential pairs to rotate. Treat it as the exception, for a deliberately single-product
-integration, rather than the default. An *organization management* scope reaches a first set of
-organization-level resources;
-the provider currently rejects it at configure time with an explanatory diagnostic, as none of the
-constructs requiring it have been built. The scope selected determines the provider configuration
-described under [Scope](#scope).
+integration, rather than the default. An *organization management* scope reaches organization-level
+resources — the `jamfplatform_account_*` family — and is the only scope that reaches them; it is
+configured by setting *neither* `environment_id` nor `tenant_id`, since the gateway resolves the
+organization from the access token. Every resource and data source reports the scope it needs when
+it is configured, so pointing an integration at a family it cannot reach is named at plan time
+rather than failing mid-apply. The scope selected determines the provider configuration described
+under [Scope](#scope).
 
 ## Base URL
 
