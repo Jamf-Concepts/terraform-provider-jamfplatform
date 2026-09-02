@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_ztna_predefined_apps Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — Jamf's own definitions of well-known applications such as Slack or Salesforce, each bundling the hostnames that application uses. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
+  Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — the built-in definitions of well-known applications such as Slack or Salesforce, each bundling the hostnames that application uses. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
   Use this to read a template's identifier without hard-coding it, and to review the hostnames the template brings with it.
   Wire the identifier into a jamfplatform_security_cloud_ztna_app's predefined_app_id to manage an application based on the definition. Only one application per definition is allowed on a tenant.
   Required Jamf permissions
@@ -15,7 +15,7 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_predefined_apps (Data Source)
 
-Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — Jamf's own definitions of well-known applications such as `Slack` or `Salesforce`, each bundling the hostnames that application uses. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
+Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — the built-in definitions of well-known applications such as `Slack` or `Salesforce`, each bundling the hostnames that application uses. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
 
 Use this to read a template's identifier without hard-coding it, and to review the hostnames the template brings with it.
 

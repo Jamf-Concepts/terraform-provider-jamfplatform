@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_ztna_gateways Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Jamf's own shared gateways are a separate catalogue, read with jamfplatform_security_cloud_ztna_shared_gateways.
+  Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Shared gateways are a separate catalogue, read with jamfplatform_security_cloud_ztna_shared_gateways.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_gateways (Data Source)
 
-Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Jamf's own shared gateways are a separate catalogue, read with `jamfplatform_security_cloud_ztna_shared_gateways`.
+Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Shared gateways are a separate catalogue, read with `jamfplatform_security_cloud_ztna_shared_gateways`.
 
 **Required Jamf permissions**
 

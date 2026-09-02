@@ -76,10 +76,10 @@ func (d *ContentCategoriesDataSource) Metadata(_ context.Context, req datasource
 // Schema returns the data source schema.
 func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the content categories available in Jamf Security Cloud — Jamf's own " +
+		MarkdownDescription: "Reads the content categories available in Jamf Security Cloud — the " +
 			"classification of web and app traffic, such as `Social` or `Cloud & File Storage`. The catalogue " +
-			"is curated by Jamf, identical for every entitled tenant, and cannot be changed.\n\n" +
-			"Use this to reference a category without hard-coding a name Jamf may revise — in an output, " +
+			"is centrally curated, identical for every entitled tenant, and cannot be changed.\n\n" +
+			"Use this to reference a category without hard-coding a name that may be revised — in an output, " +
 			"or to pre-stage an identifier. Note that a category has two names: reference `display_name`, " +
 			"not `name`.\n\n" +
 			"A `jamfplatform_security_cloud_ztna_app` is what matches a category, so resolve the category " +

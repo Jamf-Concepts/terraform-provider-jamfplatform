@@ -75,9 +75,9 @@ func (d *PredefinedAppsDataSource) Metadata(_ context.Context, req datasource.Me
 func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads the predefined Zero Trust Network Access app templates available in Jamf " +
-			"Security Cloud — Jamf's own definitions of well-known applications such as `Slack` or " +
-			"`Salesforce`, each bundling the hostnames that application uses. The catalogue is curated by " +
-			"Jamf, identical for every entitled tenant, and cannot be changed.\n\n" +
+			"Security Cloud — the built-in definitions of well-known applications such as `Slack` or " +
+			"`Salesforce`, each bundling the hostnames that application uses. The catalogue is centrally " +
+			"curated, identical for every entitled tenant, and cannot be changed.\n\n" +
 			"Use this to read a template's identifier without hard-coding it, and to review the hostnames the " +
 			"template brings with it.\n\n" +
 			"Wire the identifier into a `jamfplatform_security_cloud_ztna_app`'s `predefined_app_id` to " +

@@ -244,7 +244,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				Optional: true,
 				MarkdownDescription: "**Legacy — prefer `environment_id`.** UUID of the single **\"Tenant\"** your API integration targets: one Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant. " +
 					"Can also be set via the `JAMFPLATFORM_TENANT_ID` environment variable. " +
-					"Jamf describes tenant scope as the legacy method for targeting integrations without a platform environment. " +
+					"Tenant scope is the legacy method for targeting integrations without a platform environment. " +
 					"It stays supported — and a few surfaces are still only reachable this way — but new configurations should use `environment_id`. " +
 					"Mutually exclusive with `environment_id`; see that attribute for what happens when the ID and the integration disagree.",
 			},
@@ -266,7 +266,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"`Cookie` would displace the session cookie Jamf Cloud uses to keep this client on one application node — a proxy that needs a cookie of its own can simply set one on a response, which the provider stores and sends back on its own. " +
 					"`Content-Type` is chosen per request — JSON, merge-patch JSON, XML on some Jamf Pro requests, or multipart with a generated boundary for a file upload — so one value here overrides all four and leaves an upload without its boundary. " +
 					"`Accept` is `application/xml` on those same Jamf Pro requests, and setting it elsewhere is no safer: Jamf Security Cloud's UEM Connect service answers `Accept: application/xml` with an XML body the provider would decode as JSON. " +
-					"Supplying `Authorization` is supported and is the point of the feature — pair it with `authorization_header_name` so the proxy's credential and Jamf's own both reach the request. " +
+					"Supplying `Authorization` is supported and is the point of the feature — pair it with `authorization_header_name` so the proxy's credential and the Jamf credential both reach the request. " +
 					"See the [Reverse proxy guide](../guides/reverse-proxy) for the whole arrangement.",
 			},
 			"authorization_header_name": schema.StringAttribute{

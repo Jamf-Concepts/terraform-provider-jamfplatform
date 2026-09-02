@@ -136,7 +136,7 @@ variable "ipsec_authentication_secret" {
 
 Changing it re-provisions the gateway in the new region: connectivity drops and the reported status returns to `PENDING`. Any dedicated egress IP addresses are replaced in place rather than cleared — measured at around 35 seconds after the change — so for a short window the list is non-empty, entirely plausible and still the old region's. The apply waits for the gateway to report itself operational again, which covers that window.
 
-Note that Jamf's own documentation states the egress region cannot be changed once a gateway is created. The provider allows the change because it was observed to be accepted and to re-provision the gateway, and because replacing the gateway instead would surrender its dedicated IP addresses. Treat a region change as disruptive.
+Note that the published documentation states the egress region cannot be changed once a gateway is created. The provider allows the change because it was observed to be accepted and to re-provision the gateway, and because replacing the gateway instead would surrender its dedicated IP addresses. Treat a region change as disruptive.
 
 Valid values: `Africa - Cape Town`, `Asia - Hong Kong`, `Asia - Japan`, `Asia - Mumbai`, `Asia - Singapore`, `Australia`, `Europe - Germany`, `Europe - Ireland`, `Europe - UK`, `North America - Canada`, `North America - USA East`, `North America - USA West`, `South America - Brazil`.
 - `name` (String) **"Gateway name"** in the Jamf Security Cloud admin UI.

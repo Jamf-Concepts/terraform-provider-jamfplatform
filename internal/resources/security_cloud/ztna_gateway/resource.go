@@ -293,7 +293,7 @@ func egressRegionAttribute() schema.StringAttribute {
 			"cleared — measured at around 35 seconds after the change — so for a short window the list is " +
 			"non-empty, entirely plausible and still the old region's. The apply waits for the gateway to " +
 			"report itself operational again, which covers that window.\n\n" +
-			"Note that Jamf's own documentation states the egress region cannot be changed once a gateway is " +
+			"Note that the published documentation states the egress region cannot be changed once a gateway is " +
 			"created. The provider allows the change because it was observed to be accepted and to " +
 			"re-provision the gateway, and because replacing the gateway instead would surrender its " +
 			"dedicated IP addresses. Treat a region change as disruptive.\n\n" +

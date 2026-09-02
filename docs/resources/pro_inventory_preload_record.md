@@ -93,8 +93,8 @@ resource "jamfplatform_pro_inventory_preload_record" "tablet" {
 
 - `apple_care_id` (String) AppleCare ID for the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `asset_tag` (String) Asset tag for the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
-- `bar_code_1` (String) Bar code 1 for the device. Per Jamf documentation bar codes apply to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
-- `bar_code_2` (String) Bar code 2 for the device. Per Jamf documentation bar codes apply to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `bar_code_1` (String) Bar code 1 for the device. Documented as applying to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `bar_code_2` (String) Bar code 2 for the device. Documented as applying to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `building` (String) Building the device is assigned to. Free text — Jamf Pro matches it against existing Building names at inventory-collection time and does not validate it when the record is written. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `department` (String) Department the device is assigned to. Free text — Jamf Pro matches it against existing Department names at inventory-collection time and does not validate it when the record is written. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `email_address` (String) Email address of the user assigned to the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
