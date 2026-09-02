@@ -4,35 +4,30 @@
 package patch_policy
 
 import (
-	"os"
-	"regexp"
 	"sort"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
-// clientCallRe matches SDK method calls on the client value, e.g.
-// r.client.GetPatchPolicyByID( or d.client.ListPatchPolicies(.
-var clientCallRe = regexp.MustCompile(`\bclient\.([A-Za-z0-9]+)\(`)
+// mergedRegistry is the union of the SDK families this package spans: ProClassic
+// CRUD plus the Pro v2 enumeration the list resource runs on.
+var mergedRegistry = permissions.Merge(proclassic.Privileges, pro.Privileges)
 
 // callsInFile returns the distinct SDK client method names called in the named
-// source file that are present in the proclassic privilege registry. Filtering
-// to the registry keeps non-SDK helper calls (and any false positives) out of
-// the comparison.
+// source file that are present in the merged privilege registry. The walk lives
+// in permissions.SDKCallsInFile so that comments and string literals cannot
+// forge a call — see its doc comment for the byte-scanning regex it replaces and
+// why the other permissions_test.go copies still carry one. Only the fatal-on-
+// error behaviour stays here, where the *testing.T is.
 func callsInFile(t *testing.T, filename string) map[string]bool {
 	t.Helper()
-	src, err := os.ReadFile(filename)
+	called, err := permissions.SDKCallsInFile(filename, mergedRegistry)
 	if err != nil {
-		t.Fatalf("reading %s: %v", filename, err)
-	}
-	called := map[string]bool{}
-	for _, m := range clientCallRe.FindAllStringSubmatch(string(src), -1) {
-		if _, ok := proclassic.Privileges[m[1]]; ok {
-			called[m[1]] = true
-		}
+		t.Fatalf("scanning SDK calls: %v", err)
 	}
 	return called
 }
@@ -74,8 +69,8 @@ func assertMethodsMatch(t *testing.T, filename string, methods []string) {
 // TestResourceSDKMethods_KnownToSDK fails if a declared method has been renamed
 // or removed in the SDK privilege registry.
 func TestResourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(proclassic.Privileges, resourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("resourceSDKMethods not present in proclassic.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(mergedRegistry, resourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("resourceSDKMethods not present in the merged privilege registry (SDK drift): %v", missing)
 	}
 }
 
@@ -98,8 +93,8 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 // TestDataSourceSDKMethods_KnownToSDK fails if a declared method has been
 // renamed or removed in the SDK privilege registry.
 func TestDataSourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(proclassic.Privileges, dataSourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("dataSourceSDKMethods not present in proclassic.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(mergedRegistry, dataSourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("dataSourceSDKMethods not present in the merged privilege registry (SDK drift): %v", missing)
 	}
 }
 
@@ -122,8 +117,8 @@ func TestDataSourcePrivileges_Rendered(t *testing.T) {
 // TestListResourceSDKMethods_KnownToSDK fails if a declared method has been
 // renamed or removed in the SDK privilege registry.
 func TestListResourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(proclassic.Privileges, listResourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("listResourceSDKMethods not present in proclassic.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(mergedRegistry, listResourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("listResourceSDKMethods not present in the merged privilege registry (SDK drift): %v", missing)
 	}
 }
 

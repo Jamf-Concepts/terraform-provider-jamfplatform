@@ -51,8 +51,17 @@ type Registry = map[string]jamfplatform.MethodPrivileges
 
 // Merge combines several SDK package registries into one lookup, for resources
 // whose construct spans more than one SDK family (e.g. a Pro resource that
-// also calls a ProClassic endpoint). Later registries win on key collision,
-// which never happens in practice because method names are unique per family.
+// also calls a ProClassic endpoint). Later registries win on key collision.
+//
+// Last-wins is only sound while the colliding entries agree, and across
+// families they need not: the same method name can front two endpoints
+// requiring two different capabilities, in which case the merged registry
+// documents whichever registry was passed last. That is not hypothetical —
+// aigovernance and proclassic both key ListPolicies, for ai-policies:read and
+// policies:read respectively — so a caller merging two families is asserting
+// they are disjoint. TestSDKRegistriesAreDisjoint checks every pair of shipped
+// registries and carries the known exceptions, so a new collision fails there
+// rather than in a published permission table.
 func Merge(registries ...Registry) Registry {
 	out := make(Registry)
 	for _, reg := range registries {
