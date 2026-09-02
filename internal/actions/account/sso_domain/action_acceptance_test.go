@@ -229,6 +229,12 @@ func TestAccAction_AccountVerifySSODomain_UnknownID(t *testing.T) {
 // Naming neither identifier is the case a per-attribute conflict rule would miss
 // entirely: it would plan cleanly and then reach the invocation with nothing to act
 // on, part-way through an apply.
+//
+// Both of the ExactlyOneOf cases match the shared *detail* rather than the
+// summary, because the summary differs between them — "Invalid Attribute
+// Combination" when both are set, "Missing Attribute Configuration" when neither
+// is. Asserting on either summary passes one case for the wrong reason and fails
+// the other, which is exactly what happened on the first live run.
 func TestAccAction_AccountVerifySSODomain_PlanTimeValidation(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
 
@@ -240,13 +246,13 @@ func TestAccAction_AccountVerifySSODomain_PlanTimeValidation(t *testing.T) {
 		{
 			name:        "neither identifier",
 			arguments:   "",
-			expectError: regexp.MustCompile(`Invalid\s+Attribute\s+Combination`),
+			expectError: regexp.MustCompile(`Exactly\s+one\s+of\s+these\s+attributes\s+must\s+be\s+configured`),
 		},
 		{
 			name: "both identifiers",
 			arguments: "    domain    = \"claimed.example\"\n" +
 				"    domain_id = \"26917\"",
-			expectError: regexp.MustCompile(`Invalid\s+Attribute\s+Combination`),
+			expectError: regexp.MustCompile(`Exactly\s+one\s+of\s+these\s+attributes\s+must\s+be\s+configured`),
 		},
 		{
 			name:        "empty domain",

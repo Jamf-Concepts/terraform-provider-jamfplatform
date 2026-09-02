@@ -111,9 +111,25 @@ func testAccCheckSSODomainDestroy(t *testing.T) resource.TestCheckFunc {
 // The import step sets `ImportStateId` explicitly because import is by domain
 // name: the harness defaults to the `id` attribute, which for this resource is
 // the Jamf-assigned identifier the import path deliberately does not accept.
-// `timeouts` is the only ignored attribute — it is provider-side configuration
-// with no counterpart in Jamf Account, so an imported resource can never carry
-// it.
+// Three attributes are ignored on import. `timeouts` is provider-side
+// configuration with no counterpart in Jamf Account, so an imported resource can
+// never carry it.
+//
+// `last_modified_at` and `verification_expires_at` are ignored because **Jamf
+// moves them on its own, seconds after the claim is made**. Observed live on
+// 2026-09-02: the claim response carried 14:09:58 and the read two seconds later
+// carried 14:10:00, with the expiry shifted by the same amount. That is Jamf's
+// background verification sweep, which the console describes as continuous — and
+// per the wire probe a verification attempt bumps the last-modified timestamp and
+// pushes the fourteen-day expiry out whether it succeeds or fails, so a `.example`
+// domain that can never verify still has both fields moved.
+//
+// Ignoring them is the correct handling rather than a workaround. Both are
+// Computed-only, so a later value is absorbed by refresh without producing a
+// diff; only ImportStateVerify compares the two reads. The alternative — polling
+// in Read until the value settles — would turn a routine server-side touch into
+// a refresh failure, and there is no settled value to wait for anyway, since the
+// sweep recurs.
 func TestAccResource_AccountSSODomain_Basic(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
 	domain := acceptanceDomain("basic")
@@ -156,6 +172,8 @@ func TestAccResource_AccountSSODomain_Basic(t *testing.T) {
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
+					"last_modified_at",
+					"verification_expires_at",
 				},
 			},
 		},
