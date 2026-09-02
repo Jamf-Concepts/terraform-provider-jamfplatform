@@ -326,6 +326,24 @@ upgrade, so the benchmark continues to target the same device group; the removal
 configuration edit only, never a re-scope. The attribute has also been removed from the
 corresponding data source.
 
+### Removed: `category_name` and `site_name` on `jamfplatform_pro_patch_software_title`
+
+**Action needed only if either attribute is referenced: read the name from the object that owns
+it.** Both were read-only display names, and the Jamf Pro endpoints this resource now uses report
+category and site by ID alone:
+
+```hcl
+# category_name = jamfplatform_pro_patch_software_title.example.category_name
+category_name = jamfplatform_pro_category.example.name
+```
+
+State migrates automatically — the provider strips both attributes during the state upgrade, so
+no `terraform state` surgery is needed. They have also been removed from the corresponding data
+source. Nothing else about the resource changes: patch software titles are now read, updated and
+deleted through Jamf Pro's `/patch-software-title-configurations` endpoints rather than the
+deprecated ProClassic `/patchsoftwaretitles` ones, and every other attribute behaves as before,
+`version_packages` included — an assignment made outside Terraform still survives an apply.
+
 ### Deprecated, not yet removed: the flat blueprint component attributes
 
 **No action needed yet.** The flat top-level component attributes on

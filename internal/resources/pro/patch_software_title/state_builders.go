@@ -7,56 +7,51 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// assignPatchSoftwareTitleResourceModel populates a resource model from a
-// PatchSoftwareTitle response. declaredKeys is the managed subset of
-// software_version keys the caller declared (plan keys on Create/Update, prior
-// state keys on Read): version_packages is rebuilt from only those keys by
-// looking each up in the server's versions and reading its assigned package id.
-// A declared key whose package is gone server-side is dropped from the map,
-// surfacing the drift. state.ID is only overwritten when the API ID is non-nil.
-func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *proclassic.PatchSoftwareTitle, declaredKeys []string) diag.Diagnostics {
+// assignPatchSoftwareTitleResourceModel populates a resource model from a v3
+// patch software title configuration plus the version catalog, which lives on
+// the separate /definitions sub-resource rather than the configuration body.
+// declaredKeys is the managed subset of software_version keys the caller
+// declared (plan keys on Create/Update, prior state keys on Read):
+// version_packages is rebuilt from only those keys by looking each up in the
+// configuration's package assignments. A declared key whose package is gone
+// server-side is dropped from the map, surfacing the drift.
+//
+// source_id is deliberately left untouched. The v3 configuration names its
+// patch source (patchSourceName) but never numbers it, and a title's source
+// cannot change once minted, so whatever is already in state stays correct.
+// Import is the one case with nothing in state to keep, and Read resolves the
+// number from the name there — see resolveSourceID.
+func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions, declaredKeys []string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
 	}
-	if s.ID != nil {
-		state.ID = helpers.StringValueFromIntPtr(s.ID)
+	if s.ID != "" {
+		state.ID = types.StringValue(s.ID)
 	}
-	if s.Name != nil {
-		state.Name = helpers.StringPointerValueOrNull(s.Name)
-	}
-	if s.NameID != nil {
-		state.NameID = helpers.StringPointerValueOrNull(s.NameID)
-	}
-	if s.SourceID != nil {
-		state.SourceID = types.Int64Value(int64(*s.SourceID))
+	state.Name = types.StringValue(s.DisplayName)
+	if s.SoftwareTitleNameID != "" {
+		state.NameID = types.StringValue(s.SoftwareTitleNameID)
 	}
 
-	state.CategoryID, state.CategoryName = categoryValues(s.Category)
-	state.SiteID, state.SiteName = siteValues(s.Site)
+	state.CategoryID = refIDValue(s.CategoryID)
+	state.SiteID = refIDValue(s.SiteID)
+	state.WebNotification = types.BoolValue(s.UiNotifications)
+	state.EmailNotification = types.BoolValue(s.EmailNotifications)
 
-	web, email := notificationValues(s.Notifications)
-	state.WebNotification = web
-	state.EmailNotification = email
-
-	assigned := assignedPackagesByVersion(s.Versions)
-
-	avail := availableVersions(s.Versions)
-	availList, d := types.ListValueFrom(ctx, types.StringType, avail)
+	availList, d := types.ListValueFrom(ctx, types.StringType, orEmpty(availableVersions))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
 	state.AvailableVersions = availList
 
-	vp, d := managedVersionPackages(ctx, declaredKeys, assigned)
+	vp, d := managedVersionPackages(ctx, declaredKeys, assignedPackagesByVersion(s.Packages))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -68,123 +63,84 @@ func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoft
 
 // assignPatchSoftwareTitleDataSourceModel populates a data source model. The
 // data source surfaces the full server view, so version_packages is built from
-// every server version that has a package assigned (no managed-subset gating —
-// there is no prior state to scope against).
-func assignPatchSoftwareTitleDataSourceModel(ctx context.Context, state *PatchSoftwareTitleDataSourceModel, s *proclassic.PatchSoftwareTitle) diag.Diagnostics {
+// every assignment the configuration reports (no managed-subset gating — there
+// is no prior state to scope against). sourceID is resolved by the caller from
+// the configuration's patch source name.
+func assignPatchSoftwareTitleDataSourceModel(ctx context.Context, state *PatchSoftwareTitleDataSourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions []string, sourceID types.Int64) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
 	}
-	if s.ID != nil {
-		state.ID = helpers.StringValueFromIntPtr(s.ID)
-	}
-	state.Name = helpers.StringPointerValueOrNull(s.Name)
-	state.NameID = helpers.StringPointerValueOrNull(s.NameID)
-	if s.SourceID != nil {
-		state.SourceID = types.Int64Value(int64(*s.SourceID))
-	} else {
-		state.SourceID = types.Int64Null()
-	}
+	state.ID = types.StringValue(s.ID)
+	state.Name = types.StringValue(s.DisplayName)
+	state.NameID = types.StringValue(s.SoftwareTitleNameID)
+	state.SourceID = sourceID
 
-	state.CategoryID, state.CategoryName = categoryValues(s.Category)
-	state.SiteID, state.SiteName = siteValues(s.Site)
+	state.CategoryID = refIDValue(s.CategoryID)
+	state.SiteID = refIDValue(s.SiteID)
+	state.WebNotification = types.BoolValue(s.UiNotifications)
+	state.EmailNotification = types.BoolValue(s.EmailNotifications)
 
-	web, email := notificationValues(s.Notifications)
-	state.WebNotification = web
-	state.EmailNotification = email
-
-	assigned := assignedPackagesByVersion(s.Versions)
-
-	avail := availableVersions(s.Versions)
-	availList, d := types.ListValueFrom(ctx, types.StringType, avail)
+	availList, d := types.ListValueFrom(ctx, types.StringType, orEmpty(availableVersions))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
 	state.AvailableVersions = availList
 
-	vpList, d := types.MapValueFrom(ctx, types.StringType, assigned)
+	vpMap, d := types.MapValueFrom(ctx, types.StringType, assignedPackagesByVersion(s.Packages))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
-	state.VersionPackages = vpList
+	state.VersionPackages = vpMap
 
 	return diags
 }
 
-// categoryValues maps an SDK category object onto (id, name) Terraform strings.
-// A nil category yields null/null. The endpoint reports "no category" as id -1
-// (never assigned) or id 0 (explicitly cleared via the buildPatchSoftwareTitleUpdateInput
-// wire translation); both collapse to the "-1" user-facing sentinel so state
-// matches config regardless of which the server echoes. The derived name nulls on
-// the sentinel via helpers.DerivedRefName — the GET nondeterministically echoes
-// or omits the "NONE" name, so trusting it would flip category_name between reads.
-func categoryValues(c *proclassic.CategoryObject) (types.String, types.String) {
-	if c == nil {
-		return types.StringNull(), types.StringNull()
+// refIDValue maps a v3 category or site id onto its Terraform value. The
+// configurations endpoint reports "not assigned" as the string "-1" and rejects
+// any other non-positive id on a write, so that sentinel round-trips as-is.
+// Two other shapes are normalised to it defensively: an empty string (a field
+// the server omitted), and the literal "0" — which no v3 write can produce but
+// a title last written through the classic /patchsoftwaretitles endpoint can
+// still carry, because that endpoint cleared a category by storing wire id 0.
+func refIDValue(id string) types.String {
+	if id == "" {
+		return types.StringValue("-1")
 	}
-	if c.ID == nil || *c.ID <= 0 {
-		return types.StringValue("-1"), helpers.DerivedRefName(c.ID, c.Name)
+	if n, err := strconv.Atoi(id); err == nil && n <= 0 {
+		return types.StringValue("-1")
 	}
-	return helpers.StringValueFromIntPtr(c.ID), helpers.DerivedRefName(c.ID, c.Name)
+	return types.StringValue(id)
 }
 
-// siteValues maps an SDK site object onto (id, name) Terraform strings. Both a
-// missing <site> block (the classic GET omits it entirely on a tenant with no
-// sites configured) and an id <= 0 (explicitly "NONE") collapse to the "-1"
-// user-facing sentinel. site_id is Optional+Computed with UseStateForUnknown, so
-// it must never resolve to null: otherwise a plan that carried "-1" forward would
-// hit "inconsistent result after apply" the moment the server drops the block.
-// Mirrors categoryValues' "-1" treatment. site_name nulls on the sentinel via
-// helpers.DerivedRefName — the GET nondeterministically echoes or omits the "NONE"
-// name, so trusting it would flip site_name between reads (ImportStateVerify fail).
-func siteValues(s *proclassic.SiteObject) (types.String, types.String) {
-	if s == nil {
-		return types.StringValue("-1"), types.StringNull()
-	}
-	if s.ID == nil || *s.ID <= 0 {
-		return types.StringValue("-1"), helpers.DerivedRefName(s.ID, s.Name)
-	}
-	return helpers.StringValueFromIntPtr(s.ID), helpers.DerivedRefName(s.ID, s.Name)
-}
-
-// notificationValues maps the notifications block onto (web, email) bools. A nil
-// block yields null/null.
-func notificationValues(n *proclassic.PatchSoftwareTitleNotifications) (types.Bool, types.Bool) {
-	if n == nil {
-		return types.BoolNull(), types.BoolNull()
-	}
-	return helpers.BoolPointerValueOrNull(n.WebNotification), helpers.BoolPointerValueOrNull(n.EmailNotification)
-}
-
-// availableVersions returns every software_version string the server publishes
-// for the title, preserving server order (newest first).
-func availableVersions(v *proclassic.PatchSoftwareTitleVersions) []string {
-	if v == nil || v.Version == nil {
-		return []string{}
-	}
-	out := make([]string, 0, len(*v.Version))
-	for _, item := range *v.Version {
-		if item.SoftwareVersion != nil {
-			out = append(out, *item.SoftwareVersion)
+// definitionVersions returns every version string the patch source publishes for
+// the title, preserving server order. The /definitions default sort is
+// absoluteOrderId:asc, which Jamf orders newest-first — the same order the
+// classic <versions> block used, so available_versions needs no re-sorting.
+func definitionVersions(defs []pro.PatchSoftwareTitleDefinition) []string {
+	out := make([]string, 0, len(defs))
+	for i := range defs {
+		if defs[i].Version != "" {
+			out = append(out, defs[i].Version)
 		}
 	}
 	return out
 }
 
-// assignedPackagesByVersion returns a software_version → package_id map for every
-// server version that has a non-empty package id assigned.
-func assignedPackagesByVersion(v *proclassic.PatchSoftwareTitleVersions) map[string]string {
+// assignedPackagesByVersion returns a software_version → package_id map for
+// every package assignment the configuration reports.
+func assignedPackagesByVersion(pkgs []pro.PatchSoftwareTitlePackages) map[string]string {
 	out := map[string]string{}
-	if v == nil || v.Version == nil {
-		return out
-	}
-	for _, item := range *v.Version {
-		if item.SoftwareVersion == nil || item.Package == nil || item.Package.ID == nil {
+	for i := range pkgs {
+		if pkgs[i].Version == nil || pkgs[i].PackageID == nil {
 			continue
 		}
-		out[*item.SoftwareVersion] = strconv.Itoa(*item.Package.ID)
+		if *pkgs[i].Version == "" || *pkgs[i].PackageID == "" {
+			continue
+		}
+		out[*pkgs[i].Version] = *pkgs[i].PackageID
 	}
 	return out
 }
@@ -210,4 +166,13 @@ func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned
 	m, d := types.MapValueFrom(ctx, types.StringType, managed)
 	diags.Append(d...)
 	return m, diags
+}
+
+// orEmpty substitutes an empty slice for nil so a Computed list attribute lands
+// as an empty list rather than null.
+func orEmpty(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+	return in
 }

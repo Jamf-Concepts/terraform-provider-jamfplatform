@@ -5,20 +5,21 @@ package patch_software_title
 
 import (
 	"context"
+	"maps"
 	"sort"
 	"strconv"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// buildPatchSoftwareTitleCreateInput builds the minimal POST payload that mints a
-// title. Per the verified wire semantics, name + name_id + source_id define the
-// title; the server then populates the full versions catalog from the patch
-// definition. category/site/notifications/version_packages are applied via a
-// follow-up PUT (see crud.go Create).
+// buildPatchSoftwareTitleCreateInput builds the minimal classic POST payload
+// that mints a title. Per the verified wire semantics, name + name_id +
+// source_id define the title; the server then populates the full versions
+// catalog from the patch definition. Everything else is applied by the
+// follow-up v3 merge-patch (see crud.go Create).
 func buildPatchSoftwareTitleCreateInput(plan PatchSoftwareTitleResourceModel) *proclassic.PatchSoftwareTitle {
 	out := &proclassic.PatchSoftwareTitle{}
 	if v := plan.Name.ValueString(); !plan.Name.IsNull() && !plan.Name.IsUnknown() {
@@ -36,144 +37,127 @@ func buildPatchSoftwareTitleCreateInput(plan PatchSoftwareTitleResourceModel) *p
 	return out
 }
 
-// buildPatchSoftwareTitleUpdateInput builds the full PUT payload carrying the
-// desired metadata (name, category, site, notifications) plus the per-version
-// package operations. priorKeys are the version_packages keys recorded in the
-// prior Terraform state (empty on Create); plan is the desired config.
+// buildPatchSoftwareTitleConfigurationPatch builds the v3 merge-patch body
+// carrying the desired metadata (display name, category, site, notifications).
 //
-// Per the verified wire semantics the server merges versions by software_version:
-//   - a version carrying <package><id>N</id></package> assigns package N
-//   - a version carrying an empty <package></package> CLEARS the assignment
-//   - a version omitted from the payload is left untouched
-//
-// We therefore emit one entry per plan key (assign) and one empty-package entry
-// per key that was in prior state but dropped from the plan (clear/unassign).
-func buildPatchSoftwareTitleUpdateInput(ctx context.Context, plan PatchSoftwareTitleResourceModel, priorKeys []string) (*proclassic.PatchSoftwareTitle, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	out := &proclassic.PatchSoftwareTitle{}
-	if v := plan.Name.ValueString(); !plan.Name.IsNull() && !plan.Name.IsUnknown() {
-		name := v
-		out.Name = &name
+// packages carries the complete desired set of version→package assignments, or
+// nil to omit the key entirely. The distinction is load-bearing: the v3
+// `packages` array is a full replacement — a version absent from a supplied
+// array has its assignment cleared, and an empty array clears every assignment
+// — whereas omitting the key leaves the server's assignments untouched
+// (wire-probed 2026-09-02). Callers therefore pass nil unless they have the
+// live server set to build the replacement from; see unionVersionPackages.
+func buildPatchSoftwareTitleConfigurationPatch(plan PatchSoftwareTitleResourceModel, packages map[string]string) *pro.PatchSoftwareTitleConfigurationPatch {
+	out := &pro.PatchSoftwareTitleConfigurationPatch{}
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		name := plan.Name.ValueString()
+		out.DisplayName = &name
 	}
-	if id := helpers.StringIDPtr(plan.CategoryID); id != nil {
-		// This endpoint clears a category with wire id 0 — id -1 is a silent
-		// no-op here (it does clear <site>, but not <category>). Map the
-		// user-facing "-1 = No category assigned" sentinel (and any non-positive
-		// id) to the wire's 0 clear; pass real category ids through unchanged.
-		// categoryValues collapses the server's -1/0 no-category echoes back to
-		// "-1" on read so state matches config. Wire-probed 2026-06-01.
-		wireID := max(*id, 0)
-		out.Category = &proclassic.CategoryObject{ID: &wireID}
-	}
-	if id := helpers.StringIDPtr(plan.SiteID); id != nil {
-		out.Site = &proclassic.SiteObject{ID: id}
-	}
-	if n := buildNotifications(plan); n != nil {
-		out.Notifications = n
-	}
-
-	planPackages := map[string]string{}
-	if !plan.VersionPackages.IsNull() && !plan.VersionPackages.IsUnknown() {
-		diags.Append(plan.VersionPackages.ElementsAs(ctx, &planPackages, false)...)
-		if diags.HasError() {
-			return nil, diags
-		}
-	}
-
-	versions := buildVersionItems(planPackages, priorKeys)
-	if len(versions) > 0 {
-		out.Versions = &proclassic.PatchSoftwareTitleVersions{Version: &versions}
-	}
-
-	return out, diags
-}
-
-// buildNotifications returns a notifications block when either toggle is a known
-// value, or nil so the SDK omitempty drops it (server keeps / defaults). Each
-// configured bool is sent explicitly (false is meaningful).
-func buildNotifications(plan PatchSoftwareTitleResourceModel) *proclassic.PatchSoftwareTitleNotifications {
-	var web, email *bool
+	out.CategoryID = refIDPtr(plan.CategoryID)
+	out.SiteID = refIDPtr(plan.SiteID)
 	if !plan.WebNotification.IsNull() && !plan.WebNotification.IsUnknown() {
 		v := plan.WebNotification.ValueBool()
-		web = &v
+		out.UiNotifications = &v
 	}
 	if !plan.EmailNotification.IsNull() && !plan.EmailNotification.IsUnknown() {
 		v := plan.EmailNotification.ValueBool()
-		email = &v
+		out.EmailNotifications = &v
 	}
-	if web == nil && email == nil {
-		return nil
+	if packages != nil {
+		items := packageItems(packages)
+		out.Packages = &items
 	}
-	return &proclassic.PatchSoftwareTitleNotifications{
-		WebNotification:   web,
-		EmailNotification: email,
-	}
+	return out
 }
 
-// buildVersionItems produces the merge-by-software_version version entries:
-//   - one assign entry per plan key (software_version + package id)
-//   - one clear entry (empty package) per prior-state key absent from the plan
+// refIDPtr maps a configured category or site id onto the v3 wire value, or nil
+// so the merge-patch omits the field. The configurations endpoint accepts only
+// a positive id or the literal "-1", rejecting anything else outright ("id
+// field must be string of positive numeric value or -1"), so every non-positive
+// id — including the "0" a title last written through classic
+// /patchsoftwaretitles can still carry — is normalised to "-1".
+func refIDPtr(v types.String) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	raw := v.ValueString()
+	if raw == "" {
+		return nil
+	}
+	if n, err := strconv.Atoi(raw); err == nil && n <= 0 {
+		none := "-1"
+		return &none
+	}
+	return &raw
+}
+
+// unionVersionPackages folds the desired version_packages over the live server
+// assignments to produce the full replacement array the v3 `packages` field
+// requires, preserving the resource's managed-subset contract: only the keys
+// Terraform declares are managed, and an assignment made outside Terraform
+// survives an apply.
 //
-// A non-nil but empty *PatchSoftwareTitleVersionsVersionItemPackage marshals to
-// an empty <package></package> element, which the server treats as "clear this
-// version's package" (verified live). Omitting the package element entirely
-// would instead retain the existing assignment, so clears must emit the empty
-// element. Entries are sorted by software_version for deterministic payloads.
-func buildVersionItems(planPackages map[string]string, priorKeys []string) []proclassic.PatchSoftwareTitleVersionsVersionItem {
-	type op struct {
-		sv     string
-		pkgID  *int
-		assign bool
-	}
-	ops := map[string]op{}
-
-	for sv, pkgStr := range planPackages {
-		if n, err := strconv.Atoi(pkgStr); err == nil {
-			id := n
-			ops[sv] = op{sv: sv, pkgID: &id, assign: true}
+// live is the server's current assignment set, planPackages the desired
+// Terraform-managed subset, and priorKeys the keys recorded in prior state. A
+// key that was in prior state but has been dropped from the plan is an explicit
+// unassign, so it is removed from the union; every other live key is carried
+// across untouched.
+func unionVersionPackages(live, planPackages map[string]string, priorKeys []string) map[string]string {
+	union := make(map[string]string, len(live)+len(planPackages))
+	maps.Copy(union, live)
+	for _, k := range priorKeys {
+		if _, stillPlanned := planPackages[k]; !stillPlanned {
+			delete(union, k)
 		}
 	}
-	for _, sv := range priorKeys {
-		if _, stillPlanned := planPackages[sv]; stillPlanned {
-			continue
-		}
-		ops[sv] = op{sv: sv, assign: false}
-	}
+	maps.Copy(union, planPackages)
+	return union
+}
 
-	keys := make([]string, 0, len(ops))
-	for k := range ops {
-		keys = append(keys, k)
+// packageItems renders a version→package map as the v3 packages array, sorted
+// by version for a deterministic payload.
+func packageItems(packages map[string]string) []pro.PatchSoftwareTitlePackages {
+	versions := make([]string, 0, len(packages))
+	for v := range packages {
+		versions = append(versions, v)
 	}
-	sort.Strings(keys)
+	sort.Strings(versions)
 
-	items := make([]proclassic.PatchSoftwareTitleVersionsVersionItem, 0, len(keys))
-	for _, k := range keys {
-		o := ops[k]
-		sv := o.sv
-		item := proclassic.PatchSoftwareTitleVersionsVersionItem{SoftwareVersion: &sv}
-		if o.assign {
-			item.Package = &proclassic.PatchSoftwareTitleVersionsVersionItemPackage{ID: o.pkgID}
-		} else {
-			// Empty (but non-nil) package element clears the assignment.
-			item.Package = &proclassic.PatchSoftwareTitleVersionsVersionItemPackage{}
-		}
-		items = append(items, item)
+	items := make([]pro.PatchSoftwareTitlePackages, 0, len(versions))
+	for _, v := range versions {
+		version, pkgID := v, packages[v]
+		items = append(items, pro.PatchSoftwareTitlePackages{
+			Version:   &version,
+			PackageID: &pkgID,
+		})
 	}
 	return items
 }
 
-// versionPackageKeys returns the declared version_packages keys from a model's
-// map, used as the managed-subset key set for Read reconciliation and Update
-// clear-diffing. Returns nil for null/unknown maps.
-func versionPackageKeys(ctx context.Context, m types.Map) ([]string, diag.Diagnostics) {
+// versionPackageMap decodes a model's version_packages attribute into a plain
+// map. Returns an empty map for a null or unknown attribute.
+func versionPackageMap(ctx context.Context, m types.Map) (map[string]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	out := map[string]string{}
 	if m.IsNull() || m.IsUnknown() {
+		return out, diags
+	}
+	diags.Append(m.ElementsAs(ctx, &out, false)...)
+	if diags.HasError() {
 		return nil, diags
 	}
-	elems := map[string]string{}
-	diags.Append(m.ElementsAs(ctx, &elems, false)...)
+	return out, diags
+}
+
+// versionPackageKeys returns the declared version_packages keys from a model's
+// map, used as the managed-subset key set for Read reconciliation and Update
+// unassign-diffing. Returns nil for null/unknown maps.
+func versionPackageKeys(ctx context.Context, m types.Map) ([]string, diag.Diagnostics) {
+	elems, diags := versionPackageMap(ctx, m)
 	if diags.HasError() {
+		return nil, diags
+	}
+	if len(elems) == 0 {
 		return nil, diags
 	}
 	keys := make([]string, 0, len(elems))

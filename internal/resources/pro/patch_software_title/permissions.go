@@ -10,50 +10,60 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
+// mergedPrivileges is the union of the two SDK families every construct in this
+// package spans: the Pro v3 configuration endpoints do the work, and ProClassic
+// supplies the id-minting create plus the patch-source catalogues source_id is
+// resolved from.
+var mergedPrivileges = permissions.Merge(proclassic.Privileges, pro.Privileges)
+
 // resourceSDKMethods lists the SDK methods the patch software title resource's
-// CRUD path calls. The classic /patchsoftwaretitles CRUD runs through the
-// ProClassic client (crud.go); extension-attribute read + accept run through the
-// Pro v3 client (extension_attributes.go, invoked from Create/Read/Update). It
-// drives the "Required Jamf permissions" table appended to the resource
+// CRUD path calls. Read/update/delete and the extension-attribute side-channel
+// run through the Pro v3 client (crud.go, extension_attributes.go); ProClassic
+// contributes the create that mints the id and the two source catalogues
+// source_id is resolved from on import (patch_sources.go). It drives the
+// "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
-// the actual <client>.<Method> calls in crud.go + extension_attributes.go and
-// with the SDK privilege registries.
+// the actual <client>.<Method> calls in those files and with the SDK privilege
+// registries.
 var resourceSDKMethods = []string{
 	"CreatePatchSoftwareTitleByID",
-	"GetPatchSoftwareTitleByID",
-	"UpdatePatchSoftwareTitleByID",
-	"DeletePatchSoftwareTitleByID",
-	"ListPatchSoftwareTitleExtensionAttributesV3",
+	"GetPatchSoftwareTitleConfigurationV3",
 	"UpdatePatchSoftwareTitleConfigurationV3",
+	"DeletePatchSoftwareTitleConfigurationV3",
+	"ListPatchSoftwareTitleDefinitionsV3",
+	"ListPatchSoftwareTitleExtensionAttributesV3",
+	"ListPatchInternalSources",
+	"ListPatchExternalSources",
 }
 
 // resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the patch software title resource, appended to its MarkdownDescription.
-// The resource spans two SDK families (ProClassic CRUD + Pro v3 extension
-// attributes), so the registries are merged.
-var resourcePrivileges = permissions.Section(
-	permissions.Merge(proclassic.Privileges, pro.Privileges),
-	resourceSDKMethods...,
-)
+var resourcePrivileges = permissions.Section(mergedPrivileges, resourceSDKMethods...)
 
 // dataSourceSDKMethods lists the SDK methods the patch software title data
-// source calls (data_source.go). Lookup is read-only, by ID or by exact name
-// (lookupByName lists then gets by ID).
+// source calls (data_source.go, patch_sources.go). Lookup is read-only, by ID
+// or by exact name — the v3 configurations list returns whole objects, so a
+// name lookup needs no follow-up get.
 var dataSourceSDKMethods = []string{
-	"GetPatchSoftwareTitleByID",
-	"ListPatchSoftwareTitles",
+	"GetPatchSoftwareTitleConfigurationV3",
+	"ListPatchSoftwareTitleConfigurationsV3",
+	"ListPatchSoftwareTitleDefinitionsV3",
+	"ListPatchInternalSources",
+	"ListPatchExternalSources",
 }
 
 // dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the patch software title data source.
-var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
+var dataSourcePrivileges = permissions.Section(mergedPrivileges, dataSourceSDKMethods...)
 
 // listResourceSDKMethods lists the SDK methods the patch software title list
 // resource calls (list_resource.go).
 var listResourceSDKMethods = []string{
-	"ListPatchSoftwareTitles",
+	"ListPatchSoftwareTitleConfigurationsV3",
+	"ListPatchInternalSources",
+	"ListPatchExternalSources",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the patch software title list resource.
-var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)
+var listResourcePrivileges = permissions.Section(mergedPrivileges, listResourceSDKMethods...)

@@ -8,6 +8,8 @@ description: |-
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
+  | App lifecycle management | External patch sources | Read | `patch-external-source` |
+  | App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
   | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 ---
 
@@ -21,6 +23,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
+| App lifecycle management | External patch sources | Read | `patch-external-source` |
+| App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
 | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 
 ## Example Usage

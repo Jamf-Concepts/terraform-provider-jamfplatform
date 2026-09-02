@@ -15,8 +15,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
-// mergedRegistry is the union of the SDK families this package's resource spans:
-// ProClassic CRUD + Pro v3 extension attributes.
+// mergedRegistry is the union of the SDK families every construct in this
+// package spans: Pro v3 configuration CRUD plus the ProClassic create and patch
+// source catalogues.
 var mergedRegistry = permissions.Merge(proclassic.Privileges, pro.Privileges)
 
 // callRe matches a "<receiver>.<Method>(" call. The test filters the captures to
@@ -71,7 +72,7 @@ func assertMatch(t *testing.T, declared []string, called map[string]bool, where 
 	}
 }
 
-// --- resource (CRUD across ProClassic + Pro v2) ---
+// --- resource (CRUD across Pro v3 + the ProClassic create) ---
 
 // TestResourceSDKMethods_KnownToSDK fails if a declared method has been renamed
 // or removed in the merged SDK privilege registry.
@@ -83,11 +84,12 @@ func TestResourceSDKMethods_KnownToSDK(t *testing.T) {
 
 // TestResourceSDKMethods_MatchCalls fails if the resource's CRUD path calls an
 // SDK method not declared in resourceSDKMethods, or declares one it does not
-// call. The classic CRUD lives in crud.go; the Pro v3 extension-attribute calls
-// live in extension_attributes.go (invoked from Create/Read/Update).
+// call. The v3 CRUD lives in crud.go, the extension-attribute side-channel in
+// extension_attributes.go (invoked from Create/Read/Update), and the patch
+// source catalogue reads behind source_id resolution in patch_sources.go.
 func TestResourceSDKMethods_MatchCalls(t *testing.T) {
-	called := sdkCallsIn(t, mergedRegistry, "crud.go", "extension_attributes.go")
-	assertMatch(t, resourceSDKMethods, called, "crud.go+extension_attributes.go")
+	called := sdkCallsIn(t, mergedRegistry, "crud.go", "extension_attributes.go", "patch_sources.go")
+	assertMatch(t, resourceSDKMethods, called, "crud.go+extension_attributes.go+patch_sources.go")
 }
 
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
@@ -102,16 +104,17 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 
 // TestDataSourceSDKMethods_KnownToSDK fails on SDK drift for the data source.
 func TestDataSourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(proclassic.Privileges, dataSourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("dataSourceSDKMethods not present in proclassic.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(mergedRegistry, dataSourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("dataSourceSDKMethods not present in merged SDK registry (SDK drift): %v", missing)
 	}
 }
 
 // TestDataSourceSDKMethods_MatchCalls keeps the data source's privilege list in
-// sync with data_source.go.
+// sync with data_source.go plus the patch source catalogue reads it resolves
+// source_id through.
 func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
-	called := sdkCallsIn(t, proclassic.Privileges, "data_source.go")
-	assertMatch(t, dataSourceSDKMethods, called, "data_source.go")
+	called := sdkCallsIn(t, mergedRegistry, "data_source.go", "patch_sources.go")
+	assertMatch(t, dataSourceSDKMethods, called, "data_source.go+patch_sources.go")
 }
 
 // TestDataSourcePrivileges_Rendered guards the data source table rendered.
@@ -125,15 +128,15 @@ func TestDataSourcePrivileges_Rendered(t *testing.T) {
 
 // TestListResourceSDKMethods_KnownToSDK fails on SDK drift for the list resource.
 func TestListResourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(proclassic.Privileges, listResourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("listResourceSDKMethods not present in proclassic.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(mergedRegistry, listResourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("listResourceSDKMethods not present in merged SDK registry (SDK drift): %v", missing)
 	}
 }
 
 // TestListResourceSDKMethods_MatchCalls keeps the list resource's privilege list
 // in sync with list_resource.go.
 func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
-	called := sdkCallsIn(t, proclassic.Privileges, "list_resource.go")
+	called := sdkCallsIn(t, mergedRegistry, "list_resource.go")
 	assertMatch(t, listResourceSDKMethods, called, "list_resource.go")
 }
 

@@ -18,17 +18,16 @@ import (
 // VersionPackages is a managed-subset map keyed by software_version with
 // package_id string values. The user only declares the version→package
 // assignments they care about; the server holds the full catalog of versions
-// (20+) for the title and merges per software_version on write. Read therefore
-// reconciles only the keys the user declared (see state_builders.go).
+// (20+) for the title. Read reconciles only the keys the user declared, and
+// Update folds them over the server's live set, so an assignment made outside
+// Terraform survives an apply (see state_builders.go, input_builders.go).
 type PatchSoftwareTitleResourceModel struct {
 	ID                        types.String           `tfsdk:"id"`
 	Name                      types.String           `tfsdk:"name"`
 	NameID                    types.String           `tfsdk:"name_id"`
 	SourceID                  types.Int64            `tfsdk:"source_id"`
 	CategoryID                types.String           `tfsdk:"category_id"`
-	CategoryName              types.String           `tfsdk:"category_name"`
 	SiteID                    types.String           `tfsdk:"site_id"`
-	SiteName                  types.String           `tfsdk:"site_name"`
 	WebNotification           types.Bool             `tfsdk:"web_notification"`
 	EmailNotification         types.Bool             `tfsdk:"email_notification"`
 	VersionPackages           types.Map              `tfsdk:"version_packages"`
@@ -65,16 +64,15 @@ var patchSoftwareTitleEAAttrTypes = map[string]attr.Type{
 
 // PatchSoftwareTitleDataSourceModel represents the Terraform data source model.
 // Lookup is by ID or by exact display name — exactly one of the two must be
-// supplied. See data_source.go (lookupByName).
+// supplied. See data_source.go (lookupByName). SourceID is resolved from the
+// patch source name the v3 payload reports (see resolveSourceID).
 type PatchSoftwareTitleDataSourceModel struct {
 	ID                types.String             `tfsdk:"id"`
 	Name              types.String             `tfsdk:"name"`
 	NameID            types.String             `tfsdk:"name_id"`
 	SourceID          types.Int64              `tfsdk:"source_id"`
 	CategoryID        types.String             `tfsdk:"category_id"`
-	CategoryName      types.String             `tfsdk:"category_name"`
 	SiteID            types.String             `tfsdk:"site_id"`
-	SiteName          types.String             `tfsdk:"site_name"`
 	WebNotification   types.Bool               `tfsdk:"web_notification"`
 	EmailNotification types.Bool               `tfsdk:"email_notification"`
 	VersionPackages   types.Map                `tfsdk:"version_packages"`
@@ -89,8 +87,9 @@ type patchSoftwareTitleIdentityModel struct {
 }
 
 // PatchSoftwareTitleListResourceModel represents the config model for list
-// queries. Classic has no RSQL — the filter shape is the shared client-side
-// substring block, matching each title's display name.
+// queries. The v3 configurations list takes no query parameters, so the filter
+// shape is the shared client-side substring block, matching each title's
+// display name.
 type PatchSoftwareTitleListResourceModel struct {
 	Filter *filters.ClassicFilterModel `tfsdk:"filter"`
 }
