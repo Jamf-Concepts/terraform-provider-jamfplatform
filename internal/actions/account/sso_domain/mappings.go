@@ -21,7 +21,21 @@ import (
 const (
 	codeBadRequest = "BAD_REQUEST"
 	codeNotFound   = "NOT_FOUND"
+	codeConflict   = "CONFLICT"
 )
+
+// alreadyVerifiedMarker is the fragment of the refusal description that identifies
+// a domain Jamf Account already holds as verified, matched lower-cased.
+//
+// The refusal is 409 CONFLICT, and CONFLICT is not specific enough to translate on
+// alone — a duplicate domain claim uses the same code — so the description
+// separates them, as with rateLimitMarker.
+//
+// Wire-probed 2026-09-02: verifying jamf-test.soundmacguy.org.uk once it had
+// verified answered 409 immediately rather than 200 with domainStatus VERIFIED, and
+// it answered before the five-minute limit was applied, so the check precedes the
+// rate limit.
+const alreadyVerifiedMarker = "already verified"
 
 // rateLimitMarker is the fragment of the refusal description that identifies the
 // five-minute verification limit, matched lower-cased.

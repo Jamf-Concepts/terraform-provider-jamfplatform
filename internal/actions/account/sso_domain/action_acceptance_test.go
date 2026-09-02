@@ -52,6 +52,27 @@ import (
 // documented. Point it at a throwaway .example domain, never a real one.
 const envUnverifiableDomain = "JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN"
 
+// envVerifiedDomain names a claimed domain that is already verified. It is the only
+// way to exercise the idempotence path, and it cannot be a fixture this suite
+// creates: verification needs a TXT record under a domain the operator controls,
+// which no test can publish.
+//
+// Unlike envUnverifiableDomain this must name a *real* domain, so the guard is the
+// opposite one — a .example name is rejected, since it can never verify and would
+// make the test fail for the wrong reason. Use a throwaway subdomain of a domain you
+// own, with no mailboxes on it: a domain assigned to a connection redirects sign-in
+// for every address under it. A subdomain verifies in its own right (wire-probed:
+// verifiedTldId comes back null), so the parent's DNS is untouched.
+//
+// Leave the TXT record published. Jamf re-checks continuously and the verification
+// lapses fourteen days after the last success, so removing it turns this test red
+// two weeks later for a reason nothing in the repository would explain.
+//
+// The five-minute limit does not apply to this one: the already-verified refusal is
+// returned before the limit is evaluated (wire-probed), so the test is
+// deterministic and needs no timing guard.
+const envVerifiedDomain = "JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN"
+
 func accountClient(t *testing.T) *account.Client {
 	t.Helper()
 	return account.New(testhelpers.NewAcceptanceClient(t))
@@ -277,4 +298,48 @@ func TestAccAction_AccountVerifySSODomain_PlanTimeValidation(t *testing.T) {
 			})
 		})
 	}
+}
+
+// TestAccAction_AccountVerifySSODomain_AlreadyVerifiedIsNotAnError covers the
+// idempotence path: checking a domain that is already verified succeeds and reports
+// nothing to do.
+//
+// Wire-probed 2026-09-02, and it is not what the code suggests. Jamf Account
+// refuses the check with 409 CONFLICT "Domain is already verified" rather than
+// answering 200 with domainStatus VERIFIED, and it refuses before applying the
+// five-minute limit — so this test is deterministic and needs no timing guard.
+// Treating that refusal as a failure would make the action fail on its second run
+// for having succeeded on its first, which no re-runnable pipeline tolerates.
+//
+// **The first-time transition from unverified to verified cannot be tested here,
+// and not for want of trying.** It needs a domain whose freshly minted
+// verificationKey is then published in DNS, and the key is reissued every time a
+// domain is claimed — so a record published for an earlier claim is stale against a
+// new one. Automating it would require the suite to write DNS. The classification
+// logic behind that outcome is covered by unit tests instead
+// (TestReportOutcome_VerifiedReportsProgress and its siblings), and the negative
+// half is covered live by TestAccAction_AccountVerifySSODomain_Unverifiable.
+//
+// The assertion is that the apply succeeds. An action holds no state, and the
+// outcome is reported through SendProgress, which the harness does not expose — so
+// success is the absence of the diagnostic the unverified case asserts is present.
+// The pair is what gives either test its force.
+func TestAccAction_AccountVerifySSODomain_AlreadyVerifiedIsNotAnError(t *testing.T) {
+	testhelpers.AccPreCheckAccount(t)
+
+	name := strings.ToLower(strings.TrimSpace(os.Getenv(envVerifiedDomain)))
+	if name == "" {
+		t.Skipf("%s must name a claimed, already-verified domain for this test", envVerifiedDomain)
+	}
+	if strings.HasSuffix(name, ".example") {
+		t.Skipf("%s names %q, but a .example domain can never verify; this test needs a real domain you "+
+			"own whose ownership record is published", envVerifiedDomain, name)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config: verifyConfig(fmt.Sprintf("    domain = %q", name)),
+		}},
+	})
 }

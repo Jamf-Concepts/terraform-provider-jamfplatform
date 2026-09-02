@@ -423,3 +423,30 @@ func TestConfiguredTarget(t *testing.T) {
 		t.Errorf("target = %q, want %q", byID, "26917")
 	}
 }
+
+// TestIsAlreadyVerified_Matches covers the 409 that means the domain is in the state
+// the operator asked for, which the action reports as success rather than failure.
+func TestIsAlreadyVerified_Matches(t *testing.T) {
+	err := apiError(409, "CONFLICT", "Domain is already verified")
+	if !isAlreadyVerified(err) {
+		t.Fatal("a CONFLICT naming an already-verified domain must be recognised")
+	}
+}
+
+// TestIsAlreadyVerified_IgnoresOtherConflicts is the point of matching the
+// description as well as the code: a duplicate domain claim is also CONFLICT with a
+// null field, and treating that as success would swallow a real failure.
+func TestIsAlreadyVerified_IgnoresOtherConflicts(t *testing.T) {
+	err := apiError(409, "CONFLICT", "Domain is already added to your organization")
+	if isAlreadyVerified(err) {
+		t.Fatal("a CONFLICT that is not about verification must not be read as success")
+	}
+}
+
+// TestIsAlreadyVerified_NonAPIError guards the nil-APIError path, which a transport
+// failure takes.
+func TestIsAlreadyVerified_NonAPIError(t *testing.T) {
+	if isAlreadyVerified(errors.New("connection reset")) {
+		t.Fatal("a non-API error must not be read as success")
+	}
+}

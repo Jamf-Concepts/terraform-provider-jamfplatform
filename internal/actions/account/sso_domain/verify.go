@@ -160,6 +160,12 @@ func (a *VerifySSODomainAction) Invoke(ctx context.Context, req action.InvokeReq
 
 	domain, err := a.client.VerifyDomain(ctx, domainID)
 	if err != nil {
+		if isAlreadyVerified(err) {
+			resp.SendProgress(action.InvokeProgressEvent{
+				Message: fmt.Sprintf("Domain %s is already verified; nothing to check", target),
+			})
+			return
+		}
 		if !appendInvokeDiagnostics(&resp.Diagnostics, err, target, idPath) {
 			resp.Diagnostics.AddError(
 				"Domain verification could not be run",

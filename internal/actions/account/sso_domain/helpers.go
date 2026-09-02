@@ -237,3 +237,27 @@ func addRateLimited(diags *diag.Diagnostics, target, description string) {
 			"Reported by Jamf Account: %s", target, description),
 	)
 }
+
+// isAlreadyVerified reports whether Jamf Account refused the check because the
+// domain is already verified.
+//
+// That refusal is not a failure of the action: the state the operator asked for is
+// the state the domain is in. Reporting it as an error would make an action fail on
+// its second run for having succeeded on its first, which no re-runnable pipeline
+// can live with — and unlike the rate limit there is nothing to wait for and
+// nothing to fix.
+//
+// CONFLICT alone is not enough to match on: a duplicate domain claim carries the
+// same code, and Field is null on both, so the description does the separating.
+func isAlreadyVerified(err error) bool {
+	apiErr := jamfplatform.AsAPIError(err)
+	if apiErr == nil {
+		return false
+	}
+	for _, detail := range apiErr.Details() {
+		if detail.Code == codeConflict && strings.Contains(strings.ToLower(detail.Description), alreadyVerifiedMarker) {
+			return true
+		}
+	}
+	return false
+}
