@@ -116,13 +116,17 @@ func testAccCheckSSODomainDestroy(t *testing.T) resource.TestCheckFunc {
 // never carry it.
 //
 // `last_modified_at` and `verification_expires_at` are ignored because **Jamf
-// moves them on its own, seconds after the claim is made**. Observed live on
-// 2026-09-02: the claim response carried 14:09:58 and the read two seconds later
-// carried 14:10:00, with the expiry shifted by the same amount. That is Jamf's
-// background verification sweep, which the console describes as continuous — and
-// per the wire probe a verification attempt bumps the last-modified timestamp and
-// pushes the fourteen-day expiry out whether it succeeds or fails, so a `.example`
-// domain that can never verify still has both fields moved.
+// moves them on its own, with no request from the client**. Observed twice live on
+// 2026-09-02: here, a claim response carrying 14:09:58 against a read two seconds
+// later carrying 14:10:00, expiry shifted identically; and separately, a domain
+// claimed at 14:21:22 whose lastModifiedDate had become 14:24:16 by the time it
+// was next read.
+//
+// Whatever performs that touch is **not** a verification attempt, which is worth
+// stating because it is the obvious guess: lastVerificationDate stayed null across
+// it and the status stayed PENDING even on a domain whose DNS record was already
+// live and which verified successfully minutes later. So this is not the console's
+// "continuous re-check" doing its job, and no assertion should assume it is.
 //
 // Ignoring them is the correct handling rather than a workaround. Both are
 // Computed-only, so a later value is absorbed by refresh without producing a

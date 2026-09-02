@@ -14,9 +14,11 @@
 //     full Domain body, domainStatus unchanged and lastVerificationDate still null.
 //     The status code carries no outcome, so the response body has to be read.
 //   - The call is rate-limited to once every five minutes, measured from
-//     lastModifiedDate — which claiming the domain itself sets. The first verify
-//     after a create is therefore always refused, which rules out the resource
-//     polling for verification during Create.
+//     lastModifiedDate — which claiming the domain itself sets, so the first verify
+//     after a create is always refused. Worse for a poller, the window has no fixed
+//     end: Jamf moves lastModifiedDate on its own, so the deadline can be pushed
+//     forward while a caller waits. Both facts rule out the resource polling for
+//     verification during Create.
 //   - It is not idempotent even when it fails. A verify that reports PENDING still
 //     bumps lastModifiedDate and pushes verificationExpirationDate out to now + 14
 //     days, so every call mutates two server-derived timestamps and restarts its
@@ -205,22 +207,33 @@ func appendInvokeDiagnostics(diags *diag.Diagnostics, err error, target string, 
 // addRateLimited reports the five-minute verification limit as something to wait
 // out rather than debug.
 //
-// It says why the provider does not wait: a five-minute pause inside an apply holds
-// the whole run for a delay the operator can neither shorten nor observe, the first
+// It says why the provider does not wait: a pause inside an apply holds the whole
+// run for a delay the operator can neither shorten nor observe, the first
 // verification after a claim is guaranteed to hit it, and a retry loop would be
 // actively harmful because every call — refused or not — restarts the window and
 // pushes the domain's expiry out another 14 days.
+//
+// It also tells the operator to *re-read* the domain rather than counting five
+// minutes from a lastModifiedDate they already hold, because the window has no
+// fixed end. Observed live on 2026-09-02: a domain claimed at 14:21:22 had its
+// lastModifiedDate moved to 14:24:16 with no request from the client, so a verify
+// at 14:26:39 — comfortably past five minutes from the claim — was still refused,
+// and the call that succeeded landed at 14:29:41. Whatever performs that touch is
+// not a verification attempt: lastVerificationDate stayed null across it and the
+// status stayed PENDING even though the DNS record was already live.
 func addRateLimited(diags *diag.Diagnostics, target, description string) {
 	diags.AddError(
 		"Jamf Account allows only one domain verification every five minutes",
 		fmt.Sprintf("Domain %s changed less than five minutes ago, so Jamf Account refused to check it "+
 			"again. Claiming a domain counts as a change, so the first verification after a domain is claimed "+
 			"is always refused for five minutes.\n\n"+
-			"Nothing is wrong with the configuration. Wait until five minutes have passed since the domain's "+
-			"`last_modified_at`, then invoke the action again — publishing the DNS record usually takes longer "+
-			"than that anyway. This provider does not wait it out on your behalf: a five-minute pause would "+
-			"hold the whole run, and every verification restarts the five-minute window whether or not it "+
-			"succeeds.\n\n"+
+			"Nothing is wrong with the configuration. Re-read the domain, wait until five minutes have passed "+
+			"since its current `last_modified_at`, then invoke the action again — publishing the DNS record "+
+			"usually takes longer than that anyway. Re-read rather than counting from the value you already "+
+			"have: Jamf Account moves `last_modified_at` on its own, without any request, which restarts the "+
+			"window. This provider does not wait it out on your behalf, because the wait has no fixed end: a "+
+			"pause inside an apply would hold the whole run for a delay that can be extended while it waits, "+
+			"and every verification restarts the window whether or not it succeeds.\n\n"+
 			"Reported by Jamf Account: %s", target, description),
 	)
 }
