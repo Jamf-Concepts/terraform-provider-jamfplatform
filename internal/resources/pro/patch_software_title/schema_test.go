@@ -12,6 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
+// TestPatchSoftwareTitleResource_Metadata pins the Terraform type name. It is
+// the resource's public address, so a change to it breaks every existing
+// configuration.
 func TestPatchSoftwareTitleResource_Metadata(t *testing.T) {
 	r := NewPatchSoftwareTitleResource()
 	req := resource.MetadataRequest{ProviderTypeName: "jamfplatform"}
@@ -23,6 +26,32 @@ func TestPatchSoftwareTitleResource_Metadata(t *testing.T) {
 	}
 }
 
+// TestPatchSoftwareTitleResource_SchemaVersion pins the schema version against
+// the state upgrader's registered key. The two are coupled by hand: bumping the
+// version without registering the matching upgrader makes every existing state
+// file unreadable, and registering one without bumping means it never runs.
+func TestPatchSoftwareTitleResource_SchemaVersion(t *testing.T) {
+	r := NewPatchSoftwareTitleResource().(*PatchSoftwareTitleResource)
+	var resp resource.SchemaResponse
+	r.Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	if resp.Schema.Version != 1 {
+		t.Errorf("expected schema version 1, got %d", resp.Schema.Version)
+	}
+	if _, ok := r.UpgradeState(context.Background())[0]; !ok {
+		t.Error("schema version 1 needs an upgrader registered for version 0, or v0 state cannot be read")
+	}
+}
+
+// TestPatchSoftwareTitleResource_Schema pins the attribute set and each
+// attribute's Optional/Required/Computed mode, which together decide how the
+// framework plans the resource. Four of these are load-bearing beyond the
+// obvious: category_id / site_id / the notification bools are Optional+Computed
+// because the server defaults them; version_packages is Optional-only so a
+// managed subset never plans as a computed map; accept_extension_attributes is
+// Optional-only because it is one-way user intent rather than server state; and
+// extension_attributes is plain Computed so it goes Unknown when an accept
+// flips accepted false→true inside a single apply.
 func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 	r := NewPatchSoftwareTitleResource()
 	var resp resource.SchemaResponse
@@ -33,11 +62,14 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	want := []string{"id", "name", "name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions", "accept_extension_attributes", "extension_attributes", "timeouts"}
+	want := []string{"id", "name", "name_id", "source_id", "category_id", "site_id", "web_notification", "email_notification", "version_packages", "available_versions", "accept_extension_attributes", "extension_attributes", "timeouts"}
 	for _, name := range want {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
+	}
+	if len(s.Attributes) != len(want) {
+		t.Errorf("expected exactly %d attributes, got %d", len(want), len(s.Attributes))
 	}
 
 	id := s.Attributes["id"]
@@ -51,7 +83,6 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 		}
 	}
 
-	// category_id / site_id / both notification bools are Optional+Computed.
 	for _, oc := range []string{"category_id", "site_id", "web_notification", "email_notification"} {
 		a := s.Attributes[oc]
 		if !a.IsOptional() || !a.IsComputed() {
@@ -59,16 +90,13 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 		}
 	}
 
-	// category_name / site_name / available_versions are Computed-only.
-	for _, c := range []string{"category_name", "site_name", "available_versions"} {
+	for _, c := range []string{"available_versions", "extension_attributes"} {
 		a := s.Attributes[c]
 		if a.IsOptional() || a.IsRequired() || !a.IsComputed() {
 			t.Errorf("%q must be computed-only, got optional=%v required=%v computed=%v", c, a.IsOptional(), a.IsRequired(), a.IsComputed())
 		}
 	}
 
-	// version_packages must be Optional-only (never Computed — avoids computed-map
-	// plan quirks).
 	vp := s.Attributes["version_packages"]
 	if !vp.IsOptional() {
 		t.Errorf("version_packages must be optional")
@@ -77,21 +105,31 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 		t.Errorf("version_packages must NOT be computed (managed-subset map)")
 	}
 
-	// accept_extension_attributes is an Optional-only one-way action flag (never
-	// Computed — it is a user intent input, not coupled to the computed list).
 	accept := s.Attributes["accept_extension_attributes"]
 	if !accept.IsOptional() || accept.IsComputed() || accept.IsRequired() {
 		t.Errorf("accept_extension_attributes must be optional-only, got optional=%v computed=%v required=%v", accept.IsOptional(), accept.IsComputed(), accept.IsRequired())
 	}
+}
 
-	// extension_attributes is Computed-only (no plan modifier) so it goes Unknown
-	// when an accept flips accepted=false→true in the same apply.
-	ea := s.Attributes["extension_attributes"]
-	if ea.IsOptional() || ea.IsRequired() || !ea.IsComputed() {
-		t.Errorf("extension_attributes must be computed-only, got optional=%v required=%v computed=%v", ea.IsOptional(), ea.IsRequired(), ea.IsComputed())
+// TestPatchSoftwareTitleResource_SchemaDropsV0NameAttributes pins the removal
+// the v1 schema exists for. The v3 configuration reports category and site as
+// ids only, so re-adding either display name would need a lookup per read for a
+// value Terraform never writes — and would need a second schema version to get
+// back out of.
+func TestPatchSoftwareTitleResource_SchemaDropsV0NameAttributes(t *testing.T) {
+	r := NewPatchSoftwareTitleResource()
+	var resp resource.SchemaResponse
+	r.(*PatchSoftwareTitleResource).Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	for _, gone := range removedInV1 {
+		if _, ok := resp.Schema.Attributes[gone]; ok {
+			t.Errorf("%q was removed at schema v1 and must not be declared", gone)
+		}
 	}
 }
 
+// TestPatchSoftwareTitleDataSource_Metadata pins the data source's public
+// address, which shares the resource's type name.
 func TestPatchSoftwareTitleDataSource_Metadata(t *testing.T) {
 	d := NewPatchSoftwareTitleDataSource()
 	req := datasource.MetadataRequest{ProviderTypeName: "jamfplatform"}
@@ -103,6 +141,12 @@ func TestPatchSoftwareTitleDataSource_Metadata(t *testing.T) {
 	}
 }
 
+// TestPatchSoftwareTitleDataSource_Schema pins that id and name are the two
+// mutually-exclusive selectors — Optional so either can be supplied, Computed
+// so the other is filled from the response — and that every remaining attribute
+// is Computed-only, so nothing else can be mistaken for a lookup key.
+// category_name and site_name are gone here too: the data source reads the same
+// v3 body as the resource.
 func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 	d := NewPatchSoftwareTitleDataSource()
 	var resp datasource.SchemaResponse
@@ -113,7 +157,6 @@ func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	// id and name are the two mutually-exclusive selectors — Optional+Computed.
 	for _, sel := range []string{"id", "name"} {
 		a := s.Attributes[sel]
 		if !a.IsOptional() {
@@ -124,8 +167,7 @@ func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 		}
 	}
 
-	// Everything else is Computed-only.
-	for _, c := range []string{"name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions"} {
+	for _, c := range []string{"name_id", "source_id", "category_id", "site_id", "web_notification", "email_notification", "version_packages", "available_versions"} {
 		a, ok := s.Attributes[c]
 		if !ok {
 			t.Errorf("missing attribute %q", c)
@@ -135,8 +177,17 @@ func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 			t.Errorf("%q must be computed-only, got optional=%v required=%v computed=%v", c, a.IsOptional(), a.IsRequired(), a.IsComputed())
 		}
 	}
+
+	for _, gone := range removedInV1 {
+		if _, ok := s.Attributes[gone]; ok {
+			t.Errorf("%q was removed with the v3 migration and must not be declared on the data source", gone)
+		}
+	}
 }
 
+// TestPatchSoftwareTitleDataSource_ConfigValidators_ExactlyOneSelector pins that
+// the id-or-name choice is enforced at plan time. Without the validator a config
+// supplying neither reaches the read and fails mid-apply against the API instead.
 func TestPatchSoftwareTitleDataSource_ConfigValidators_ExactlyOneSelector(t *testing.T) {
 	d := NewPatchSoftwareTitleDataSource().(*PatchSoftwareTitleDataSource)
 	got := d.ConfigValidators(context.Background())
@@ -145,6 +196,8 @@ func TestPatchSoftwareTitleDataSource_ConfigValidators_ExactlyOneSelector(t *tes
 	}
 }
 
+// TestPatchSoftwareTitleListResource_Metadata pins the list resource's public
+// address, which shares the resource's type name.
 func TestPatchSoftwareTitleListResource_Metadata(t *testing.T) {
 	r := NewPatchSoftwareTitleListResource()
 	req := resource.MetadataRequest{ProviderTypeName: "jamfplatform"}
@@ -156,6 +209,10 @@ func TestPatchSoftwareTitleListResource_Metadata(t *testing.T) {
 	}
 }
 
+// TestPatchSoftwareTitleListResource_Schema pins the filter block's presence.
+// The v3 configurations list takes no query parameters, so client-side
+// substring filtering on the display name is the only selectivity the list
+// resource has.
 func TestPatchSoftwareTitleListResource_Schema(t *testing.T) {
 	r := NewPatchSoftwareTitleListResource()
 	var resp list.ListResourceSchemaResponse

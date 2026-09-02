@@ -9,6 +9,7 @@ package providerdata
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -102,6 +103,9 @@ type Data struct {
 
 	aiSchemaMu    sync.Mutex
 	aiSchemaCache *aischemas.Cache
+
+	patchSourceMu    sync.Mutex
+	patchSourceCache *PatchSourceCache
 }
 
 // AISchemaCache returns the shared AI Governance product catalogue and vendor schema cache, building
@@ -122,6 +126,110 @@ func (d *Data) AISchemaCache() *aischemas.Cache {
 		d.aiSchemaCache = aischemas.NewCache(d.Client)
 	}
 	return d.aiSchemaCache
+}
+
+// PatchSourceCatalogues is a snapshot of the tenant's two Jamf Pro patch source
+// catalogues, internal and external, as one value.
+//
+// It carries the catalogue entries as read rather than a name → id index, because the
+// question its consumer asks is not a plain lookup: a patch software title names its
+// source but never numbers it, a name present in both catalogues cannot be resolved at
+// all, and the refusal has to name the candidate ids. Keeping the snapshot as-read leaves
+// that decision in one pure function over these two slices (in the patch software title
+// package, which owns the law and the calls that fill this), so the cache only ever
+// answers "what does this tenant have", never "which id is it".
+type PatchSourceCatalogues struct {
+	Internal []proclassic.IDName
+	External []proclassic.IDName
+}
+
+// PatchSourceCache holds one PatchSourceCatalogues snapshot per configured provider
+// instance, read on first use.
+//
+// Both catalogues are tenant-global and identical for every patch software title in a
+// configuration, and every title read outside the managed-resource steady state needs
+// them, so without this a configuration with N patch software title data sources pays 2N
+// identical catalogue requests on every plan and again on every apply.
+//
+// A failed read is not cached: the next caller retries it. A transient blip or a
+// momentary privilege problem on the first title must not blank every later title's
+// source_id for the rest of the run — the same rule this package applies to the Jamf Pro
+// version fetch and aischemas to its vendor schemas.
+//
+// The read itself is injected rather than written here. The two SDK calls it makes belong
+// to the patch software title package: that package declares the privileges they require,
+// and its tests derive that declaration from the call sites in its own files.
+type PatchSourceCache struct {
+	client *proclassic.Client
+	read   func(context.Context, *proclassic.Client) (PatchSourceCatalogues, error)
+
+	mu         sync.Mutex
+	loaded     bool
+	catalogues PatchSourceCatalogues
+}
+
+// Catalogues returns the snapshot, reading it at most once per configured provider
+// instance.
+//
+// The lock is held across the read, so concurrent callers collapse into one round-trip
+// instead of racing to fill the same snapshot. There is exactly one snapshot to fill —
+// unlike the AI Governance schema cache, where a lock held across a fetch would make
+// callers wanting different schemas wait on each other.
+//
+// Nil-receiver-safe: resolving a patch source name is best-effort everywhere except
+// import, so a construct that never received a cache must report an unresolved id rather
+// than panic mid-plan.
+func (c *PatchSourceCache) Catalogues(ctx context.Context) (PatchSourceCatalogues, error) {
+	if c == nil {
+		return PatchSourceCatalogues{}, errors.New("the provider is not configured, so the patch source catalogues cannot be read")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.loaded {
+		return c.catalogues, nil
+	}
+	catalogues, err := c.read(ctx, c.client)
+	if err != nil {
+		return PatchSourceCatalogues{}, err
+	}
+	c.catalogues = catalogues
+	c.loaded = true
+	return c.catalogues, nil
+}
+
+// ConfigurePatchSources returns the patch source cache shared by every construct
+// configured from this provider instance, building it on first use with read.
+//
+// It mirrors ConfigureImpact: no diagnostics, and nil when providerData is not a *Data —
+// including the nil ProviderData the framework passes during early lifecycle. A caller
+// that receives nil still resolves nothing and reports it, because a null source_id
+// outside import is advisory.
+//
+// The first caller's read function is the cache's read function; later callers reuse the
+// cache they find. Every caller passes the same package-level function, so which one
+// registered it cannot matter.
+func ConfigurePatchSources(providerData any, read func(context.Context, *proclassic.Client) (PatchSourceCatalogues, error)) *PatchSourceCache {
+	pd, ok := providerData.(*Data)
+	if !ok {
+		return nil
+	}
+	return pd.patchSources(read)
+}
+
+// patchSources lazily builds the provider-instance patch source cache over a classic
+// client of this Data's own, so no caller has to hand one in.
+func (d *Data) patchSources(read func(context.Context, *proclassic.Client) (PatchSourceCatalogues, error)) *PatchSourceCache {
+	if d == nil {
+		return nil
+	}
+	d.patchSourceMu.Lock()
+	defer d.patchSourceMu.Unlock()
+
+	if d.patchSourceCache == nil {
+		d.patchSourceCache = &PatchSourceCache{client: proclassic.New(d.Client), read: read}
+	}
+	return d.patchSourceCache
 }
 
 // EnableImpactAlerts turns on plan-time impact alerts for this provider

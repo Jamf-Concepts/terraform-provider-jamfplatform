@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -23,34 +23,39 @@ import (
 )
 
 // lookupByName resolves a patch software title by exact display name via
-// ListPatchSoftwareTitles + client-side name match, then
-// GetPatchSoftwareTitleByID. Classic /patchsoftwaretitles has no name-based
-// lookup endpoint (only list and get-by-id). `name` is a freeform Required
-// field the caller supplies at Create, so collisions across titles are
-// possible — multiple exact matches surface as *jamfplatform.AmbiguousMatchError
-// rather than silently returning the first hit.
-func lookupByName(ctx context.Context, c *proclassic.Client, name string) (*proclassic.PatchSoftwareTitle, error) {
-	list, err := c.ListPatchSoftwareTitles(ctx) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles intentionally used; v2 create unusable — see crud.go header note
+// ListPatchSoftwareTitleConfigurationsV3 + client-side name match. The
+// configurations list has no name-based lookup endpoint, but it returns whole
+// configuration objects rather than stubs, so the match itself is the answer
+// and no follow-up get is needed. `name` is a freeform Required field the
+// caller supplies at Create, so collisions across titles are possible —
+// multiple exact matches surface as *jamfplatform.AmbiguousMatchError rather
+// than silently returning the first hit.
+//
+// An entry carrying no id is not a match. Nothing downstream can read a title by
+// an empty id, so counting one would only move the failure to the version read
+// and have that blame the versions rather than the malformed entry. There is no
+// guard on an empty list: the configurations list returns a plain slice, in
+// which nil and empty are indistinguishable, and a tenant with no patch titles
+// at all is legitimate.
+func lookupByName(ctx context.Context, c *pro.Client, name string) (*pro.PatchSoftwareTitleConfiguration, error) {
+	list, err := c.ListPatchSoftwareTitleConfigurationsV3(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list patch software titles while resolving %q: %w", name, err)
 	}
-	if list == nil {
-		return nil, fmt.Errorf("no patch software title named %q (empty list response)", name)
-	}
+	var matched *pro.PatchSoftwareTitleConfiguration
 	var matches []string
-	for _, item := range list.PatchSoftwareTitles {
-		if item.Name == nil || *item.Name != name {
+	for i := range list {
+		if list[i].DisplayName != name || list[i].ID == "" {
 			continue
 		}
-		if id := helpers.StringValueFromIntPtr(item.ID).ValueString(); id != "" {
-			matches = append(matches, id)
-		}
+		matched = &list[i]
+		matches = append(matches, list[i].ID)
 	}
 	switch len(matches) {
 	case 0:
 		return nil, fmt.Errorf("no patch software title named %q", name)
 	case 1:
-		return c.GetPatchSoftwareTitleByID(ctx, matches[0]) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles intentionally used; v2 create unusable — see crud.go header note
+		return matched, nil
 	default:
 		return nil, &jamfplatform.AmbiguousMatchError{Name: name, Matches: matches}
 	}
@@ -60,8 +65,18 @@ func lookupByName(ctx context.Context, c *proclassic.Client, name string) (*proc
 // patch software titles. Lookup is by ID or by exact display name — exactly
 // one of the two must be supplied. The full server view is surfaced,
 // including every assigned version→package pair.
+//
+// source_id is resolved, not read: the v3 configuration names a title's patch
+// source but never numbers it, and a data source has no prior state to carry the
+// number in. The resolution is best-effort — source_id comes back null with a
+// warning when the name matches no patch source, matches one in both
+// catalogues, or the catalogues cannot be read — because the attribute is
+// Computed and informational here, unlike the managed resource where it defines
+// the title. It goes through the provider-instance catalogue cache so a
+// configuration of many titles reads the catalogues once, not twice per title.
 type PatchSoftwareTitleDataSource struct {
-	client *proclassic.Client
+	sources   *providerdata.PatchSourceCache
+	proClient *pro.Client
 }
 
 var (
@@ -102,23 +117,15 @@ func (d *PatchSoftwareTitleDataSource) Schema(ctx context.Context, req datasourc
 				Computed:            true,
 			},
 			"source_id": schema.Int64Attribute{
-				MarkdownDescription: "Patch source ID this title is sourced from.",
+				MarkdownDescription: "Patch source ID this title is sourced from. Jamf Pro reports the source by name here, so the provider matches that name against the tenant's internal and external patch sources: the value is null, with a warning, when the name matches none of them, matches both an internal and an external source, or those sources cannot be read.",
 				Computed:            true,
 			},
 			"category_id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro category ID.",
 				Computed:            true,
 			},
-			"category_name": schema.StringAttribute{
-				MarkdownDescription: "Category display name.",
-				Computed:            true,
-			},
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro site ID.",
-				Computed:            true,
-			},
-			"site_name": schema.StringAttribute{
-				MarkdownDescription: "Site display name.",
 				Computed:            true,
 			},
 			"web_notification": schema.BoolAttribute{
@@ -154,20 +161,21 @@ func (d *PatchSoftwareTitleDataSource) ConfigValidators(ctx context.Context) []d
 	}
 }
 
-// Configure wires the Jamf ProClassic client into the data source via the shared
-// providerdata.ConfigureProClassic helper.
+// Configure wires the Pro client used for the v3 configuration reads, plus the
+// shared patch source catalogue cache source_id resolves through.
 func (d *PatchSoftwareTitleDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
-	resp.Diagnostics.Append(diags...)
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
+	resp.Diagnostics.Append(proDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	d.client = client
+	d.proClient = proClient
+	d.sources = providerdata.ConfigurePatchSources(req.ProviderData, fetchPatchSourceCatalogues)
 }
 
 // Read fetches a patch software title by ID and populates Terraform state.
 func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	if d.client == nil {
+	if d.proClient == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
 			"The provider client was not configured. Please ensure the provider block is set up correctly.",
@@ -190,14 +198,14 @@ func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.
 	defer cancel()
 
 	var (
-		got *proclassic.PatchSoftwareTitle
+		got *pro.PatchSoftwareTitleConfiguration
 		err error
 	)
 	switch {
 	case !data.ID.IsNull() && data.ID.ValueString() != "":
-		got, err = d.client.GetPatchSoftwareTitleByID(readCtx, data.ID.ValueString()) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles intentionally used; v2 create unusable — see crud.go header note
+		got, err = d.proClient.GetPatchSoftwareTitleConfigurationV3(readCtx, data.ID.ValueString())
 	case !data.Name.IsNull() && data.Name.ValueString() != "":
-		got, err = lookupByName(readCtx, d.client, data.Name.ValueString())
+		got, err = lookupByName(readCtx, d.proClient, data.Name.ValueString())
 	default:
 		resp.Diagnostics.AddError("Missing patch software title selector", "Exactly one of id or name must be supplied.")
 		return
@@ -213,7 +221,25 @@ func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.
 		resp.Diagnostics.AddError("Unable to find Jamf Pro patch software title", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignPatchSoftwareTitleDataSourceModel(readCtx, &data, got)...)
+	defs, err := d.proClient.ListPatchSoftwareTitleDefinitionsV3(readCtx, got.ID, nil, "")
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to read Jamf Pro patch software title versions", err.Error())
+		return
+	}
+
+	sourceID := types.Int64Null()
+	catalogues, sourceErr := d.sources.Catalogues(readCtx)
+	if sourceErr == nil {
+		sourceID, sourceErr = sourceIDFromCatalogues(catalogues, got.PatchSourceName)
+	}
+	if sourceErr != nil {
+		resp.Diagnostics.AddWarning(
+			"Unable to determine the patch software title's source_id",
+			unresolvedSourceIDWarningDetail(got.DisplayName, got.PatchSourceName, sourceErr),
+		)
+	}
+
+	resp.Diagnostics.Append(assignPatchSoftwareTitleDataSourceModel(readCtx, &data, got, definitionVersions(defs), sourceID)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

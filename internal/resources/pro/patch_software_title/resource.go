@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // Package patch_software_title implements the jamfplatform_pro_patch_software_title
-// resource, data source, and list resource backed by the Jamf ProClassic patch
-// software titles API.
+// resource, data source, and list resource backed by the Jamf Pro v3
+// patch-software-title-configurations API, plus the one classic
+// /patchsoftwaretitles call that mints a title's id (see crud.go header).
 package patch_software_title
 
 import (
@@ -31,20 +32,31 @@ import (
 )
 
 // minJamfProVersion is the minimum Jamf Pro tenant version required by this resource.
-// Empty: the classic /patchsoftwaretitles endpoint predates the provider's overall
-// floor (11.0.0). The provider-level advisory still fires through
-// providerdata.ConfigureProClassic when the tenant is below ProviderMinJamfProVersion.
+// Empty: both surfaces this resource uses — the v3 configurations endpoints and the
+// classic /patchsoftwaretitles create — predate the provider's overall floor
+// (11.0.0). The provider-level advisory still fires through
+// providerdata.ConfigurePro / ConfigureProClassic when the tenant is below
+// ProviderMinJamfProVersion.
 const minJamfProVersion = ""
 
 // packageIDPattern matches a positive integer string (Jamf package ID). Used to
 // validate version_packages map values at plan time.
 var packageIDPattern = regexp.MustCompile(`^[1-9]\d*$`)
 
-// PatchSoftwareTitleResource implements the Terraform resource for Jamf ProClassic
-// patch software titles. CRUD runs over the classic /patchsoftwaretitles endpoint
-// (client); extension-attribute read + accept use the modern v3
-// /patch-software-title-configurations endpoint (proClient), keyed by the same
-// id (the classic title id equals the configuration id — wire-verified).
+// refIDPattern matches the only category / site ids the configurations endpoint
+// accepts: a positive integer, or the "-1" not-assigned sentinel. Anything else
+// is refused outright ("id field must be string of positive numeric value or
+// -1"), so it is validated at plan time rather than surfacing as a 400
+// mid-apply.
+var refIDPattern = regexp.MustCompile(`^(-1|[1-9]\d*)$`)
+
+// PatchSoftwareTitleResource implements the Terraform resource for Jamf Pro patch
+// software titles. Read, update, delete and the extension-attribute side-channel
+// run over the v3 /patch-software-title-configurations endpoints (proClient). The
+// classic client is needed for two things only: the POST that mints a title's id,
+// which v3 has no equivalent for, and resolving a patch source's name back to the
+// source_id v3 omits. Both keys are the same number — the classic title id equals
+// the configuration id, wire-verified.
 type PatchSoftwareTitleResource struct {
 	client    *proclassic.Client
 	proClient *pro.Client
@@ -53,6 +65,7 @@ type PatchSoftwareTitleResource struct {
 var _ resource.Resource = &PatchSoftwareTitleResource{}
 var _ resource.ResourceWithImportState = &PatchSoftwareTitleResource{}
 var _ resource.ResourceWithIdentity = &PatchSoftwareTitleResource{}
+var _ resource.ResourceWithUpgradeState = &PatchSoftwareTitleResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -86,8 +99,8 @@ func (r *PatchSoftwareTitleResource) IdentitySchema(ctx context.Context, req res
 // Schema returns the Terraform schema for the patch software title resource.
 func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.\n\n" +
-			"> **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/patch-software-title-configurations`. The classic endpoints remain the only functional create surface: the configurations `POST` requires a `softwareTitleId`, which is the classic title id, and the only call that mints one also creates the configuration — so there is nothing for the provider to migrate create onto. Behaviour may change if Jamf removes the classic endpoints." +
+		Version: 1,
+		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -122,28 +135,26 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Use `-1` (default) for \"No category assigned\".",
+				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Set `-1` for \"No category assigned\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(refIDPattern, "must be a positive integer ID, or \"-1\" for no category"),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
-			},
-			"category_name": schema.StringAttribute{
-				MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
-				Computed:            true,
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro site ID. Use `-1` (default) for \"NONE\".",
+				MarkdownDescription: "Jamf Pro site ID (UI \"Site\"). Set `-1` for \"None\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(refIDPattern, "must be a positive integer ID, or \"-1\" for no site"),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
-			},
-			"site_name": schema.StringAttribute{
-				MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
-				Computed:            true,
 			},
 			"web_notification": schema.BoolAttribute{
 				MarkdownDescription: "Whether a Jamf Pro notification is raised for new versions (UI \"Jamf Pro Notification\"). Server-defaulted when omitted.",
@@ -162,10 +173,11 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"version_packages": schema.MapAttribute{
-				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other server-side assignments are left untouched, and removing a key clears that version's package on the next apply.",
+				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments — an empty map is not accepted.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.Map{
+					mapvalidator.SizeAtLeast(1),
 					mapvalidator.ValueStringsAre(
 						stringvalidator.RegexMatches(packageIDPattern, "must be a positive integer package ID"),
 					),
@@ -216,9 +228,10 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 	}
 }
 
-// Configure wires both Jamf clients into the resource: the ProClassic client
-// (classic /patchsoftwaretitles CRUD) and the Pro client (v3 extension-attribute
-// read + accept). Both are built from the same provider data.
+// Configure wires both Jamf clients into the resource: the Pro client (the v3
+// configuration CRUD and extension-attribute side-channel) and the ProClassic
+// client (the id-minting create and patch-source name resolution). Both are
+// built from the same provider data.
 func (r *PatchSoftwareTitleResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
 	resp.Diagnostics.Append(diags...)

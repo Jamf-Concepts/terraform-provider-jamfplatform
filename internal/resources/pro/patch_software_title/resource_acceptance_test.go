@@ -3,15 +3,16 @@
 
 //go:build acceptance
 
-// Tests in this file talk to the Jamf ProClassic /patchsoftwaretitles endpoint
-// (deprecated in the spec but the only functional CRUD surface — see crud.go).
-// Classic has known concurrency issues when multiple writes hit the same
-// resource type — keep these tests serial with any future classic acceptance
-// work in this package.
+// Tests in this file talk to the Jamf Pro v3 patch-software-title-configurations
+// endpoints, plus the one classic /patchsoftwaretitles call that mints a title's
+// id (see crud.go). That classic create has known concurrency issues when
+// multiple writes hit the same resource type — keep these tests serial with any
+// future classic acceptance work in this package.
 //
 // The fixtures use the real "8x8 Work" patch catalog entry: name_id "285",
-// source_id 1, with version "8.33.2.2". If the catalog entry or that version is
-// removed from the test tenant's patch source, these tests will need updating.
+// source_id 1, with versions "8.33.2.2" and "8.32.2.10". If the catalog entry or
+// either version is removed from the test tenant's patch source, these tests
+// will need updating.
 
 package patch_software_title_test
 
@@ -35,20 +36,19 @@ import (
 )
 
 const (
-	accTitleNameID    = "285" // 8x8 Work
-	accTitleSourceID  = 1
-	accTitleVersion   = "8.33.2.2"
-	patchSoftwareType = "jamfplatform_pro_patch_software_title"
+	accTitleNameID     = "285" // 8x8 Work
+	accTitleSourceID   = 1
+	accTitleVersion    = "8.33.2.2"
+	accTitleVersionAlt = "8.32.2.10"
+	patchSoftwareType  = "jamfplatform_pro_patch_software_title"
 )
 
 // testAccCheckPatchSoftwareTitleDestroy verifies titles created during the test
 // were destroyed.
 //
-// The read goes through the v3 patch software title configurations endpoint. The
-// resource itself is ProClassic-backed, but the classic by-id read is deprecated
-// in the Jamf API spec, and both endpoints address the same object: wire-probed
-// 2026-08-03, each returns 404 for an id that does not exist, so
-// helpers.IsNotFoundError classifies them identically.
+// The read goes through the same v3 configurations endpoint the resource itself
+// deletes through. Wire-probed 2026-09-02: the v3 DELETE removes the classic
+// title with it, so a 404 here means the object is gone from both surfaces.
 func testAccCheckPatchSoftwareTitleDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		c := pro.New(testhelpers.NewAcceptanceClient(t))
@@ -131,11 +131,8 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 		}
 	`, cat, site, pkgA, pkgA, suffix, accTitleNameID, accTitleSourceID, accTitleVersion)
 
-	// Step 3: point the same version at a different package (change) and drop the
-	// previous key by not declaring it for another version (remove → clear). Here
-	// we change which package version A points at, exercising re-assign; the
-	// clear path is covered by the eventual destroy and by the unit tests, but we
-	// also reduce to an empty map to verify clear-on-remove round-trips.
+	// Step 3: point the same version at a different package, exercising the
+	// re-assign path through the v3 packages array.
 	stepClear := fmt.Sprintf(`
 		resource "jamfplatform_pro_category" "cat" {
 			name     = %q
@@ -165,18 +162,16 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 			web_notification   = true
 			email_notification = true
 
-			# Re-point version A at package B (change), and the prior key for
-			# version A is retained but now clears nothing extra. Removing version
-			# A entirely from the map on a later apply would emit the empty-package
-			# clear; here we re-assign to prove the assign path mutates in place.
+			# Re-point version A at package B to prove the assign path mutates in
+			# place rather than accumulating.
 			version_packages = {
 				%q = jamfplatform_pro_package.pkg_b.id
 			}
 		}
 	`, cat, site, pkgA, pkgA, pkgB, pkgB, suffix, accTitleNameID, accTitleSourceID, accTitleVersion)
 
-	// Step 4: remove the version_packages key entirely → exercises the
-	// empty-package clear/unassign path.
+	// Step 4: remove the version_packages key entirely → exercises the unassign
+	// path, where the key drops out of the replacement array Update sends.
 	stepUnassign := fmt.Sprintf(`
 		resource "jamfplatform_pro_package" "pkg_a" {
 			display_name = %q
@@ -205,9 +200,9 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(patchSoftwareType+".test", "id"),
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "name_id", accTitleNameID),
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "source_id", "1"),
-					// Server defaults. The classic patch-title GET omits the <site>
-					// block on a no-sites tenant; siteValues collapses that to the
-					// "-1" NONE sentinel (like category) so site_id is always known.
+					// Server defaults. v3 reports an unassigned category or site as
+					// the literal "-1", the only non-positive id it accepts on a
+					// write, so both are always known.
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "category_id", "-1"),
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "site_id", "-1"),
 					// Catalog versions populated by the server.
@@ -238,7 +233,7 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 			{
 				Config: stepUnassign,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					// version_packages fully cleared (empty-package unassign path).
+					// version_packages fully cleared (unassign path).
 					resource.TestCheckNoResourceAttr(patchSoftwareType+".test", "version_packages.%"),
 				),
 			},
@@ -249,12 +244,164 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 				// timeouts: framework-only, never round-trips.
 				// version_packages: managed-subset map keyed off prior state; on
 				// import there is no prior state, so it cannot be reconstructed.
-				// available_versions / *_name: server-derived and at this step the
-				// state already matches, but version_packages is the import gap.
+				// available_versions: server-derived, and at this step the state
+				// already matches. source_id is resolved from the patch source
+				// name on import, so it round-trips.
 				ImportStateVerifyIgnore: []string{"timeouts", "version_packages"},
 			},
 		},
 	})
+}
+
+// TestAccResource_ProPatchSoftwareTitle_OutOfBandAssignmentSurvives pins the
+// managed-subset contract version_packages documents: only the versions
+// Terraform declares are managed, and a package an admin assigns to some other
+// version through the UI must still be there after the next apply.
+//
+// It earns an acceptance test because the v3 packages array is a full
+// replacement — the naive migration, sending the plan's assignments alone,
+// silently wipes every assignment Terraform does not know about, and no unit
+// test over the request builder can catch that. Step two mutates the title
+// outside Terraform, then forces an Update by renaming, so the read-modify-write
+// fold in crud.go Update is what keeps the out-of-band assignment alive.
+func TestAccResource_ProPatchSoftwareTitle_OutOfBandAssignmentSurvives(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+
+	pkgA := "tf-acc-pst-oob-pkgA-" + suffix
+	pkgB := "tf-acc-pst-oob-pkgB-" + suffix
+
+	var titleID, pkgBID string
+
+	config := func(name string) string {
+		return fmt.Sprintf(`
+		resource "jamfplatform_pro_package" "pkg_a" {
+			display_name = %q
+			file_name    = "%s.pkg"
+		}
+
+		resource "jamfplatform_pro_package" "pkg_b" {
+			display_name = %q
+			file_name    = "%s.pkg"
+		}
+
+		resource "jamfplatform_pro_patch_software_title" "test" {
+			name      = %q
+			name_id   = %q
+			source_id = %d
+
+			version_packages = {
+				%q = jamfplatform_pro_package.pkg_a.id
+			}
+		}
+	`, pkgA, pkgA, pkgB, pkgB, name, accTitleNameID, accTitleSourceID, accTitleVersion)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPatchSoftwareTitleDestroy(t),
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_13_0),
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: config("tf-acc 8x8 Work oob " + suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(patchSoftwareType+".test", "version_packages."+accTitleVersion, "jamfplatform_pro_package.pkg_a", "id"),
+					testAccCapturePatchTitleAndPackage(&titleID, &pkgBID),
+				),
+			},
+			{
+				PreConfig: func() {
+					if err := testAccAssignPatchPackageOutOfBand(t, titleID, accTitleVersionAlt, pkgBID); err != nil {
+						t.Fatalf("assigning a package outside Terraform: %v", err)
+					}
+				},
+				Config: config("tf-acc 8x8 Work oob renamed " + suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(patchSoftwareType+".test", "name", "tf-acc 8x8 Work oob renamed "+suffix),
+					// The managed key is unchanged and still the only one in state.
+					resource.TestCheckResourceAttrPair(patchSoftwareType+".test", "version_packages."+accTitleVersion, "jamfplatform_pro_package.pkg_a", "id"),
+					resource.TestCheckResourceAttr(patchSoftwareType+".test", "version_packages.%", "1"),
+					// The unmanaged key is untouched on the server.
+					testAccCheckPatchTitleAssignment(t, &titleID, accTitleVersionAlt, &pkgBID),
+				),
+			},
+		},
+	})
+}
+
+// testAccCapturePatchTitleAndPackage records the title id and the id of the
+// package the next step assigns outside Terraform. PreConfig takes no state, so
+// the ids have to be captured from a Check in the preceding step.
+func testAccCapturePatchTitleAndPackage(titleID, pkgBID *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		title, ok := s.RootModule().Resources[patchSoftwareType+".test"]
+		if !ok {
+			return fmt.Errorf("patch software title not found in state")
+		}
+		pkg, ok := s.RootModule().Resources["jamfplatform_pro_package.pkg_b"]
+		if !ok {
+			return fmt.Errorf("package pkg_b not found in state")
+		}
+		*titleID = title.Primary.ID
+		*pkgBID = pkg.Primary.ID
+		return nil
+	}
+}
+
+// testAccAssignPatchPackageOutOfBand assigns a package to one version of a title
+// the way an administrator would in the UI: a v3 merge-patch the provider had no
+// part in. It reads the current assignments first and appends, because the
+// packages array replaces rather than merges.
+func testAccAssignPatchPackageOutOfBand(t *testing.T, titleID, version, packageID string) error {
+	t.Helper()
+	if titleID == "" || packageID == "" {
+		return fmt.Errorf("nothing captured from the previous step (title %q, package %q)", titleID, packageID)
+	}
+
+	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	ctx := context.Background()
+
+	current, err := c.GetPatchSoftwareTitleConfigurationV3(ctx, titleID)
+	if err != nil {
+		return fmt.Errorf("reading title %s: %w", titleID, err)
+	}
+
+	packages := append([]pro.PatchSoftwareTitlePackages{}, current.Packages...)
+	v, p := version, packageID
+	packages = append(packages, pro.PatchSoftwareTitlePackages{Version: &v, PackageID: &p})
+
+	if _, err := c.UpdatePatchSoftwareTitleConfigurationV3(ctx, titleID, &pro.PatchSoftwareTitleConfigurationPatch{
+		Packages: &packages,
+	}); err != nil {
+		return fmt.Errorf("assigning package %s to version %s of title %s: %w", packageID, version, titleID, err)
+	}
+	return nil
+}
+
+// testAccCheckPatchTitleAssignment asserts the server still reports the given
+// version pointing at the given package. The ids are read through pointers
+// because they are only known once an earlier step has run.
+func testAccCheckPatchTitleAssignment(t *testing.T, titleID *string, version string, packageID *string) resource.TestCheckFunc {
+	t.Helper()
+	return func(*terraform.State) error {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		got, err := c.GetPatchSoftwareTitleConfigurationV3(context.Background(), *titleID)
+		if err != nil {
+			return fmt.Errorf("reading title %s: %w", *titleID, err)
+		}
+		for _, pkg := range got.Packages {
+			if pkg.Version == nil || *pkg.Version != version {
+				continue
+			}
+			if pkg.PackageID == nil || *pkg.PackageID != *packageID {
+				return fmt.Errorf("version %s points at package %v, want %s", version, pkg.PackageID, *packageID)
+			}
+			return nil
+		}
+		return fmt.Errorf("version %s has no package assignment; the apply wiped an assignment Terraform did not manage", version)
+	}
 }
 
 // TestAccResource_ProPatchSoftwareTitle_InvalidPackageID asserts the
@@ -323,6 +470,32 @@ func TestAccDataSource_ProPatchSoftwareTitle_ByIDAndName(t *testing.T) {
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_software_title.by_name", "name_id", accTitleNameID),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_software_title.by_name", "available_versions.#"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccDataSource_ProPatchSoftwareTitle_AmbiguousSelector asserts the data
+// source's ExactlyOneOf selector validator: supplying both id and name is
+// refused at plan time. The positive cases above cover each selector on its own,
+// which is exactly the coverage a silent removal of the validator would keep
+// green.
+//
+// The diagnostic wraps at ~80 cols, so the regex matches only the summary.
+func TestAccDataSource_ProPatchSoftwareTitle_AmbiguousSelector(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+data "jamfplatform_pro_patch_software_title" "bad" {
+  id   = "1"
+  name = "x"
+}
+`,
+				ExpectError: regexp.MustCompile(`Invalid Attribute Combination`),
 			},
 		},
 	})

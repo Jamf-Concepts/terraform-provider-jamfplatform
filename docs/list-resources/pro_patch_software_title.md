@@ -8,6 +8,8 @@ description: |-
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
+  | App lifecycle management | External patch sources | Read | `patch-external-source` |
+  | App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
   | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 ---
 
@@ -21,25 +23,29 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
+| App lifecycle management | External patch sources | Read | `patch-external-source` |
+| App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
 | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 
 ## Example Usage
 
 ```terraform
-# List every Jamf Pro patch software title.
+# List every Jamf Pro patch software title. NOTE: with include_resource the
+# returned objects leave available_versions and extension_attributes null —
+# each would cost one extra Jamf Pro call per title; read a single title with
+# the data source when you need them.
 list "jamfplatform_pro_patch_software_title" "all" {
   provider = jamfplatform
 }
 
-# List patch software titles whose name_id (catalog key) contains the substring
-# "285" (case-insensitive). NOTE: the classic list response surfaces no display
-# name through the SDK, so the filter matches name_id, not the display name.
-list "jamfplatform_pro_patch_software_title" "by_name_id" {
+# List patch software titles whose display name contains the substring "Adobe"
+# (case-insensitive).
+list "jamfplatform_pro_patch_software_title" "by_name" {
   provider = jamfplatform
 
   config {
     filter = {
-      name_substring = "285"
+      name_substring = "Adobe"
     }
   }
 }
