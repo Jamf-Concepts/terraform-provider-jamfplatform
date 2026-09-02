@@ -144,7 +144,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 	ignoreMajor := helpers.IsConfiguredValue(c.IgnoreMajorVersions) && c.IgnoreMajorVersions.ValueBool()
 
 	if isAutomatic {
-		config["enforcementType"] = "AUTOMATIC"
+		config["enforcementType"] = blueprints.SwUpdateConfigurationEnforcementTypeAutomatic
 
 		if ignoreMajor {
 			config["strategy"] = blueprints.SwUpdateAutomaticConfigurationStrategySemantic
@@ -173,7 +173,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 			}
 		}
 	} else if isManual {
-		config["enforcementType"] = "MANUAL"
+		config["enforcementType"] = blueprints.SwUpdateConfigurationEnforcementTypeManual
 	}
 
 	if helpers.IsConfiguredValue(c.TargetOSVersion) {
@@ -286,9 +286,9 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(raw json.RawMessage) erro
 
 	if !helpers.IsConfiguredValue(c.EnforcementType) {
 		if helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime) {
-			c.EnforcementType = types.StringValue("MANUAL")
+			c.EnforcementType = types.StringValue(blueprints.SwUpdateConfigurationEnforcementTypeManual)
 		} else if automaticFieldsDetected {
-			c.EnforcementType = types.StringValue("AUTOMATIC")
+			c.EnforcementType = types.StringValue(blueprints.SwUpdateConfigurationEnforcementTypeAutomatic)
 		}
 	}
 
