@@ -33,6 +33,7 @@ import (
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	ssoconnection "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/account/sso_connection"
 	ssodomain "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/account/sso_domain"
 	aigovernancepolicy "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/tool"
@@ -520,6 +521,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		ssodomain.NewDomainResource,
+		ssoconnection.NewConnectionResource,
 		aigovernancepolicy.NewPolicyResource,
 		activation_profile.NewActivationProfileResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
@@ -555,6 +557,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		category.NewCategoryDataSource,
 		ssodomain.NewDomainDataSource,
 		ssodomain.NewDomainsDataSource,
+		ssoconnection.NewConnectionDataSource,
+		ssoconnection.NewConnectionsDataSource,
 		aigovernancepolicy.NewPolicyDataSource,
 		aigovernancepolicy.NewPoliciesDataSource,
 		tool.NewToolDataSource,
@@ -687,6 +691,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		category.NewCategoryListResource,
 		securityclouddevicegroup.NewDeviceGroupListResource,
 		ssodomain.NewDomainListResource,
+		ssoconnection.NewConnectionListResource,
 		aigovernancepolicy.NewPolicyListResource,
 		dns_zone.NewDNSZoneListResource,
 		uem_connect.NewUEMConnectListResource,
