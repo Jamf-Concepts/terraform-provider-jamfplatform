@@ -2,8 +2,15 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // Package patch_policy implements the jamfplatform_pro_patch_policy resource,
-// data source, and list resource backed by the Jamf ProClassic /patchpolicies
-// API. The construct name mirrors the Jamf Pro admin UI ("Patch Policies", a tab
+// data source, and list resource. Every read of an individual policy — CRUD, the
+// data source, and the list resource's per-item hydration — goes through the
+// Jamf ProClassic /patchpolicies/id/{id} surface, which is the only one carrying
+// a policy's scope and user_interaction sections. The list resource *enumerates*
+// on the Pro v2 /patch-policies collection instead, because the classic
+// collection reads were withdrawn from the published Classic spec; see crud.go
+// for the endpoint-by-endpoint record.
+//
+// The construct name mirrors the Jamf Pro admin UI ("Patch Policies", a tab
 // on a software title under Computers → Patch management). A policy is created
 // against a patch software title
 // configuration and targets a single version of that title that has a package

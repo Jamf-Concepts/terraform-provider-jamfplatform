@@ -4,6 +4,7 @@
 package permissions
 
 import (
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -311,6 +312,79 @@ func sdkRegistries() map[string]Registry {
 		"pro":                  pro.Privileges,
 		"proclassic":           proclassic.Privileges,
 		"securitycloud":        securitycloud.Privileges,
+	}
+}
+
+// registryPair names one unordered pair of SDK registries and the method name
+// both of them key, which is the shape a Merge collision takes.
+type registryPair struct {
+	a, b, method string
+}
+
+// knownRegistryCollisions is every method name two SDK registries both key as
+// of the pinned SDK. There is one, and it is a real conflict rather than a
+// harmless duplicate: aigovernance.ListPolicies requires ai-policies:read while
+// proclassic.ListPolicies requires policies:read, so a construct merging those
+// two registries would document whichever was passed to Merge last and grant the
+// operator a permission that does not reach its endpoint.
+//
+// It is tolerated as an exception rather than fixed here because no construct
+// merges that pair — every Merge call in the provider is pro+proclassic or
+// pro+devices, both fully disjoint — and the fix belongs in the SDK's method
+// naming, not in a renderer. The exception is deliberately keyed on the pair as
+// well as the method, so it excuses ListPolicies only between these two
+// registries and not the same name colliding anywhere else. What it cannot
+// detect is a future construct merging this very pair: the entry is safe only
+// while nothing does, so a Merge call naming aigovernance alongside proclassic
+// has to delete it and take the SDK rename instead.
+var knownRegistryCollisions = map[registryPair]bool{
+	{a: "aigovernance", b: "proclassic", method: "ListPolicies"}: true,
+}
+
+// TestSDKRegistriesAreDisjoint is the guard on what Merge can safely do. Merge
+// resolves a key collision by letting the last registry win, which is only
+// sound while the colliding entries agree — and across families they do not,
+// because the same method name can front two different endpoints requiring two
+// different capabilities. Nothing else in the repo checks this: TestMerge
+// exercises a synthetic pair that is disjoint by construction, so it can never
+// fail, and a per-construct drift guard sees only the merged result, by which
+// point the losing entry is gone without trace.
+//
+// Every pair is compared, not just the pairs some construct merges today,
+// because a construct that merges a new pair is a one-line change and the
+// failure it would cause is silent: a published permission table naming the
+// wrong permission, with the resource still working for whoever granted both.
+// A new collision therefore fails here, at the point the SDK introduces it,
+// rather than at the point someone unknowingly relies on it.
+func TestSDKRegistriesAreDisjoint(t *testing.T) {
+	regs := sdkRegistries()
+	names := slices.Sorted(maps.Keys(regs))
+
+	seen := map[registryPair]bool{}
+	for i, a := range names {
+		for _, b := range names[i+1:] {
+			for method := range regs[a] {
+				if _, dup := regs[b][method]; !dup {
+					continue
+				}
+				pair := registryPair{a: a, b: b, method: method}
+				seen[pair] = true
+				if knownRegistryCollisions[pair] {
+					continue
+				}
+				t.Errorf("%s.Privileges and %s.Privileges both key %q — Merge would silently drop one "+
+					"(%s requires %v, %s requires %v); rename in the SDK, or record it in "+
+					"knownRegistryCollisions with the reason it is harmless",
+					a, b, method, a, regs[a][method].Scoped, b, regs[b][method].Scoped)
+			}
+		}
+	}
+
+	for pair := range knownRegistryCollisions {
+		if !seen[pair] {
+			t.Errorf("knownRegistryCollisions still excuses %s/%s %q, which no longer collides — delete the entry",
+				pair.a, pair.b, pair.method)
+		}
 	}
 }
 

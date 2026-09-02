@@ -19,11 +19,16 @@ import (
 )
 
 // PatchPolicyDataSource implements the Terraform data source for Jamf Pro patch
-// policies. Lookup is by id only: the classic /patchpolicies list response
-// surfaces id+name per item but offers no GetByName helper, so a name selector
-// would require an N-GET scan. The data source surfaces the general fields,
-// including the server-derived ones; manage the policy as a resource for full
-// scope / user_interaction detail.
+// policies. Lookup is by id only, and the reason is no longer the one it used to
+// be: the classic /patchpolicies collection reads that made a name selector an
+// N-GET scan have been withdrawn, and the Pro v2 collection that replaced them
+// for enumeration accepts a server-side RSQL query on policyName, so a name
+// selector would now cost one filtered list call plus one by-id read. It is
+// therefore unbuilt rather than rejected — note that RSQL string comparison is
+// case-sensitive, so a name selector added here would match exactly, unlike the
+// list resource's deliberately case-insensitive substring filter. The data
+// source surfaces the general fields, including the server-derived ones; manage
+// the policy as a resource for full scope / user_interaction detail.
 type PatchPolicyDataSource struct {
 	client *proclassic.Client
 }

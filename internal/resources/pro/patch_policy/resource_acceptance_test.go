@@ -372,9 +372,13 @@ func TestAccDataSource_ProPatchPolicy_ByID(t *testing.T) {
 // It is also the only check on the assumption the enumeration rests on: that a
 // Pro v2 patch policy id addresses the same policy on the ProClassic by-id path.
 // `include_resource = true` hydrates each result through the classic read using
-// the v2 id, so a mismatch skips hydration (a tflog warning, not an error) and
-// leaves every attribute below null — which is why the assertions cover
-// target_version and not only the name the enumeration already carried.
+// the v2 id, and a mismatch drops the policy from the result set entirely rather
+// than returning it with null attributes, so it is the ExpectResourceKnownValues
+// lookup itself — finding no result under the expected display name — that fails
+// the step. Both assertions below read the hydrated resource rather than the
+// enumeration, so either one catches that; target_version is asserted alongside
+// the name to cover flattenGeneral's mapping of a classic-only field, not
+// because it pins the id equality independently.
 func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()

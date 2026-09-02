@@ -4,8 +4,6 @@
 package patch_policy
 
 import (
-	"os"
-	"regexp"
 	"sort"
 	"testing"
 
@@ -19,28 +17,17 @@ import (
 // CRUD plus the Pro v2 enumeration the list resource runs on.
 var mergedRegistry = permissions.Merge(proclassic.Privileges, pro.Privileges)
 
-// clientCallRe matches a "<receiver>.<Method>(" call, e.g.
-// r.client.GetPatchPolicyByID( or r.proClient.ListPatchPoliciesV2(. The
-// receiver is not anchored on "client" because this package holds two clients
-// under different field names; captures are filtered to the registry below, so
-// non-SDK calls (resp.Diagnostics.Append, say) are discarded.
-var clientCallRe = regexp.MustCompile(`\b\w+\.([A-Za-z0-9]+)\(`)
-
 // callsInFile returns the distinct SDK client method names called in the named
-// source file that are present in the merged privilege registry. Filtering to
-// the registry keeps non-SDK helper calls (and any false positives) out of the
-// comparison.
+// source file that are present in the merged privilege registry. The walk lives
+// in permissions.SDKCallsInFile so that comments and string literals cannot
+// forge a call — see its doc comment for the byte-scanning regex it replaces and
+// why the other permissions_test.go copies still carry one. Only the fatal-on-
+// error behaviour stays here, where the *testing.T is.
 func callsInFile(t *testing.T, filename string) map[string]bool {
 	t.Helper()
-	src, err := os.ReadFile(filename)
+	called, err := permissions.SDKCallsInFile(filename, mergedRegistry)
 	if err != nil {
-		t.Fatalf("reading %s: %v", filename, err)
-	}
-	called := map[string]bool{}
-	for _, m := range clientCallRe.FindAllStringSubmatch(string(src), -1) {
-		if _, ok := mergedRegistry[m[1]]; ok {
-			called[m[1]] = true
-		}
+		t.Fatalf("scanning SDK calls: %v", err)
 	}
 	return called
 }
