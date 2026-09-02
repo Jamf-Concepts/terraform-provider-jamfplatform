@@ -25,7 +25,7 @@ internal/
 ├── providerdata/      # Shared Data{} carrying SDK client + cached Pro version
 ├── resources/
 │   ├── account/       # Jamf Account — organization-level, flat single tier   (Jamf Account)
-│   │                  #   sso_domain/, sso_connection/
+│   │                  #   sso_domain/
 │   │                  #   (folder name = Terraform slug minus `jamfplatform_account_`)
 │   ├── ai_governance/ # policy/, tool/                                      (Jamf AI Governance)
 │   │                  #   (folder name = Terraform slug minus `jamfplatform_ai_governance_`)
@@ -43,7 +43,7 @@ internal/
 │                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
 │                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
 ├── actions/
-│   ├── account/       # verify_sso_domain                                    (Jamf Account)
+│   ├── account/       # sso_domain/ (verify)                                 (Jamf Account)
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
 │   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (send_blank_push, renew_mdm_profile, flush_mdm_commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── functions/         # Provider-defined functions (offline; no SDK client, no provider config)
@@ -174,9 +174,10 @@ Terraform construct name format: `jamfplatform_account_<x>`; Go package
 `internal/resources/account/<x>/`, flat single tier like `security_cloud/`. This is the provider's
 **organization-level** family — what a practitioner manages at *account.jamf.com → Organization*,
 above and across individual tenants. Today that means **SSO**: a `sso_domain` is a DNS domain the
-organization has claimed and proved ownership of, and a `sso_connection` is an OIDC identity-provider
-connection that signs users in for one or more of those domains, scoped to chosen Jamf Pro, School,
-Protect and Security Cloud tenants. Family facts and the naming rationale are in
+organization has claimed and proved ownership of, and a `sso_connection` — surveyed but **not yet
+shipped**, see Fourth below — is an OIDC identity-provider connection that signs users in for one or
+more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud tenants. Family
+facts and the naming rationale are in
 [STYLE_GUIDE.md §Jamf Account Resource Naming](STYLE_GUIDE.md#jamf-account-resource-naming); five
 things drive the design and are easy to get wrong. First, **this is the only family reachable under
 organization scope, and the only scope that reaches it** — wire-probed 2026-09-02 on two
@@ -193,14 +194,17 @@ import is by domain **name**. Third, **verification is an action, not resource s
 idempotent**: a *failed* verify returns `200` with `domainStatus` unchanged (so the status code says
 nothing), yet still bumps `lastModifiedDate` and pushes `verificationExpirationDate` out 14 days —
 and because the five-minute rate limit is measured from `lastModifiedDate`, which the claim itself
-sets, the first verify after creating a domain is always refused. Fourth, **a connection's tenant
-allow-list is write-only**: neither read shape echoes `enabledProducts` or `enabledEnvironments`, and
-no endpoint anywhere lists an organization's tenants, so the ids cannot be discovered or
-drift-checked — documented rather than solved. Fifth, **the server attributes almost nothing**:
-`errors[].field` is populated only for top-level required fields, an invalid enum returns
-`MALFORMED_REQUEST_BODY` with `field: null` and never names the value, and a
-`connectionType`-versus-payload mismatch is an unattributed `500` — so enums and the
-discriminator/payload pairing are validated at plan time from the SDK's `*Values()` helpers.
+sets, the first verify after creating a domain is always refused. Fourth, a survey note rather than
+shipped behaviour: **a connection's tenant allow-list is write-only**. Neither read shape echoes
+`enabledProducts` or `enabledEnvironments`, and no endpoint anywhere lists an organization's tenants,
+so the ids can be neither discovered nor drift-checked — which will be documented rather than solved
+when the construct lands. It is not in the provider today: creating a connection is refused
+`500 UPSTREAM_ERROR` server-side, so `sso_domain` and its verify action are all that ship. Fifth,
+**the server attributes almost nothing**: `errors[].field` is populated only for top-level required
+fields, an invalid enum returns `MALFORMED_REQUEST_BODY` with `field: null` and never names the
+value, and a `connectionType`-versus-payload mismatch is an unattributed `500` — so every enum is
+taken from the SDK's own `*Values()` helper rather than a restated list, and the connection's
+discriminator/payload pairing will be validated at plan time the same way once it ships.
 
 ## Jamf AI Governance — one-paragraph orientation
 

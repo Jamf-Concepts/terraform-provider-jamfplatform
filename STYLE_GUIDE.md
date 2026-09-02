@@ -716,7 +716,8 @@ package).
    them apart, which is why the family is not named `jamfplatform_sso_*`.
 3. **Go package path**: `internal/resources/account/<resource>/` — flat, one leaf package per
    construct family, folder name equal to the Terraform slug minus the `jamfplatform_account_`
-   prefix. Actions live under `internal/actions/account/<verb>_<resource>/`.
+   prefix. Actions live under `internal/actions/account/<resource>/`, one package per resource
+   with a file per verb, as in `internal/actions/pro/mdm/`.
 4. **Organization scope only, via `providerdata.ConfigureAccount`.** Do not hand-roll
    Configure and do not route through `ConfigurePro` — there is no customer-tenant version to
    read, and an organization may hold no Jamf Pro tenant at all. The gate is

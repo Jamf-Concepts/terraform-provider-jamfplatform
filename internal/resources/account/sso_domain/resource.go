@@ -27,6 +27,12 @@
 //     organization's domain collection and matching on the domain name.
 //   - There is no update. Every attribute is RequiresReplace and Update issues no
 //     write, refreshing the read-only attributes only.
+//   - Only an owned claim is manageable. The collection returns shared domains
+//     — owned by another organization, assignable to a connection, refused every
+//     change and withdrawal — alongside the organization's own, and matching on
+//     the name alone would let an import adopt one. Read, Update and the list
+//     resource all gate on `sharedDomain`; the data sources do not, because
+//     reading a shared domain is exactly what they are for.
 //   - Import is by domain name. The identifier is assigned by Jamf, is never
 //     shown to a practitioner, and is not even stable — withdrawing a claim and
 //     making it again mints a new one, along with a new verification key. This
@@ -146,6 +152,10 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"Destroying a claim also withdraws the domain from every SSO connection that names it, which silently " +
 			"narrows those connections — the `jamfplatform_account_sso_domain` data source reports which " +
 			"connections a domain is assigned to.\n\n" +
+			"Only a domain your own organization claimed can be managed here. A domain another Jamf Account " +
+			"organization owns and shares with yours (`shared` is `true`) can be assigned to a connection but " +
+			"cannot be changed or withdrawn, so this resource refuses it: an import of one is rejected, and the " +
+			"`jamfplatform_account_sso_domain` data source is how a shared domain is read.\n\n" +
 			"Needs an organization-scoped Jamf integration, created against neither a platform environment nor a " +
 			"tenant, and is reachable only in the United States region." +
 			resourcePrivileges,
@@ -200,7 +210,9 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"shared": schema.BoolAttribute{
 				MarkdownDescription: "Whether the domain is owned by another Jamf Account organization and shared " +
 					"with yours. A shared domain can be assigned to a connection but cannot be changed or " +
-					"withdrawn. Read-only.",
+					"withdrawn, so it cannot be managed by this resource — importing one is refused, and it is " +
+					"read with the `jamfplatform_account_sso_domain` data source instead. Always `false` for a " +
+					"domain this resource manages. Read-only.",
 				Computed: true,
 			},
 			"account_id": schema.StringAttribute{

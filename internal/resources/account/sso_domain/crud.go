@@ -83,6 +83,12 @@ func (r *DomainResource) Create(ctx context.Context, req resource.CreateRequest,
 // arrived by — the whole stored representation is adopted either way — so the
 // usual trap of `req.State.Raw.IsNull()` being false after an import does not
 // apply.
+//
+// The one thing the scan is gated on is ownership. The collection returns
+// shared domains alongside the organization's own claims, and a match on the
+// name alone would let `terraform import` adopt one; helpers.go says why a
+// shared domain cannot be a managed resource. Refusing here covers both the
+// import and the case of a domain shared in after Terraform adopted it.
 func (r *DomainResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state DomainResourceModel
 
@@ -145,6 +151,10 @@ func (r *DomainResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	if appendSharedDomainDiagnostics(&resp.Diagnostics, found) {
+		return
+	}
+
 	assignDomainResourceModel(&state, found)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, domainIdentityModel{Domain: state.Domain})...)
@@ -161,7 +171,8 @@ func (r *DomainResource) Read(ctx context.Context, req resource.ReadRequest, res
 // of its own. A claim cannot be modified in any case — the routes that would do
 // it are unmapped. The listing exists to re-hydrate the read-only attributes,
 // two of which move without Terraform's involvement whenever the verification is
-// run.
+// run. It refuses a shared domain for the same reason Read does, so that a
+// refresh Terraform skipped cannot slip one into state through this path.
 func (r *DomainResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DomainResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -194,6 +205,10 @@ func (r *DomainResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
+	if appendSharedDomainDiagnostics(&resp.Diagnostics, found) {
+		return
+	}
+
 	assignDomainResourceModel(&plan, found)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, domainIdentityModel{Domain: plan.Domain})...)
@@ -212,6 +227,13 @@ func (r *DomainResource) Update(ctx context.Context, req resource.UpdateRequest,
 // the data source is the read that shows what a destroy will affect, and it is
 // deliberately not called here — an advisory call on the destroy path would add
 // a failure mode to an operation that otherwise cannot fail for that reason.
+//
+// A shared domain is the one thing that is refused up front rather than at the
+// wire: it belongs to another organization, no request can withdraw it, and the
+// `shared` value already in state settles it without a call. That check keys on
+// state rather than on an error code because the code Jamf answers a
+// cross-organization withdrawal with was never probed — probing it would have
+// meant a destructive request against another organization's domain.
 func (r *DomainResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state DomainResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -226,6 +248,11 @@ func (r *DomainResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
 	defer cancel()
+
+	if state.Shared.ValueBool() {
+		appendSharedDomainDeleteDiagnostics(&resp.Diagnostics, state.Domain.ValueString())
+		return
+	}
 
 	if state.ID.IsNull() || state.ID.ValueString() == "" {
 		resp.Diagnostics.AddError(

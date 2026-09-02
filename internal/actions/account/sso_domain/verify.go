@@ -71,7 +71,9 @@ func (a *VerifySSODomainAction) Schema(_ context.Context, _ action.SchemaRequest
 			"**Jamf allows one verification every five minutes per domain, counted from the last time the " +
 			"domain changed — and claiming it counts as a change.** So a verification invoked in the same run " +
 			"that claims the domain is refused, and this action reports that refusal rather than waiting it " +
-			"out. Give the DNS record time to publish, then invoke the action on a later run.\n\n" +
+			"out. Do not trigger this action from the claiming resource's own lifecycle — that arrangement " +
+			"is refused every single time. Give the DNS record time to publish, then invoke the action on a " +
+			"later run: `terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`.\n\n" +
 			"**Invoking it is never free, even when ownership is not proven.** Every verification resets that " +
 			"five-minute window and moves the point the domain's verification lapses out to 14 days from now, " +
 			"so the domain's `last_modified_at` and `verification_expires_at` change on every invocation. " +
@@ -82,9 +84,12 @@ func (a *VerifySSODomainAction) Schema(_ context.Context, _ action.SchemaRequest
 				MarkdownDescription: "The claimed domain to verify, as it appears on Jamf Account's " +
 					"**Single Sign-On > Domains** page — for example `example.com`. Case is ignored: Jamf " +
 					"stores a claimed domain in lower case however it was claimed.\n\n" +
-					"This is the identifier a practitioner actually holds, and referencing the `domain` " +
-					"attribute of your `jamfplatform_account_sso_domain` resource also makes the verification " +
-					"run after the domain has been claimed. Set this or `domain_id`, never both.",
+					"This is the identifier a practitioner actually holds. Do not trigger this action from the " +
+					"lifecycle of the `jamfplatform_account_sso_domain` resource that claims the domain: " +
+					"claiming it starts the five-minute window, so a check in the same run is always refused. " +
+					"Invoke it on a later run, once the TXT record is live — " +
+					"`terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`. Set this " +
+					"or `domain_id`, never both.",
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),

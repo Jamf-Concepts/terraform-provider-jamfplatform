@@ -33,8 +33,19 @@ func NewDomainListResource() list.ListResource {
 // Account SSO domains.
 //
 // The domain collection accepts neither a filter nor a sort expression, so there
-// is no filter block and no ordering to pin: the resource streams every domain
-// the organization holds, in the order Jamf returns them.
+// is no filter block and no ordering to pin: the resource streams the domains the
+// organization holds, in the order Jamf returns them.
+//
+// One entry class is dropped. The collection also returns the domains other
+// organizations have shared in, which this organization may assign to an SSO
+// connection but cannot change or withdraw, so they are not manageable as
+// jamfplatform_account_sso_domain and streaming them would offer a bulk import
+// whose every entry is stuck in state; the data sources are how a shared domain
+// is read. `req.Limit` still caps the results rather than the scan: it is
+// clamped against the number of domains returned, which is an upper bound on the
+// number kept, and the loop counts kept entries — so a limit of 5 against ten
+// domains of which six are shared yields all four owned ones rather than
+// stopping early.
 type DomainListResource struct {
 	client *account.Client
 }
@@ -58,9 +69,14 @@ func (r *DomainListResource) Configure(ctx context.Context, req resource.Configu
 // ListResourceConfigSchema describes the (empty) list configuration.
 func (r *DomainListResource) ListResourceConfigSchema(_ context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists every DNS domain your Jamf Account organization holds, for `terraform query` and for " +
-			"importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this " +
-			"list resource takes no filter configuration." + listResourcePrivileges,
+		Description: "Lists the DNS domains your Jamf Account organization has claimed, for `terraform query` and " +
+			"for importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this " +
+			"list resource takes no filter configuration.\n\n" +
+			"Domains shared into your organization by another Jamf Account organization are excluded. They cannot " +
+			"be changed or withdrawn, so they cannot be managed as `jamfplatform_account_sso_domain` and importing " +
+			"one would leave an entry that no destroy can remove. Use the " +
+			"`jamfplatform_account_sso_domains` data source to see every domain including the shared ones." +
+			listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{},
 	}
 }
@@ -104,6 +120,10 @@ func (r *DomainListResource) List(ctx context.Context, req list.ListRequest, str
 			break
 		}
 
+		if domain.SharedDomain {
+			continue
+		}
+
 		result := req.NewListResult(ctx)
 		result.DisplayName = domain.Domain
 
@@ -131,6 +151,7 @@ func (r *DomainListResource) List(ctx context.Context, req list.ListRequest, str
 
 	tflog.Debug(ctx, "Listed Jamf Account SSO domains", map[string]any{
 		"limit":    req.Limit,
+		"scanned":  len(domains),
 		"returned": len(results),
 	})
 

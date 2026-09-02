@@ -3,8 +3,9 @@
 page_title: "jamfplatform_account_sso_domain Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a DNS domain claimed by your Jamf Account organization, and the SSO connections it is currently assigned to.
+  Look up a DNS domain your Jamf Account organization holds, and the SSO connections it is currently assigned to.
   The assignment list is the read to do before destroying a claim: withdrawing a domain also removes it from every connection that names it, and nothing warns you.
+  This is also the construct for a domain another Jamf Account organization owns and shares with yours (shared is true). Such a domain can be assigned to a connection but cannot be changed or withdrawn, so the jamfplatform_account_sso_domain resource refuses to manage one; reading it here takes no ownership of it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,9 +15,11 @@ description: |-
 
 # jamfplatform_account_sso_domain (Data Source)
 
-Look up a DNS domain claimed by your Jamf Account organization, and the SSO connections it is currently assigned to.
+Look up a DNS domain your Jamf Account organization holds, and the SSO connections it is currently assigned to.
 
 The assignment list is the read to do before destroying a claim: withdrawing a domain also removes it from every connection that names it, and nothing warns you.
+
+This is also the construct for a domain another Jamf Account organization owns and shares with yours (`shared` is `true`). Such a domain can be assigned to a connection but cannot be changed or withdrawn, so the `jamfplatform_account_sso_domain` resource refuses to manage one; reading it here takes no ownership of it.
 
 **Required Jamf permissions**
 
@@ -74,7 +77,7 @@ output "jamf_id_sign_in_allowed" {
 - `last_modified_at` (String) When the claim last changed.
 - `last_verified_at` (String) When ownership was last verified successfully. Null for a domain that has never verified.
 - `parent_domain_id` (String) Identifier of the verified parent domain a subdomain inherits its verification from. Null for a domain verified in its own right.
-- `shared` (Boolean) Whether the domain is owned by another Jamf Account organization and shared with yours.
+- `shared` (Boolean) Whether the domain is owned by another Jamf Account organization and shared with yours. A shared domain can be assigned to a connection but cannot be changed or withdrawn, so it can be read here but not managed as a `jamfplatform_account_sso_domain` resource.
 - `verification_expires_at` (String) When the current verification lapses.
 - `verification_key` (String) Token Jamf minted for this claim, published as the value of a TXT record on the domain to prove ownership.
 - `verification_status` (String) Verification state of the claim: `MANUALLY_VERIFIED`, `MS_VERIFIED` (shown as "Microsoft Verified"), `PENDING` (shown as "Pending Approval"), `UNVERIFIED`, `VERIFIED` (shown as "Jamf Verified").

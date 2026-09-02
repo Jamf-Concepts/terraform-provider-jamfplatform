@@ -91,7 +91,9 @@ func (d *DomainsDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 						},
 						"shared": schema.BoolAttribute{
 							MarkdownDescription: "Whether the domain is owned by another Jamf Account " +
-								"organization and shared with yours.",
+								"organization and shared with yours. A shared domain can be assigned to a " +
+								"connection but cannot be changed or withdrawn, so it cannot be managed as a " +
+								"`jamfplatform_account_sso_domain` resource.",
 							Computed: true,
 						},
 						"account_id": schema.StringAttribute{

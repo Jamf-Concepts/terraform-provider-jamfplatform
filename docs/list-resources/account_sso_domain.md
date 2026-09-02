@@ -3,7 +3,8 @@
 page_title: "jamfplatform_account_sso_domain List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every DNS domain your Jamf Account organization holds, for terraform query and for importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this list resource takes no filter configuration.
+  Lists the DNS domains your Jamf Account organization has claimed, for terraform query and for importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this list resource takes no filter configuration.
+  Domains shared into your organization by another Jamf Account organization are excluded. They cannot be changed or withdrawn, so they cannot be managed as jamfplatform_account_sso_domain and importing one would leave an entry that no destroy can remove. Use the jamfplatform_account_sso_domains data source to see every domain including the shared ones.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +14,9 @@ description: |-
 
 # jamfplatform_account_sso_domain (List Resource)
 
-Lists every DNS domain your Jamf Account organization holds, for `terraform query` and for importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this list resource takes no filter configuration.
+Lists the DNS domains your Jamf Account organization has claimed, for `terraform query` and for importing existing claims in bulk. Jamf Account exposes no search arguments for domains, so this list resource takes no filter configuration.
+
+Domains shared into your organization by another Jamf Account organization are excluded. They cannot be changed or withdrawn, so they cannot be managed as `jamfplatform_account_sso_domain` and importing one would leave an entry that no destroy can remove. Use the `jamfplatform_account_sso_domains` data source to see every domain including the shared ones.
 
 **Required Jamf permissions**
 

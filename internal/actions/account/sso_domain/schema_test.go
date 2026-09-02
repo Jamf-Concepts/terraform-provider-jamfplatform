@@ -139,6 +139,31 @@ func TestVerifySSODomainAction_DescriptionSaysRateLimited(t *testing.T) {
 	}
 }
 
+// TestVerifySSODomainAction_DescriptionWarnsAgainstTriggeringFromTheClaim pins the
+// one wiring that can never work, and the one that can. The five-minute limit is
+// counted from the claim, so an action_trigger on the claiming resource is refused
+// on every fresh claim rather than occasionally — which makes the obvious
+// arrangement, and the one every sibling action example in this provider uses, the
+// guaranteed-failing one here. Both the action description and the identifier a
+// practitioner reaches for first have to say so, and both have to show the
+// standalone invocation that does work.
+func TestVerifySSODomainAction_DescriptionWarnsAgainstTriggeringFromTheClaim(t *testing.T) {
+	s := verifySchema(t)
+
+	name, ok := s.Attributes["domain"]
+	if !ok {
+		t.Fatal("missing attribute domain")
+	}
+
+	for _, desc := range []string{description(t), name.GetMarkdownDescription()} {
+		for _, fragment := range []string{"Do not trigger this action from the", "-invoke="} {
+			if !strings.Contains(desc, fragment) {
+				t.Errorf("description does not steer away from lifecycle-triggering: missing %q\n%s", fragment, desc)
+			}
+		}
+	}
+}
+
 // TestVerifySSODomainAction_DescriptionSaysItIsNotIdempotent pins the third wire
 // fact, and the one a practitioner has no way at all of discovering: every
 // invocation moves two of the domain's timestamps, so repeatedly triggering it is

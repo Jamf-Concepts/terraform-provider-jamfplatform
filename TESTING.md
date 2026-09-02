@@ -292,6 +292,7 @@ PR CI lives in **`.github/workflows/integration-tests.yml`**, triggered on PRs t
 | `unit`       | `go test -v -cover -count=1 ./...`                                        | Needs `build`                           | 10 min  |
 | `plan-acc`   | `scripts/acctargets` → the affected package set for this PR               | Needs `unit`                            | 5 min   |
 | `acceptance` | Calls `acceptance.yml` with the scoped package set (`-p=1`)               | Needs `plan-acc`; skipped if empty; gated by `acceptance` env | 6 h (default) |
+| `acceptance-account` | Calls `acceptance.yml` with `organization_scope: true` and the fixed Jamf Account package set | Needs `plan-acc`; runs only when the change set reaches `internal/{resources,actions}/account/` | 6 h (default) |
 
 The reusable `acceptance.yml` also backs the scheduled full run (`acceptance-full.yml`, `packages: ./...`). Both run in the GitHub `acceptance` environment (which holds the tenant secrets) and execute against Terraform `1.15.*`.
 
@@ -308,6 +309,9 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
 | `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
 | `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |
+| `JAMFPLATFORM_ACCOUNT_BASE_URL`, `JAMFPLATFORM_ACCOUNT_CLIENT_ID`, `JAMFPLATFORM_ACCOUNT_CLIENT_SECRET` | Credentials of a *separate*, organization-scoped API integration, used only by the `acceptance-account` job. An integration is created against exactly one scope, so this is a different client rather than the one above with a header removed. The base URL must be the US gateway |
+| `JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID` | Declares that those credentials really are organization-scoped. Nothing can be compared against it, which is why it is declared — see below. Unset → every Jamf Account test skips |
+| `JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN`, `JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN` | Optional Jamf Account SSO domain fixtures: a real, already-verified domain the operator owns, and a throwaway `.example` one that can never verify. Each covers a verification outcome the suite cannot manufacture. Unset → those two tests skip |
 | `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` | Client ID (UUID) of a pre-existing Jamf Pro API client, created in Jamf Account, permitted to read and update AD CS certificate jobs — the privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA, which this provider has no Jamf Account permission recorded for. Unset → the two `pki_adcs` OUTBOUND tests skip |
 
 ### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
@@ -339,3 +343,39 @@ behind these resources used a tenant-scoped integration.
 not a probe. If `/securitycloud` turns out not to answer under an environment
 header, the fix is to drop `ScopeEnvironment` from that call — the same one-token
 narrowing the scope gate was built for.
+
+### Jamf Account needs an organization-scoped integration, and therefore its own CI job
+
+The `jamfplatform_account_*` family is reachable only under **organization scope**, which
+sends no scope header at all. So `testhelpers.AccPreCheckAccount` deliberately **inverts**
+`AccPreCheck`'s requirement: it skips unless *both* `JAMFPLATFORM_ENVIRONMENT_ID` and
+`JAMFPLATFORM_TENANT_ID` are **unset**, where `AccPreCheck` — which every other family
+routes through — skips unless at least one of them *is* set. A scope header of either kind
+makes `providerdata.ConfigureAccount` refuse every construct in the family at Configure, so
+the honest outcome is a skip rather than a failure, and the precheck says which variable to
+unset.
+
+The two preconditions cannot hold in one environment block, so one `go test` invocation
+cannot cover both. That is why `acceptance.yml` takes an `organization_scope` input and both
+callers declare a second job for this family (`acceptance-account`, `full-account`), which
+blanks the scope variables, authenticates with the `JAMFPLATFORM_ACCOUNT_*` credentials and
+runs `./internal/resources/account/... ./internal/actions/account/...`. It shares the
+`acceptance-tenant` concurrency group declared inside the reusable workflow, so the two jobs
+queue against each other instead of hitting the estate at once.
+
+Two further conditions skip the family, both legitimate:
+
+- **A non-US base URL.** `/sso/v1` is served only from the US gateway; on the EU gateway even
+  a bogus route under it returns the gateway's own bare 404.
+- **`JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID` unset.** This is the declaration that the
+  configured credentials are organization-scoped, mirroring the Security Cloud pattern —
+  except that there is nothing to compare it against, because an organization-scoped request
+  carries no scope header and so no `JAMFPLATFORM_*` variable holds the organization. That is
+  exactly why it is required: without it, a tenant credential set with both scope variables
+  blank looks identical to a real organization integration and fails deep in an apply.
+
+None of the `JAMFPLATFORM_ACCOUNT_*` secrets exist in CI yet, so the job runs and self-skips
+until a maintainer adds all four. The entry points those suites are the only live cover for —
+the two domain data source `Read`s, the list resource's `List`, and the verify action's
+`Invoke` — carry stub-server unit tests as well, so the family is not resting on a job that
+skips.

@@ -145,21 +145,36 @@ func article(phrase string) string {
 	return "a"
 }
 
-// scopeDescription names the configured scope and the attribute that selected
-// it, so the diagnostic says what to look at rather than only what is wrong.
+// scopeDescription names the configured scope and both inputs that could have
+// selected it, so the diagnostic says what to look at rather than only what is
+// wrong.
+//
+// It names the environment variable alongside the provider-block attribute
+// because either source selects a scope and the diagnostic cannot tell which
+// one did: the provider resolves the scope from `JAMFPLATFORM_ENVIRONMENT_ID` /
+// `JAMFPLATFORM_TENANT_ID` whenever the provider block sets neither attribute,
+// and says nothing when it does. Asserting the attribute "is set" would point
+// the most likely reader — a CI runner exporting the preferred
+// `JAMFPLATFORM_ENVIRONMENT_ID` — at a line that is not in their configuration.
 func scopeDescription(k ScopeKind) string {
 	switch k {
 	case ScopeEnvironment:
-		return "an environment-scoped integration (`environment_id` is set)"
+		return "an environment-scoped integration (selected by `environment_id` or `JAMFPLATFORM_ENVIRONMENT_ID`)"
 	case ScopeTenant:
-		return "a tenant-scoped integration (`tenant_id` is set)"
+		return "a tenant-scoped integration (selected by `tenant_id` or `JAMFPLATFORM_TENANT_ID`)"
 	default:
-		return "an organization-scoped integration (neither `environment_id` nor `tenant_id` is set)"
+		return "an organization-scoped integration (no scope selected by `environment_id`, `tenant_id`, " +
+			"or either `JAMFPLATFORM_*` scope variable)"
 	}
 }
 
 // scopeRemedy says which attribute to set, and warns that the choice is not free
 // — the header has to match the scope the API integration was created against.
+//
+// The organization-only branch names the two environment variables as well as
+// the two attributes, for the reason given on scopeDescription: a scope set in
+// the environment is invisible in the provider block, so telling the operator to
+// remove an attribute they never wrote leaves the diagnostic unactionable.
 func scopeRemedy(allowed []ScopeKind) string {
 	attrs := make([]string, 0, len(allowed))
 	for _, k := range allowed {
@@ -171,7 +186,9 @@ func scopeRemedy(allowed []ScopeKind) string {
 		}
 	}
 	if len(attrs) == 0 {
-		return "Remove `environment_id` and `tenant_id` from the provider block so requests are scoped from the access token alone."
+		return "Unset both scope inputs so requests are scoped from the access token alone: remove `environment_id` " +
+			"and `tenant_id` from the provider block, and unset `JAMFPLATFORM_ENVIRONMENT_ID` and " +
+			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope."
 	}
 	return fmt.Sprintf(
 		"Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable. "+

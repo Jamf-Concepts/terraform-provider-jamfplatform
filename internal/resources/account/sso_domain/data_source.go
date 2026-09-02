@@ -46,10 +46,14 @@ func (d *DomainDataSource) Metadata(_ context.Context, req datasource.MetadataRe
 // would be offering the worse of two keys.
 func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a DNS domain claimed by your Jamf Account organization, and the SSO " +
+		MarkdownDescription: "Look up a DNS domain your Jamf Account organization holds, and the SSO " +
 			"connections it is currently assigned to.\n\n" +
 			"The assignment list is the read to do before destroying a claim: withdrawing a domain also removes " +
-			"it from every connection that names it, and nothing warns you." +
+			"it from every connection that names it, and nothing warns you.\n\n" +
+			"This is also the construct for a domain another Jamf Account organization owns and shares with " +
+			"yours (`shared` is `true`). Such a domain can be assigned to a connection but cannot be changed or " +
+			"withdrawn, so the `jamfplatform_account_sso_domain` resource refuses to manage one; reading it here " +
+			"takes no ownership of it." +
 			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"domain": schema.StringAttribute{
@@ -86,7 +90,9 @@ func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 			},
 			"shared": schema.BoolAttribute{
 				MarkdownDescription: "Whether the domain is owned by another Jamf Account organization and shared " +
-					"with yours.",
+					"with yours. A shared domain can be assigned to a connection but cannot be changed or " +
+					"withdrawn, so it can be read here but not managed as a " +
+					"`jamfplatform_account_sso_domain` resource.",
 				Computed: true,
 			},
 			"account_id": schema.StringAttribute{

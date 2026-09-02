@@ -7,6 +7,7 @@ description: |-
   Claiming a domain does not prove you own it. Jamf mints a verification token when the claim is made, and the domain stays unverified until a TXT record holding verification_txt_record is published at the root of the domain and the check is run — with the jamfplatform_account_sso_domain_verify action, or from the Jamf Account console. Jamf then re-checks a verified domain continuously in the background, so leave the TXT record in place.
   A claim cannot be edited. Changing domain replaces it, and the replacement is issued a fresh verification_key, so the TXT record has to be republished before the new claim can verify.
   Destroying a claim also withdraws the domain from every SSO connection that names it, which silently narrows those connections — the jamfplatform_account_sso_domain data source reports which connections a domain is assigned to.
+  Only a domain your own organization claimed can be managed here. A domain another Jamf Account organization owns and shares with yours (shared is true) can be assigned to a connection but cannot be changed or withdrawn, so this resource refuses it: an import of one is rejected, and the jamfplatform_account_sso_domain data source is how a shared domain is read.
   Needs an organization-scoped Jamf integration, created against neither a platform environment nor a tenant, and is reachable only in the United States region.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -24,6 +25,8 @@ Claiming a domain does not prove you own it. Jamf mints a verification token whe
 A claim cannot be edited. Changing `domain` replaces it, and the replacement is issued a fresh `verification_key`, so the TXT record has to be republished before the new claim can verify.
 
 Destroying a claim also withdraws the domain from every SSO connection that names it, which silently narrows those connections — the `jamfplatform_account_sso_domain` data source reports which connections a domain is assigned to.
+
+Only a domain your own organization claimed can be managed here. A domain another Jamf Account organization owns and shares with yours (`shared` is `true`) can be assigned to a connection but cannot be changed or withdrawn, so this resource refuses it: an import of one is rejected, and the `jamfplatform_account_sso_domain` data source is how a shared domain is read.
 
 Needs an organization-scoped Jamf integration, created against neither a platform environment nor a tenant, and is reachable only in the United States region.
 
@@ -89,7 +92,7 @@ output "verification_expires" {
 - `last_modified_at` (String) When the claim last changed. Running the verification updates it whether the check succeeded or not, and it is the point Jamf's five-minute wait between verification attempts is measured from. Read-only.
 - `last_verified_at` (String) When ownership was last verified successfully. Null for a domain that has never verified. Read-only.
 - `parent_domain_id` (String) Identifier of the verified parent domain a subdomain inherits its verification from. Null for a domain verified in its own right. Inheritance is resolved by Jamf and cannot be declared. Read-only.
-- `shared` (Boolean) Whether the domain is owned by another Jamf Account organization and shared with yours. A shared domain can be assigned to a connection but cannot be changed or withdrawn. Read-only.
+- `shared` (Boolean) Whether the domain is owned by another Jamf Account organization and shared with yours. A shared domain can be assigned to a connection but cannot be changed or withdrawn, so it cannot be managed by this resource — importing one is refused, and it is read with the `jamfplatform_account_sso_domain` data source instead. Always `false` for a domain this resource manages. Read-only.
 - `verification_expires_at` (String) When the current verification lapses: 14 days after the last successful verification, or 14 days after the claim for a domain that has never verified. Running the verification pushes it out again even when the check fails. Read-only.
 - `verification_key` (String) Token Jamf minted for this claim, published as the value of a TXT record on the domain to prove ownership. Prefer `verification_txt_record`, which is the complete record value. Read-only.
 - `verification_status` (String) Verification state of the claim: `MANUALLY_VERIFIED`, `MS_VERIFIED` (shown as "Microsoft Verified"), `PENDING` (shown as "Pending Approval"), `UNVERIFIED`, `VERIFIED` (shown as "Jamf Verified"). The Jamf Account console shows a composite status that also reflects whether a domain is in use by a connection; this reports verification alone. Read-only.

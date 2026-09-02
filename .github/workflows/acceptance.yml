@@ -6,7 +6,13 @@ name: Acceptance (reusable)
 #
 # Both callers use `secrets: inherit`, so the tenant credentials and fixture
 # secrets below resolve from the repo/org/environment secret stores without
-# having to be re-declared per caller.
+# having to be re-declared per caller — there is deliberately no `secrets:`
+# block to keep in step with the env list below.
+#
+# Callers also choose the API integration scope. The default is the shared
+# tenant/environment integration every other family uses; `organization_scope:
+# true` is the Jamf Account family, which needs its own caller job (see
+# TESTING.md §Jamf Account).
 
 on:
   workflow_call:
@@ -15,6 +21,15 @@ on:
         description: 'Space-separated package import paths, or "./..." for the full suite.'
         required: true
         type: string
+      organization_scope:
+        description: >-
+          Run the suite under organization scope: send no scope header at all,
+          which is what the jamfplatform_account_* family requires. Blanks both
+          scope variables and authenticates with the Jamf Account integration's
+          own credentials.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -61,11 +76,30 @@ jobs:
           TF_ACC: "1"
 
           # --- Core credentials (required; suites hard-skip without these) ---
-          JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
-          JAMFPLATFORM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
-          JAMFPLATFORM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-          JAMFPLATFORM_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ENVIRONMENT_ID }}
-          JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
+          #
+          # Under organization scope these come from a SEPARATE integration
+          # rather than the shared one with its scope header dropped: a Jamf API
+          # integration is created against exactly one scope, so an
+          # organization-scoped run authenticates as its own client. Each scope
+          # therefore resolves only its own secrets, with no cross-fallback — a
+          # tenant credential aimed at /sso/v1 is refused 403 BAD_PERMISSIONS,
+          # which would fail the suite instead of skipping it.
+          #
+          # The trailing `|| ''` on each is load-bearing: the unselected branch
+          # evaluates to the boolean false, which would otherwise reach the
+          # environment as the string "false" and read as a real value.
+          JAMFPLATFORM_BASE_URL: ${{ (inputs.organization_scope && secrets.JAMFPLATFORM_ACCOUNT_BASE_URL) || (!inputs.organization_scope && secrets.JAMFPLATFORM_BASE_URL) || '' }}
+          JAMFPLATFORM_CLIENT_ID: ${{ (inputs.organization_scope && secrets.JAMFPLATFORM_ACCOUNT_CLIENT_ID) || (!inputs.organization_scope && secrets.JAMFPLATFORM_CLIENT_ID) || '' }}
+          JAMFPLATFORM_CLIENT_SECRET: ${{ (inputs.organization_scope && secrets.JAMFPLATFORM_ACCOUNT_CLIENT_SECRET) || (!inputs.organization_scope && secrets.JAMFPLATFORM_CLIENT_SECRET) || '' }}
+
+          # Both blank under organization scope, which is the whole reason that
+          # family needs a job of its own: a scope header of either kind makes
+          # providerdata's gate refuse every jamfplatform_account_* construct at
+          # Configure, so AccPreCheckAccount skips whenever it sees one set —
+          # while AccPreCheck, which every other family routes through, skips
+          # unless one of them is set. The two cannot hold in one env block.
+          JAMFPLATFORM_ENVIRONMENT_ID: ${{ (!inputs.organization_scope && secrets.JAMFPLATFORM_ENVIRONMENT_ID) || '' }}
+          JAMFPLATFORM_TENANT_ID: ${{ (!inputs.organization_scope && secrets.JAMFPLATFORM_TENANT_ID) || '' }}
 
           # --- Jamf Security Cloud scope declaration ---
           # Set EXACTLY ONE of these, matching whichever scope the run is
@@ -83,6 +117,27 @@ jobs:
           # Cloud suite skipping, which is a legitimate state, not a gap.
           JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID }}
           JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID: ${{ secrets.JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID }}
+
+          # --- Jamf Account organization-scope declaration ---
+          # AccPreCheckAccount requires this as the operator's declaration that
+          # the credentials above really are organization-scoped. Nothing can be
+          # compared against it — an organization-scoped request carries no scope
+          # header, so no JAMFPLATFORM_* variable holds the organization — which
+          # is exactly why it is declared: without it, a tenant credential set
+          # with both scope variables blank looks identical to a real
+          # organization integration.
+          #
+          # Add it together with the three JAMFPLATFORM_ACCOUNT_* credentials
+          # above; declaring the scope without them just moves a skip to a
+          # failure. Until a maintainer adds all four, the Jamf Account caller
+          # job runs and self-skips, which is the honest state and a strict
+          # improvement on the suite being unreachable.
+          JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID: ${{ secrets.JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID }}
+
+          # --- Jamf Account SSO domain fixtures (both optional; each covers a
+          #     verification outcome the suite cannot manufacture) ---
+          JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN: ${{ secrets.JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN }}
+          JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN: ${{ secrets.JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN }}
 
           # --- Automated Device Enrollment ---
           JAMFPLATFORM_ADE_TOKEN: ${{ secrets.JAMFPLATFORM_ADE_TOKEN }}

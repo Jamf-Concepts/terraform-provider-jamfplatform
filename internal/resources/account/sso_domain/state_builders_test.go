@@ -65,7 +65,7 @@ func freshClaim(t *testing.T) *account.Domain {
 		LastModifiedDate:           timePtr(t, "2026-09-02T12:33:32Z"),
 		SharedDomain:               false,
 		VerificationExpirationDate: timePtr(t, "2026-09-16T12:33:32Z"),
-		VerificationKey:            "verification-key-example",
+		VerificationKey:            "verification-key-fresh-claim",
 	}
 }
 

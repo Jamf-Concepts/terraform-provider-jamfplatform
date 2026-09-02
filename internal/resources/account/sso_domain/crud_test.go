@@ -57,7 +57,7 @@ const claimBody = `{
 	"createdByName": null,
 	"accountId": "001ABCDEFGHIJKLMNO",
 	"domain": "tf-unit.example",
-	"verificationKey": "verification-key-verified",
+	"verificationKey": "verification-key-claim",
 	"domainStatus": "PENDING",
 	"createdDate": "2026-09-02T12:33:32.658Z",
 	"lastModifiedDate": "2026-09-02T12:33:32.658Z",
@@ -145,7 +145,7 @@ func TestCreate_AdoptsTheClaimResponse(t *testing.T) {
 	if state.ID.ValueString() != "26917" {
 		t.Errorf("id = %q, want %q", state.ID.ValueString(), "26917")
 	}
-	if state.VerificationTXTRecord.ValueString() != "jamf-site-verification=verification-key-verified" {
+	if state.VerificationTXTRecord.ValueString() != "jamf-site-verification=verification-key-claim" {
 		t.Errorf("verification_txt_record = %q", state.VerificationTXTRecord.ValueString())
 	}
 	if !resp.State.Raw.IsFullyKnown() {
