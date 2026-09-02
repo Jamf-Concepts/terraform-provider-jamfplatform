@@ -135,6 +135,25 @@ func TestResolveCustomHeaders(t *testing.T) {
 			wantErr: "Cookie cannot be supplied as a custom header",
 		},
 		{
+			// The transport applies these after the per-request headers, so a
+			// value here replaces the media type every call chose for itself.
+			name:    "content type is refused",
+			attr:    headerMap(t, map[string]string{"Content-Type": "application/json"}),
+			wantErr: "Content-Type cannot be supplied as a custom header",
+		},
+		{
+			name:    "accept is refused",
+			attr:    headerMap(t, map[string]string{"Accept": "application/xml"}),
+			wantErr: "Accept cannot be supplied as a custom header",
+		},
+		{
+			// Keyed through http.CanonicalHeaderKey, so an uncanonical spelling
+			// must not fail open.
+			name:    "content type is refused whatever its casing",
+			attr:    headerMap(t, map[string]string{"content-TYPE": "application/json"}),
+			wantErr: "Content-Type cannot be supplied as a custom header",
+		},
+		{
 			// Warned, not refused: the header is simply dropped, and nothing
 			// about the request stops working.
 			name:        "user agent is dropped with a warning",
@@ -252,6 +271,19 @@ func TestResolveAuthorizationHeaderName(t *testing.T) {
 			attr:    types.StringValue("X-Jamf-Authorization"),
 			headers: http.Header{"Authorization": []string{"Basic c2VydmljZTpwYXNz"}},
 			want:    "X-Jamf-Authorization",
+		},
+		{
+			// The bearer would replace the media type, leaving a request Jamf
+			// cannot parse — a different failure from the uncredentialed ones,
+			// and refused for that reason.
+			name:    "content type is refused",
+			attr:    types.StringValue("Content-Type"),
+			wantErr: "cannot be moved into Content-Type",
+		},
+		{
+			name:    "accept is refused",
+			attr:    types.StringValue("accept"),
+			wantErr: "cannot be moved into Accept",
 		},
 		{
 			// Relocating a header onto itself removes it, and every call would

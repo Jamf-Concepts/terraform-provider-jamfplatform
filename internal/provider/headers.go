@@ -26,6 +26,39 @@ var scopeHeaderNames = map[string]string{
 	http.CanonicalHeaderKey("X-Tenant-Id"):      "tenant_id",
 }
 
+// negotiationHeaderRefusals are the content-negotiation headers the provider
+// refuses, keyed canonically, each mapped to the reason its own refusal names.
+//
+// Both are refused for the same structural reason as Cookie: a supplied header
+// replaces rather than adds, and the transport applies the replacement after the
+// per-request headers are set, so one value here overrides every value the
+// provider chose. The consequences differ, which is why the two messages do.
+//
+// Content-Type is chosen per request — `application/json`, `application/merge-patch+json`
+// for a PATCH, `application/xml` for every classic Jamf Pro call, and
+// `multipart/form-data` with a generated boundary for a file upload. Overriding
+// all four at once leaves an upload without its boundary and a classic write
+// refused, reported against whichever resource was applying.
+//
+// Accept is load-bearing on those same classic calls, and widening it is unsafe
+// even on the namespaces where the provider sends none: Jamf Security Cloud's UEM
+// Connect service answers `Accept: application/xml` with 200 and an XML body
+// rather than the 406 its own spec promises, so a value set here would feed XML
+// to a JSON decoder there while the sibling namespaces 406 instead.
+var negotiationHeaderRefusals = map[string]string{
+	http.CanonicalHeaderKey("Content-Type"): "The provider chooses Content-Type per request — application/json, " +
+		"application/merge-patch+json for a PATCH, application/xml for every classic Jamf Pro call, and " +
+		"multipart/form-data with a generated boundary for a file upload — and a supplied header replaces rather " +
+		"than adds to what the provider sends, so one value here overrides all four. A file upload loses the " +
+		"boundary its body was written with and a classic write is refused outright, reported against whichever " +
+		"resource happened to be applying rather than against this attribute.",
+	http.CanonicalHeaderKey("Accept"): "Classic Jamf Pro calls are sent with Accept: application/xml, and a " +
+		"supplied header replaces rather than adds to what the provider sends. Nor is a value safe on the " +
+		"namespaces where the provider sends no Accept at all: Jamf Security Cloud's UEM Connect service answers " +
+		"Accept: application/xml with 200 and an XML body, so the provider would decode XML as JSON there while " +
+		"other namespaces answer 406 and fail every request.",
+}
+
 // resolveCustomHeaders turns the `custom_headers` attribute, or the environment
 // variable standing in for it, into the header set every outbound request
 // carries.
@@ -131,6 +164,16 @@ func resolveCustomHeaders(attr types.Map) (http.Header, diag.Diagnostics) {
 			continue
 		}
 
+		if reason, reserved := negotiationHeaderRefusals[canonical]; reserved {
+			diags.AddError(
+				"Reserved Custom Header",
+				fmt.Sprintf("%s cannot be supplied as a custom header. %s\n\nRemove the entry. A proxy that needs "+
+					"a different media type on its own hop has to rewrite the header there rather than have the "+
+					"provider send it to Jamf.", canonical, reason),
+			)
+			continue
+		}
+
 		if canonical == "User-Agent" {
 			diags.AddWarning(
 				"Ignored Custom Header",
@@ -162,6 +205,9 @@ func resolveCustomHeaders(attr types.Map) (http.Header, diag.Diagnostics) {
 //   - `Authorization` is where the bearer already is, and relocating a header
 //     onto itself removes it.
 //   - A scope header would have its scope overwritten by the bearer.
+//   - A content-negotiation header would have its media type overwritten by the
+//     bearer, which breaks the request before Jamf can even read the credential —
+//     see negotiationHeaderRefusals for what each one carries.
 //   - A name that is also a custom header would have the bearer overwritten by
 //     that header's value, since the relocation happens first and the custom
 //     headers are applied over the result.
@@ -204,6 +250,17 @@ func resolveAuthorizationHeaderName(attr types.String, headers http.Header) (str
 			fmt.Sprintf("The Jamf credential cannot be moved into %s: that header carries the API integration "+
 				"scope set from `%s`, and overwriting it is refused by Jamf with 403 OWNERSHIP_FORBIDDEN. "+
 				"Choose the header name the proxy expects the credential under.", canonical, attrName),
+		)
+		return "", diags
+	}
+
+	if _, reserved := negotiationHeaderRefusals[canonical]; reserved {
+		diags.AddError(
+			"Invalid Authorization Header Name",
+			fmt.Sprintf("The Jamf credential cannot be moved into %s: that header carries the media type of the "+
+				"request body or the response the provider expects, and replacing it with a bearer token leaves "+
+				"a request Jamf cannot parse. Choose the header name the proxy expects the credential under.",
+				canonical),
 		)
 		return "", diags
 	}

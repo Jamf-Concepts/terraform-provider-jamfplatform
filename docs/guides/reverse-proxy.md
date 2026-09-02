@@ -82,9 +82,11 @@ Each of these would otherwise fail with an error naming the wrong cause.
 |---|---|
 | `X-Environment-Id` / `X-Tenant-Id` in `custom_headers` | Set from `environment_id` / `tenant_id`. An overridden scope gets the same error as a wrong credential. |
 | `Cookie` in `custom_headers` | Would displace Jamf Cloud's session cookie. See below. |
+| `Content-Type` / `Accept` in `custom_headers` | Would replace the media type each call picks for itself. See below. |
 | `authorization_header_name = "Authorization"` | Moving a header onto itself removes it; every call then answers 401, as a wrong client secret does. |
 | `authorization_header_name` set to a scope header | The credential overwrites the scope; Jamf answers `403 OWNERSHIP_FORBIDDEN`. |
 | `authorization_header_name` matching a `custom_headers` key | The custom value replaces the credential. |
+| `authorization_header_name` set to `Content-Type` or `Accept` | The credential replaces the media type, leaving a request Jamf cannot parse. |
 
 `User-Agent` is accepted but dropped with a warning — the provider sets its own afterwards.
 
@@ -93,6 +95,16 @@ Each of these would otherwise fail with an error naming the wrong cause.
 Jamf Cloud uses a [sticky session cookie](https://developer.jamf.com/jamf-pro/docs/sticky-sessions-for-jamf-cloud) to keep a client on one node, so a read after a write sees the write. Supplied headers replace rather than add, so a `Cookie` entry throws that away — and the symptom is not an error about cookies. It is an occasional `Provider produced inconsistent result after apply`, against whichever resource lost the race.
 
 A proxy needing its own cookie does not need this attribute: the provider stores cookies the proxy sets and returns them on later requests. Other custom headers do not affect session pinning.
+
+### Why `Content-Type` and `Accept` are refused
+
+Both are refused for the same structural reason as `Cookie`: a supplied header replaces rather than adds, and it is applied after the per-request headers, so one value overrides every value the provider chose.
+
+`Content-Type` is picked per request — `application/json`, `application/merge-patch+json`, `application/xml` on some Jamf Pro requests, and `multipart/form-data` with a generated boundary for a file upload. A single value here overrides all four: a package upload loses the boundary its body was written with, and an XML write is refused in terms that name the resource rather than the header.
+
+`Accept` carries `application/xml` on those same Jamf Pro requests. Setting it is no safer on the namespaces where the provider sends none — Jamf Security Cloud's UEM Connect service answers `Accept: application/xml` with an XML body, which the provider would then try to decode as JSON, while sibling namespaces answer `406` and fail outright.
+
+A proxy that needs a different media type on its own hop has to rewrite the header there, not have the provider send it to Jamf.
 
 ## Troubleshooting
 

@@ -260,8 +260,10 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Marked sensitive in full, because these headers commonly carry a credential and Terraform cannot redact one entry of a map. " +
 					"Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` environment variable, as one `Name: value` pair per line — the form a CI runner can inject without a Terraform variable. " +
 					"When this attribute is set the variable is not read at all. " +
-					"Three names are refused. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from `environment_id` and `tenant_id`, and Jamf answers an overridden scope with the same error a wrong credential gets. " +
-					"`Cookie` is refused because a supplied header replaces rather than adds to what the provider sends, and it would displace the session cookie Jamf Cloud uses to keep this client on one application node — a proxy that needs a cookie of its own can simply set one on a response, which the provider stores and sends back on its own. " +
+					"Five names are refused, all because a supplied header replaces rather than adds to what the provider sends. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from `environment_id` and `tenant_id`, and Jamf answers an overridden scope with the same error a wrong credential gets. " +
+					"`Cookie` would displace the session cookie Jamf Cloud uses to keep this client on one application node — a proxy that needs a cookie of its own can simply set one on a response, which the provider stores and sends back on its own. " +
+					"`Content-Type` is chosen per request — JSON, merge-patch JSON, XML on some Jamf Pro requests, or multipart with a generated boundary for a file upload — so one value here overrides all four and leaves an upload without its boundary. " +
+					"`Accept` is `application/xml` on those same Jamf Pro requests, and setting it elsewhere is no safer: Jamf Security Cloud's UEM Connect service answers `Accept: application/xml` with an XML body the provider would decode as JSON. " +
 					"Supplying `Authorization` is supported and is the point of the feature — pair it with `authorization_header_name` so the proxy's credential and Jamf's own both reach the request. " +
 					"See the [Reverse proxy guide](../guides/reverse-proxy) for the whole arrangement.",
 			},
@@ -272,7 +274,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Leave it unset — the default — to keep the credential in `Authorization`, which is what talking to Jamf directly needs. " +
 					"Can also be set via the `JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. " +
 					"Only the credential the provider sends on API requests moves; the credentials that obtain it are unaffected, so authentication keeps working. " +
-					"`Authorization`, `X-Environment-Id`, `X-Tenant-Id`, and any name also present in `custom_headers` are refused, since each leaves the request with no usable credential and fails in terms that name something else as the cause. " +
+					"`Authorization`, `X-Environment-Id`, `X-Tenant-Id`, `Accept`, `Content-Type`, and any name also present in `custom_headers` are refused, since each leaves the request with no usable credential — or, for the two media-type headers, one Jamf cannot parse — and fails in terms that name something else as the cause. " +
 					"See the [Reverse proxy guide](../guides/reverse-proxy).",
 			},
 			"impact_alerts": schema.BoolAttribute{
