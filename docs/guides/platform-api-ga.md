@@ -51,8 +51,8 @@ Run `terraform init -upgrade` after editing the constraint.
 A stable `v0.29.0` will follow shortly after GA, but not simultaneously with it. Until then an
 explicit pre-release constraint is required. `v0.28.1` remains the latest stable release and is
 bound to the beta gateway, so an unconstrained configuration, or one constrained to a range,
-resolves to a version that cannot reach the API. Relax the constraint to `~> 0.29`, or remove it,
-once the stable release is available.
+resolves to a version that cannot reach the Platform API. Relax the constraint to `~> 0.29`, or
+remove it, once the stable release is available.
 
 Adopt this release before GA and there is no credential work to do so: an existing public-beta API
 integration authenticates against the GA host, and beta credentials remain valid until GA. Make the
@@ -205,15 +205,15 @@ names take the form `compliance-benchmarks:create` or `device-groups:read`, and 
 permission picker presents the same thing as a named permission with a checkbox per action.
 Resource, data source, list resource and action pages in this documentation carry a **Required Jamf
 permissions** table written the way the picker reads: the section, the permission name, the boxes
-to tick, and the API capability behind them. Use those tables to select permissions for the
-replacement integration, and grant only what the constructs in use require.
+to tick, and the Platform API capability behind them. Use those tables to select permissions for
+the replacement integration, and grant only what the constructs in use require.
 
 Grant with two consequences of the new model in mind. An action covers only itself, so an
 integration that reads a record before modifying it needs the read action as well as the update
 action. And the pre-GA computer and mobile privilege pairs have collapsed into single device-level
 permissions: `devices`, `device-groups`, `extension-attributes`, `configuration-profiles`,
 `enrollment-invitations`, `advanced-device-searches` and `prestage-enrollments`. A computers-only
-integration is no longer expressible. Jamf's
+integration is no longer expressible. The
 **[Jamf Pro permissions map](https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map)**
 is the reference for the full mapping, including the reverse case: the old computer and mobile
 command privileges split into `device-actions` and `destructive-device-actions`, the latter
