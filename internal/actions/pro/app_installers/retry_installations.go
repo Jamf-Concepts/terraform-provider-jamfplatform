@@ -77,6 +77,10 @@ func (a *RetryInstallationsAction) Configure(ctx context.Context, req action.Con
 
 // Invoke retries the deployment's failed installations, per computer when
 // computer_ids is supplied and for the whole deployment otherwise.
+//
+// Per-computer retry is one request each: Jamf Pro exposes no batch form. An
+// empty 404 on one computer is that computer having nothing to retry, which
+// must not abandon the rest of the list.
 func (a *RetryInstallationsAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
 	if !a.ensureClient(resp) {
 		return
@@ -101,7 +105,7 @@ func (a *RetryInstallationsAction) Invoke(ctx context.Context, req action.Invoke
 	if len(computerIDs) == 0 {
 		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Retrying failed installations for App Installer deployment %s", id)})
 		err := a.client.RetryAppInstallerDeploymentInstallationsV1(ctx, id)
-		if helpers.IsNotFoundError(err) {
+		if isNothingToRetry(err) {
 			summary, detail := nothingToRetryDiagnostic(fmt.Sprintf("deployment %s", id))
 			resp.Diagnostics.AddWarning(summary, detail)
 			return
@@ -117,14 +121,11 @@ func (a *RetryInstallationsAction) Invoke(ctx context.Context, req action.Invoke
 		return
 	}
 
-	// Per-computer retry is one request each: Jamf Pro exposes no batch form.
-	// A 404 on one computer is that computer having nothing to retry, which must
-	// not abandon the rest of the list.
 	var retried, skipped int
 	for _, computerID := range computerIDs {
 		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Retrying App Installer deployment %s on computer %s", id, computerID)})
 		err := a.client.RetryAppInstallerDeploymentComputerInstallationV1(ctx, id, computerID)
-		if helpers.IsNotFoundError(err) {
+		if isNothingToRetry(err) {
 			skipped++
 			continue
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*UpdateVersionAction)(nil)
@@ -82,6 +83,17 @@ func (a *UpdateVersionAction) Configure(ctx context.Context, req action.Configur
 }
 
 // Invoke moves the deployment on to the requested version.
+//
+// The request carries only the version; Jamf Pro decides whether the move is
+// allowed. A forward-only refusal is a 400 whose description already names both
+// the current and the requested version, so that error is surfaced as it stands
+// and only the two preconditions are added. A deployment that does not exist is
+// a 404 with an empty body — wire-verified 2026-09-03 — where those
+// preconditions would be the whole message and none of them the cause, so it
+// gets its own wording. helpers.IsNotFoundError is the right classifier here,
+// unlike in the retry pair: it also matches the 400 INVALID_ID Jamf Pro raises
+// for a malformed deployment ID, and a malformed ID and a missing one both point
+// the operator at the same attribute.
 func (a *UpdateVersionAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
 	if !a.ensureClient(resp) {
 		return
@@ -98,15 +110,14 @@ func (a *UpdateVersionAction) Invoke(ctx context.Context, req action.InvokeReque
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Moving App Installer deployment %s to version %s", id, version)})
 
-	// The request carries only the version; Jamf Pro decides whether the move is
-	// allowed and reports the current version in the refusal, so the error is
-	// surfaced as it stands rather than reworded.
 	if err := a.client.UpdateAppInstallerDeploymentVersionV1(ctx, id, &pro.AppTitleVersion{Version: &version}); err != nil {
-		resp.Diagnostics.AddError(
-			"Update App Installer Version Failed",
-			fmt.Sprintf("Unable to move App Installer deployment %s to version %s: %s. "+
-				"The version must be newer than the deployment's current one, and the deployment's update_behavior must be MANUAL.", id, version, err),
-		)
+		detail := fmt.Sprintf("Unable to move App Installer deployment %s to version %s: %s. "+
+			"The version must be newer than the deployment's current one, and the deployment's update_behavior must be MANUAL.", id, version, err)
+		if helpers.IsNotFoundError(err) {
+			detail = fmt.Sprintf("Jamf Pro found no App Installer deployment %s, so it was not moved to version %s. "+
+				"Check the deployment ID. Jamf Pro reported: %s", id, version, err)
+		}
+		resp.Diagnostics.AddError("Update App Installer Version Failed", detail)
 		return
 	}
 

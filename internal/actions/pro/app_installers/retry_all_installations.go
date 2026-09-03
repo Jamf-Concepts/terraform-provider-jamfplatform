@@ -8,8 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
-
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RetryAllInstallationsAction)(nil)
@@ -51,7 +49,9 @@ func (a *RetryAllInstallationsAction) Configure(ctx context.Context, req action.
 	a.configure(ctx, req, resp)
 }
 
-// Invoke retries every failed installation in the tenant.
+// Invoke retries every failed installation in the tenant. An empty 404 means no
+// deployment had a failed installation, which is a warning; every other failure
+// fails the apply.
 func (a *RetryAllInstallationsAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
 	if !a.ensureClient(resp) {
 		return
@@ -60,10 +60,10 @@ func (a *RetryAllInstallationsAction) Invoke(ctx context.Context, req action.Inv
 	resp.SendProgress(action.InvokeProgressEvent{Message: "Retrying every failed App Installer installation in the tenant"})
 
 	err := a.client.RetryAppInstallerInstallationsV1(ctx)
-	if helpers.IsNotFoundError(err) {
+	if isNothingToRetry(err) {
 		resp.Diagnostics.AddWarning(
 			"No Failed Installations Retried",
-			"Jamf Pro answered 404, which for this endpoint means no App Installer deployment has a failed installation to retry. Nothing was retried.",
+			"Jamf Pro answered 404 with an empty error body, which for this endpoint means no App Installer deployment has a failed installation to retry. Nothing was retried.",
 		)
 		return
 	}

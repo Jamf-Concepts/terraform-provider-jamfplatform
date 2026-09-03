@@ -162,11 +162,24 @@ func (r *AppInstallerResource) Read(ctx context.Context, req resource.ReadReques
 	assignAppInstallerResourceModel(&state, got, firstHydration)
 
 	// Reverse-resolve app_title_id → app_title_name. The deployment GET returns
-	// only the ID; on import there is no prior config to echo, so the name must
-	// be looked up from the catalog (best-effort: a transient catalog error
-	// preserves any existing state value rather than failing the refresh).
+	// only the ID, so the name has to come from the catalog, and the two Read
+	// paths need opposite failure handling. A routine refresh keeps the name
+	// already in state rather than failing over a transient catalog error. An
+	// import has no such value to keep, and app_title_name is Required, so a
+	// failed lookup there would write null into a Required attribute with no
+	// diagnostic — reporting a successful import that later surfaces as an
+	// unexplained in-place update and fails ImportStateVerify. So a failed
+	// lookup is an error on the import path only.
 	if name, ok := titleNameForID(readCtx, r.client, state.AppTitleID.ValueString()); ok {
 		state.AppTitleName = types.StringValue(name)
+	} else if firstHydration {
+		resp.Diagnostics.AddError(
+			"Unable to resolve the App Catalog title name",
+			fmt.Sprintf("Importing this deployment needs app_title_id %q resolved to its App Catalog title name, and the catalog lookup failed. "+
+				"Retry once the catalog is reachable; if the title has been withdrawn from the App Catalog, the deployment cannot be managed by title name.",
+				state.AppTitleID.ValueString()),
+		)
+		return
 	}
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, appInstallerIdentityModel{ID: state.ID})...)

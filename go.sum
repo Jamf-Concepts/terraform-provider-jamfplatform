@@ -1,11 +1,5 @@
 dario.cat/mergo v1.0.0 h1:AGCNq9Evsj31mOgNPcLyXc+4PNABt905YmuqPYYpBWk=
 dario.cat/mergo v1.0.0/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.19.1-0.20260902131457-8145444dc26b h1:13d55bU/EqTzZXztYW38uSsCy0htpuDanijKzf+rvOM=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.19.1-0.20260902131457-8145444dc26b/go.mod h1:gUL5YSSzFcEQ758X7/b8sAxVLEoHq4DcdrmRYYyxbiU=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.19.1-0.20260903140911-63439013e7e3 h1:dScroKNKRYDDtxB5ri8wDRIyLEs1fIscR+Ab/Rv9Lho=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.19.1-0.20260903140911-63439013e7e3/go.mod h1:gUL5YSSzFcEQ758X7/b8sAxVLEoHq4DcdrmRYYyxbiU=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.20.0 h1:KXu3nEWwFU5MWHA+lSUY5LokE1st/aH6+zP/XhCCL6o=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.20.0/go.mod h1:gUL5YSSzFcEQ758X7/b8sAxVLEoHq4DcdrmRYYyxbiU=
 github.com/Jamf-Concepts/jamfplatform-go-sdk v0.20.1 h1:nu4pRGyBMW/YQkFQVDmzH4Pr5kbFZVZm/Xz27YGEVBg=
 github.com/Jamf-Concepts/jamfplatform-go-sdk v0.20.1/go.mod h1:gUL5YSSzFcEQ758X7/b8sAxVLEoHq4DcdrmRYYyxbiU=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=

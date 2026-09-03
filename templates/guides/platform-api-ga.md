@@ -49,24 +49,27 @@ workspace, and verify a plan before moving on. The three are coupled — see
 ## Action needed
 
 Per workspace, and all of it in one change: the provider version, the host and the credentials are
-coupled, and no partial combination works.
+coupled, and no partial combination works. A workspace on a `v0.29.0` release candidate is already
+on the GA host, and every other step below still applies to it.
 
-1. **Register a replacement API integration and update the provider credentials.** Beta
+1. **Take a state backup.** It depends on nothing else, and step 5 edits state. A local backend
+   writes its own backup as it goes; a remote backend does not, so this is the only copy you will
+   have to fall back on.
+2. **Register a replacement API integration and update the provider credentials.** Beta
    credentials are revoked, and a beta client cannot be migrated. Record the permissions each beta
    integration held beforehand, so the equivalents can be selected. See
    [API integration credentials](#api-integration-credentials).
-2. **Register it as environment-scoped, and replace `tenant_id` with `environment_id`.** Choose
+3. **Register it as environment-scoped, and replace `tenant_id` with `environment_id`.** Choose
    tenant scope only if single-product access is deliberately what you want: it is the legacy
    option, costs one integration per tenant per product, and cannot hold the blueprint or
    compliance-benchmark permissions at all. See [Scope](#scope).
-3. **Set `base_url` to the GA gateway.** The beta host is retired. See [Base URL](#base-url).
-4. **Remove the deleted resources from state.** After the upgrade, a workspace still holding one of
+4. **Set `base_url` to the GA gateway.** The beta host is retired. See [Base URL](#base-url).
+5. **Remove the deleted resources from state.** After the upgrade, a workspace still holding one of
    them cannot produce a plan of any kind. See [Removed constructs](#removed-constructs).
-5. **Extend the integration's permissions where a workspace uses
+6. **Extend the integration's permissions where a workspace uses
    `jamfplatform_pro_patch_software_title`.** Its data source, list resource and `terraform import`
    now read the tenant's patch source catalogues, so two read permissions must be added. See
    [Attribute removals and deprecations](#attribute-removals-and-deprecations).
-6. Take a state backup, as for any breaking provider upgrade.
 
 ## Removed constructs
 
@@ -220,6 +223,7 @@ directions:
 | Provider version | `base_url` |
 |---|---|
 | `v0.28.1` and earlier | `https://{region}.apigw.jamf.com`, the beta host, now retired. These versions cannot reach the GA host. |
+| `v0.29.0-rc.4` through `rc.7` | `https://{region}.api.jamfcloud.com`, already in place. The host needs no change, but the credential and scope replacement still do. |
 | `v0.29.0` | `https://{region}.api.jamfcloud.com`, required. This version cannot reach the beta host. |
 
 Change the host and upgrade the provider in a single change: neither the GA host on an earlier
@@ -412,8 +416,9 @@ thirteen attributes were always empty: `architecture`, `availability_date`, `ins
 `size_in_bytes` and `suppress_auto_update`.
 
 `titles[*]` now carries `id`, `title_name`, `publisher`, `bundle_id`, `version`, `icon_url` and
-`installation_path_shared`. Read the rest from the singular data source, which calls the per-title
-endpoint that does return them:
+`installation_path_shared`. Six of those were already there; `installation_path_shared` is an
+addition Jamf Pro now reports, new to this data source in this release. Read the rest from the
+singular data source, which calls the per-title endpoint that does return them:
 
 ```hcl
 data "jamfplatform_pro_app_installer_titles" "catalog" {
@@ -440,6 +445,12 @@ data sources and list resource, shipped in `v0.28.1` and ship in `v0.29.0`.
 They were withdrawn from `v0.29.0-rc.4` through `rc.7`, because the endpoints behind them appeared
 in no published specification. That changed during the GA cycle: App Installers is now a documented
 Platform API surface of 23 operations, and the constructs are back.
+
+Two schema descriptions were wrong and are corrected here: `quit_delay` is in minutes, not
+seconds, and `selected_version` holds the version pinned while `update_behavior` is `MANUAL` and is
+empty while it is `AUTOMATIC`, rather than always the latest available version. Jamf Pro behaves as
+it always did, so re-check any configuration written against the old wording: `quit_delay = 300` is
+five hours.
 
 Both resources' state shapes are identical to `v0.28.1`, so a state file written by that version
 plans clean with no edit and no state upgrade. Only a workspace that upgraded to one of the four

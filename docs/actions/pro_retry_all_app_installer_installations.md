@@ -33,8 +33,11 @@ action "jamfplatform_pro_retry_all_app_installer_installations" "retry_all" {
   config {}
 }
 
+# Fires the retry once a day. The date string changes only when the calendar
+# day does, where timestamp() alone would change on every apply and retry the
+# whole tenant each time.
 resource "terraform_data" "nightly_retry" {
-  input = timestamp()
+  input = formatdate("YYYY-MM-DD", timestamp())
 
   lifecycle {
     action_trigger {
