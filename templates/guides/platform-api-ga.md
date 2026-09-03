@@ -1,24 +1,19 @@
 ---
-page_title: "Preparing for the Platform API GA"
+page_title: "Upgrading to the Platform API GA"
 description: |-
-  What changes when the Jamf Platform API leaves beta: new credentials, a new base URL, environment scope, and the constructs that were removed.
+  What changed when the Jamf Platform API left beta: new credentials, a new base URL, environment scope, and the constructs that were removed.
 ---
 
-# Preparing for the Platform API GA
+# Upgrading to the Platform API GA
 
-The Jamf Platform API is leaving public beta and will reach general availability shortly. The
-date will be announced separately.
-
-> **This guide is provisional and may change without notice.** The Platform API is still moving
-> ahead of GA, and a late change to it changes this page: the constructs listed as removed, the
-> attribute and scope behaviour, and the version numbers quoted throughout are all subject to
-> revision. Re-read it against the release you are actually upgrading to, not against a copy
-> taken earlier.
+The Jamf Platform API has reached general availability, and `v0.29.0` of this provider is built
+against it. This guide covers upgrading a configuration written against the public beta.
 
 **Action is needed in every configuration built against the public beta.** Nothing carries over
-untouched. The gateway host, the credentials and the scope attribute all change, and several
-constructs have been removed. Upgrade promptly once GA is announced: the beta gateway is retired
-at that point, and every provider version before `v0.29.0-rc.4` is bound to it.
+untouched: the gateway host, the credentials and the scope attribute all change, and several
+constructs have been removed. The beta gateway and beta API integration credentials are both
+retired, so a configuration on `v0.28.1` or earlier can no longer reach the Platform API at all —
+this upgrade is the only way forward, not an option.
 
 Each section below states the action required, or says explicitly that none is.
 
@@ -28,67 +23,50 @@ Thank you to everyone who used this provider during the Platform API public beta
 feedback from beta participants shaped a substantial part of what ships at GA, including the
 environment scope, proxy support and a range of resource behaviour. Continued feedback is welcome.
 
-## Installing this pre-release
+## Installing this release
 
-Terraform does not select a pre-release version automatically. With no `version` constraint, or
-with a range such as `~> 0.29`, it resolves to the latest stable release, currently `v0.28.1`.
-`terraform init -upgrade` will not move a configuration onto a release candidate either. Name the
-version exactly:
+`v0.29.0` is a stable release, so a range constraint resolves to it:
 
 ```hcl
 terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.7"
+      version = "~> 0.29"
     }
   }
 }
 ```
 
-Run `terraform init -upgrade` after editing the constraint.
+Run `terraform init -upgrade` after editing the constraint. A configuration pinned to a
+`0.29.0-rc.*` release candidate should move to `0.29.0`: the candidates are superseded, and the
+last of them differs from this release.
 
-A stable `v0.29.0` will follow shortly after GA, but not simultaneously with it. Until then an
-explicit pre-release constraint is required. `v0.28.1` remains the latest stable release and is
-bound to the beta gateway, so an unconstrained configuration, or one constrained to a range,
-resolves to a version that cannot reach the Platform API. Relax the constraint to `~> 0.29`, or
-remove it, once the stable release is available.
-
-Adopt this release before GA and there is no credential work to do so: an existing public-beta API
-integration authenticates against the GA host, and beta credentials remain valid until GA. Make the
-`base_url` change and the state removals described under [Action needed](#action-needed). Only the
-credential replacement is then left outstanding at GA, with everything else already validated
-against your own configuration.
+Upgrade the provider, change `base_url` and replace the credentials as one change, in one
+workspace, and verify a plan before moving on. The three are coupled — see
+[Action needed](#action-needed).
 
 ## Action needed
 
-Per workspace. The first group applies whenever this release is adopted, including during the
-public beta. The second applies only at GA.
+Per workspace, and all of it in one change: the provider version, the host and the credentials are
+coupled, and no partial combination works.
 
-**On upgrading to this release:**
-
-1. **Remove the deleted resources from state.** After the upgrade, a workspace still holding one of
+1. **Register a replacement API integration and update the provider credentials.** Beta
+   credentials are revoked, and a beta client cannot be migrated. Record the permissions each beta
+   integration held beforehand, so the equivalents can be selected. See
+   [API integration credentials](#api-integration-credentials).
+2. **Register it as environment-scoped, and replace `tenant_id` with `environment_id`.** Choose
+   tenant scope only if single-product access is deliberately what you want: it is the legacy
+   option, costs one integration per tenant per product, and cannot hold the blueprint or
+   compliance-benchmark permissions at all. See [Scope](#scope).
+3. **Set `base_url` to the GA gateway.** The beta host is retired. See [Base URL](#base-url).
+4. **Remove the deleted resources from state.** After the upgrade, a workspace still holding one of
    them cannot produce a plan of any kind. See [Removed constructs](#removed-constructs).
-2. **Set `base_url` to the GA gateway in the same change as the provider upgrade.** The host and
-   the provider version are paired. See [Base URL](#base-url).
-3. **Extend the integration's permissions where a workspace uses
+5. **Extend the integration's permissions where a workspace uses
    `jamfplatform_pro_patch_software_title`.** Its data source, list resource and `terraform import`
    now read the tenant's patch source catalogues, so two read permissions must be added. See
    [Attribute removals and deprecations](#attribute-removals-and-deprecations).
-4. Take a state backup, as for any breaking provider upgrade.
-
-Existing beta credentials and `tenant_id` continue to work through this upgrade, and nothing else
-is required to adopt the release before GA.
-
-**At GA:**
-
-5. **Register a replacement API integration and update the provider credentials.** Record the
-   permissions held by each beta integration beforehand, so the equivalents can be selected. See
-   [API integration credentials](#api-integration-credentials).
-6. **Replace `tenant_id` with `environment_id`.** Register the replacement as
-   environment-scoped unless single-product access is deliberately what you want: tenant scope is
-   the legacy option, costs one integration per tenant per product, and cannot hold the blueprint
-   or compliance-benchmark permissions at all. See [Scope](#scope).
+6. Take a state backup, as for any breaking provider upgrade.
 
 ## Removed constructs
 
@@ -101,14 +79,12 @@ constructs built on them have been removed.
 |---|---|---|
 | `jamfplatform_pro_api_client` | `/v1/api-integrations` unpublished, for security hardening | Jamf Account, Platform API integrations UI |
 | `jamfplatform_pro_api_role` | `/v1/api-roles` unpublished, for security hardening | Jamf Account, Platform API integrations UI |
-| `jamfplatform_pro_app_installer` | App Installer endpoints unpublished | None in this provider |
-| `jamfplatform_pro_app_installer_settings` | App Installer endpoints unpublished | None in this provider |
 
 The API client and API role endpoints were unpublished to close a privilege-escalation path: an
 API integration was able to create a client or role holding privileges the creating integration
 did not itself hold.
 
-**Action needed: remove the state entries.** All four shipped in `v0.28.1`, so existing state
+**Action needed: remove the state entries.** Both shipped in `v0.28.1`, so existing state
 files contain them. Terraform requires a schema
 for every resource type present in state before it can complete `plan`, `apply` or `destroy`. Once
 the provider no longer implements the type, every operation in that workspace fails, including
@@ -126,7 +102,7 @@ state-only operation, needs no schema, and works both before and after the upgra
 
 ```sh
 # identify the affected addresses
-terraform state list | grep -E 'jamfplatform_pro_(api_client|api_role|app_installer)'
+terraform state list | grep -E 'jamfplatform_pro_api_(client|role)'
 
 # preview the removal without modifying state
 terraform state rm -dry-run 'jamfplatform_pro_api_client.example'
@@ -139,8 +115,8 @@ A single address removes every instance of that resource, including instances cr
 or `for_each`. A local backend writes a `terraform.tfstate.<timestamp>.backup` file first. On a
 remote backend, take an equivalent backup yourself.
 
-`terraform state rm` only ends Terraform's management of the object. The API client, role, App
-Installer deployment or settings object itself remains in place in Jamf Pro.
+`terraform state rm` only ends Terraform's management of the object. The API client or role itself
+remains in place in Jamf Pro.
 
 ### Data sources and list resources (configuration edit only)
 
@@ -149,12 +125,9 @@ configuration is the whole of it.
 
 Data sources: `jamfplatform_pro_api_client`, `jamfplatform_pro_api_clients`,
 `jamfplatform_pro_api_role`, `jamfplatform_pro_api_roles`,
-`jamfplatform_pro_api_role_privileges`, `jamfplatform_pro_app_installer`,
-`jamfplatform_pro_app_installers`, `jamfplatform_pro_app_installer_settings`,
-`jamfplatform_pro_app_installer_title`, `jamfplatform_pro_app_installer_titles`.
+`jamfplatform_pro_api_role_privileges`.
 
-List resources: `jamfplatform_pro_api_client`, `jamfplatform_pro_api_role`,
-`jamfplatform_pro_app_installer`.
+List resources: `jamfplatform_pro_api_client`, `jamfplatform_pro_api_role`.
 
 `jamfplatform_pro_api_role_privileges` has no replacement, as no endpoint serves the privilege
 list. The privileges themselves are retained in a new form, described under
@@ -186,14 +159,13 @@ endpoint availability.
 
 ## API integration credentials
 
-**Action needed at GA: register a replacement integration and update the provider credentials.**
-Beta API integration credentials remain valid until GA, including against the GA gateway host, and
-are revoked at GA. A beta client cannot be migrated to a GA client, and both the permission model
-and the endpoint paths have changed.
+**Action needed: register a replacement integration and update the provider credentials.** Beta
+API integration credentials are revoked. A beta client cannot be migrated to a GA client, and both
+the permission model and the endpoint paths have changed.
 
 Credentials are registered in the Jamf Account Platform API integrations UI. A single OAuth 2.0
 authentication model now covers the whole platform, in place of one credential set per product.
-Step-by-step instructions are published at GA:
+Step-by-step instructions are published here:
 
 **[Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api)**
 
@@ -247,13 +219,12 @@ directions:
 
 | Provider version | `base_url` |
 |---|---|
-| `v0.29.0-rc.3` and earlier | `https://{region}.apigw.jamf.com`, the beta host. The GA host is not supported on these versions. |
-| `v0.29.0-rc.4` and later | `https://{region}.api.jamfcloud.com`, required. The beta host is retired at GA. |
+| `v0.28.1` and earlier | `https://{region}.apigw.jamf.com`, the beta host, now retired. These versions cannot reach the GA host. |
+| `v0.29.0` | `https://{region}.api.jamfcloud.com`, required. This version cannot reach the beta host. |
 
-Change the host and upgrade the provider in a single change. Neither the GA host on an earlier
-version nor the beta host on `v0.29.0-rc.4` or later is a supported combination. The GA host is
-already live and accepts a public-beta API integration, so make and verify this change before GA,
-independently of the credential replacement.
+Change the host and upgrade the provider in a single change: neither the GA host on an earlier
+version nor the beta host on `v0.29.0` is a supported combination, and the beta host no longer
+answers in any case.
 
 ```hcl
 provider "jamfplatform" {
@@ -269,14 +240,14 @@ bare `404 page not found`, not a JSON error.
 
 ## Scope
 
-**Action needed at GA for most configurations: replace `tenant_id` with `environment_id`.** Not
-before then. An existing tenant-scoped beta integration keeps working, including against the GA
-gateway host, so this change belongs with the credential replacement, not the provider upgrade.
+**Action needed for most configurations: replace `tenant_id` with `environment_id`.** This change
+goes with the credential replacement, because the attribute has to match how the replacement
+integration was registered.
 
 The scope an API integration targets now travels in a request header, not a URL path, and the
 provider has gained an `environment_id` attribute alongside `tenant_id`. Public-beta integrations
-were tenant-scoped, so most configurations in use today set `tenant_id` or export
-`JAMFPLATFORM_TENANT_ID`. A GA replacement integration will usually be environment-scoped, so
+were tenant-scoped, so most configurations being upgraded set `tenant_id` or export
+`JAMFPLATFORM_TENANT_ID`. A replacement integration will usually be environment-scoped, so
 registering it comes with a provider configuration change:
 
 ```hcl
@@ -296,9 +267,9 @@ either scope. Three sets of constructs are out of its reach, each for a differen
 
 - **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
   construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
-- **Blueprints and compliance benchmarks** are refused by Jamf. Their permissions cannot be
-  selected when a tenant-scoped integration is created in Jamf Account at GA, so such an
-  integration can never hold them and the calls fail with `403 BAD_PERMISSIONS`. The provider
+- **Blueprints and compliance benchmarks** are refused by Jamf Account. Their permissions cannot
+  be selected when a tenant-scoped integration is created, so such an integration can never hold
+  them and the calls fail with `403 BAD_PERMISSIONS`. The provider
   cannot pre-empt this: a permission absent from the integration is indistinguishable from any
   other privilege gap. Choose environment scope if the configuration manages either.
 - **Jamf Account** requires a third scope, *organization management*, which neither of these
@@ -426,6 +397,57 @@ The attribute is now `Computed` and always reads `0`. Leaving it in a configurat
 (`Invalid Configuration for Read-Only Attribute`), so delete the line. No state edit is needed.
 Nothing about how your devices are treated changes: the setting never took effect.
 
+### Narrowed: the per-title attributes on `jamfplatform_pro_app_installer_titles`
+
+**Action needed only if one of the dropped attributes is referenced.** The App Installer
+constructs ship in `v0.29.0` — see
+[Retained: the App Installer constructs](#retained-the-app-installer-constructs) below — but the
+plural catalog data source no longer claims fields the catalog list endpoint does not return.
+
+`titles[*]` previously carried the full per-title attribute set, the same one the singular data
+source uses. The catalog list endpoint has only ever returned a seven-field summary, so the other
+thirteen attributes were always empty: `architecture`, `availability_date`, `installer_package_hash`,
+`installer_package_hash_type`, `language`, `launch_daemon_included`, `minimum_os_version`,
+`notification_available`, `original_media_sources`, `package_signing_identity`, `short_version`,
+`size_in_bytes` and `suppress_auto_update`.
+
+`titles[*]` now carries `id`, `title_name`, `publisher`, `bundle_id`, `version`, `icon_url` and
+`installation_path_shared`. Read the rest from the singular data source, which calls the per-title
+endpoint that does return them:
+
+```hcl
+data "jamfplatform_pro_app_installer_titles" "catalog" {
+  name_substring = "Jamf Composer"
+}
+
+# titles[0].minimum_os_version was always "" — read it here instead
+data "jamfplatform_pro_app_installer_title" "composer" {
+  id = data.jamfplatform_pro_app_installer_titles.catalog.titles[0].id
+}
+```
+
+The singular data source is unchanged apart from three additions Jamf Pro now reports —
+`installation_path_shared`, `media_source_type` and `original_terms_and_conditions` — and a new
+optional `version` argument, which reads a historical version of a title rather than its current
+one. Data sources hold no state, so there is nothing to edit beyond the references themselves.
+
+### Retained: the App Installer constructs
+
+**No action needed.** `jamfplatform_pro_app_installer`,
+`jamfplatform_pro_app_installer_settings` and `jamfplatform_pro_app_installer_title`, with their
+data sources and list resource, shipped in `v0.28.1` and ship in `v0.29.0`.
+
+They were withdrawn from `v0.29.0-rc.4` through `rc.7`, because the endpoints behind them appeared
+in no published specification. That changed during the GA cycle: App Installers is now a documented
+Platform API surface of 23 operations, and the constructs are back.
+
+Both resources' state shapes are identical to `v0.28.1`, so a state file written by that version
+plans clean with no edit and no state upgrade. Only a workspace that upgraded to one of the four
+affected release candidates has anything to do: if the state entries were removed then, re-adopt
+with [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands/import) — the
+deployment ID for `jamfplatform_pro_app_installer`, and `singleton` for
+`jamfplatform_pro_app_installer_settings`.
+
 ### Retained: `personal_device_enrollment_type`
 
 **No action needed.** On `jamfplatform_pro_user_initiated_enrollment_settings`. The deprecation
@@ -434,8 +456,8 @@ is Jamf Pro's, not the provider's: Jamf Pro has ignored the value since 11.25 an
 
 ## Additions since v0.28.1
 
-**No action needed.** The following arrived during the GA cycle, across the `v0.29.0` release
-candidates. All of it is additive relative to `v0.28.1`.
+**No action needed.** The following arrived during the GA cycle. All of it is additive relative to
+`v0.28.1`.
 
 ### Jamf Security Cloud
 
@@ -481,7 +503,7 @@ served only from the US gateway.
 `jamfplatform_account_sso_domain` claims a DNS domain for your Jamf Account organization's single
 sign-on, with singular and plural data sources, a list resource, and the
 `jamfplatform_account_sso_domain_verify` action that re-checks the domain's DNS ownership record.
-New in this pre-release, `jamfplatform_account_sso_connection` manages the identity provider that
+`jamfplatform_account_sso_connection` manages the identity provider that
 signs people in for those domains: Entra, Okta, Google Workspace, or any generic OpenID Connect
 provider. It ships with singular and plural data sources and a list resource.
 

@@ -17,7 +17,7 @@ Provides resources and data sources for managing the products and services avail
 
 It additionally provides resources and data sources for [Jamf Pro](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-account-groups) under the `jamfplatform_pro_*` namespace, with further Jamf products to follow. See the **Supported Jamf products** section below for the per-product tenant version targets.
 
-Note that the Platform API is currently in public beta. Provider stability, functionality and schemas are subject to change without notice.
+The Jamf Platform API has reached general availability. Upgrading a configuration written against the public beta takes a coordinated change to the gateway host, the credentials and the scope attribute — see the [Upgrading to the Platform API GA](docs/guides/platform-api-ga.md) guide.
 
 ## Acknowledgements
 
