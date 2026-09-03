@@ -8,19 +8,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
-
-// titleNamer is the subset of *pro.Client used to read a title's display name back
-// from its ID (the deployment GET returns only the ID).
-type titleNamer interface {
-	GetAppInstallerTitleV1(ctx context.Context, id string, version string) (*pro.AppTitleDetails, error)
-}
 
 // validateAppTitleName is a plan-time preflight for app_title_name. The title is
 // referenced by its catalog display name; this resolves it against the live
@@ -32,10 +25,10 @@ type titleNamer interface {
 //     provider is not yet configured, or the name derives from another resource).
 //   - name resolves: OK.
 //   - name not in the catalog under that exact spelling: an error diagnostic.
-//   - any other resolve error: a WARNING (not an error). The preflight is
-//     best-effort and must not block plans when the catalog API is unreachable;
-//     Create still resolves authoritatively on apply.
-func validateAppTitleName(ctx context.Context, resolver titleLister, value types.String, attrPath path.Path) diag.Diagnostics {
+//   - any other resolve error, including a failed catalog read: a WARNING (not an
+//     error). The preflight is best-effort and must not block plans when the
+//     catalog API is unreachable; Create still resolves authoritatively on apply.
+func validateAppTitleName(ctx context.Context, resolver titleCatalog, value types.String, attrPath path.Path) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if resolver == nil || !helpers.IsConfiguredValue(value) {
 		return diags
@@ -68,7 +61,7 @@ func validateAppTitleName(ctx context.Context, resolver titleLister, value types
 // resolveAppTitleID resolves an App Catalog title name to its ID. Used on apply
 // (Create/Update) where resolution is authoritative — a failure aborts the
 // operation with a clear diagnostic.
-func resolveAppTitleID(ctx context.Context, resolver titleLister, name string) (string, diag.Diagnostics) {
+func resolveAppTitleID(ctx context.Context, resolver titleCatalog, name string) (string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	id, err := resolveTitleIDByName(ctx, resolver, name)
 	if err != nil {
@@ -101,15 +94,27 @@ func resolveAppTitleID(ctx context.Context, resolver titleLister, name string) (
 // being rewritten here to the canonical TitleName. So the stored app_title_name
 // always equals the canonical name this returns.
 //
-// The version argument is empty: the deployment carries its own selected version,
-// and only the title's display name is wanted here.
-func titleNameForID(ctx context.Context, namer titleNamer, id string) (string, bool) {
-	if namer == nil || id == "" {
+// It answers from the same cached catalog snapshot the forward resolver reads,
+// rather than a per-deployment title GET: the list carries id and titleName (the
+// wire shape is id, bundleId, titleName, publisher, iconUrl, version and
+// installationPathShared), which is everything this needs, so a refresh of N
+// deployments costs no catalog requests beyond the one snapshot.
+//
+// An id the snapshot does not hold returns ok=false, the same as a failed read: a
+// title withdrawn from the catalog cannot be named, and the caller already treats
+// that as "keep what state has" outside import.
+func titleNameForID(ctx context.Context, catalog titleCatalog, id string) (string, bool) {
+	if catalog == nil || id == "" {
 		return "", false
 	}
-	title, err := namer.GetAppInstallerTitleV1(ctx, id, "")
-	if err != nil || title == nil {
+	titles, err := catalog.Titles(ctx)
+	if err != nil {
 		return "", false
 	}
-	return title.TitleName, true
+	for _, t := range titles {
+		if t.ID == id {
+			return t.TitleName, true
+		}
+	}
+	return "", false
 }

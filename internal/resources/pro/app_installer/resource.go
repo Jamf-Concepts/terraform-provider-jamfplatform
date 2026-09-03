@@ -44,8 +44,15 @@ const (
 
 // AppInstallerResource implements the Terraform resource for Jamf Pro App
 // Installer deployments.
+//
+// titles is the provider-instance App Catalog snapshot, shared with every other
+// App Installer in the configuration. Both directions of the title name mapping go
+// through it — the plan-time and apply-time app_title_name resolution and the
+// app_title_id reverse-resolve on refresh — so a plan over N deployments reads the
+// catalog once rather than 2N times.
 type AppInstallerResource struct {
 	client *pro.Client
+	titles *providerdata.AppTitleCatalogCache
 }
 
 var (
@@ -303,7 +310,8 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 }
 
 // Configure wires the Jamf Pro client into the resource via the shared
-// providerdata.ConfigurePro helper.
+// providerdata.ConfigurePro helper, and takes the provider-instance App Catalog
+// title cache alongside it.
 func (r *AppInstallerResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_app_installer")
 	resp.Diagnostics.Append(diags...)
@@ -311,6 +319,7 @@ func (r *AppInstallerResource) Configure(ctx context.Context, req resource.Confi
 		return
 	}
 	r.client = client
+	r.titles = providerdata.ConfigureAppTitleCatalog(req.ProviderData, readAppTitleCatalog)
 }
 
 // ImportState handles import by the Jamf Pro deployment ID.
@@ -332,5 +341,5 @@ func (r *AppInstallerResource) ModifyPlan(ctx context.Context, req resource.Modi
 		return
 	}
 
-	resp.Diagnostics.Append(validateAppTitleName(ctx, r.client, plan.AppTitleName, path.Root("app_title_name"))...)
+	resp.Diagnostics.Append(validateAppTitleName(ctx, catalogOrNil(r.titles), plan.AppTitleName, path.Root("app_title_name"))...)
 }

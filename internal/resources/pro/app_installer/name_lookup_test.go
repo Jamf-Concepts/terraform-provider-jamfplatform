@@ -6,29 +6,32 @@ package app_installer
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// stubTitleLister serves a fixed catalog, recording the filter it was asked for.
-// It deliberately IGNORES the filter, reproducing Jamf Pro's case-insensitive
-// glob: every candidate comes back and the resolver must do the narrowing.
-type stubTitleLister struct {
+// stubTitleCatalog serves a fixed catalog snapshot, counting the reads it is
+// asked for. The snapshot is the WHOLE catalog, which is what the resolver now
+// sees: there is no server-side filter left to narrow it, so every candidate
+// comes back and the resolver must do all the narrowing itself.
+type stubTitleCatalog struct {
 	titles []pro.AppTitle
 	err    error
-	filter string
 	calls  int
 }
 
-func (s *stubTitleLister) ListAppInstallerTitlesV1(ctx context.Context, sort []string, filter string) ([]pro.AppTitle, error) {
+func (s *stubTitleCatalog) Titles(ctx context.Context) ([]pro.AppTitle, error) {
 	s.calls++
-	s.filter = filter
 	return s.titles, s.err
 }
 
 func TestResolveTitleIDByName_ExactMatch(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
+	l := &stubTitleCatalog{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
 	id, err := resolveTitleIDByName(context.Background(), l, "Jamf Composer")
 	if err != nil {
 		t.Fatalf("expected the exact name to resolve, got %v", err)
@@ -36,36 +39,37 @@ func TestResolveTitleIDByName_ExactMatch(t *testing.T) {
 	if id != "Composer" {
 		t.Errorf("id = %q, want Composer", id)
 	}
-	if l.filter != `titleName=="Jamf Composer"` {
-		t.Errorf("filter = %q", l.filter)
-	}
 }
 
-// Jamf Pro's titleName filter matches case-insensitively, so an off-casing name
-// comes back as a candidate. Accepting it would store the user's spelling and
-// then have Read rewrite it to the canonical name — a perpetual diff. The
-// resolver must reject it instead.
+// Jamf Pro's titleName filter matches case-insensitively, which is why the
+// resolver reads the whole catalog and decides the match itself. Accepting an
+// off-casing name would store the user's spelling and then have Read rewrite it to
+// the canonical name — a perpetual diff. The resolver must reject it instead.
 func TestResolveTitleIDByName_RejectsCaseMismatch(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
+	l := &stubTitleCatalog{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
 	if _, err := resolveTitleIDByName(context.Background(), l, "jamf composer"); !errors.Is(err, errTitleNotInCatalog) {
 		t.Fatalf("expected errTitleNotInCatalog for an off-casing name, got %v", err)
 	}
 }
 
-// The same filter also globs on `*`, so a name containing one over-matches. The
-// exact check must still pick out the one title actually named that.
-func TestResolveTitleIDByName_RejectsGlobOverMatch(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{
+// A partial name must not resolve either. Over the full catalog there is no glob
+// to over-match, but the exact check is what makes a prefix — or the `Jamf*` a
+// user might carry over from Jamf Pro's own filter syntax — fail cleanly instead
+// of picking one of the titles it would have matched.
+func TestResolveTitleIDByName_RejectsPartialName(t *testing.T) {
+	l := &stubTitleCatalog{titles: []pro.AppTitle{
 		{ID: "7F0", TitleName: "Jamf Sync"},
 		{ID: "Composer", TitleName: "Jamf Composer"},
 	}}
-	if _, err := resolveTitleIDByName(context.Background(), l, "Jamf*"); !errors.Is(err, errTitleNotInCatalog) {
-		t.Fatalf("expected errTitleNotInCatalog for a glob that matches no exact name, got %v", err)
+	for _, name := range []string{"Jamf", "Jamf*", "Jamf Comp"} {
+		if _, err := resolveTitleIDByName(context.Background(), l, name); !errors.Is(err, errTitleNotInCatalog) {
+			t.Errorf("expected errTitleNotInCatalog for partial name %q, got %v", name, err)
+		}
 	}
 }
 
 func TestResolveTitleIDByName_EmptyCatalogIsNotFound(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{}}
+	l := &stubTitleCatalog{titles: []pro.AppTitle{}}
 	if _, err := resolveTitleIDByName(context.Background(), l, "No Such App"); !errors.Is(err, errTitleNotInCatalog) {
 		t.Fatalf("expected errTitleNotInCatalog, got %v", err)
 	}
@@ -74,7 +78,7 @@ func TestResolveTitleIDByName_EmptyCatalogIsNotFound(t *testing.T) {
 // Two titles sharing one exact name must be an ambiguity error, not an
 // arbitrary pick — the chosen ID would flip between plans.
 func TestResolveTitleIDByName_AmbiguousIsError(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{
+	l := &stubTitleCatalog{titles: []pro.AppTitle{
 		{ID: "A", TitleName: "Duplicated"},
 		{ID: "B", TitleName: "Duplicated"},
 	}}
@@ -85,26 +89,60 @@ func TestResolveTitleIDByName_AmbiguousIsError(t *testing.T) {
 	if errors.Is(err, errTitleNotInCatalog) {
 		t.Errorf("ambiguity must not be reported as not-found: %v", err)
 	}
+	if !strings.Contains(err.Error(), "A") || !strings.Contains(err.Error(), "B") {
+		t.Errorf("the ambiguity error must name the candidate IDs, got %q", err)
+	}
 }
 
 func TestResolveTitleIDByName_TransportErrorPropagates(t *testing.T) {
 	want := errors.New("connection refused")
-	l := &stubTitleLister{err: want}
+	l := &stubTitleCatalog{err: want}
 	if _, err := resolveTitleIDByName(context.Background(), l, "Jamf Composer"); !errors.Is(err, want) {
 		t.Fatalf("expected the transport error to propagate, got %v", err)
 	}
 }
 
-func TestResolveTitleIDByName_NoLookupForEmptyNameOrNilLister(t *testing.T) {
-	l := &stubTitleLister{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
+func TestResolveTitleIDByName_NoLookupForEmptyNameOrNilCatalog(t *testing.T) {
+	l := &stubTitleCatalog{titles: []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}}
 	if _, err := resolveTitleIDByName(context.Background(), l, ""); !errors.Is(err, errTitleNotInCatalog) {
 		t.Errorf("empty name must be not-found, got %v", err)
 	}
 	if l.calls != 0 {
-		t.Errorf("empty name must not reach the API, got %d calls", l.calls)
+		t.Errorf("empty name must not reach the catalog, got %d reads", l.calls)
 	}
 	if _, err := resolveTitleIDByName(context.Background(), nil, "Jamf Composer"); err == nil {
-		t.Error("nil lister must error")
+		t.Error("nil catalog must error")
+	}
+}
+
+// The finding this cache answers is a 3x request multiplication on a no-op plan:
+// every App Installer instance resolved its own title name and reverse-resolved
+// its own title id, so a 50-resource workspace paid 100 catalog requests on top of
+// its 50 deployment reads. One provider-instance snapshot serves the lot, in both
+// directions, however many lookups run against it.
+func TestAppTitleCatalog_ReadOncePerProviderInstance(t *testing.T) {
+	catalog := &stubTitleCatalog{titles: []pro.AppTitle{
+		{ID: "Composer", TitleName: "Jamf Composer"},
+		{ID: "7F0", TitleName: "Jamf Sync"},
+	}}
+	cache := providerdata.ConfigureAppTitleCatalog(
+		providerdata.New(jamfplatform.NewClient("http://127.0.0.1:1", "test-id", "test-secret")),
+		func(ctx context.Context, _ *pro.Client) ([]pro.AppTitle, error) { return catalog.Titles(ctx) },
+	)
+
+	for i := range 50 {
+		id, err := resolveTitleIDByName(context.Background(), cache, "Jamf Composer")
+		if err != nil || id != "Composer" {
+			t.Fatalf("lookup %d: id = %q, err = %v", i, id, err)
+		}
+		name, ok := titleNameForID(context.Background(), cache, "7F0")
+		if !ok || name != "Jamf Sync" {
+			t.Fatalf("reverse lookup %d: name = %q ok = %v", i, name, ok)
+		}
+	}
+
+	if catalog.calls != 1 {
+		t.Errorf("expected exactly 1 catalog read for 100 lookups, got %d", catalog.calls)
 	}
 }
 

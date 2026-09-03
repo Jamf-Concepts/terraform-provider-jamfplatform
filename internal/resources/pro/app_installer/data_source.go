@@ -23,8 +23,14 @@ import (
 // Installer deployment. Lookup is by ID or by exact name — exactly one must be
 // supplied. It surfaces a flat projection of the deployment's scalar fields; for
 // the nested presentation blocks, manage the deployment as a resource.
+//
+// titles is the provider-instance App Catalog snapshot, shared with the resource and
+// with every other App Installer construct in the configuration; the data source
+// needs it to name the title behind app_title_id, which the deployment GET reports
+// only as an id.
 type AppInstallerDataSource struct {
 	client *pro.Client
+	titles *providerdata.AppTitleCatalogCache
 }
 
 var (
@@ -87,7 +93,8 @@ func (d *AppInstallerDataSource) ConfigValidators(ctx context.Context) []datasou
 	}
 }
 
-// Configure wires the Jamf Pro client into the data source.
+// Configure wires the Jamf Pro client into the data source, and takes the
+// provider-instance App Catalog title cache alongside it.
 func (d *AppInstallerDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_app_installer")
 	resp.Diagnostics.Append(diags...)
@@ -95,6 +102,7 @@ func (d *AppInstallerDataSource) Configure(ctx context.Context, req datasource.C
 		return
 	}
 	d.client = client
+	d.titles = providerdata.ConfigureAppTitleCatalog(req.ProviderData, readAppTitleCatalog)
 }
 
 // Read fetches a deployment by ID or by name and populates Terraform state.
@@ -149,9 +157,10 @@ func (d *AppInstallerDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 	assignAppInstallerDataSourceModel(&data, got)
 
-	// Reverse-resolve app_title_id → app_title_name (the deployment GET returns
-	// only the ID). Best-effort: leave app_title_name null on a catalog hiccup.
-	if name, ok := titleNameForID(readCtx, d.client, data.AppTitleID.ValueString()); ok {
+	// Reverse-resolve app_title_id → app_title_name out of the cached catalog
+	// snapshot (the deployment GET returns only the ID). Best-effort: leave
+	// app_title_name null on a catalog hiccup.
+	if name, ok := titleNameForID(readCtx, catalogOrNil(d.titles), data.AppTitleID.ValueString()); ok {
 		data.AppTitleName = types.StringValue(name)
 	}
 

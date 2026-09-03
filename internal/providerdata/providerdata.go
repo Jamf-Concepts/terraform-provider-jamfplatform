@@ -106,6 +106,9 @@ type Data struct {
 
 	patchSourceMu    sync.Mutex
 	patchSourceCache *PatchSourceCache
+
+	appTitleMu    sync.Mutex
+	appTitleCache *AppTitleCatalogCache
 }
 
 // AISchemaCache returns the shared AI Governance product catalogue and vendor schema cache, building
@@ -230,6 +233,100 @@ func (d *Data) patchSources(read func(context.Context, *proclassic.Client) (Patc
 		d.patchSourceCache = &PatchSourceCache{client: proclassic.New(d.Client), read: read}
 	}
 	return d.patchSourceCache
+}
+
+// AppTitleCatalogCache holds one snapshot of the tenant's Jamf App Catalog title
+// list per configured provider instance, read on first use.
+//
+// The catalog is tenant-global and identical for every App Installer in a
+// configuration, and each deployment needs it in both directions — a configured
+// app_title_name resolved to a catalog id at plan time and again on apply, and the
+// stored app_title_id reverse-resolved to its display name on every refresh. Without
+// this a configuration with N App Installers pays 2N catalog requests on every plan
+// on top of the N deployment reads, tripling the request count of a no-op plan. One
+// unfiltered list answers all of it: the catalog is a few hundred titles and the
+// SDK's list call pages at 2000, so the whole of it arrives in one round-trip.
+//
+// A failed read is not cached: the next caller retries it. A transient blip or a
+// momentary privilege problem on the first deployment must not blank every later
+// deployment's app_title_name for the rest of the run — the same rule this package
+// applies to the Jamf Pro version fetch and to the patch source catalogues.
+//
+// The read itself is injected rather than written here. The SDK call it makes belongs
+// to the App Installer package: that package declares the privileges it requires, and
+// its tests derive that declaration from the call sites in its own files.
+type AppTitleCatalogCache struct {
+	client *pro.Client
+	read   func(context.Context, *pro.Client) ([]pro.AppTitle, error)
+
+	mu     sync.Mutex
+	loaded bool
+	titles []pro.AppTitle
+}
+
+// Titles returns the catalog snapshot, reading it at most once per configured
+// provider instance.
+//
+// The lock is held across the read, so concurrent callers collapse into one
+// round-trip instead of racing to fill the same snapshot — the same shape as
+// PatchSourceCache.Catalogues, and for the same reason: there is exactly one
+// snapshot to fill.
+//
+// Nil-receiver-safe: resolving a title name is a plan-time preflight and a
+// best-effort refresh everywhere except import, so a construct that never received
+// a cache must report the failure rather than panic mid-plan.
+func (c *AppTitleCatalogCache) Titles(ctx context.Context) ([]pro.AppTitle, error) {
+	if c == nil {
+		return nil, errors.New("the provider is not configured, so the App Catalog titles cannot be read")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.loaded {
+		return c.titles, nil
+	}
+	titles, err := c.read(ctx, c.client)
+	if err != nil {
+		return nil, err
+	}
+	c.titles = titles
+	c.loaded = true
+	return c.titles, nil
+}
+
+// ConfigureAppTitleCatalog returns the App Catalog title cache shared by every
+// construct configured from this provider instance, building it on first use with
+// read.
+//
+// It mirrors ConfigurePatchSources: no diagnostics, and nil when providerData is not
+// a *Data — including the nil ProviderData the framework passes during early
+// lifecycle. A caller that receives nil resolves nothing and reports it, which is
+// the same outcome an unconfigured client already produced.
+//
+// The first caller's read function is the cache's read function; later callers reuse
+// the cache they find. Every caller passes the same package-level function, so which
+// one registered it cannot matter.
+func ConfigureAppTitleCatalog(providerData any, read func(context.Context, *pro.Client) ([]pro.AppTitle, error)) *AppTitleCatalogCache {
+	pd, ok := providerData.(*Data)
+	if !ok {
+		return nil
+	}
+	return pd.appTitleCatalog(read)
+}
+
+// appTitleCatalog lazily builds the provider-instance App Catalog title cache over a
+// Pro client of this Data's own, so no caller has to hand one in.
+func (d *Data) appTitleCatalog(read func(context.Context, *pro.Client) ([]pro.AppTitle, error)) *AppTitleCatalogCache {
+	if d == nil {
+		return nil
+	}
+	d.appTitleMu.Lock()
+	defer d.appTitleMu.Unlock()
+
+	if d.appTitleCache == nil {
+		d.appTitleCache = &AppTitleCatalogCache{client: pro.New(d.Client), read: read}
+	}
+	return d.appTitleCache
 }
 
 // EnableImpactAlerts turns on plan-time impact alerts for this provider

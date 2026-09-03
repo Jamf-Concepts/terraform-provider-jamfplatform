@@ -26,15 +26,17 @@ var helperCallRE = regexp.MustCompile(`\b([a-z][A-Za-z0-9]*)\(`)
 
 // helperSDKMethods maps a package-local helper the construct entry files call to
 // the SDK methods it reaches. The name resolvers take a narrow interface
-// receiver (titleLister / titleNamer / deploymentLister) rather than the client,
-// so clientCallRE cannot see those requests at the point they are issued.
-// Declaring the reach here keeps each privilege list honest without sweeping
-// name_lookup.go whole, which would over-report: that one file serves both the
-// resource (the title catalog) and the data source (the deployment list).
+// receiver (titleCatalog / deploymentLister) rather than the client, so
+// clientCallRE cannot see those requests at the point they are issued — and the
+// title resolvers now go one step further, answering from a provider-instance
+// snapshot whose read is registered at Configure. Declaring the reach here keeps
+// each privilege list honest without sweeping name_lookup.go whole, which would
+// over-report: that one file serves both the resource (the title catalog) and the
+// data source (the deployment list).
 var helperSDKMethods = map[string][]string{
 	"resolveAppTitleID":         {"ListAppInstallerTitlesV1"},
 	"validateAppTitleName":      {"ListAppInstallerTitlesV1"},
-	"titleNameForID":            {"GetAppInstallerTitleV1"},
+	"titleNameForID":            {"ListAppInstallerTitlesV1"},
 	"resolveDeploymentIDByName": {"ListAppInstallerDeploymentsV1"},
 }
 

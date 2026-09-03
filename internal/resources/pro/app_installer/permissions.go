@@ -10,10 +10,12 @@ import (
 )
 
 // resourceSDKMethods lists the SDK methods the App Installer resource's CRUD
-// path reaches — the four deployment operations it calls directly, plus the two
-// catalog reads it reaches through the package's own name-resolution helpers
-// (resolveAppTitleID lists the titles to resolve app_title_name → id;
-// titleNameForID reads a title to reverse-resolve the id back to the name). It
+// path reaches — the four deployment operations it calls directly, plus the one
+// catalog read it reaches through the package's own name-resolution helpers. Both
+// directions of the title name mapping answer from that single list
+// (resolveAppTitleID resolves app_title_name → id, titleNameForID reverse-resolves
+// the id back to the name), because the catalog snapshot is cached per provider
+// instance and carries both fields — so the resource issues no per-title GET. It
 // mirrors the "SDK endpoints used" block in crud.go and drives the "Required
 // Jamf privileges" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the SDK calls
@@ -24,7 +26,6 @@ var resourceSDKMethods = []string{
 	"UpdateAppInstallerDeploymentV1",
 	"DeleteAppInstallerDeploymentV1",
 	"ListAppInstallerTitlesV1",
-	"GetAppInstallerTitleV1",
 }
 
 // resourcePrivileges is the rendered "Required Jamf privileges" Markdown
@@ -36,14 +37,14 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // name first goes through the package's own resolveDeploymentIDByName, which
 // lists the deployments and decides the match in the provider because Jamf Pro's
 // name filter is a case-insensitive glob (see name_lookup.go). Either way the
-// title name is reverse-resolved from its id by titleNameForID. All three are
-// applications:read, so the rendered table is unchanged by the two indirect
-// reads, but they are declared here so the list describes the requests the data
-// source actually issues.
+// title name is reverse-resolved from its id by titleNameForID, out of the cached
+// title list rather than a per-title GET. All three are applications:read, so the
+// rendered table is unchanged by the two indirect reads, but they are declared here
+// so the list describes the requests the data source actually issues.
 var dataSourceSDKMethods = []string{
 	"GetAppInstallerDeploymentV1",
 	"ListAppInstallerDeploymentsV1",
-	"GetAppInstallerTitleV1",
+	"ListAppInstallerTitlesV1",
 }
 
 // dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown

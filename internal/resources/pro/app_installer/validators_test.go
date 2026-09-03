@@ -13,20 +13,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// fakeTitleResolver is a testable titleLister. notFound forces the empty list
-// Jamf Pro returns for a name that matches nothing; otherErr forces a
-// transport-style error. The catalog it serves holds one title, so an exact-name
-// query resolves and an off-casing one does not.
+// fakeTitleResolver is a testable titleCatalog. notFound forces the empty catalog
+// Jamf Pro returns on a tenant with no titles; otherErr forces the read failure a
+// transport error or a privilege gap produces. The catalog it serves holds one
+// title, so an exact-name query resolves and an off-casing one does not.
 type fakeTitleResolver struct {
 	notFound bool
 	otherErr error
 	called   bool
-	filter   string
 }
 
-func (f *fakeTitleResolver) ListAppInstallerTitlesV1(ctx context.Context, sort []string, filter string) ([]pro.AppTitle, error) {
+func (f *fakeTitleResolver) Titles(ctx context.Context) ([]pro.AppTitle, error) {
 	f.called = true
-	f.filter = filter
 	if f.otherErr != nil {
 		return nil, f.otherErr
 	}
@@ -105,37 +103,30 @@ func TestResolveAppTitleID_NotFoundIsError(t *testing.T) {
 	}
 }
 
-// fakeTitleNamer is a testable titleNamer.
-type fakeTitleNamer struct {
-	name string
-	err  error
-}
-
-func (f *fakeTitleNamer) GetAppInstallerTitleV1(ctx context.Context, id string, version string) (*pro.AppTitleDetails, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	return &pro.AppTitleDetails{ID: id, TitleName: f.name}, nil
-}
-
 func TestTitleNameForID(t *testing.T) {
-	n := &fakeTitleNamer{name: "Adobe Lightroom Classic"}
+	n := &fakeTitleResolver{}
 	got, ok := titleNameForID(context.Background(), n, "027")
 	if !ok || got != "Adobe Lightroom Classic" {
 		t.Errorf("expected reverse-resolve to succeed, got %q ok=%v", got, ok)
 	}
 
-	// Transport error → ok=false (caller preserves existing state).
-	nErr := &fakeTitleNamer{err: errors.New("boom")}
+	// Catalog read failure → ok=false (caller preserves existing state).
+	nErr := &fakeTitleResolver{otherErr: errors.New("boom")}
 	if _, ok := titleNameForID(context.Background(), nErr, "027"); ok {
-		t.Errorf("transport error must return ok=false")
+		t.Errorf("a failed catalog read must return ok=false")
 	}
 
-	// Empty id / nil namer → ok=false, no call.
+	// An id the catalog does not hold → ok=false, the same as a failed read: a
+	// withdrawn title cannot be named.
+	if _, ok := titleNameForID(context.Background(), n, "no-such-id"); ok {
+		t.Errorf("an id absent from the catalog must return ok=false")
+	}
+
+	// Empty id / nil catalog → ok=false, no read.
 	if _, ok := titleNameForID(context.Background(), n, ""); ok {
 		t.Errorf("empty id must return ok=false")
 	}
 	if _, ok := titleNameForID(context.Background(), nil, "027"); ok {
-		t.Errorf("nil namer must return ok=false")
+		t.Errorf("nil catalog must return ok=false")
 	}
 }
