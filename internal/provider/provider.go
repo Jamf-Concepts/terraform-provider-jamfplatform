@@ -24,6 +24,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	ssodomainactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/account/sso_domain"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	appinstalleractions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/app_installers"
 	jamfprotectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/jamf_protect"
 	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
@@ -803,6 +804,9 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		uemconnectactions.NewDeployActivationProfileAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
+		appinstalleractions.NewRetryInstallationsAction,
+		appinstalleractions.NewRetryAllInstallationsAction,
+		appinstalleractions.NewUpdateVersionAction,
 		jamfprotectactions.NewSyncPlansAction,
 		jamfprotectactions.NewRetryDeploymentAction,
 		ssodomainactions.NewVerifySSODomainAction,

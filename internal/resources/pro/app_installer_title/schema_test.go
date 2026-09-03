@@ -37,7 +37,7 @@ func TestAppInstallerTitleDataSource_Schema(t *testing.T) {
 		"installer_package_hash_type", "launch_daemon_included",
 		"notification_available", "package_signing_identity", "suppress_auto_update",
 		"original_media_sources", "media_source_type", "installation_path_shared",
-		"original_terms_and_conditions",
+		"original_terms_and_conditions", "versions",
 	} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
@@ -101,6 +101,39 @@ func TestAssignTitleDataSource(t *testing.T) {
 	}
 	if len(got.OriginalTermsAndConditions.Elements()) != 1 {
 		t.Errorf("original_terms_and_conditions not mapped: %v", got.OriginalTermsAndConditions)
+	}
+}
+
+func TestAssignTitleVersions(t *testing.T) {
+	got := assignTitleVersions(&pro.AppTitleVersionsResult{
+		TotalCount: 2,
+		Results: []pro.AppTitleVersionAndMediaSourceType{
+			{Version: new("11.30.1"), MediaSourceType: "JAMF_SERVER"},
+			{Version: new("11.31.0"), MediaSourceType: "JAMF_SERVER"},
+		},
+	})
+	if len(got) != 2 {
+		t.Fatalf("expected 2 versions, got %d", len(got))
+	}
+	if got[0].Version.ValueString() != "11.30.1" || got[0].MediaSourceType.ValueString() != "JAMF_SERVER" {
+		t.Errorf("version 0 mismatch: %+v", got[0])
+	}
+}
+
+// Most titles publish no earlier versions, so the empty case is the common one:
+// it must be an empty list, never null, or the Computed attribute has no value.
+func TestAssignTitleVersions_EmptyAndNilAreEmptyLists(t *testing.T) {
+	for label, in := range map[string]*pro.AppTitleVersionsResult{
+		"nil":   nil,
+		"empty": {},
+	} {
+		got := assignTitleVersions(in)
+		if got == nil {
+			t.Errorf("%s: expected a non-nil empty slice", label)
+		}
+		if len(got) != 0 {
+			t.Errorf("%s: expected no elements, got %d", label, len(got))
+		}
 	}
 }
 

@@ -115,7 +115,18 @@ func (d *AppInstallerTitleDataSource) Read(ctx context.Context, req datasource.R
 
 	data = AssignTitleDataSource(got)
 
-	tflog.Trace(ctx, "read App Installer title data source", map[string]any{"id": data.ID.ValueString()})
+	// The version list is a second endpoint; the per-title GET does not carry it.
+	// A failure here is surfaced rather than swallowed: the attribute is Computed,
+	// so returning an empty list on error would be indistinguishable from a title
+	// that genuinely publishes no earlier versions, which is the common case.
+	versions, err := d.client.ListAppInstallerTitleVersionsV1(readCtx, data.ID.ValueString(), "")
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to list App Installer title versions", err.Error())
+		return
+	}
+	data.Versions = assignTitleVersions(versions)
+
+	tflog.Trace(ctx, "read App Installer title data source", map[string]any{"id": data.ID.ValueString(), "versions": len(data.Versions)})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -146,6 +157,17 @@ func TitleDataSourceAttributes() map[string]schema.Attribute {
 		"notification_available":      schema.BoolAttribute{MarkdownDescription: "Whether the title supports end-user install notifications.", Computed: true},
 		"package_signing_identity":    computedString("Signing identity of the installer package."),
 		"suppress_auto_update":        schema.BoolAttribute{MarkdownDescription: "Whether the title suppresses its built-in auto-update mechanism when managed by Jamf.", Computed: true},
+		"versions": schema.ListNestedAttribute{
+			MarkdownDescription: "Versions of this title Jamf Pro still publishes, oldest first, each usable as the `version` argument. " +
+				"Empty for a title whose older builds are no longer installable, which is most of them — an empty list is not a failed read.",
+			Computed: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"version":           computedString("Published version string."),
+					"media_source_type": computedString("Where Jamf Pro downloads this version from: `JAMF_SERVER` or `EXTERNAL_URL`."),
+				},
+			},
+		},
 		"original_terms_and_conditions": schema.ListAttribute{
 			MarkdownDescription: "URLs of the terms and conditions the software vendor publishes for this title. Empty when the vendor publishes none.",
 			Computed:            true,
@@ -198,6 +220,23 @@ func AssignTitleDataSource(t *pro.AppTitleDetails) AppInstallerTitleDataSourceMo
 			Hash:     types.StringValue(m.Hash),
 			HashType: types.StringValue(m.HashType),
 			URL:      types.StringValue(m.URL),
+		})
+	}
+	return out
+}
+
+// assignTitleVersions maps the version-list response into the model. The slice is
+// always non-nil so a title publishing no earlier versions serialises as an empty
+// list rather than null.
+func assignTitleVersions(r *pro.AppTitleVersionsResult) []TitleVersionModel {
+	out := []TitleVersionModel{}
+	if r == nil {
+		return out
+	}
+	for _, v := range r.Results {
+		out = append(out, TitleVersionModel{
+			Version:         helpers.StringPointerValueOrNull(v.Version),
+			MediaSourceType: types.StringValue(v.MediaSourceType),
 		})
 	}
 	return out

@@ -39,6 +39,16 @@ type AppInstallerTitleDataSourceModel struct {
 	SuppressAutoUpdate         types.Bool                 `tfsdk:"suppress_auto_update"`
 	OriginalMediaSources       []OriginalMediaSourceModel `tfsdk:"original_media_sources"`
 	OriginalTermsAndConditions types.List                 `tfsdk:"original_terms_and_conditions"`
+	Versions                   []TitleVersionModel        `tfsdk:"versions"`
+}
+
+// TitleVersionModel models one version Jamf Pro still publishes for a title.
+// Most titles publish none: the catalog keeps a version history only for titles
+// whose older builds remain installable, so an empty list is the common case and
+// not a sign of a failed read.
+type TitleVersionModel struct {
+	Version         types.String `tfsdk:"version"`
+	MediaSourceType types.String `tfsdk:"media_source_type"`
 }
 
 // AppInstallerTitleSummaryModel is one element of the plural data source's

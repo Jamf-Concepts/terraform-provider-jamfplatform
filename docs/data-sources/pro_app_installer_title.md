@@ -89,6 +89,7 @@ resource "jamfplatform_pro_app_installer" "composer" {
 - `size_in_bytes` (Number) Installer package size in bytes.
 - `suppress_auto_update` (Boolean) Whether the title suppresses its built-in auto-update mechanism when managed by Jamf.
 - `title_name` (String) Title display name.
+- `versions` (Attributes List) Versions of this title Jamf Pro still publishes, oldest first, each usable as the `version` argument. Empty for a title whose older builds are no longer installable, which is most of them — an empty list is not a failed read. (see [below for nested schema](#nestedatt--versions))
 
 <a id="nestedatt--original_media_sources"></a>
 ### Nested Schema for `original_media_sources`
@@ -98,3 +99,12 @@ Read-Only:
 - `hash` (String) Media source hash.
 - `hash_type` (String) Media source hash algorithm.
 - `url` (String) Media source URL.
+
+
+<a id="nestedatt--versions"></a>
+### Nested Schema for `versions`
+
+Read-Only:
+
+- `media_source_type` (String) Where Jamf Pro downloads this version from: `JAMF_SERVER` or `EXTERNAL_URL`.
+- `version` (String) Published version string.
