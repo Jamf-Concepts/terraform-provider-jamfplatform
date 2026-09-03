@@ -63,6 +63,7 @@ internal/
 │   ├── jsonvalue/     # Rendering a decoded JSON value for a diagnostic (aischemas, appleprofiles)
 │   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
 │   ├── payloadhelpers/ # mobileconfig mask / compare / identifier injection (macos/mobile_device_configuration_profile)
+│   ├── permissions/   # Required-Jamf-permission tables rendered into schema descriptions (see §Required permission tables)
 │   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
 │   ├── plisthelpers/  # Generic plist (Apple property list) parsing / normalisation helpers
 │   ├── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
@@ -101,6 +102,32 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 ## Impact alerts — one-paragraph orientation
 
 `internal/common/impact/` produces Jamf Pro's **impact alert notifications** during `terraform plan`: an advisory warning on each object whose scope or payload is changing, reporting how many computers or mobile devices the change reaches. Off by default behind the provider's `impact_alerts` attribute; a nil `*impact.Cache` means disabled, so resources need no flag check. Three channels. Two mirror Jamf's own split — **deployable** (policies, profiles, apps, blueprints, benchmarks) and **scopeable** (groups, classes) — because a resource's `ModifyPlan` cannot see a sibling's, so a plan editing both a group and something scoped to it needs an alert from each side. The third, **policy dependencies** (script, package, printer, Dock item, directory binding, disk encryption configuration), has no counterpart in Jamf Pro: these objects have no scope of their own, so their blast radius is the combined audience of the policies referencing them. Resources wire in via `impact.ReportPlan` (deployable), `impact.ReportMembership` (scopeable) or `impact.ReportDependencyPlan` (dependencies), plus a per-family adapter — a reducer to `impact.Scope` for the first two, and for a dependency only a reader for the object's id and name. The shared Jamf Pro scope block goes through `scope.BuildImpactScope`, which is the single place the narrows/broadens/counts classification lives. Dependencies need a whole-tenant policy sweep, since Jamf Pro has no reverse lookup ("which policies use this script"): lazy, at most once per configured provider instance, self-capped at 5 concurrent reads, and built by `impact.NewCacheWithPolicies` (`NewTenantCache` wires both sources). Alerts are advisory — a tenant that cannot be read yields one notice and never fails a plan. Two rules that are easy to get wrong: a numeric Jamf Pro group id is unique only **within an estate** (see [STYLE_GUIDE.md §Scope helper](STYLE_GUIDE.md#scope-helper)), and group membership is expressed in **device management identifiers**, so a Jamf Pro numeric device/building/department id must be resolved through the inventory before it can be compared with a group's members. User guidance, including the `terraform plan -json` caveat, is in `docs/guides/impact-alerts.md`.
+
+## Required permission tables — one-paragraph orientation
+
+`internal/common/permissions/` renders the **Required Jamf permissions** table into every
+construct's schema description: for each SDK method a construct calls, the section and permission
+name an operator ticks in Jamf Account, plus the `{capability}:{action}` identifier. The mapping
+from capability slug to picker row exists in exactly one place — Jamf's [Jamf Pro permissions
+map](https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map) article — because
+the OpenAPI specs publish the slug and nothing else, and the two differ substantially
+(`computer-inventory-collection-settings` is "Device inventory collection settings"). `catalogue.go`
+transcribes that article, all 125 rows, deliberately complete rather than trimmed to what this
+provider calls so it stays diffable against the next revision. **The article is the source of
+truth**, and since it is published as markdown at the same URL with `.md` appended, that is now
+enforced rather than trusted: `permissions-map.md` beside the catalogue is a verbatim snapshot,
+`make permissions-map` refetches it, and `TestCatalogueMatchesThePublishedMap` asserts every row's
+section and name against it — so a renamed or relocated permission fails a build instead of quietly
+sending an operator to a checkbox that no longer exists. Two guards keep that honest: a parse
+yielding under 100 capabilities fails outright, because a parser that silently finds nothing reports
+perfect agreement; and only the article's own capability tables are read, bounded between two named
+headings, since its narrative tables list *old* privilege names in the same column position.
+`TestCatalogueCoversEverySDKCapability` covers the other direction (a capability the SDK requires
+and the file has never heard of), and `catalogue.golden` pins the rendered triples so any edit is a
+reviewable diff. `.github/workflows/permissions-map.yml` refetches monthly and opens a pull request
+— red, with the failures in its body, when the catalogue no longer agrees. What nothing here can
+prove is that the article matches what Jamf Account's picker actually prints; the same pattern lives
+in `jamfplatform-go-sdk` (capability and actions only, as a privilege oracle) and in `jamfpro-cli`.
 
 ## Apple profile schemas — one-paragraph orientation
 
@@ -276,6 +303,7 @@ Jamf offers three scopes when an API integration is created, and the provider mi
 | `lint` | `golangci-lint run` |
 | `generate` | Copyright headers + `terraform fmt examples/` + docs |
 | `apple-profiles` | Regenerate `internal/common/appleprofiles/profiles.json` from apple/device-management (network; not part of `generate`) |
+| `permissions-map` | Refetch `internal/common/permissions/permissions-map.md` from Jamf's permissions map article (network; not part of `generate`) |
 | `test` | Unit tests (excludes `acceptance` build tag) |
 | `test-scripts` | Unit tests for `scripts/acctargets` (behind the `acctargets` build tag, so `go test ./...` misses it) |
 | `testacc` | Acceptance tests (sets `TF_ACC=1`, requires tenant) |

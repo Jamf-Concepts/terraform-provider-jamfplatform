@@ -47,6 +47,21 @@ apple-profiles:
 		-ref '$(REF)' \
 		-out ../internal/common/appleprofiles/profiles.json
 
+# permissions-map refreshes internal/common/permissions/permissions-map.md, the committed markdown
+# rendering of Jamf's "Jamf Pro permissions map" article. TestCatalogueMatchesThePublishedMap
+# asserts every row of catalogue.go against it, so the snapshot is what makes a renamed or moved
+# permission a build failure instead of a silently wrong docs table.
+#
+# Like apple-profiles this is deliberately NOT part of `make generate`: it needs network access, and
+# the article is revised occasionally and unpredictably. Fetches to a temp file first so a dropped
+# connection can never truncate the tracked snapshot in place. Review the diff, then `make test`.
+permissions-map:
+	@curl -fsS --remove-on-error \
+		https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map.md \
+		-o internal/common/permissions/permissions-map.md.tmp
+	@mv internal/common/permissions/permissions-map.md.tmp internal/common/permissions/permissions-map.md
+	@echo "refreshed internal/common/permissions/permissions-map.md — review the diff, then: make test"
+
 fix:
 	go fix ./...
 
@@ -116,4 +131,4 @@ acclanes-preview:
 	fi; \
 	go run -tags acclanes ./scripts/acclanes -scope "$$scope"
 
-.PHONY: fmt fix lint apple-profiles test test-scripts testacc testacc-run testacc-changed acclanes-preview build install generate
+.PHONY: fmt fix lint apple-profiles permissions-map test test-scripts testacc testacc-run testacc-changed acclanes-preview build install generate
