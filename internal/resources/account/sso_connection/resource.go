@@ -1,6 +1,26 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
+// Changing any attribute replaces the connection, because Jamf Account has no
+// working update endpoint.
+//
+// PUT /sso/v1/connections/{id} answers 500 UPSTREAM_ERROR for every request —
+// wire-verified 2026-09-03 with the exact body a create accepts, with the stored
+// name, with a fresh name, and at an identifier that does not exist, while POST
+// and DELETE both work. The refused write applies nothing: a connection read back
+// after a PUT changing three fields was byte-identical. So no provider-side
+// handling can rescue an in-place change, and planning one would fail during
+// apply. plan_modifiers.go turns every change into a replacement instead, and is
+// the file to delete when Jamf fixes the endpoint.
+//
+// **A replacement interrupts sign-in.** Terraform destroys before it creates by
+// default, so the connection is absent for the width of that gap and users on its
+// domains cannot authenticate through it. Anyone editing a connection carrying
+// real traffic wants `create_before_destroy` — Jamf allows two connections on one
+// domain, so the new one can exist before the old one goes. The resource cannot
+// set that itself; it is the practitioner's lifecycle block, and the attribute
+// descriptions and the example both say so.
+//
 // Package sso_connection implements the jamfplatform_account_sso_connection
 // resource, data sources and list resource backed by the Jamf Account SSO API.
 //
@@ -225,6 +245,10 @@ const (
 )
 
 // NewConnectionResource returns a new instance of ConnectionResource.
+// ConnectionResource forces replacement on any change while Jamf Account's update
+// endpoint is unavailable. See plan_modifiers.go, which is temporary.
+var _ resource.ResourceWithModifyPlan = &ConnectionResource{}
+
 func NewConnectionResource() resource.Resource {
 	return &ConnectionResource{}
 }

@@ -16,6 +16,14 @@ resource "jamfplatform_account_sso_domain" "corp" {
   domain = "example.com"
 }
 
+# Any change to a connection replaces it: Jamf Account has no working update
+# endpoint today, so Terraform cannot edit one in place.
+#
+# That matters for a connection carrying real sign-in traffic. Terraform destroys
+# before it creates by default, and while the connection is gone nobody on its
+# domains can authenticate through it. create_before_destroy closes that gap —
+# Jamf allows two connections on the same domain, so the replacement can exist
+# before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
   name            = "Corp OIDC"
   connection_type = "generic_oidc"
@@ -60,8 +68,13 @@ resource "jamfplatform_account_sso_connection" "corp" {
       tenants = []
     },
   ]
-}
 
+  lifecycle {
+    # Build the replacement before removing the connection in use, so editing one
+    # does not interrupt sign-in.
+    create_before_destroy = true
+  }
+}
 variable "idp_client_id" {
   type        = string
   description = "Client ID of the application registered with your identity provider."
