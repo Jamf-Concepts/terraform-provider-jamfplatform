@@ -197,7 +197,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 # Per-block activation conditions.
 #
 # An activation condition further restricts which scoped devices a block applies to. Author it in
-# the Jamf UI ("Activation conditions" editor -> Text view) and copy it here verbatim. See the
+# the Jamf Pro UI ("Activation conditions" editor -> Text view) and copy it here verbatim. See the
 # syntax reference:
 # https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
 #
@@ -242,7 +242,7 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 
 # Deliver a managed AI tool configuration. The blueprint pins a published policy
 # version, so interpolating `published_version` keeps the two moving together.
-# Jamf refuses a blueprint that names a version which does not exist.
+# The platform refuses a blueprint that names a version which does not exist.
 data "jamfplatform_ai_governance_tool" "claude_code" {
   id = "com.anthropic.claudecode"
 }
@@ -355,7 +355,7 @@ Optional:
 - `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--component_blocks--disk_management_settings))
 - `legacy_payloads` (Attributes List) Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name. (see [below for nested schema](#nestedatt--component_blocks--legacy_payloads))
 - `math_settings` (Attributes) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--component_blocks--math_settings))
-- `name` (String) Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, Jamf assigns a default name.
+- `name` (String) Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, the platform assigns a default name.
 - `passcode_policy` (Attributes) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--component_blocks--passcode_policy))
 - `raw_component` (Attributes Set) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--component_blocks--raw_component))
 - `safari_bookmarks` (Attributes) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks))

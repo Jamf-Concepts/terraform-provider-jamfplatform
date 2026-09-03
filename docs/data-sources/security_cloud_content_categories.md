@@ -32,12 +32,13 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# The Jamf-curated content category catalogue. Read-only, and the same for every
-# entitled tenant.
+# The content category catalogue Jamf Security Cloud curates. Read-only, and
+# the same for every entitled tenant.
 data "jamfplatform_security_cloud_content_categories" "all" {}
 
-# A category carries two names. "display_name" is the one to reference; "name" is
-# Jamf's internal label ("Category - Social") and is informational only.
+# A category carries two names. "display_name" is the one to reference; "name"
+# is Jamf Security Cloud's internal label ("Category - Social") and is
+# informational only.
 locals {
   category_ids_by_display_name = {
     for category in data.jamfplatform_security_cloud_content_categories.all.content_categories :
@@ -61,7 +62,7 @@ output "social_category_id" {
 
 ### Read-Only
 
-- `content_categories` (Attributes List) The content categories available to this tenant, in the order Jamf returns them. (see [below for nested schema](#nestedatt--content_categories))
+- `content_categories` (Attributes List) The content categories available to this tenant, in the order Jamf Security Cloud returns them. (see [below for nested schema](#nestedatt--content_categories))
 - `id` (String) Fixed identifier for this data source.
 
 <a id="nestedatt--timeouts"></a>
@@ -79,4 +80,4 @@ Read-Only:
 
 - `display_name` (String) The category name as shown in Jamf Security Cloud, for example `Social`. **This is the name that identifies the category.** A Zero Trust Network Access app's category matches on it, and it is the name to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s `category`.
 - `id` (String) Content category identifier.
-- `name` (String) Jamf's internal label for the category, for example `Category - Social`. Informational only; reference `display_name` instead.
+- `name` (String) Jamf Security Cloud's internal label for the category, for example `Category - Social`. Informational only; reference `display_name` instead.

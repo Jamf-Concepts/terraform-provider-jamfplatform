@@ -169,7 +169,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 # Per-block activation conditions.
 #
 # An activation condition further restricts which scoped devices a block applies to. Author it in
-# the Jamf UI ("Activation conditions" editor -> Text view) and copy it here verbatim. See the
+# the Jamf Pro UI ("Activation conditions" editor -> Text view) and copy it here verbatim. See the
 # syntax reference:
 # https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
 #
@@ -214,7 +214,7 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 
 # Deliver a managed AI tool configuration. The blueprint pins a published policy
 # version, so interpolating `published_version` keeps the two moving together.
-# Jamf refuses a blueprint that names a version which does not exist.
+# The platform refuses a blueprint that names a version which does not exist.
 data "jamfplatform_ai_governance_tool" "claude_code" {
   id = "com.anthropic.claudecode"
 }

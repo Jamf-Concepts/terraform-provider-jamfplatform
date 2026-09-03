@@ -150,7 +150,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				Computed:            true,
 			},
 			"keep_existing_site_membership": schema.BoolAttribute{
-				MarkdownDescription: "The admin UI's \"Use existing site membership, if applicable\". When true, an enrolling computer that already belongs to a site keeps that membership. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "The admin UI's \"Use existing site membership, if applicable\". When true, an enrolling computer that already belongs to a site keeps that membership. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -159,7 +159,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"multiple_uses_allowed": schema.BoolAttribute{
-				MarkdownDescription: "Whether the invitation may be used to enrol more than one computer. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Whether the invitation may be used to enrol more than one computer. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -168,7 +168,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"create_account_if_does_not_exist": schema.BoolAttribute{
-				MarkdownDescription: "Create the SSH management account on the enrolled computer if it does not already exist. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Create the SSH management account on the enrolled computer if it does not already exist. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -177,7 +177,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"hide_account": schema.BoolAttribute{
-				MarkdownDescription: "Hide the SSH management account from the macOS login window and Users & Groups. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Hide the SSH management account from the macOS login window and Users & Groups. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -186,7 +186,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"lock_down_ssh": schema.BoolAttribute{
-				MarkdownDescription: "Restrict SSH (Remote Login) access to the management account only on the enrolled computer. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Restrict SSH (Remote Login) access to the management account only on the enrolled computer. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

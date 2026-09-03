@@ -189,7 +189,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				ElementType:         types.StringType,
 			},
 			"accept_extension_attributes": schema.BoolAttribute{
-				MarkdownDescription: "Accept the extension attribute(s) Jamf attaches to this title (UI \"Extension Attribute\" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting cannot be reverted.** Setting this back to `false`, or removing it, does not un-accept anything; it only stops accepting new ones. Leave unset for titles that have no extension attribute.",
+				MarkdownDescription: "Accept the extension attribute(s) Jamf Pro attaches to this title (UI \"Extension Attribute\" tab, **Accept**). For some titles Jamf Pro supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting cannot be reverted.** Setting this back to `false`, or removing it, does not un-accept anything; it only stops accepting new ones. Leave unset for titles that have no extension attribute.",
 				Optional:            true,
 			},
 			"extension_attributes": schema.ListNestedAttribute{

@@ -62,7 +62,7 @@ output "deployable_version" {
 - `has_draft` (Boolean) Whether the policy holds changes that have not been published.
 - `name` (String) Name of the policy.
 - `published_version` (Number) Number of the most recently published version, or null when the policy has never been published. This is the value a blueprint's AI Governance component pins.
-- `schema_drift` (Boolean) Whether the policy's schema version is behind the one Jamf now offers for the tool.
+- `schema_drift` (Boolean) Whether the policy's schema version is behind the one the platform now offers for the tool.
 - `schema_version` (String) Version of the tool's settings format the policy is written against.
 - `settings_json` (String) The policy's current settings as a JSON object string. Reflects the draft when one is unpublished, which `has_draft` reports.
 - `tool_id` (String) Identifier of the AI tool the policy configures, such as `com.anthropic.claudecode`.

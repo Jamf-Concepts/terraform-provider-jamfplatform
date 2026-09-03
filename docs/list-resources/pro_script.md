@@ -63,7 +63,7 @@ list "jamfplatform_pro_script" "scripts_by_name_prefix" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `info`, `notes`, `priority`, `categoryId`, `categoryName`, `parameter4`, `parameter5`, `parameter6`, `parameter7`, `parameter8`, `parameter9`, `parameter10`, `parameter11`, `osRequirements`, `scriptContents`.
 
 Optional:

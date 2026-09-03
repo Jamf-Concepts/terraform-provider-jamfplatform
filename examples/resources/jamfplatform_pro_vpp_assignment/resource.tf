@@ -3,8 +3,8 @@ resource "jamfplatform_pro_vpp_assignment" "apps" {
   name                 = "Volume Purchasing — Core Apps"
   vpp_admin_account_id = "3"
 
-  # Apple catalog adam IDs. Omit a content attribute to leave the server's
-  # current content untouched; set it to [] to clear that content type.
+  # Apple catalog adam IDs. Omit a content attribute and Jamf Pro keeps its
+  # current content; set it to [] to clear that content type.
   ios_app_adam_ids = [6444539476]
   mac_app_adam_ids = [409203825]
 

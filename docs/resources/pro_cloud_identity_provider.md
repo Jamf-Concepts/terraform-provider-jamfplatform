@@ -43,7 +43,7 @@ resource "jamfplatform_pro_cloud_identity_provider" "google" {
     server = {
       domain_name = "example.com"
       # server_url, port, connection_type, timeouts, use_wildcards and
-      # enabled all default to Jamf's standard Google Secure LDAP values
+      # enabled all default to Jamf Pro's standard Google Secure LDAP values
       # when omitted.
 
       keystore = {

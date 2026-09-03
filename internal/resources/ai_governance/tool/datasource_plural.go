@@ -32,14 +32,14 @@ func (d *ToolsDataSource) Metadata(_ context.Context, req datasource.MetadataReq
 // Schema returns the Terraform schema for the AI tools data source.
 func (d *ToolsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads every AI tool Jamf can govern, with the settings schema versions each one offers. " +
+		MarkdownDescription: "Reads every AI tool the platform can govern, with the settings schema versions each one offers. " +
 			"Use it to discover the `tool_id` and `schema_version` values a `jamfplatform_ai_governance_policy` " +
 			"accepts.\n\n" +
 			"The settings schema documents themselves are not included. Read one from the " +
 			"`jamfplatform_ai_governance_tool` data source." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"tools": schema.ListNestedAttribute{
-				MarkdownDescription: "The AI tools Jamf can govern.",
+				MarkdownDescription: "The AI tools the platform can govern.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

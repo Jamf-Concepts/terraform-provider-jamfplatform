@@ -286,35 +286,35 @@ func (r *ConnectionResource) IdentitySchema(_ context.Context, _ resource.Identi
 // Schema returns the Terraform schema for the SSO connection resource.
 func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages an SSO connection for your Jamf Account organization: one identity provider " +
-			"the people in your organization sign in through, and the Jamf products they reach with it.\n\n" +
-			"Pick the provider family with `connection_type` and supply the matching settings block: exactly one of " +
-			"`generic_oidc`, `entra`, `okta` or `google_workspace`, and it has to be the one the family names. " +
-			"Neither the family nor `hosting_region` can be changed afterwards. Both replace the connection.\n\n" +
-			"Every domain in `domains` must already be claimed *and* verified by your organization; a connection " +
-			"cannot be created without at least one. Use `jamfplatform_account_sso_domain` to claim a domain and the " +
+		MarkdownDescription: "Manages an SSO connection for your Jamf Account organization: one identity " +
+			"provider the people in your organization sign in through, and the Jamf products they reach with " +
+			"it.\n\nPick the provider family with `connection_type` and supply the matching settings block: " +
+			"exactly one of `generic_oidc`, `entra`, `okta` or `google_workspace`, and it has to be the one the " +
+			"family names. Neither the family nor `hosting_region` can be changed afterwards. Both replace the " +
+			"connection.\n\nEvery domain in `domains` must already be claimed *and* verified by your " +
+			"organization; a connection cannot be created without at least one. Use " +
+			"`jamfplatform_account_sso_domain` to claim a domain and the " +
 			"`jamfplatform_account_sso_domain_verify` action to prove it, and depend on the verification so the " +
-			"ordering is explicit.\n\n" +
-			"**Jamf cannot currently apply a change to an existing connection.** Every attempt is refused with " +
-			"an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the " +
-			"connection was created, so it is not something a configuration change can work around. That is why " +
-			"this resource replaces a connection rather than editing one: any change you make destroys it and " +
-			"creates a new one, which interrupts sign-in, so give a connection carrying real traffic a " +
-			"`create_before_destroy` lifecycle block. Creating, reading, listing and destroying all work " +
-			"normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the " +
-			"Jamf Account console.\n\n" +
-			"Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow " +
-			"in the console has no client of its own and cannot be written back, so importing one is refused. And a " +
+			"ordering is explicit.\n\n**Jamf Account cannot currently apply a change to an existing " +
+			"connection.** Every attempt is refused with an internal failure, in every region, even when what is " +
+			"sent is exactly what Jamf Account accepted when the connection was created, so it is not something " +
+			"a configuration change can work around. That is why this resource replaces a connection rather than " +
+			"editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so " +
+			"give a connection carrying real traffic a `create_before_destroy` lifecycle block. Creating, " +
+			"reading, listing and destroying all work normally. The fault is in Jamf Account and has been " +
+			"reported; until it clears, edit a connection in the Jamf Account console.\n\nTwo kinds of " +
+			"connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the " +
+			"console has no client of its own and cannot be written back, so importing one is refused. And a " +
 			"connection your organization's collection lists but which cannot be read on its own identifier is " +
-			"reported rather than treated as gone: it exists, and Terraform must not drop it from state.\n\n" +
-			"`enabled_products` and `enabled_environments` are configuration-authoritative. Nothing Jamf returns " +
-			"echoes the tenants back, so Terraform cannot notice a change made outside it and cannot recover them " +
-			"on import. `enabled_product_names` reports the products alone, which is the only part that comes back.\n\n" +
-			"The connection's callback address is not exposed: the console shows one, Jamf's data does not carry it, " +
-			"and deriving it here would mean publishing a value that could silently go wrong. Copy it from the " +
-			"console.\n\n" +
-			"Needs an organization-scoped Jamf integration, created against neither a platform environment nor a " +
-			"tenant, and is reachable only in the United States region." +
+			"reported rather than treated as gone: it exists, and Terraform must not drop it from " +
+			"state.\n\n`enabled_products` and `enabled_environments` are configuration-authoritative. Nothing " +
+			"Jamf Account returns echoes the tenants back, so Terraform cannot notice a change made outside it " +
+			"and cannot recover them on import. `enabled_product_names` reports the products alone, which is the " +
+			"only part that comes back.\n\nThe connection's callback address is not exposed: the console shows " +
+			"one, Jamf Account's data does not carry it, and deriving it here would mean publishing a value that " +
+			"could silently go wrong. Copy it from the console.\n\nNeeds an organization-scoped API integration, " +
+			"created against neither a platform environment nor a tenant, and is reachable only in the United " +
+			"States region." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -326,13 +326,13 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "**\"Connection name\"** in the Jamf Account console: the name to give the " +
-					"connection, and the name the console displays. Letters and digits only: Jamf rejects " +
-					"anything else without saying which field was at fault, so this is checked before the " +
-					"plan is applied.\n\nJamf does not require connection names to be unique, and appends a " +
-					"suffix of its own to whichever name you choose. So two connections created with the same " +
-					"name both exist, and the console shows both under that one name. Only `internal_name` " +
-					"and `id` tell them apart. Give each connection a distinct name unless you mean to have " +
-					"duplicates.",
+					"connection, and the name the console displays. Letters and digits only: Jamf Account " +
+					"rejects anything else without saying which field was at fault, so this is checked before " +
+					"the plan is applied.\n\nJamf Account does not require connection names to be unique, and " +
+					"appends a suffix of its own to whichever name you choose. So two connections created with " +
+					"the same name both exist, and the console shows both under that one name. Only " +
+					"`internal_name` and `id` tell them apart. Give each connection a distinct name unless you " +
+					"mean to have duplicates.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, nameMaxLength),
@@ -341,8 +341,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"internal_name": schema.StringAttribute{
-				MarkdownDescription: "Internal name Jamf Account stores for the connection. Jamf appends a " +
-					"suffix of its own to the name you choose, and this is the result. The console does not " +
+				MarkdownDescription: "Internal name Jamf Account stores for the connection. Jamf Account appends " +
+					"a suffix of its own to the name you choose, and this is the result. The console does not " +
 					"show it, listing `name` instead, so this is the only place two connections sharing a name " +
 					"can be told apart. Read-only.",
 				Computed: true,
@@ -350,9 +350,9 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"connection_type": schema.StringAttribute{
 				MarkdownDescription: "**\"Connection type\"** in the Jamf Account console: the identity provider " +
 					"family. One of " + markdownValueList(connectionTypeValues()) + ". Choose the family that " +
-					"matches your provider; `generic_oidc` is for any OpenID Connect provider Jamf has no " +
-					"purpose-built integration with. The matching settings block is required and no other may be " +
-					"set. A connection cannot be moved to another family, so changing this replaces it.",
+					"matches your provider; `generic_oidc` is for any OpenID Connect provider Jamf Account has " +
+					"no purpose-built integration with. The matching settings block is required and no other may " +
+					"be set. A connection cannot be moved to another family, so changing this replaces it.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(connectionTypeValues()...),
@@ -377,12 +377,12 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"auth_method": schema.StringAttribute{
-				MarkdownDescription: "**\"Connection auth method\"** in the Jamf Account console: how Jamf proves " +
-					"itself to your provider when it redeems an authorization code. One of " +
+				MarkdownDescription: "**\"Connection auth method\"** in the Jamf Account console: how Jamf " +
+					"Account proves itself to your provider when it redeems an authorization code. One of " +
 					markdownValueList(authMethodValues()) + ". With `client_secret` you supply `client_secret`; " +
-					"with `private_key_jwt` Jamf holds a key of its own and there is no shared secret to supply, " +
-					"so `client_secret` is refused. The console offers no choice for `google_workspace`, so this " +
-					"is refused there. Defaults to `client_secret`.",
+					"with `private_key_jwt` Jamf Account holds a key of its own and there is no shared secret to " +
+					"supply, so `client_secret` is refused. The console offers no choice for `google_workspace`, " +
+					"so this is refused there. Defaults to `client_secret`.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
@@ -404,10 +404,10 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"client_secret": schema.StringAttribute{
 				MarkdownDescription: "**\"Client secret\"** in the Jamf Account console: the secret of the " +
 					"application you registered with your provider. Never held in Terraform state and never " +
-					"returned by Jamf, so Terraform cannot tell whether the stored secret still matches this " +
-					"value. Leave it out to keep the stored secret as it is; supply it to set or rotate it, and " +
-					"bump `client_secret_wo_version` in the same change so Terraform knows a rotation was asked " +
-					"for.",
+					"returned by Jamf Account, so Terraform cannot tell whether the stored secret still matches " +
+					"this value. Leave it out to keep the stored secret as it is; supply it to set or rotate it, " +
+					"and bump `client_secret_wo_version` in the same change so Terraform knows a rotation was " +
+					"asked for.",
 				Optional:  true,
 				Sensitive: true,
 				WriteOnly: true,
@@ -422,11 +422,11 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"scopes": schema.StringAttribute{
-				MarkdownDescription: "**\"Scopes\"** in the Jamf Account console: the OAuth scopes Jamf asks your " +
-					"provider for, separated by spaces exactly as the console shows them. `openid` is required, " +
-					"and a `groups` scope is needed if you want group memberships passed through; the console's " +
-					"default is `openid email profile`. Required for `generic_oidc` and `okta`, optional for " +
-					"`google_workspace`, and refused for `entra`, which takes none.",
+				MarkdownDescription: "**\"Scopes\"** in the Jamf Account console: the OAuth scopes Jamf Account " +
+					"asks your provider for, separated by spaces exactly as the console shows them. `openid` is " +
+					"required, and a `groups` scope is needed if you want group memberships passed through; the " +
+					"console's default is `openid email profile`. Required for `generic_oidc` and `okta`, " +
+					"optional for `google_workspace`, and refused for `entra`, which takes none.",
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -435,8 +435,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"pkce": schema.StringAttribute{
 				MarkdownDescription: "**\"PKCE configuration\"** in the Jamf Account console: the Proof Key for " +
 					"Code Exchange method used with your provider. One of " + markdownValueList(pkceValues()) +
-					", where `auto` lets Jamf pick. The console offers this only for `generic_oidc` and `okta`, so " +
-					"it is refused for the other two families. Defaults to `disabled`.",
+					", where `auto` lets Jamf Account pick. The console offers this only for `generic_oidc` and " +
+					"`okta`, so it is refused for the other two families. Defaults to `disabled`.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
@@ -468,9 +468,9 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"omit_login_hint": schema.BoolAttribute{
 				MarkdownDescription: "**\"Omit `login_hint` IdP parameter\"** in the Jamf Account console: " +
-					"whether the address someone typed at Jamf is withheld from your provider, so they type it again " +
-					"there. Leave it `false` for the smoother sign-in; set it `true` if your provider mishandles " +
-					"the hint. Defaults to `false`.",
+					"whether the address someone typed at Jamf Account is withheld from your provider, so they " +
+					"type it again there. Leave it `false` for the smoother sign-in; set it `true` if your " +
+					"provider mishandles the hint. Defaults to `false`.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -498,16 +498,16 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"attribute_map": schema.StringAttribute{
-				MarkdownDescription: "How claims from your provider are mapped onto Jamf user details, as a JSON " +
-					"object string. Author it with `jsonencode({ ... })`. Formatting and key order are not " +
-					"significant: the value is compared as JSON, so reindenting it produces no change.\n\n" +
-					"Every connection read carried one, in one of three shapes: " +
+				MarkdownDescription: "How claims from your provider are mapped onto Jamf Account user details, " +
+					"as a JSON object string. Author it with `jsonencode({ ... })`. Formatting and key order are " +
+					"not significant: the value is compared as JSON, so reindenting it produces no " +
+					"change.\n\nEvery connection read carried one, in one of three shapes: " +
 					"`{\"mapping_mode\":\"bind_all\"}`, `{\"mapping_mode\":\"basic_profile\"}`, or " +
 					"`{\"mapping_mode\":\"use_map\", \"userinfo_scope\":\"…\", \"attributes\":{…}}` whose values " +
-					"are claim templates. Jamf publishes no schema and validates nothing here, so a mode this " +
-					"provider does not recognise is a warning rather than an error. A value that is not a " +
-					"JSON object is refused, though, because Jamf stores it and quietly ignores it. Jamf populates a " +
-					"default when you leave it out.",
+					"are claim templates. There is no published schema for this and Jamf Account validates " +
+					"nothing here, so a mode this provider does not recognise is a warning rather than an error. " +
+					"A value that is not a JSON object is refused, though, because Jamf Account stores it and " +
+					"quietly ignores it. Jamf Account populates a default when you leave it out.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
@@ -519,10 +519,10 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"group_name_filter": schema.SingleNestedAttribute{
 				MarkdownDescription: "**\"IdP group name filter\"** in the Jamf Account console: which of your " +
-					"provider's groups are passed through to Jamf, for a directory holding more groups than Jamf " +
-					"needs. Leave the whole block out to send no filter at all; supply it with an empty `groups` " +
-					"set to send an empty filter, which is a different thing and the shape most connections " +
-					"carry.",
+					"provider's groups are passed through to Jamf Account, for a directory holding more groups " +
+					"than Jamf Account needs. Leave the whole block out to send no filter at all; supply it with " +
+					"an empty `groups` set to send an empty filter, which is a different thing and the shape " +
+					"most connections carry.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"operator": schema.StringAttribute{
@@ -538,8 +538,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 						MarkdownDescription: "Group names to filter on. A group is passed through when its own " +
 							"name **contains** one of these, so `Engineering` also passes " +
 							"`Non-Engineering-Contractors`. Give the whole name if you mean an exact list. An " +
-							"empty set is meaningful and means no filtering; a name may not contain a comma, which " +
-							"is how Jamf separates them.",
+							"empty set is meaningful and means no filtering; a name may not contain a comma, " +
+							"which is how Jamf Account separates them.",
 						Required:    true,
 						ElementType: types.StringType,
 						Validators: []validator.Set{
@@ -553,16 +553,16 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"session_duration_minutes": schema.Int64Attribute{
 				MarkdownDescription: "**\"Session duration (minutes)\"** in the Jamf Account console: how long a " +
-					"session lasts before the person signs in again, however active they are. Leave it out to use " +
-					"the Jamf default. Respected by Jamf Pro, Jamf Protect and Jamf Account.",
+					"session lasts before the person signs in again, however active they are. Leave it out to " +
+					"use the Jamf Account default. Respected by Jamf Pro, Jamf Protect and Jamf Account.",
 				Optional: true,
 				Validators: []validator.Int64{
 					int64validator.Between(1, maxSessionMinutes),
 				},
 			},
 			"inactivity_timeout_minutes": schema.Int64Attribute{
-				MarkdownDescription: "**\"Inactivity timeout (minutes)\"** in the Jamf Account console: how long a " +
-					"session survives without activity. Leave it out to use the Jamf default.",
+				MarkdownDescription: "**\"Inactivity timeout (minutes)\"** in the Jamf Account console: how long " +
+					"a session survives without activity. Leave it out to use the Jamf Account default.",
 				Optional: true,
 				Validators: []validator.Int64{
 					int64validator.Between(1, maxSessionMinutes),
@@ -572,11 +572,11 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				MarkdownDescription: "**\"Associated Domains\"** in the Jamf Account console: the domain names " +
 					"this connection signs people in for, such as `example.com`. At least one is required, and " +
 					"every one must already be claimed and verified by your organization: an unverified or " +
-					"unclaimed name is refused. A domain belongs to one organization and Jamf's own copy is lower " +
-					"case, so give lower-case names.\n\n" +
-					"Destroying a `jamfplatform_account_sso_domain` also withdraws that domain from every " +
-					"connection naming it, quietly narrowing this set. The `jamfplatform_account_sso_domain` " +
-					"data source reports which connections a domain is assigned to.",
+					"unclaimed name is refused. A domain belongs to one organization and Jamf Account stores it " +
+					"in lower case, so give lower-case names.\n\nDestroying a `jamfplatform_account_sso_domain` " +
+					"also withdraws that domain from every connection naming it, quietly narrowing this set. The " +
+					"`jamfplatform_account_sso_domain` data source reports which connections a domain is " +
+					"assigned to.",
 				Required:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{
@@ -588,16 +588,16 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"enabled_products": schema.SetNestedAttribute{
-				MarkdownDescription: "**\"Applications\"** in the Jamf Account console: the Jamf products, and the " +
-					"tenants of those products, this connection may be used to sign in to. Jamf Account itself is " +
-					"always enabled and is not a choice, so it need not be listed. Leave the whole set out, or " +
-					"give an empty one, to enable no tenant-scoped product.\n\n" +
-					"This set is configuration-authoritative and blind to outside change. Nothing Jamf returns " +
-					"echoes the tenants back, so Terraform cannot notice a change made in the console, cannot recover this " +
-					"on import, and will always plan whatever you configure. `enabled_product_names` reports the " +
-					"products alone, which is the only part that does come back. Nothing in this provider can " +
-					"list an organization's tenant identifiers either, so they have to be copied from the Jamf " +
-					"Account console.",
+				MarkdownDescription: "**\"Applications\"** in the Jamf Account console: the Jamf products, and " +
+					"the tenants of those products, this connection may be used to sign in to. Jamf Account " +
+					"itself is always enabled and is not a choice, so it need not be listed. Leave the whole set " +
+					"out, or give an empty one, to enable no tenant-scoped product.\n\nThis set is " +
+					"configuration-authoritative and blind to outside change. Nothing Jamf Account returns " +
+					"echoes the tenants back, so Terraform cannot notice a change made in the console, cannot " +
+					"recover this on import, and will always plan whatever you configure. " +
+					"`enabled_product_names` reports the products alone, which is the only part that does come " +
+					"back. Nothing in this provider can list an organization's tenant identifiers either, so " +
+					"they have to be copied from the Jamf Account console.",
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -619,11 +619,11 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 							},
 						},
 						"managed_account_id": schema.StringAttribute{
-							MarkdownDescription: "Set this only when the tenants belong to an account you manage on " +
-								"someone else's behalf as a Jamf partner, rather than to your own organization. " +
-								"Nothing Jamf returns reveals it, so Terraform cannot tell you that a connection " +
-								"points at a managed account. This attribute is write-only in practice, like the " +
-								"block that holds it.",
+							MarkdownDescription: "Set this only when the tenants belong to an account you manage " +
+								"on someone else's behalf as a Jamf partner, rather than to your own " +
+								"organization. Nothing Jamf Account returns reveals it, so Terraform cannot tell " +
+								"you that a connection points at a managed account. This attribute is write-only " +
+								"in practice, like the block that holds it.",
 							Optional: true,
 							Validators: []validator.String{
 								stringvalidator.LengthAtLeast(1),
@@ -635,8 +635,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"enabled_environments": schema.SetNestedAttribute{
 				MarkdownDescription: "Products scoped by platform environment rather than by tenant, and the " +
 					"environments of them this connection applies to. Leave it out unless a product needs it; " +
-					"Jamf documents no list of which do. Configuration-authoritative and blind to outside change, " +
-					"exactly as `enabled_products` is, and for the same reason.",
+					"there is no published list of which do. Configuration-authoritative and blind to outside " +
+					"change, exactly as `enabled_products` is, and for the same reason.",
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -659,8 +659,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 						},
 						"managed_account_id": schema.StringAttribute{
 							MarkdownDescription: "Set this only when the environments belong to an account you " +
-								"manage on someone else's behalf as a Jamf partner. Nothing Jamf returns reveals " +
-								"it.",
+								"manage on someone else's behalf as a Jamf partner. Nothing Jamf Account returns " +
+								"reveals it.",
 							Optional: true,
 							Validators: []validator.String{
 								stringvalidator.LengthAtLeast(1),
@@ -683,25 +683,24 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Computed: true,
 			},
 			"consent_flow": schema.BoolAttribute{
-				MarkdownDescription: "Whether the connection authenticates through Microsoft's admin-consent flow " +
-					"rather than through a client you registered. Managed by Jamf and only ever set up in the Jamf " +
-					"Account console: such a connection has no client of its own and cannot be written back, so " +
-					"this resource refuses to manage one. Read-only.",
+				MarkdownDescription: "Whether the connection authenticates through Microsoft's admin-consent " +
+					"flow rather than through a client you registered. Managed by Jamf Account and only ever set " +
+					"up in its console: such a connection has no client of its own and cannot be written back, " +
+					"so this resource refuses to manage one. Read-only.",
 				Computed: true,
 			},
 			"easy_config": schema.BoolAttribute{
-				MarkdownDescription: "Whether the connection was built by Jamf's guided setup rather than " +
-					"configured directly. Managed by Jamf. Read-only.",
+				MarkdownDescription: "Whether the connection was built by Jamf Account's guided setup rather than " +
+					"configured directly. Managed by Jamf Account. Read-only.",
 				Computed: true,
 			},
 			"generic_oidc": schema.SingleNestedAttribute{
-				MarkdownDescription: "Settings for a connection to any OpenID Connect provider Jamf has no " +
-					"purpose-built integration with. Required when `connection_type` is `generic_oidc`, and " +
-					"refused otherwise.\n\n" +
-					"The console fills the three addresses in for you by reading your provider's discovery " +
-					"document and lets you adjust them afterwards. It does that in the browser, so this provider " +
-					"cannot: supply all three yourself, copying them from your provider's discovery document at " +
-					"`<issuer_url>/.well-known/openid-configuration`.",
+				MarkdownDescription: "Settings for a connection to any OpenID Connect provider Jamf Account has " +
+					"no purpose-built integration with. Required when `connection_type` is `generic_oidc`, and " +
+					"refused otherwise.\n\nThe console fills the three addresses in for you by reading your " +
+					"provider's discovery document and lets you adjust them afterwards. It does that in the " +
+					"browser, so this provider cannot: supply all three yourself, copying them from your " +
+					"provider's discovery document at `<issuer_url>/.well-known/openid-configuration`.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"issuer_url": schema.StringAttribute{
@@ -738,7 +737,7 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 					},
 					"user_info_endpoint": schema.StringAttribute{
 						MarkdownDescription: "Address profile details are read from. Leave it out when your " +
-							"provider returns everything Jamf needs in the identity token itself.",
+							"provider returns everything Jamf Account needs in the identity token itself.",
 						Optional: true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),
@@ -866,7 +865,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 					},
 					"get_user_groups": schema.BoolAttribute{
 						MarkdownDescription: "**\"Get user groups\"** in the Jamf Account console: whether a " +
-							"person's Entra group memberships are passed through to Jamf. Defaults to `false`.",
+							"person's Entra group memberships are passed through to Jamf Account. Defaults to " +
+							"`false`.",
 						Optional: true,
 						Computed: true,
 						PlanModifiers: []planmodifier.Bool{
@@ -893,9 +893,9 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"okta": schema.SingleNestedAttribute{
-				MarkdownDescription: "Settings for an Okta connection. Required when `connection_type` is `okta`, " +
-					"and refused otherwise. Only the org domain is yours to set; Jamf works the four addresses " +
-					"out from it.",
+				MarkdownDescription: "Settings for an Okta connection. Required when `connection_type` is " +
+					"`okta`, and refused otherwise. Only the org domain is yours to set; Jamf Account works the " +
+					"four addresses out from it.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"domain": schema.StringAttribute{
@@ -930,11 +930,11 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"google_workspace": schema.SingleNestedAttribute{
-				MarkdownDescription: "Settings for a Google Workspace connection. Required when `connection_type` " +
-					"is `google_workspace`, and refused otherwise.\n\n" +
-					"No live Google Workspace connection was available anywhere while this was built, so treat " +
-					"this block as provisional: every field comes from Jamf's published shape and from the " +
-					"console, and none of it has been seen round-tripped.",
+				MarkdownDescription: "Settings for a Google Workspace connection. Required when " +
+					"`connection_type` is `google_workspace`, and refused otherwise.\n\nNo live Google Workspace " +
+					"connection was available anywhere while this was built, so treat this block as provisional: " +
+					"every field comes from the documented shape and from the console, and none of it has been " +
+					"seen round-tripped.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"domain": schema.StringAttribute{
@@ -948,7 +948,8 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 					},
 					"get_user_groups": schema.BoolAttribute{
 						MarkdownDescription: "**\"Groups\"** in the Jamf Account console: whether a person's " +
-							"Google Workspace group memberships are passed through to Jamf. Defaults to `false`.",
+							"Google Workspace group memberships are passed through to Jamf Account. Defaults to " +
+							"`false`.",
 						Optional: true,
 						Computed: true,
 						PlanModifiers: []planmodifier.Bool{

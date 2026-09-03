@@ -30,9 +30,9 @@ resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
   web_notification   = true
   email_notification = false
 
-  # The server populates available_versions; assign packages to specific
-  # versions via version_packages so patch policies can target them. Only the
-  # versions you list are managed; removing a key clears that version's package.
+  # Jamf Pro populates available_versions; assign packages to specific versions
+  # via version_packages so patch policies can target them. Only the versions
+  # you list are managed; removing a key clears that version's package.
   version_packages = {
     "8.33.2.2" = jamfplatform_pro_package.work_8_33.id
   }

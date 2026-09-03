@@ -64,14 +64,13 @@ func (d *ConnectionDataSource) ConfigValidators(_ context.Context) []datasource.
 func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up one SSO connection in your Jamf Account organization, by identifier or by " +
-			"the name Jamf holds for it. Exactly one of `id` and `name` is required.\n\n" +
-			"This is also the construct for a connection the `jamfplatform_account_sso_connection` resource " +
-			"refuses to manage: one built with Microsoft's admin-consent flow in the Jamf Account console, which " +
-			"has no client registration of its own and cannot be written back. Reading it here takes no ownership " +
-			"of it.\n\n" +
-			"Two things no read returns, so neither appears here: the client secret, which Jamf never gives back, " +
-			"and the tenants each product is enabled for. `enabled_product_names` reports the products alone, " +
-			"which is the only part of that assignment that can be read." +
+			"the name Jamf Account holds for it. Exactly one of `id` and `name` is required.\n\nThis is also the " +
+			"construct for a connection the `jamfplatform_account_sso_connection` resource refuses to manage: " +
+			"one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client " +
+			"registration of its own and cannot be written back. Reading it here takes no ownership of " +
+			"it.\n\nTwo things no read returns, so neither appears here: the client secret, which Jamf Account " +
+			"never gives back, and the tenants each product is enabled for. `enabled_product_names` reports the " +
+			"products alone, which is the only part of that assignment that can be read." +
 			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -84,9 +83,9 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Name Jamf Account holds for the connection, matched exactly. Set this or " +
-					"`id`, not both. Jamf may store a uniquified form of the name a connection was created with, " +
-					"so the name to match is the one the console lists rather than the one that was asked for. " +
-					"Use `jamfplatform_account_sso_connections` to see them.",
+					"`id`, not both. Jamf Account may store a uniquified form of the name a connection was " +
+					"created with, so the name to match is the one the console lists rather than the one that " +
+					"was asked for. Use `jamfplatform_account_sso_connections` to see them.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
@@ -104,7 +103,7 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"auth_method": schema.StringAttribute{
-				MarkdownDescription: "How Jamf proves itself to the provider when it redeems an authorization code.",
+				MarkdownDescription: "How Jamf Account proves itself to the provider when it redeems an authorization code.",
 				Computed:            true,
 			},
 			"client_id": schema.StringAttribute{
@@ -113,8 +112,8 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"scopes": schema.StringAttribute{
-				MarkdownDescription: "The OAuth scopes Jamf asks the provider for, separated by spaces. Empty for " +
-					"a family that takes none.",
+				MarkdownDescription: "The OAuth scopes Jamf Account asks the provider for, separated by spaces. " +
+					"Empty for a family that takes none.",
 				Computed: true,
 			},
 			"pkce": schema.StringAttribute{
@@ -131,8 +130,8 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"omit_login_hint": schema.BoolAttribute{
-				MarkdownDescription: "Whether the address someone typed at Jamf is withheld from the provider, so " +
-					"they type it again there.",
+				MarkdownDescription: "Whether the address someone typed at Jamf Account is withheld from the " +
+					"provider, so they type it again there.",
 				Computed: true,
 			},
 			"custom_username_claim_name": schema.StringAttribute{
@@ -145,13 +144,14 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"attribute_map": schema.StringAttribute{
-				MarkdownDescription: "How claims from the provider are mapped onto Jamf user details, as a JSON " +
-					"object string.",
+				MarkdownDescription: "How claims from the provider are mapped onto Jamf Account user details, as " +
+					"a JSON object string.",
 				Computed: true,
 			},
 			"group_name_filter": schema.SingleNestedAttribute{
-				MarkdownDescription: "Which of the provider's groups are passed through to Jamf. Empty when the " +
-					"connection carries no filter at all, which is different from a filter with no groups in it.",
+				MarkdownDescription: "Which of the provider's groups are passed through to Jamf Account. Empty " +
+					"when the connection carries no filter at all, which is different from a filter with no " +
+					"groups in it.",
 				Computed: true,
 				Attributes: map[string]schema.Attribute{
 					"operator": schema.StringAttribute{
@@ -168,12 +168,12 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 			},
 			"session_duration_minutes": schema.Int64Attribute{
 				MarkdownDescription: "How long a session lasts before the person signs in again, however active " +
-					"they are. Empty where the Jamf default applies.",
+					"they are. Empty where the Jamf Account default applies.",
 				Computed: true,
 			},
 			"inactivity_timeout_minutes": schema.Int64Attribute{
-				MarkdownDescription: "How long a session survives without activity. Empty where the Jamf default " +
-					"applies.",
+				MarkdownDescription: "How long a session survives without activity. Empty where the Jamf Account " +
+					"default applies.",
 				Computed: true,
 			},
 			"domains": schema.SetAttribute{
@@ -200,8 +200,8 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"easy_config": schema.BoolAttribute{
-				MarkdownDescription: "Whether the connection was built by Jamf's guided setup rather than " +
-					"configured directly.",
+				MarkdownDescription: "Whether the connection was built by Jamf Account's guided setup rather " +
+					"than configured directly.",
 				Computed: true,
 			},
 			"generic_oidc":     dataSourceGenericOIDCAttribute(),
@@ -362,7 +362,7 @@ func dataSourceGenericOIDCAttribute() schema.SingleNestedAttribute {
 			},
 			"user_info_endpoint": schema.StringAttribute{
 				MarkdownDescription: "Address profile details are read from, where the identity token does not " +
-					"carry everything Jamf needs.",
+					"carry everything Jamf Account needs.",
 				Computed: true,
 			},
 		},
@@ -418,7 +418,7 @@ func dataSourceEntraAttribute() schema.SingleNestedAttribute {
 				Computed:            true,
 			},
 			"get_user_groups": schema.BoolAttribute{
-				MarkdownDescription: "Whether a person's Entra group memberships are passed through to Jamf.",
+				MarkdownDescription: "Whether a person's Entra group memberships are passed through to Jamf Account.",
 				Computed:            true,
 			},
 			"include_nested_groups": schema.BoolAttribute{
@@ -477,7 +477,7 @@ func dataSourceGoogleAttribute() schema.SingleNestedAttribute {
 			},
 			"get_user_groups": schema.BoolAttribute{
 				MarkdownDescription: "Whether a person's Google Workspace group memberships are passed through " +
-					"to Jamf.",
+					"to Jamf Account.",
 				Computed: true,
 			},
 			"extended_groups": schema.BoolAttribute{

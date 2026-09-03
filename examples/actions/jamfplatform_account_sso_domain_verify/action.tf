@@ -1,11 +1,11 @@
-# Asks Jamf to re-check the ownership record for a claimed domain. Run it once
-# the TXT record is published and has had time to propagate.
+# Asks Jamf Account to re-check the ownership record for a claimed domain. Run
+# it once the TXT record is published and has had time to propagate.
 #
 # Do NOT wire this action to the claiming resource's own lifecycle: no
 # action_trigger with events = [after_create] on jamfplatform_account_sso_domain.
-# Jamf allows one check every five minutes per domain and claiming a domain
-# starts that clock, so a check in the same run as the claim is refused every
-# single time, and the refusal fails the apply. Invoke it on a later run
+# Jamf Account allows one check every five minutes per domain and claiming a
+# domain starts that clock, so a check in the same run as the claim is refused
+# every single time, and the refusal fails the apply. Invoke it on a later run
 # instead, naming the action on the command line:
 #
 #   terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'

@@ -143,7 +143,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"active_directory": schema.SingleNestedAttribute{
-				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"forest":                     optString("Active Directory forest. Free text; an empty value is preserved."),
@@ -163,7 +163,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"open_directory": schema.SingleNestedAttribute{
-				MarkdownDescription: "Open Directory–specific configuration. May only be set when `type = \"Open Directory\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				MarkdownDescription: "Open Directory–specific configuration. May only be set when `type = \"Open Directory\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"encrypt_using_ssl":      optBool("**\"Encrypt using SSL\"** in the Jamf Pro admin UI. Encrypt the LDAP connection to the directory."),
@@ -174,7 +174,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"admitmac": schema.SingleNestedAttribute{
-				MarkdownDescription: "ADmitMac–specific configuration. May only be set when `type = \"ADmitMac\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				MarkdownDescription: "ADmitMac–specific configuration. May only be set when `type = \"ADmitMac\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"require_confirmation":       optBool("**\"Require confirmation\"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory."),
@@ -204,7 +204,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"centrify": schema.SingleNestedAttribute{
-				MarkdownDescription: "Centrify–specific configuration. May only be set when `type = \"Centrify\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				MarkdownDescription: "Centrify–specific configuration. May only be set when `type = \"Centrify\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"workstation_mode":        optBool("Bind in Workstation mode (versus joined mode)."),

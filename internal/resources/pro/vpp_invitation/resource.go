@@ -152,7 +152,7 @@ func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaR
 				Attributes:          scope.UserScopeAttributes(),
 			},
 			"invitation_usages": schema.ListNestedAttribute{
-				MarkdownDescription: "Read-only per-user registration status the server tracks for this invitation.",
+				MarkdownDescription: "Read-only per-user registration status Jamf Pro tracks for this invitation.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

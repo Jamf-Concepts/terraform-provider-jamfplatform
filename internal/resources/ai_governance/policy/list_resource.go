@@ -80,8 +80,9 @@ func (r *PolicyListResource) ListResourceConfigSchema(_ context.Context, _ list.
 			"in bulk. Archived policies are never returned." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"schema_drift_only": listschema.BoolAttribute{
-				Description: "When true, return only policies whose settings schema version is behind the one Jamf " +
-					"now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.",
+				Description: "When true, return only policies whose settings schema version is behind the one " +
+					"the platform now offers for their tool. These are the policies worth reviewing after a tool " +
+					"publishes a new schema.",
 				Optional: true,
 			},
 		},

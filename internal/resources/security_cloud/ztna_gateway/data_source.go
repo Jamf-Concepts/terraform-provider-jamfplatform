@@ -87,16 +87,17 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				ElementType:         types.StringType,
 			},
 			"dedicated_egress_ips_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is a dedicated internet gateway, routing through private egress " +
-					"IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.",
+				MarkdownDescription: "Whether this is a dedicated internet gateway, routing through private " +
+					"egress IP addresses Jamf Security Cloud provisions. Mutually exclusive with an IPsec " +
+					"configuration.",
 				Computed: true,
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
-				MarkdownDescription: "The private egress IP addresses Jamf provisioned for a dedicated internet " +
-					"gateway. Allocated within seconds of the gateway being created, well before it finishes " +
-					"provisioning, so a populated list means the addresses are reserved rather than that the " +
-					"gateway reports itself operational. Read `status` for that. Always empty on an IPsec " +
-					"gateway.",
+				MarkdownDescription: "The private egress IP addresses Jamf Security Cloud provisioned for a " +
+					"dedicated internet gateway. Allocated within seconds of the gateway being created, well " +
+					"before it finishes provisioning, so a populated list means the addresses are reserved " +
+					"rather than that the gateway reports itself operational. Read `status` for that. Always " +
+					"empty on an IPsec gateway.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -121,7 +122,7 @@ func dsIPSecAttribute() schema.SingleNestedAttribute {
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
 					"host":          schema.StringAttribute{MarkdownDescription: "Endpoint address.", Computed: true},
-					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity Jamf presents.", Computed: true},
+					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity Jamf Security Cloud presents.", Computed: true},
 					"subnet":        schema.StringAttribute{MarkdownDescription: "Jamf-side encryption domain, in CIDR notation.", Computed: true},
 					"auth_method":   schema.StringAttribute{MarkdownDescription: "Authentication method.", Computed: true},
 				},

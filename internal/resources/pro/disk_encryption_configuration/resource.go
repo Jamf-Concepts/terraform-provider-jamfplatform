@@ -100,7 +100,7 @@ func (r *DiskEncryptionConfigurationResource) Schema(ctx context.Context, req re
 				},
 			},
 			"key_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Recovery Key Type\"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `\"Individual\"`, `\"Institutional\"`, `\"Individual and Institutional\"` (lowercase `and`).",
+				MarkdownDescription: "**\"Recovery Key Type\"** in the Jamf Pro admin UI. Selects which recovery key Jamf Pro provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `\"Individual\"`, `\"Institutional\"`, `\"Individual and Institutional\"` (lowercase `and`).",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(allKeyTypeWireValues...),

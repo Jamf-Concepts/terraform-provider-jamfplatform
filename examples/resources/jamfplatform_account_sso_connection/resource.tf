@@ -2,8 +2,8 @@
 # an email address at a listed domain are redirected to this identity provider
 # instead of signing in with a Jamf ID.
 #
-# Jamf refuses a connection naming a domain that is not yet verified, and
-# verification cannot happen in the same run as the claim. Jamf allows one
+# Jamf Account refuses a connection naming a domain that is not yet verified,
+# and verification cannot happen in the same run as the claim. It allows one
 # check every five minutes per domain, and claiming it starts that clock. So
 # this takes three applies, not one:
 #
@@ -22,12 +22,13 @@ resource "jamfplatform_account_sso_domain" "corp" {
 # That matters for a connection carrying real sign-in traffic. Terraform destroys
 # before it creates by default, and while the connection is gone nobody on its
 # domains can authenticate through it. create_before_destroy closes that gap:
-# Jamf allows two connections on the same domain, so the replacement can exist
-# before the original is removed.
+# Jamf Account allows two connections on the same domain, so the replacement
+# can exist before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
-  # Letters and digits only. Jamf refuses a name with any other character, and
-  # says nothing about which field was at fault when it does. Jamf also appends a
-  # suffix of its own to whatever you choose; internal_name reports the result.
+  # Letters and digits only. Jamf Account refuses a name with any other
+  # character, and says nothing about which field was at fault when it does. It
+  # also appends a suffix of its own to whatever you choose; internal_name
+  # reports the result.
   name            = "CorpOIDC"
   connection_type = "generic_oidc"
   hosting_region  = "US"
@@ -50,20 +51,20 @@ resource "jamfplatform_account_sso_connection" "corp" {
 
   domains = [jamfplatform_account_sso_domain.corp.domain]
 
-  # Only groups whose name contains one of these reach Jamf. An empty groups
-  # list with an operator set means no filtering, which is not the same as
-  # omitting the block.
+  # Only groups whose name contains one of these reach Jamf Account. An empty
+  # groups list with an operator set means no filtering, which is not the same
+  # as omitting the block.
   group_name_filter = {
     operator = "or"
     groups   = ["jamf-admins", "jamf-users"]
   }
 
-  # Leave either out to use the Jamf default. Maximum is 1440 minutes.
+  # Omit either and Jamf Account applies its default. Maximum is 1440 minutes.
   session_duration_minutes   = 480
   inactivity_timeout_minutes = 60
 
-  # Which Jamf products this connection signs users in to. Jamf does not report
-  # the tenant list back, so a change made in the Jamf Account console is
+  # Which Jamf products this connection signs users in to. Jamf Account does not
+  # report the tenant list back, so a change made in the Jamf Account console is
   # invisible here. Treat this configuration as the source of truth.
   enabled_products = [
     {

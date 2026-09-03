@@ -9,8 +9,8 @@ data "jamfplatform_security_cloud_ztna_app" "by_name" {
   name = "Internal CRM"
 }
 
-# A predefined application has no name of its own, so look one up by the Jamf
-# definition it is based on.
+# A predefined application has no name of its own, so look one up by the
+# Jamf-maintained definition it is based on.
 data "jamfplatform_security_cloud_ztna_predefined_apps" "all" {}
 
 data "jamfplatform_security_cloud_ztna_app" "slack" {

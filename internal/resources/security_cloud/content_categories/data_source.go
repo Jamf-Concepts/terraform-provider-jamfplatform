@@ -91,7 +91,7 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 			},
 			"content_categories": schema.ListNestedAttribute{
 				MarkdownDescription: "The content categories available to this tenant, in the order Jamf " +
-					"returns them.",
+					"Security Cloud returns them.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -108,8 +108,9 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 							Computed: true,
 						},
 						"name": schema.StringAttribute{
-							MarkdownDescription: "Jamf's internal label for the category, for example " +
-								"`Category - Social`. Informational only; reference `display_name` instead.",
+							MarkdownDescription: "Jamf Security Cloud's internal label for the category, for " +
+								"example `Category - Social`. Informational only; reference `display_name` " +
+								"instead.",
 							Computed: true,
 						},
 					},

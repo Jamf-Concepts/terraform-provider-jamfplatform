@@ -74,7 +74,7 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, `lastEnrollmentTime`.
 
 Optional:
@@ -98,7 +98,7 @@ Optional:
 
 Read-Only:
 
-- `enrollment_type` (String) Enrollment type reported by the API.
+- `enrollment_type` (String) Enrollment type reported by the platform.
 - `id` (String) Device UUID (Jamf Pro Management ID).
 - `last_check_in_time` (String) Timestamp of the last check-in in ISO 8601 format.
 - `last_enrollment_time` (String) Timestamp of the last enrollment in ISO 8601 format.

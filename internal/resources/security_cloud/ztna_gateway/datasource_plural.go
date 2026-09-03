@@ -88,7 +88,7 @@ func (d *GatewaysDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 							Computed:            true,
 						},
 						"dedicated_egress_ip_addresses": schema.ListAttribute{
-							MarkdownDescription: "The private egress IP addresses Jamf provisioned for a dedicated internet gateway.",
+							MarkdownDescription: "The private egress IP addresses Jamf Security Cloud provisioned for a dedicated internet gateway.",
 							Computed:            true,
 							ElementType:         types.StringType,
 						},

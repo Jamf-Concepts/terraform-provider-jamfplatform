@@ -76,8 +76,8 @@ func (d *DomainsDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 							Computed:            true,
 						},
 						"verification_key": schema.StringAttribute{
-							MarkdownDescription: "Token Jamf minted for this claim, published as the value of a " +
-								"TXT record on the domain to prove ownership.",
+							MarkdownDescription: "Token Jamf Account minted for this claim, published as the " +
+								"value of a TXT record on the domain to prove ownership.",
 							Computed: true,
 						},
 						"verification_txt_record": schema.StringAttribute{

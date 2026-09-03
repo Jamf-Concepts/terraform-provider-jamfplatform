@@ -48,7 +48,7 @@ output "device_by_id" {
 
 ### Read-Only
 
-- `enrollment_type` (String) Enrollment type reported by the API.
+- `enrollment_type` (String) Enrollment type reported by the platform.
 - `hardware_battery_health` (String) Battery health reported by inventory.
 - `hardware_mac_address` (String) Primary hardware MAC address.
 - `hardware_make` (String) Hardware make from the detailed device record.

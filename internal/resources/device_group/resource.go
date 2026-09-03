@@ -90,7 +90,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 		MarkdownDescription: "Manages a Jamf device group, static or smart. Requires **Device Group Inventory API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Unique identifier assigned by the API.",
+				MarkdownDescription: "Unique identifier assigned by the platform.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -145,7 +145,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"member_count": schema.Int64Attribute{
-				MarkdownDescription: "Total members reported by the API.",
+				MarkdownDescription: "Total members reported by the platform.",
 				Computed:            true,
 			},
 			"criteria": schema.ListNestedAttribute{

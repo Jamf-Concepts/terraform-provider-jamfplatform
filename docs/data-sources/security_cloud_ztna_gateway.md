@@ -62,8 +62,8 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 ### Read-Only
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway.
-- `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf Security Cloud provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway.
+- `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf Security Cloud provisions. Mutually exclusive with an IPsec configuration.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
 - `ipsec` (Attributes) IPsec tunnel configuration. Null on a dedicated internet gateway. (see [below for nested schema](#nestedatt--ipsec))
@@ -118,7 +118,7 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_domain_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf Security Cloud presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
 
 

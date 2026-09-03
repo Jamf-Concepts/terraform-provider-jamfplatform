@@ -51,8 +51,9 @@ resource "jamfplatform_pro_jamf_connect" "example" {
   # One of NONE, INITIAL_INSTALLATION_ONLY, PATCH_UPDATES, MINOR_AND_PATCH_UPDATES.
   auto_deployment_type = "PATCH_UPDATES"
 
-  # Required unless auto_deployment_type is NONE. Must be a version offered in
-  # the Jamf Pro version picker (Jamf validates it against its release catalog).
+  # Required unless auto_deployment_type is NONE. Must be a version Jamf Pro
+  # offers in its version picker; it validates the value against its release
+  # catalog.
   version = "2.45.1"
 }
 ```

@@ -76,7 +76,7 @@ func (d *PolicyDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed:            true,
 			},
 			"schema_drift": schema.BoolAttribute{
-				MarkdownDescription: "Whether the policy's schema version is behind the one Jamf now offers for the tool.",
+				MarkdownDescription: "Whether the policy's schema version is behind the one the platform now offers for the tool.",
 				Computed:            true,
 			},
 			"created_at": schema.StringAttribute{

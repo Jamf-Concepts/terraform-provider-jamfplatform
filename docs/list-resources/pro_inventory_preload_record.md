@@ -68,7 +68,7 @@ list "jamfplatform_pro_inventory_preload_record" "it_computers" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `serialNumber`, `deviceType`, `username`, `fullName`, `emailAddress`, `phoneNumber`, `position`, `department`, `building`, `room`, `poNumber`, `poDate`, `warrantyExpiration`, `leaseExpiration`, `appleCareId`, `lifeExpectancy`, `purchasePrice`, `purchasingContact`, `purchasingAccount`, `barCode1`, `barCode2`, `assetTag`, `vendor`. When filtering by `deviceType`, use `0` for Computer and `1` for Mobile Device.
 
 Optional:

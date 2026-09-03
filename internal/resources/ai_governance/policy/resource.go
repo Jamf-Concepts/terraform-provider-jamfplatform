@@ -128,19 +128,18 @@ func (r *PolicyResource) IdentitySchema(_ context.Context, _ resource.IdentitySc
 func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf AI Governance policy, the managed configuration for one AI tool " +
-			"such as Claude Code, Claude Desktop or OpenAI Codex.\n\n" +
-			"A policy carries a draft and a history of published versions. Applying a change saves the draft and, " +
-			"unless `publish` is disabled, publishes it as a new version. Deploying a published version to devices " +
-			"is a separate step: add an **AI Governance** component to a blueprint and reference the policy's " +
-			"`id` and `published_version`. Nothing reaches a device until a blueprint that names the policy is " +
-			"deployed.\n\n" +
-			"The `settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` " +
-			"against the schema Jamf publishes for the tool and `schema_version`. See the " +
-			"[AI Governance policies guide](../guides/ai-governance-policies) for where each tool's settings are " +
+			"such as Claude Code, Claude Desktop or OpenAI Codex.\n\nA policy carries a draft and a history of " +
+			"published versions. Applying a change saves the draft and, unless `publish` is disabled, publishes " +
+			"it as a new version. Deploying a published version to devices is a separate step: add an **AI " +
+			"Governance** component to a blueprint and reference the policy's `id` and `published_version`. " +
+			"Nothing reaches a device until a blueprint that names the policy is deployed.\n\nThe " +
+			"`settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` " +
+			"against the schema the platform serves for the tool and `schema_version`. See the [AI Governance " +
+			"policies guide](../guides/ai-governance-policies) for where each tool's settings are " +
 			"documented." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Policy ID assigned by Jamf. Reference this from a blueprint's AI Governance component.",
+				MarkdownDescription: "Policy ID assigned by the platform. Reference this from a blueprint's AI Governance component.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -176,9 +175,9 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"schema_version": schema.StringAttribute{
 				MarkdownDescription: "The version of the tool's settings format that `settings_json` is written " +
-					"against, such as `2026-08-14`. Must be one of the versions Jamf offers for the tool. Read them " +
-					"from the `jamfplatform_ai_governance_tool` data source. A policy left on an older version than " +
-					"the tool's current one still works, and reports `schema_drift`.",
+					"against, such as `2026-08-14`. Must be one of the versions the platform offers for the " +
+					"tool. Read them from the `jamfplatform_ai_governance_tool` data source. A policy left on an " +
+					"older version than the tool's current one still works, and reports `schema_drift`.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -216,12 +215,12 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Default:  booldefault.StaticBool(true),
 			},
 			"published_version": schema.Int64Attribute{
-				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI: the number of the most " +
-					"recently published version, counting from 1. Null until the policy is first published. This is " +
-					"the value a blueprint's AI Governance component pins.\n\n" +
-					"Any change to the policy plans this as known after apply, because whether a version is minted " +
-					"depends on how Jamf compares the settings, and on whether anyone published in the admin UI " +
-					"meanwhile. An apply that publishes nothing leaves the number unchanged.",
+				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI: the number of the " +
+					"most recently published version, counting from 1. Null until the policy is first published. " +
+					"This is the value a blueprint's AI Governance component pins.\n\nAny change to the policy " +
+					"plans this as known after apply, because whether a version is minted depends on how the " +
+					"platform compares the settings, and on whether anyone published in the admin UI meanwhile. " +
+					"An apply that publishes nothing leaves the number unchanged.",
 				Computed: true,
 			},
 			"has_draft": schema.BoolAttribute{
@@ -232,9 +231,9 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Computed: true,
 			},
 			"schema_drift": schema.BoolAttribute{
-				MarkdownDescription: "Whether `schema_version` is behind the version Jamf now offers for the tool. The " +
-					"policy keeps working; moving it forward means setting `schema_version` to the current version and " +
-					"reconciling `settings_json` with it.",
+				MarkdownDescription: "Whether `schema_version` is behind the version the platform now offers for " +
+					"the tool. The policy keeps working; moving it forward means setting `schema_version` to the " +
+					"current version and reconciling `settings_json` with it.",
 				Computed: true,
 			},
 			"created_at": schema.StringAttribute{

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Lists every SSO connection your Jamf Account organization holds. Jamf Account exposes no search arguments for connections, so this data source takes none. Filter the result in Terraform.
   Each entry carries only what the organization's connection list reports. The provider-specific settings (the addresses, the domains of an Entra tenant, the group and profile options) are reported one connection at a time, so use the singular jamfplatform_account_sso_connection data source for those rather than paying an extra read per connection here.
-  This is the construct for finding the name Jamf actually holds for a connection, which may be a uniquified form of the one it was created with.
+  This is the construct for finding the name Jamf Account actually holds for a connection, which may be a uniquified form of the one it was created with.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -19,7 +19,7 @@ Lists every SSO connection your Jamf Account organization holds. Jamf Account ex
 
 Each entry carries only what the organization's connection list reports. The provider-specific settings (the addresses, the domains of an Entra tenant, the group and profile options) are reported one connection at a time, so use the singular `jamfplatform_account_sso_connection` data source for those rather than paying an extra read per connection here.
 
-This is the construct for finding the name Jamf actually holds for a connection, which may be a uniquified form of the one it was created with.
+This is the construct for finding the name Jamf Account actually holds for a connection, which may be a uniquified form of the one it was created with.
 
 **Required Jamf permissions**
 
@@ -35,8 +35,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Every single sign-on connection in the organization.
 data "jamfplatform_account_sso_connections" "all" {}
 
-# Keyed on the identifier rather than the name: Jamf does not require connection
-# names to be unique, so two entries can carry the same one.
+# Keyed on the identifier rather than the name: Jamf Account does not require
+# connection names to be unique, so two entries can carry the same one.
 output "connection_types_by_id" {
   value = {
     for c in data.jamfplatform_account_sso_connections.all.sso_connections :
@@ -85,10 +85,10 @@ Optional:
 
 Read-Only:
 
-- `auth_method` (String) How Jamf proves itself to the provider when it redeems an authorization code.
+- `auth_method` (String) How Jamf Account proves itself to the provider when it redeems an authorization code.
 - `connection_type` (String) The identity provider family: one of `entra`, `generic_oidc`, `google_workspace`, `okta`.
-- `domains` (Set of String) The domain names this connection signs people in for. Jamf holds a small number of connections with none.
-- `easy_config` (Boolean) Whether the connection was built by Jamf's guided setup rather than configured directly.
+- `domains` (Set of String) The domain names this connection signs people in for. Jamf Account holds a small number of connections with none.
+- `easy_config` (Boolean) Whether the connection was built by Jamf Account's guided setup rather than configured directly.
 - `enabled_product_names` (Set of String) The Jamf products Jamf Account reports this connection as enabled for. The tenants of each product are never returned.
 - `hosting_region` (String) The region the connection's provider details are held in and its sign-in traffic is routed through.
 - `id` (String) Identifier Jamf Account assigned to the connection.

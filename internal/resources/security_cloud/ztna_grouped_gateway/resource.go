@@ -83,9 +83,9 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Security Cloud ZTNA grouped gateway, a routing and failover group " +
 			"over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single " +
-			"gateway can, including a custom DNS zone's name servers.\n\n" +
-			"Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all " +
-			"members must be the same form, either all IPsec or all internet. Deleting a member gateway while it " +
+			"gateway can, including a custom DNS zone's name servers.\n\nEvery member must be one of your own " +
+			"dedicated gateways (Jamf Security Cloud's shared gateways are refused), and all members must be the " +
+			"same form, either all IPsec or all internet. Deleting a member gateway while it " +
 			"is still in a group is refused." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -103,12 +103,12 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"gateway_ids": schema.ListAttribute{
-				MarkdownDescription: "**\"Choose your gateways\"** in the Jamf Security Cloud admin UI: the IDs of " +
-					"the member gateways, at least two. Order is significant. It is the priority order the " +
+				MarkdownDescription: "**\"Choose your gateways\"** in the Jamf Security Cloud admin UI: the IDs " +
+					"of the member gateways, at least two. Order is significant. It is the priority order the " +
 					"`First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. " +
-					"Jamf Security Cloud stores the order exactly as given.\n\n" +
-					"Members must be your own dedicated gateways, all of the same form, so mixing an IPsec gateway " +
-					"with an internet one is refused, and so is naming one of Jamf's shared gateways.",
+					"Jamf Security Cloud stores the order exactly as given.\n\nMembers must be your own " +
+					"dedicated gateways, all of the same form, so mixing an IPsec gateway with an internet one " +
+					"is refused, and so is naming one of Jamf Security Cloud's shared gateways.",
 				Required:    true,
 				ElementType: types.StringType,
 				Validators: []validator.List{

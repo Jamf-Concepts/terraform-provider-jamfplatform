@@ -235,11 +235,19 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			},
 			"environment_id": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration targets, a group of tenants across product types with interconnected capabilities. " +
-					"Can also be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. " +
-					"Jamf intends new integrations to be created with this scope, and Blueprints and Compliance Benchmarks are moving to it exclusively. " +
-					"Mutually exclusive with the legacy `tenant_id`. An API integration targets one or the other, so setting both is an error, and supplying the ID that does not match the integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer. Pick the one your integration was created for rather than treating them as two spellings of the same thing. " +
-					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration: the scope the `jamfplatform_account_*` resources require, and the only one that reaches them. Each resource and data source reports the scope it needs when it is configured, so a mismatch is named at plan time rather than failing mid-apply.",
+				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration " +
+					"targets, a group of tenants across product types with interconnected capabilities. Can also " +
+					"be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. This is the scope new " +
+					"integrations should be created with, and Blueprints and Compliance Benchmarks are moving to " +
+					"it exclusively. Mutually exclusive with the legacy `tenant_id`. An API integration targets " +
+					"one or the other, so setting both is an error, and supplying the ID that does not match the " +
+					"integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same " +
+					"customer. Pick the one your integration was created for rather than treating them as two " +
+					"spellings of the same thing. Setting neither leaves the provider organization-scoped, " +
+					"matching an **\"Organization management\"** integration: the scope the " +
+					"`jamfplatform_account_*` resources require, and the only one that reaches them. Each " +
+					"resource and data source reports the scope it needs when it is configured, so a mismatch is " +
+					"named at plan time rather than failing mid-apply.",
 			},
 			"tenant_id": schema.StringAttribute{
 				Optional: true,
@@ -257,28 +265,44 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				Optional:    true,
 				Sensitive:   true,
 				ElementType: types.StringType,
-				MarkdownDescription: "Extra HTTP headers to send on every request the provider makes, including the token request it uses to authenticate. " +
-					"Keyed by header name; header names are case-insensitive, so `x-proxy-route` and `X-Proxy-Route` are the same header and only one of the two may appear. " +
-					"For deployments whose traffic reaches Jamf through a reverse proxy that authenticates callers itself, or routes on a tag the provider knows nothing about. " +
-					"Marked sensitive in full, because these headers commonly carry a credential and Terraform cannot redact one entry of a map. " +
-					"Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` environment variable, as one `Name: value` pair per line, which a CI runner can inject without a Terraform variable. " +
-					"When this attribute is set the variable is not read at all. " +
-					"Five names are refused, all because a supplied header replaces rather than adds to what the provider sends. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from `environment_id` and `tenant_id`, and Jamf answers an overridden scope with the same error a wrong credential gets. " +
-					"`Cookie` would displace the session cookie Jamf Cloud uses to keep this client on one application node. A proxy that needs a cookie of its own can set one on a response, which the provider stores and sends back on its own. " +
-					"`Content-Type` is chosen per request: JSON, merge-patch JSON, XML on some Jamf Pro requests, or multipart with a generated boundary for a file upload. One value here overrides all four and leaves an upload without its boundary. " +
-					"`Accept` is `application/xml` on those same Jamf Pro requests, and setting it elsewhere is no safer: Jamf Security Cloud's UEM Connect service answers `Accept: application/xml` with an XML body the provider would decode as JSON. " +
-					"Supplying `Authorization` is supported and is the point of the feature. Pair it with `authorization_header_name` so the proxy's credential and the Jamf credential both reach the request. " +
-					"See the [Reverse proxy guide](../guides/reverse-proxy) for the whole arrangement.",
+				MarkdownDescription: "Extra HTTP headers to send on every request the provider makes, including " +
+					"the token request it uses to authenticate. Keyed by header name; header names are " +
+					"case-insensitive, so `x-proxy-route` and `X-Proxy-Route` are the same header and only one " +
+					"of the two may appear. For deployments whose traffic reaches Jamf through a reverse proxy " +
+					"that authenticates callers itself, or routes on a tag the provider knows nothing about. " +
+					"Marked sensitive in full, because these headers commonly carry a credential and Terraform " +
+					"cannot redact one entry of a map. Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` " +
+					"environment variable, as one `Name: value` pair per line, which a CI runner can inject " +
+					"without a Terraform variable. When this attribute is set the variable is not read at all. " +
+					"Five names are refused, all because a supplied header replaces rather than adds to what the " +
+					"provider sends. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from " +
+					"`environment_id` and `tenant_id`, and the gateway answers an overridden scope with the same " +
+					"error a wrong credential gets. `Cookie` would displace the session cookie Jamf Cloud uses " +
+					"to keep this client on one application node. A proxy that needs a cookie of its own can set " +
+					"one on a response, which the provider stores and sends back on its own. `Content-Type` is " +
+					"chosen per request: JSON, merge-patch JSON, XML on some Jamf Pro requests, or multipart " +
+					"with a generated boundary for a file upload. One value here overrides all four and leaves " +
+					"an upload without its boundary. `Accept` is `application/xml` on those same Jamf Pro " +
+					"requests, and setting it elsewhere is no safer: Jamf Security Cloud's UEM Connect service " +
+					"answers `Accept: application/xml` with an XML body the provider would decode as JSON. " +
+					"Supplying `Authorization` is supported and is the point of the feature. Pair it with " +
+					"`authorization_header_name` so the proxy's credential and the Jamf credential both reach " +
+					"the request. See the [Reverse proxy guide](../guides/reverse-proxy) for the whole " +
+					"arrangement.",
 			},
 			"authorization_header_name": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: "Send the Jamf credential in this header instead of `Authorization`. " +
-					"For a reverse proxy that consumes `Authorization` for its own service account and expects Jamf's credential under a name it chose. " +
-					"By default it is unset and the credential stays in `Authorization`, which is what talking to Jamf directly needs. " +
-					"Can also be set via the `JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. " +
-					"Only the credential the provider sends on API requests moves; the credentials that obtain it are unaffected, so authentication keeps working. " +
-					"`Authorization`, `X-Environment-Id`, `X-Tenant-Id`, `Accept`, `Content-Type`, and any name also present in `custom_headers` are refused. Each leaves the request with no usable credential (or, for the two media-type headers, one Jamf cannot parse) and fails in terms that name something else as the cause. " +
-					"See the [Reverse proxy guide](../guides/reverse-proxy).",
+				MarkdownDescription: "Send the Jamf credential in this header instead of `Authorization`. For a " +
+					"reverse proxy that consumes `Authorization` for its own service account and expects the " +
+					"Jamf credential under a name it chose. By default it is unset and the credential stays in " +
+					"`Authorization`, which is what talking to Jamf directly needs. Can also be set via the " +
+					"`JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. Only the credential the " +
+					"provider sends on API requests moves; the credentials that obtain it are unaffected, so " +
+					"authentication keeps working. `Authorization`, `X-Environment-Id`, `X-Tenant-Id`, `Accept`, " +
+					"`Content-Type`, and any name also present in `custom_headers` are refused. Each leaves the " +
+					"request with no usable credential (or, for the two media-type headers, one the gateway " +
+					"cannot parse) and fails in terms that name something else as the cause. See the [Reverse " +
+					"proxy guide](../guides/reverse-proxy).",
 			},
 			"impact_alerts": schema.BoolAttribute{
 				Optional: true,

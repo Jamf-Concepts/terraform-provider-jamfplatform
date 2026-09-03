@@ -49,8 +49,8 @@ func (d *HostnameMappingsDataSource) Schema(ctx context.Context, _ datasource.Sc
 				Computed:            true,
 			},
 			"mappings": schema.ListNestedAttribute{
-				MarkdownDescription: "The tenant's hostname mappings, in the order Jamf returns them, which " +
-					"is not the order they were written in.",
+				MarkdownDescription: "The tenant's hostname mappings, in the order Jamf Security Cloud returns " +
+					"them, which is not the order they were written in.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

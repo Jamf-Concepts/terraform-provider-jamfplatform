@@ -240,11 +240,24 @@ pivotal,* and *landscape* used figuratively. Nor do the rhetorical shapes that t
 `not X, but Y`, a reflexive stack of three adjectives, or a closing sentence that restates the
 description.
 
+**Write as Jamf, not about Jamf.** This provider is Jamf's own, so its user-facing text does
+not refer to Jamf in the third person, as a vendor the provider merely integrates with. Where a
+sentence names the actor in an exchange, name the product or the service: *Jamf Pro refuses the
+write*, *Jamf Account stores a claimed domain in lower case*, *Jamf Security Cloud enforces the
+reference on delete*, *the platform compares the settings*. A bare "Jamf" as the actor is both
+distancing and imprecise across five namespaces, and "Jamf's own", "the vendor" and "the API" are
+the same tic in plainer form. Three things the rule does not touch: **the server** where the
+server is one the reader runs (an LDAP directory, an SMTP relay, a distribution point, an external
+patch source), **the API integration**, which is the reader's own, and a deliberate
+product-versus-provider contrast, because "the deprecation is Jamf Pro's, not the provider's" is
+the distinction a reader needs rather than a distancing tic. Contributor-facing text — Go
+comments, this guide, `CONTRIBUTING.md` — is exempt.
+
 **Pre-PR grep gate.** Same spirit as the jargon grep above — run it over the diff, not the tree:
 
 ```sh
 git diff -U0 main -- 'internal/*' 'examples/*' | grep -E '^\+' | \
-  grep -nE '—[^—]*—|\*\*[^*]+\*\*[[:space:]]*—|Singleton —|[0-9]-[0-9]|[Nn]ote that|NOTE:|IMPORTANT:| simply | just |is used to|leverage|robust|seamless|comprehensive|ensure|facilitate'
+  grep -nE '—[^—]*—|\*\*[^*]+\*\*[[:space:]]*—|Singleton —|[0-9]-[0-9]|[Nn]ote that|NOTE:|IMPORTANT:| simply | just |is used to|leverage|robust|seamless|comprehensive|ensure|facilitate|Jamf.s |the API|the vendor|upstream'
 ```
 
 A hit is not automatically a defect: one em dash carrying real emphasis, a hyphenated

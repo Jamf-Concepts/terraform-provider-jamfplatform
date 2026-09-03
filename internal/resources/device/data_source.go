@@ -75,7 +75,7 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				Computed:            true,
 			},
 			"enrollment_type": schema.StringAttribute{
-				MarkdownDescription: "Enrollment type reported by the API.",
+				MarkdownDescription: "Enrollment type reported by the platform.",
 				Computed:            true,
 			},
 			"last_enrollment_time": schema.StringAttribute{

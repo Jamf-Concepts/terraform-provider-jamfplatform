@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a dedicated Jamf Security Cloud ZTNA gateway, the tenant's own egress point into Jamf Security Cloud. A custom DNS zone's name servers and a ZTNA app's routing are reachable through it.
   A gateway takes one of two forms, chosen by whether the ipsec block is present:
-  Dedicated IPsec gateway: set ipsec to build a tunnel to your own VPN concentrator.Dedicated internet gateway: omit ipsec to route to the internet through a pair of private egress IP addresses Jamf provisions, reported in dedicated_egress_ip_addresses.
+  Dedicated IPsec gateway: set ipsec to build a tunnel to your own VPN concentrator.Dedicated internet gateway: omit ipsec to route to the internet through a pair of private egress IP addresses Jamf Security Cloud provisions, reported in dedicated_egress_ip_addresses.
   The form is fixed for the life of the gateway: Jamf Security Cloud refuses to convert one into the other, so adding or removing ipsec replaces the gateway. Deleting a gateway that a custom DNS zone or a grouped gateway still references is also refused; drop the reference in a separate apply first.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -21,7 +21,7 @@ Manages a dedicated Jamf Security Cloud ZTNA gateway, the tenant's own egress po
 A gateway takes one of two forms, chosen by whether the `ipsec` block is present:
 
 - **Dedicated IPsec gateway**: set `ipsec` to build a tunnel to your own VPN concentrator.
-- **Dedicated internet gateway**: omit `ipsec` to route to the internet through a pair of private egress IP addresses Jamf provisions, reported in `dedicated_egress_ip_addresses`.
+- **Dedicated internet gateway**: omit `ipsec` to route to the internet through a pair of private egress IP addresses Jamf Security Cloud provisions, reported in `dedicated_egress_ip_addresses`.
 
 The form is fixed for the life of the gateway: Jamf Security Cloud refuses to convert one into the other, so adding or removing `ipsec` replaces the gateway. Deleting a gateway that a custom DNS zone or a grouped gateway still references is also refused; drop the reference in a separate apply first.
 
@@ -38,8 +38,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # A gateway takes one of two forms, chosen by whether the ipsec block is present.
 
-# Form 1: dedicated internet gateway. Omit ipsec, and Jamf provisions a pair of
-# private egress IP addresses, reported in dedicated_egress_ip_addresses.
+# Form 1: dedicated internet gateway. Omit ipsec, and Jamf Security Cloud
+# provisions a pair of private egress IP addresses, reported in
+# dedicated_egress_ip_addresses.
 resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
   name          = "London Internet Egress"
   egress_region = "Europe - UK"
@@ -98,7 +99,8 @@ resource "jamfplatform_security_cloud_ztna_gateway" "ipsec" {
       subnet = "172.16.0.0/12"
 
       # Never stored in Terraform state. Bump authentication_secret_wo_version to
-      # rotate it; leaving the version alone keeps the key Jamf already has.
+      # rotate it; leaving the version alone keeps the key Jamf Security Cloud
+      # already has.
       authentication_secret            = var.ipsec_authentication_secret
       authentication_secret_wo_version = 1
     }
@@ -131,7 +133,7 @@ variable "ipsec_authentication_secret" {
 
 ### Required
 
-- `contact` (Attributes) **"Contact name"** and **"Contact email"** in the Jamf Security Cloud admin UI: who Jamf should reach about this gateway's operation. (see [below for nested schema](#nestedatt--contact))
+- `contact` (Attributes) **"Contact name"** and **"Contact email"** in the Jamf Security Cloud admin UI: who Jamf Security Cloud should reach about this gateway's operation. (see [below for nested schema](#nestedatt--contact))
 - `egress_region` (String) **"Egress region"** in the Jamf Security Cloud admin UI: the region this gateway is deployed to.
 
 Changing it re-provisions the gateway in the new region: connectivity drops and the reported status returns to `PENDING`. Any dedicated egress IP addresses are replaced in place rather than cleared (measured at around 35 seconds after the change), so for a short window the list is non-empty, entirely plausible and still the old region's. The apply waits for the gateway to report itself operational again, which covers that window.
@@ -153,7 +155,7 @@ The accepted addresses are fixed per egress region and are the ones the admin UI
 
 ### Read-Only
 
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisions for a dedicated internet gateway. Allocated within seconds of the gateway being created, roughly four and a half minutes before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway, confirmed against Jamf Security Cloud on 2026-08-31. Read-only.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf Security Cloud provisions for a dedicated internet gateway. Allocated within seconds of the gateway being created, roughly four and a half minutes before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway, confirmed against Jamf Security Cloud on 2026-08-31. Read-only.
 - `id` (String) Gateway ID assigned by Jamf Security Cloud.
 - `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. Read-only, and live: a create or an egress-region change starts the gateway at `PENDING` (**Pending** in the Jamf Security Cloud admin UI), and it settles to `UP`, shown as **Available**, once the infrastructure is provisioned.
 
@@ -178,7 +180,7 @@ Required:
 Required:
 
 - `customer_side` (Attributes) **"Customer side"** in the Jamf Security Cloud admin UI: your own VPN concentrator, and the subnets reachable through it. (see [below for nested schema](#nestedatt--ipsec--customer_side))
-- `jamf_side` (Attributes) **"Jamf Security Cloud side"** in the Jamf Security Cloud admin UI: the endpoint Jamf presents to your VPN concentrator. (see [below for nested schema](#nestedatt--ipsec--jamf_side))
+- `jamf_side` (Attributes) **"Jamf Security Cloud side"** in the Jamf Security Cloud admin UI: the endpoint Jamf Security Cloud presents to your VPN concentrator. (see [below for nested schema](#nestedatt--ipsec--jamf_side))
 - `key_exchange_protocol` (String) **"Key exchange protocol"** in the Jamf Security Cloud admin UI. Valid values: `IKEv1`, `IKEv2`.
 - `phase_1` (Attributes) **"Phase 1"** in the Jamf Security Cloud admin UI: the cipher suite protecting the key exchange itself. (see [below for nested schema](#nestedatt--ipsec--phase_1))
 - `phase_2` (Attributes) **"Phase 2"** in the Jamf Security Cloud admin UI: the cipher suite protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--ipsec--phase_2))
@@ -203,9 +205,9 @@ Read-Only:
 
 Required:
 
-- `authentication_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Authentication secret"** in the Jamf Security Cloud admin UI: the IPsec pre-shared key, applied to both ends of the tunnel. Write-only. It is sent to Jamf Security Cloud on writes and never held in Terraform state, because Jamf never returns it. Pair with `authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.
+- `authentication_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Authentication secret"** in the Jamf Security Cloud admin UI: the IPsec pre-shared key, applied to both ends of the tunnel. Write-only. It is sent to Jamf Security Cloud on writes and never held in Terraform state, because Jamf Security Cloud never returns it. Pair with `authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.
 - `host` (String) Endpoint address, or `%any` to accept any address.
-- `ike_domain_id` (String) **"Jamf Security Cloud IKE domain ID"** in the Jamf Security Cloud admin UI: the IKE identity Jamf presents, for example `wpa.wandera.com`.
+- `ike_domain_id` (String) **"Jamf Security Cloud IKE domain ID"** in the Jamf Security Cloud admin UI: the IKE identity Jamf Security Cloud presents, for example `wpa.wandera.com`.
 - `subnet` (String) **"Jamf Security Cloud subnet"** in the Jamf Security Cloud admin UI: the range all end-user traffic originates from through the tunnel, in CIDR notation. Must be a private range: `10.0.0.0/8` with a `/8`–`/30` prefix, `172.16.0.0/12` with `/12`–`/30`, or `192.168.0.0/16` with `/16`–`/30`. The range must not exist anywhere else on your network.
 
 Optional:

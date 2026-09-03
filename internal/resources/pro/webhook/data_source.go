@@ -45,7 +45,7 @@ func (d *WebhookDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // Schema returns the data source schema.
 func (d *WebhookDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro webhook by ID or by exact name. Exactly one of `id` or `name` must be supplied. The plaintext password is never surfaced; `header` is returned (the server echoes it) and marked sensitive." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro webhook by ID or by exact name. Exactly one of `id` or `name` must be supplied. The plaintext password is never surfaced; `header` is returned (Jamf Pro echoes it) and marked sensitive." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Webhook ID. Mutually exclusive with `name`.",

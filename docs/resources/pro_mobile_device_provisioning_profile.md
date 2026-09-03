@@ -36,8 +36,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 resource "jamfplatform_pro_mobile_device_provisioning_profile" "in_house" {
   name = "In-House App Profile"
 
-  # Base64-encoded signed .mobileprovision. Jamf parses the UUID and expiration
-  # out of it; those land in the computed attributes below.
+  # Base64-encoded signed .mobileprovision. Jamf Pro parses the UUID and
+  # expiration out of it; those land in the computed attributes below.
   profile_data = filebase64("${path.module}/InHouse.mobileprovision")
 }
 

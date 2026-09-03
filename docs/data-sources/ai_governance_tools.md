@@ -3,7 +3,7 @@
 page_title: "jamfplatform_ai_governance_tools Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads every AI tool Jamf can govern, with the settings schema versions each one offers. Use it to discover the tool_id and schema_version values a jamfplatform_ai_governance_policy accepts.
+  Reads every AI tool the platform can govern, with the settings schema versions each one offers. Use it to discover the tool_id and schema_version values a jamfplatform_ai_governance_policy accepts.
   The settings schema documents themselves are not included. Read one from the jamfplatform_ai_governance_tool data source.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_ai_governance_tools (Data Source)
 
-Reads every AI tool Jamf can govern, with the settings schema versions each one offers. Use it to discover the `tool_id` and `schema_version` values a `jamfplatform_ai_governance_policy` accepts.
+Reads every AI tool the platform can govern, with the settings schema versions each one offers. Use it to discover the `tool_id` and `schema_version` values a `jamfplatform_ai_governance_policy` accepts.
 
 The settings schema documents themselves are not included. Read one from the `jamfplatform_ai_governance_tool` data source.
 
@@ -45,7 +45,7 @@ output "governable_tools" {
 
 ### Read-Only
 
-- `tools` (Attributes List) The AI tools Jamf can govern. (see [below for nested schema](#nestedatt--tools))
+- `tools` (Attributes List) The AI tools the platform can govern. (see [below for nested schema](#nestedatt--tools))
 
 <a id="nestedatt--tools"></a>
 ### Nested Schema for `tools`

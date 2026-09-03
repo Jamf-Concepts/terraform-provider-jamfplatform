@@ -70,10 +70,11 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 }
 
 # Directory-service (LDAP / cloud-IdP) group criteria. Write the group by NAME and
-# the provider resolves it to the base64 {uuid,serverId} value the API stores
-# (and back again on read, so state keeps the readable name). A raw base64 value
-# is also accepted verbatim. Use one to disambiguate a name that exists on more
-# than one directory server, or to paste a value straight from the API/UI.
+# the provider resolves it to the base64 {uuid,serverId} value the platform
+# stores (and back again on read, so state keeps the readable name). A raw
+# base64 value is also accepted verbatim. Use one to disambiguate a name that
+# exists on more than one directory server, or to paste a value copied from the
+# platform API or the admin UI.
 resource "jamfplatform_device_group" "example_directory_service_group" {
   name        = "Example Directory Service Smart Group"
   group_type  = "smart"
@@ -116,9 +117,9 @@ output "smart_computer_group_jamf_pro_id" {
 
 ### Read-Only
 
-- `id` (String) Unique identifier assigned by the API.
+- `id` (String) Unique identifier assigned by the platform.
 - `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group: policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account (a single missing-permission warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
-- `member_count` (Number) Total members reported by the API.
+- `member_count` (Number) Total members reported by the platform.
 
 <a id="nestedatt--criteria"></a>
 ### Nested Schema for `criteria`

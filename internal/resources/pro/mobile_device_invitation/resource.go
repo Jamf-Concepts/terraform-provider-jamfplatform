@@ -149,7 +149,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				Computed:            true,
 			},
 			"keep_existing_site_membership": schema.BoolAttribute{
-				MarkdownDescription: "The admin UI's \"Use existing site membership, if applicable\". When true, an enrolling mobile device that already belongs to a site keeps that membership. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "The admin UI's \"Use existing site membership, if applicable\". When true, an enrolling mobile device that already belongs to a site keeps that membership. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -158,7 +158,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"multiple_uses_allowed": schema.BoolAttribute{
-				MarkdownDescription: "Whether the invitation may be used to enrol more than one mobile device. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Whether the invitation may be used to enrol more than one mobile device. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -167,7 +167,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"require_login": schema.BoolAttribute{
-				MarkdownDescription: "The admin UI's \"Require Login\". When true, the enrolling user must authenticate before completing enrollment. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.",
+				MarkdownDescription: "The admin UI's \"Require Login\". When true, the enrolling user must authenticate before completing enrollment. Jamf Pro applies a default when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -218,7 +218,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"target_ios": schema.StringAttribute{
-				MarkdownDescription: "Target iOS version for the invitation (e.g. `iOS 4`). Optional+Computed: the server defaults it (`iOS 4`) when omitted. Changing this forces replacement.",
+				MarkdownDescription: "Target iOS version for the invitation (e.g. `iOS 4`). Jamf Pro applies a default of `iOS 4` when omitted. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

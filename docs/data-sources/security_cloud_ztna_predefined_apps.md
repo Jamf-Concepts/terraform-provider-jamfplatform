@@ -64,7 +64,7 @@ output "slack_template" {
 ### Read-Only
 
 - `id` (String) Fixed identifier for this data source.
-- `predefined_apps` (Attributes List) The predefined app templates available to this tenant, in the order Jamf returns them. (see [below for nested schema](#nestedatt--predefined_apps))
+- `predefined_apps` (Attributes List) The predefined app templates available to this tenant, in the order Jamf Security Cloud returns them. (see [below for nested schema](#nestedatt--predefined_apps))
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

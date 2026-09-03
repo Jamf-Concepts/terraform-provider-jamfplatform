@@ -28,7 +28,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # Manage a Jamf Pro licensed software record. software_definitions and licenses
 # are ordered lists reconciled by position (the endpoint assigns no per-element
-# id). Legacy font / plug-in definition buckets are not supported by the API.
+# id). The Jamf Pro API does not support the legacy font / plug-in definition
+# buckets.
 resource "jamfplatform_pro_licensed_software" "example" {
   name                                    = "Acme Editor"
   publisher                               = "Acme Corp"

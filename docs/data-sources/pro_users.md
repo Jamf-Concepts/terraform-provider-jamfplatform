@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_users Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Search Jamf Pro inventory users (people in Users → User Inventory) using optional RSQL filters. Filter selectors use the API-native field names id, username, realname, email, phone, position, and managedAppleId. Three of those are spelled differently in the output attributes: realname is full_name, email is email_address, and phone is phone_number. These are inventory user records, not Jamf Pro admin accounts.
+  Search Jamf Pro inventory users (people in Users → User Inventory) using optional RSQL filters. Filter selectors use the field names Jamf Pro itself uses: id, username, realname, email, phone, position, and managedAppleId. Three of those are spelled differently in the output attributes: realname is full_name, email is email_address, and phone is phone_number. These are inventory user records, not Jamf Pro admin accounts.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_users (Data Source)
 
-Search Jamf Pro **inventory users** (people in *Users → User Inventory*) using optional RSQL filters. Filter selectors use the API-native field names `id`, `username`, `realname`, `email`, `phone`, `position`, and `managedAppleId`. Three of those are spelled differently in the output attributes: `realname` is `full_name`, `email` is `email_address`, and `phone` is `phone_number`. These are inventory user records, **not** Jamf Pro admin accounts.
+Search Jamf Pro **inventory users** (people in *Users → User Inventory*) using optional RSQL filters. Filter selectors use the field names Jamf Pro itself uses: `id`, `username`, `realname`, `email`, `phone`, `position`, and `managedAppleId`. Three of those are spelled differently in the output attributes: `realname` is `full_name`, `email` is `email_address`, and `phone` is `phone_number`. These are inventory user records, **not** Jamf Pro admin accounts.
 
 **Required Jamf permissions**
 
@@ -71,7 +71,7 @@ output "jamf_managers" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `username`, `realname`, `email`, `phone`, `position`, `managedAppleId`.
 
 Optional:

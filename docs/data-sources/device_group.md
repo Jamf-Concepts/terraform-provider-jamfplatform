@@ -57,7 +57,7 @@ output "device_group_example_jamf_pro_id" {
 
 ### Read-Only
 
-- `criteria` (Attributes List) Smart-group criteria returned by the API. (see [below for nested schema](#nestedatt--criteria))
+- `criteria` (Attributes List) Smart-group criteria returned by the platform. (see [below for nested schema](#nestedatt--criteria))
 - `description` (String) Device group Description.
 - `device_type` (String) Device type value returned in lowercase.
 - `group_type` (String) Group type value returned in lowercase.

@@ -62,9 +62,9 @@ resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
   web_notification   = true
   email_notification = false
 
-  # The server populates available_versions; assign packages to specific
-  # versions via version_packages so patch policies can target them. Only the
-  # versions you list are managed; removing a key clears that version's package.
+  # Jamf Pro populates available_versions; assign packages to specific versions
+  # via version_packages so patch policies can target them. Only the versions
+  # you list are managed; removing a key clears that version's package.
   version_packages = {
     "8.33.2.2" = jamfplatform_pro_package.work_8_33.id
   }
@@ -104,7 +104,7 @@ output "adobe_air_extension_attributes" {
 
 ### Optional
 
-- `accept_extension_attributes` (Boolean) Accept the extension attribute(s) Jamf attaches to this title (UI "Extension Attribute" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting cannot be reverted.** Setting this back to `false`, or removing it, does not un-accept anything; it only stops accepting new ones. Leave unset for titles that have no extension attribute.
+- `accept_extension_attributes` (Boolean) Accept the extension attribute(s) Jamf Pro attaches to this title (UI "Extension Attribute" tab, **Accept**). For some titles Jamf Pro supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting cannot be reverted.** Setting this back to `false`, or removing it, does not un-accept anything; it only stops accepting new ones. Leave unset for titles that have no extension attribute.
 - `category_id` (String) Jamf Pro category ID (UI "Category"). Set `-1` for "No category assigned", the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.
 - `email_notification` (Boolean) Whether an email notification is sent for new versions (UI "Email"). Jamf Pro applies its own default when omitted.
 - `site_id` (String) Jamf Pro site ID (UI "Site"). Set `-1` for "None", the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.

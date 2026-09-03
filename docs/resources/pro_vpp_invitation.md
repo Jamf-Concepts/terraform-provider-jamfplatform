@@ -101,7 +101,7 @@ Requires the referenced VPP location to have automatic registration enabled (`au
 ### Read-Only
 
 - `id` (String) VPP invitation ID assigned by Jamf Pro.
-- `invitation_usages` (Attributes List) Read-only per-user registration status the server tracks for this invitation. (see [below for nested schema](#nestedatt--invitation_usages))
+- `invitation_usages` (Attributes List) Read-only per-user registration status Jamf Pro tracks for this invitation. (see [below for nested schema](#nestedatt--invitation_usages))
 
 <a id="nestedatt--scope"></a>
 ### Nested Schema for `scope`

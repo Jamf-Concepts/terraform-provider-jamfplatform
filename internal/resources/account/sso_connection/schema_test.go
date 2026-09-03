@@ -425,7 +425,7 @@ func TestConnectionResource_ManagedAccountIsDocumentedAsUndetectable(t *testing.
 		t.Fatal("enabled_products is missing managed_account_id")
 	}
 	description := managed.GetMarkdownDescription()
-	if !strings.Contains(description, "Nothing Jamf returns reveals it") {
+	if !strings.Contains(description, "Nothing Jamf Account returns reveals it") {
 		t.Errorf("the description does not say Terraform cannot detect it:\n%s", description)
 	}
 }

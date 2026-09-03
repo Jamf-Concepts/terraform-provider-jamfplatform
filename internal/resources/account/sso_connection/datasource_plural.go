@@ -50,13 +50,12 @@ func (d *ConnectionsDataSource) Schema(ctx context.Context, _ datasource.SchemaR
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every SSO connection your Jamf Account organization holds. Jamf Account " +
 			"exposes no search arguments for connections, so this data source takes none. Filter the result in " +
-			"Terraform.\n\n" +
-			"Each entry carries only what the organization's connection list reports. The provider-specific " +
-			"settings (the addresses, the domains of an Entra tenant, the group and profile options) are " +
-			"reported one connection at a time, so use the singular `jamfplatform_account_sso_connection` data " +
-			"source for those rather than paying an extra read per connection here.\n\n" +
-			"This is the construct for finding the name Jamf actually holds for a connection, which may be a " +
-			"uniquified form of the one it was created with." +
+			"Terraform.\n\nEach entry carries only what the organization's connection list reports. The " +
+			"provider-specific settings (the addresses, the domains of an Entra tenant, the group and profile " +
+			"options) are reported one connection at a time, so use the singular " +
+			"`jamfplatform_account_sso_connection` data source for those rather than paying an extra read per " +
+			"connection here.\n\nThis is the construct for finding the name Jamf Account actually holds for a " +
+			"connection, which may be a uniquified form of the one it was created with." +
 			pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -89,8 +88,8 @@ func (d *ConnectionsDataSource) Schema(ctx context.Context, _ datasource.SchemaR
 							Computed: true,
 						},
 						"auth_method": schema.StringAttribute{
-							MarkdownDescription: "How Jamf proves itself to the provider when it redeems an " +
-								"authorization code.",
+							MarkdownDescription: "How Jamf Account proves itself to the provider when it redeems " +
+								"an authorization code.",
 							Computed: true,
 						},
 						"sync_attributes_at_login": schema.BoolAttribute{
@@ -99,8 +98,8 @@ func (d *ConnectionsDataSource) Schema(ctx context.Context, _ datasource.SchemaR
 							Computed: true,
 						},
 						"domains": schema.SetAttribute{
-							MarkdownDescription: "The domain names this connection signs people in for. Jamf holds " +
-								"a small number of connections with none.",
+							MarkdownDescription: "The domain names this connection signs people in for. Jamf " +
+								"Account holds a small number of connections with none.",
 							Computed:    true,
 							ElementType: types.StringType,
 						},
@@ -116,8 +115,8 @@ func (d *ConnectionsDataSource) Schema(ctx context.Context, _ datasource.SchemaR
 							Computed: true,
 						},
 						"easy_config": schema.BoolAttribute{
-							MarkdownDescription: "Whether the connection was built by Jamf's guided setup rather " +
-								"than configured directly.",
+							MarkdownDescription: "Whether the connection was built by Jamf Account's guided " +
+								"setup rather than configured directly.",
 							Computed: true,
 						},
 					},

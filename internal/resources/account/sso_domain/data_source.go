@@ -74,8 +74,8 @@ func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 				Computed:            true,
 			},
 			"verification_key": schema.StringAttribute{
-				MarkdownDescription: "Token Jamf minted for this claim, published as the value of a TXT record on " +
-					"the domain to prove ownership.",
+				MarkdownDescription: "Token Jamf Account minted for this claim, published as the value of a TXT " +
+					"record on the domain to prove ownership.",
 				Computed: true,
 			},
 			"verification_txt_record": schema.StringAttribute{
@@ -134,7 +134,7 @@ func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 						},
 						"connection_organization_id": schema.StringAttribute{
 							MarkdownDescription: "Identifier of the identity organization the connection is " +
-								"assigned through. Managed by Jamf; informational only.",
+								"assigned through. Managed by Jamf Account; informational only.",
 							Computed: true,
 						},
 						"region": schema.StringAttribute{

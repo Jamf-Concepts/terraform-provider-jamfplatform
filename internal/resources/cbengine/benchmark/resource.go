@@ -87,10 +87,10 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 func benchmarkResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: Jamf accepts the request and deploys the associated artifacts to the MDM. The provider polls the benchmark's sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
+		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the platform accepts the request and deploys the associated artifacts to the MDM. The provider polls the benchmark's sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Unique identifier assigned by the API.",
+				MarkdownDescription: "Unique identifier assigned by the platform.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
@@ -182,7 +182,7 @@ func benchmarkResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"rules": schema.ListNestedAttribute{
-				MarkdownDescription: "Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules.",
+				MarkdownDescription: "Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) is reported by the platform. Use the `jamfplatform_cbengine_rules` data source to look up available rules.",
 				Required:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -372,7 +372,7 @@ func benchmarkResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"deleted": schema.BoolAttribute{
-				MarkdownDescription: "Whether the benchmark is marked deleted by the API.",
+				MarkdownDescription: "Whether the benchmark is marked deleted by the platform.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},

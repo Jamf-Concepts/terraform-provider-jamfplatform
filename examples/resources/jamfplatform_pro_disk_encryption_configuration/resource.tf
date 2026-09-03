@@ -6,7 +6,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
   file_vault_enabled_users = "Current or Next User"
 }
 
-# Institutional key_type: Jamf issues recovery keys derived from the
+# Institutional key_type: Jamf Pro issues recovery keys derived from the
 # uploaded PKCS12 certificate. The `data` payload is the base64 of the
 # `.p12` file contents; `password` is the import password. The plaintext
 # `password` is a Terraform `WriteOnly` attribute, sent on writes but

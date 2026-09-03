@@ -48,8 +48,8 @@ resource "jamfplatform_pro_volume_purchasing_location" "prod" {
   send_notification_when_no_longer_assigned = true
   auto_register_managed_users               = false
 
-  # site_id is optional. Omit to let Jamf Pro decide; the server emits the
-  # sentinel "-1" when unset.
+  # site_id is optional. Omit to let Jamf Pro decide; it emits the sentinel
+  # "-1" when unset.
   # site_id = "1"
 
   timeouts {

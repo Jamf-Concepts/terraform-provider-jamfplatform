@@ -280,7 +280,7 @@ func sharedComponentAttributes(deprecation string) map[string]schema.Attribute {
 func componentBlockAttributes() map[string]schema.Attribute {
 	attributes := map[string]schema.Attribute{
 		"name": schema.StringAttribute{
-			MarkdownDescription: "Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, Jamf assigns a default name.",
+			MarkdownDescription: "Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, the platform assigns a default name.",
 			Optional:            true,
 		},
 		"activation_conditions": schema.StringAttribute{

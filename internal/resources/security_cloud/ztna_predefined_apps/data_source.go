@@ -89,8 +89,8 @@ func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.Sche
 				Computed:            true,
 			},
 			"predefined_apps": schema.ListNestedAttribute{
-				MarkdownDescription: "The predefined app templates available to this tenant, in the order " +
-					"Jamf returns them.",
+				MarkdownDescription: "The predefined app templates available to this tenant, in the order Jamf " +
+					"Security Cloud returns them.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

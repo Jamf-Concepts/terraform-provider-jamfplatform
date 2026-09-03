@@ -140,24 +140,23 @@ func (r *DomainResource) IdentitySchema(_ context.Context, _ resource.IdentitySc
 // Schema returns the Terraform schema for the SSO domain resource.
 func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Claims a DNS domain for your Jamf Account organization, so that an SSO connection can " +
-			"be pointed at the people who sign in with an address at that domain.\n\n" +
-			"Claiming a domain does not prove you own it. Jamf mints a verification token when the claim is made, " +
-			"and the domain stays unverified until a TXT record holding `verification_txt_record` is published at " +
-			"the root of the domain and the check is run, either with the `jamfplatform_account_sso_domain_verify` " +
-			"action or from the Jamf Account console. Jamf then re-checks a verified domain continuously in the " +
-			"background, so leave the TXT record in place.\n\n" +
-			"A claim cannot be edited. Changing `domain` replaces it, and the replacement is issued a fresh " +
-			"`verification_key`, so the TXT record has to be republished before the new claim can verify.\n\n" +
-			"Destroying a claim also withdraws the domain from every SSO connection that names it, which silently " +
-			"narrows those connections. The `jamfplatform_account_sso_domain` data source reports which " +
-			"connections a domain is assigned to.\n\n" +
-			"Only a domain your own organization claimed can be managed here. A domain another Jamf Account " +
-			"organization owns and shares with yours (`shared` is `true`) can be assigned to a connection but " +
-			"cannot be changed or withdrawn, so this resource refuses it: an import of one is rejected, and the " +
-			"`jamfplatform_account_sso_domain` data source is how a shared domain is read.\n\n" +
-			"Needs an organization-scoped Jamf integration, created against neither a platform environment nor a " +
-			"tenant, and is reachable only in the United States region." +
+		MarkdownDescription: "Claims a DNS domain for your Jamf Account organization, so that an SSO connection " +
+			"can be pointed at the people who sign in with an address at that domain.\n\nClaiming a domain does " +
+			"not prove you own it. Jamf Account mints a verification token when the claim is made, and the " +
+			"domain stays unverified until a TXT record holding `verification_txt_record` is published at the " +
+			"root of the domain and the check is run, either with the `jamfplatform_account_sso_domain_verify` " +
+			"action or from the Jamf Account console. Jamf Account then re-checks a verified domain continuously " +
+			"in the background, so leave the TXT record in place.\n\nA claim cannot be edited. Changing `domain` " +
+			"replaces it, and the replacement is issued a fresh `verification_key`, so the TXT record has to be " +
+			"republished before the new claim can verify.\n\nDestroying a claim also withdraws the domain from " +
+			"every SSO connection that names it, which silently narrows those connections. The " +
+			"`jamfplatform_account_sso_domain` data source reports which connections a domain is assigned " +
+			"to.\n\nOnly a domain your own organization claimed can be managed here. A domain another Jamf " +
+			"Account organization owns and shares with yours (`shared` is `true`) can be assigned to a " +
+			"connection but cannot be changed or withdrawn, so this resource refuses it: an import of one is " +
+			"rejected, and the `jamfplatform_account_sso_domain` data source is how a shared domain is " +
+			"read.\n\nNeeds an organization-scoped API integration, created against neither a platform " +
+			"environment nor a tenant, and is reachable only in the United States region." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -189,9 +188,9 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Computed: true,
 			},
 			"verification_key": schema.StringAttribute{
-				MarkdownDescription: "Token Jamf minted for this claim, published as the value of a TXT record on " +
-					"the domain to prove ownership. Prefer `verification_txt_record`, which is the complete record " +
-					"value. Read-only.",
+				MarkdownDescription: "Token Jamf Account minted for this claim, published as the value of a TXT " +
+					"record on the domain to prove ownership. Prefer `verification_txt_record`, which is the " +
+					"complete record value. Read-only.",
 				Computed: true,
 			},
 			"verification_txt_record": schema.StringAttribute{
@@ -204,7 +203,7 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"parent_domain_id": schema.StringAttribute{
 				MarkdownDescription: "Identifier of the verified parent domain a subdomain inherits its " +
 					"verification from. Null for a domain verified in its own right. Inheritance is resolved by " +
-					"Jamf and cannot be declared. Read-only.",
+					"Jamf Account and cannot be declared. Read-only.",
 				Computed: true,
 			},
 			"shared": schema.BoolAttribute{
@@ -231,9 +230,9 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Computed:            true,
 			},
 			"last_modified_at": schema.StringAttribute{
-				MarkdownDescription: "When the claim last changed. Running the verification updates it whether the " +
-					"check succeeded or not, and it is the point Jamf's five-minute wait between verification " +
-					"attempts is measured from. Read-only.",
+				MarkdownDescription: "When the claim last changed. Running the verification updates it whether " +
+					"the check succeeded or not, and it is the point Jamf Account's five-minute wait between " +
+					"verification attempts is measured from. Read-only.",
 				Computed: true,
 			},
 			"last_verified_at": schema.StringAttribute{

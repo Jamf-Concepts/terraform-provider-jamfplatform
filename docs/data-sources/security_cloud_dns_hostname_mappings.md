@@ -53,7 +53,7 @@ output "ztna_hostnames" {
 ### Read-Only
 
 - `id` (String) Always `singleton`, since a tenant holds one set of hostname mappings.
-- `mappings` (Attributes List) The tenant's hostname mappings, in the order Jamf returns them, which is not the order they were written in. (see [below for nested schema](#nestedatt--mappings))
+- `mappings` (Attributes List) The tenant's hostname mappings, in the order Jamf Security Cloud returns them, which is not the order they were written in. (see [below for nested schema](#nestedatt--mappings))
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

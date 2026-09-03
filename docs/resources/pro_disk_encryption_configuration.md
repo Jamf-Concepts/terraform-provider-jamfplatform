@@ -40,7 +40,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
   file_vault_enabled_users = "Current or Next User"
 }
 
-# Institutional key_type: Jamf issues recovery keys derived from the
+# Institutional key_type: Jamf Pro issues recovery keys derived from the
 # uploaded PKCS12 certificate. The `data` payload is the base64 of the
 # `.p12` file contents; `password` is the import password. The plaintext
 # `password` is a Terraform `WriteOnly` attribute, sent on writes but
@@ -89,7 +89,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "both" {
 ### Required
 
 - `file_vault_enabled_users` (String) **"Enabled FileVault 2 User"** in the Jamf Pro admin UI. Account allowed to unlock FileVault. Accepted values: `"Current or Next User"`, `"Management Account"`.
-- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (lowercase `and`).
+- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf Pro provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (lowercase `and`).
 - `name` (String) **"Display Name"** in the Jamf Pro admin UI. Disk encryption configuration name. Must not be empty.
 
 ### Optional

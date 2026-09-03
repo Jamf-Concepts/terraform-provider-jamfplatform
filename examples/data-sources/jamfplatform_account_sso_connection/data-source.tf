@@ -1,12 +1,12 @@
-# Look a connection up by the identifier Jamf assigned it.
+# Look a connection up by the identifier Jamf Account assigned it.
 data "jamfplatform_account_sso_connection" "by_id" {
   id = "con_XXXXXXXXXXXXXXXX"
 }
 
-# Or by the name Jamf holds for it, which may be a uniquified form of the name
-# it was created with. jamfplatform_account_sso_connections reports the stored
-# names. Jamf does not require them to be unique, so this reports an error
-# rather than choosing when more than one matches.
+# Or by the name Jamf Account holds for it, which may be a uniquified form of
+# the name it was created with. jamfplatform_account_sso_connections reports the
+# stored names. Jamf Account does not require them to be unique, so this reports
+# an error rather than choosing when more than one matches.
 data "jamfplatform_account_sso_connection" "corp" {
   name = "CorpOIDC"
 }

@@ -35,8 +35,8 @@ resource "jamfplatform_pro_user_group" "exec_team" {
 }
 
 # Smart user group. Membership is derived from criteria evaluated by Jamf Pro.
-# Criteria order is significant: Jamf evaluates left-to-right using the
-# supplied `and_or` joins.
+# Criteria order is significant: it works left-to-right using the supplied
+# `and_or` joins.
 resource "jamfplatform_pro_user_group" "managed_apple_ids_vpp_associated" {
   name                        = "Managed Apple IDs with VPP Invitation Associated"
   group_type                  = "smart"

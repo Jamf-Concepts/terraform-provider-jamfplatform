@@ -73,7 +73,7 @@ Optional:
 Read-Only:
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--gateways--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf Security Cloud provisioned for a dedicated internet gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
@@ -123,7 +123,7 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_domain_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf Security Cloud presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
 
 

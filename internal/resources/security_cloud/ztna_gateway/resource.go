@@ -162,16 +162,16 @@ func (r *GatewayResource) ConfigValidators(_ context.Context) []resource.ConfigV
 // Schema returns the Terraform schema for the ZTNA gateway resource.
 func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a dedicated Jamf Security Cloud ZTNA gateway, the tenant's own egress point " +
-			"into Jamf Security Cloud. A custom DNS zone's name servers and a ZTNA app's routing are reachable " +
-			"through it.\n\n" +
-			"A gateway takes one of two forms, chosen by whether the `ipsec` block is present:\n\n" +
-			"- **Dedicated IPsec gateway**: set `ipsec` to build a tunnel to your own VPN concentrator.\n" +
-			"- **Dedicated internet gateway**: omit `ipsec` to route to the internet through a pair of private " +
-			"egress IP addresses Jamf provisions, reported in `dedicated_egress_ip_addresses`.\n\n" +
-			"The form is fixed for the life of the gateway: Jamf Security Cloud refuses to convert one into the " +
-			"other, so adding or removing `ipsec` replaces the gateway. Deleting a gateway that a custom DNS zone " +
-			"or a grouped gateway still references is also refused; drop the reference in a separate apply first." +
+		MarkdownDescription: "Manages a dedicated Jamf Security Cloud ZTNA gateway, the tenant's own egress " +
+			"point into Jamf Security Cloud. A custom DNS zone's name servers and a ZTNA app's routing are " +
+			"reachable through it.\n\nA gateway takes one of two forms, chosen by whether the `ipsec` block is " +
+			"present:\n\n- **Dedicated IPsec gateway**: set `ipsec` to build a tunnel to your own VPN " +
+			"concentrator.\n- **Dedicated internet gateway**: omit `ipsec` to route to the internet through a " +
+			"pair of private egress IP addresses Jamf Security Cloud provisions, reported in " +
+			"`dedicated_egress_ip_addresses`.\n\nThe form is fixed for the life of the gateway: Jamf Security " +
+			"Cloud refuses to convert one into the other, so adding or removing `ipsec` replaces the gateway. " +
+			"Deleting a gateway that a custom DNS zone or a grouped gateway still references is also refused; " +
+			"drop the reference in a separate apply first." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -191,7 +191,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			"egress_region": egressRegionAttribute(),
 			"contact": schema.SingleNestedAttribute{
 				MarkdownDescription: "**\"Contact name\"** and **\"Contact email\"** in the Jamf Security Cloud " +
-					"admin UI: who Jamf should reach about this gateway's operation.",
+					"admin UI: who Jamf Security Cloud should reach about this gateway's operation.",
 				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
@@ -248,12 +248,12 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
-				MarkdownDescription: "The private egress IP addresses Jamf provisions for a dedicated internet " +
-					"gateway. Allocated within seconds of the gateway being created, roughly four and a half " +
-					"minutes before it finishes provisioning, so a populated list means the addresses are " +
-					"reserved rather than that the gateway reports itself operational. Read `status` for that. " +
-					"Always empty on an IPsec gateway, confirmed against Jamf Security Cloud on 2026-08-31. " +
-					"Read-only.",
+				MarkdownDescription: "The private egress IP addresses Jamf Security Cloud provisions for a " +
+					"dedicated internet gateway. Allocated within seconds of the gateway being created, roughly " +
+					"four and a half minutes before it finishes provisioning, so a populated list means the " +
+					"addresses are reserved rather than that the gateway reports itself operational. Read " +
+					"`status` for that. Always empty on an IPsec gateway, confirmed against Jamf Security Cloud " +
+					"on 2026-08-31. Read-only.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -392,7 +392,7 @@ func cipherSuiteAttribute(description string) schema.SingleNestedAttribute {
 func jamfSideAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "**\"Jamf Security Cloud side\"** in the Jamf Security Cloud admin UI: the endpoint " +
-			"Jamf presents to your VPN concentrator.",
+			"Jamf Security Cloud presents to your VPN concentrator.",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
@@ -404,7 +404,7 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 			},
 			"ike_domain_id": schema.StringAttribute{
 				MarkdownDescription: "**\"Jamf Security Cloud IKE domain ID\"** in the Jamf Security Cloud admin " +
-					"UI: the IKE identity Jamf presents, for example `wpa.wandera.com`.",
+					"UI: the IKE identity Jamf Security Cloud presents, for example `wpa.wandera.com`.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -421,10 +421,11 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"authentication_secret": schema.StringAttribute{
-				MarkdownDescription: "**\"Authentication secret\"** in the Jamf Security Cloud admin UI: the IPsec " +
-					"pre-shared key, applied to both ends of the tunnel. Write-only. It is sent to Jamf Security " +
-					"Cloud on writes and never held in Terraform state, because Jamf never returns it. Pair with " +
-					"`authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.",
+				MarkdownDescription: "**\"Authentication secret\"** in the Jamf Security Cloud admin UI: the " +
+					"IPsec pre-shared key, applied to both ends of the tunnel. Write-only. It is sent to Jamf " +
+					"Security Cloud on writes and never held in Terraform state, because Jamf Security Cloud " +
+					"never returns it. Pair with `authentication_secret_wo_version` to rotate it. It can be " +
+					"rotated but not cleared.",
 				Required:  true,
 				Sensitive: true,
 				WriteOnly: true,

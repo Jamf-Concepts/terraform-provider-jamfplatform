@@ -44,7 +44,7 @@ resource "jamfplatform_pro_automated_device_enrollment" "prod" {
   token_file_name         = "ade-prod.p7m"
 
   # site_id and supervision_identity_id are optional. Omit to let Jamf Pro
-  # decide; the server emits the sentinel "-1" when unset.
+  # decide; it emits the sentinel "-1" when unset.
   # site_id                 = "1"
   # supervision_identity_id = "1"
 }

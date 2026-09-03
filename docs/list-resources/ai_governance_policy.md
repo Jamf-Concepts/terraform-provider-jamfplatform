@@ -30,4 +30,4 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ### Optional
 
-- `schema_drift_only` (Boolean) When true, return only policies whose settings schema version is behind the one Jamf now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.
+- `schema_drift_only` (Boolean) When true, return only policies whose settings schema version is behind the one the platform now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.

@@ -27,7 +27,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Advanced user search: a saved, criteria-driven user query with a configurable
-# set of display columns. Criteria order is significant: Jamf evaluates
+# set of display columns. Criteria order is significant: Jamf Pro evaluates
 # left-to-right using the supplied `and_or` joins and parentheses. Unlike
 # advanced computer searches, user searches have no `view_as` or sort columns.
 resource "jamfplatform_pro_advanced_user_search" "example_com_users" {

@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_printer Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer, and its PPD, onto Mac computers. Cross-field rules bind the use_generic toggle to the PPD trio (ppd, ppd_path, ppd_contents) and are enforced at plan time. See each attribute for details.
+  Manages a Jamf Pro printer. Printers are reusable definitions Jamf Pro policies use to map an IPP / LPD / SMB printer, and its PPD, onto Mac computers. Cross-field rules bind the use_generic toggle to the PPD trio (ppd, ppd_path, ppd_contents) and are enforced at plan time. See each attribute for details.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_printer (Resource)
 
-Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer, and its PPD, onto Mac computers. Cross-field rules bind the `use_generic` toggle to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) and are enforced at plan time. See each attribute for details.
+Manages a Jamf Pro printer. Printers are reusable definitions Jamf Pro policies use to map an IPP / LPD / SMB printer, and its PPD, onto Mac computers. Cross-field rules bind the `use_generic` toggle to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) and are enforced at plan time. See each attribute for details.
 
 **Required Jamf permissions**
 
@@ -34,9 +34,9 @@ resource "jamfplatform_pro_printer" "front_desk" {
   uri  = "ipp://10.1.20.120/"
 }
 
-# Printer with an explicit PPD. use_generic must be false; ppd_path is the
-# gate field: if omitted, the server falls back to Generic.ppd and silently
-# flips use_generic back to true. ppd and ppd_contents are optional alongside.
+# Printer with an explicit PPD. use_generic must be false; ppd_path is the gate
+# field: if omitted, Jamf Pro falls back to Generic.ppd and silently flips
+# use_generic back to true. ppd and ppd_contents are optional alongside.
 resource "jamfplatform_pro_printer" "lab_color" {
   name        = "Lab Color"
   category    = "Printers"

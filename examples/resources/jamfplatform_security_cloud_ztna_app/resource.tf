@@ -2,8 +2,9 @@
 # belonging to one enterprise application, and the conditions under which devices may
 # reach it. Each one is a row on the Access policy page.
 
-# Categories and predefined application definitions are both maintained by Jamf, so
-# resolve them rather than hard-coding an ID or guessing a category's spelling.
+# Categories and predefined application definitions are both maintained by Jamf
+# Security Cloud, so resolve them rather than hard-coding an ID or guessing a
+# category's spelling.
 data "jamfplatform_security_cloud_content_categories" "all" {}
 
 data "jamfplatform_security_cloud_ztna_predefined_apps" "all" {}

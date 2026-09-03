@@ -65,7 +65,7 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, _ datasource.Schema
 			"device_groups": schema.ListNestedAttribute{
 				MarkdownDescription: "The device groups on the tenant, sorted by name by the provider. Jamf " +
 					"Security Cloud exposes no sort parameter for groups, so the order is the provider's " +
-					"guarantee rather than the server's.",
+					"guarantee rather than Jamf Security Cloud's.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

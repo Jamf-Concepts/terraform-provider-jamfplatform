@@ -1,5 +1,5 @@
-# Read the catalogue so the policy tracks whatever settings schema version Jamf
-# currently publishes for the tool, instead of pinning one that will drift.
+# Read the catalogue so the policy tracks whatever settings schema version the
+# platform currently serves for the tool, instead of pinning one that will drift.
 data "jamfplatform_ai_governance_tool" "claude_code" {
   id = "com.anthropic.claudecode"
 }

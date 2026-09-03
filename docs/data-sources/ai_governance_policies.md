@@ -57,8 +57,8 @@ output "policies_on_an_older_schema" {
 
 ### Optional
 
-- `schema_drift_only` (Boolean) When `true`, return only policies whose settings schema version is behind the one Jamf now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.
-- `sort` (List of String) How to order the results, as `property:asc` or `property:desc` entries applied in order. Sortable properties: `name`, `createdAt`, `updatedAt`. Unset leaves the order to Jamf.
+- `schema_drift_only` (Boolean) When `true`, return only policies whose settings schema version is behind the one the platform now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.
+- `sort` (List of String) How to order the results, as `property:asc` or `property:desc` entries applied in order. Sortable properties: `name`, `createdAt`, `updatedAt`. Unset leaves the order to the platform.
 
 ### Read-Only
 
@@ -74,6 +74,6 @@ Read-Only:
 - `id` (String) ID of the policy.
 - `name` (String) Name of the policy.
 - `published_version` (Number) Number of the most recently published version, or null when the policy has never been published.
-- `schema_drift` (Boolean) Whether the policy's schema version is behind the one Jamf now offers for the tool.
+- `schema_drift` (Boolean) Whether the policy's schema version is behind the one the platform now offers for the tool.
 - `tool_id` (String) Identifier of the AI tool the policy configures.
 - `updated_at` (String) When the policy was last changed, in RFC 3339 format.

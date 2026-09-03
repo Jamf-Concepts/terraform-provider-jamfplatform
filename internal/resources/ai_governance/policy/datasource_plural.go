@@ -54,8 +54,9 @@ func (d *PoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			"`jamfplatform_ai_governance_policy` data source." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"sort": schema.ListAttribute{
-				MarkdownDescription: "How to order the results, as `property:asc` or `property:desc` entries applied " +
-					"in order. Sortable properties: `name`, `createdAt`, `updatedAt`. Unset leaves the order to Jamf.",
+				MarkdownDescription: "How to order the results, as `property:asc` or `property:desc` entries " +
+					"applied in order. Sortable properties: `name`, `createdAt`, `updatedAt`. Unset leaves the " +
+					"order to the platform.",
 				Optional:    true,
 				ElementType: types.StringType,
 				Validators: []validator.List{
@@ -64,9 +65,9 @@ func (d *PoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 				},
 			},
 			"schema_drift_only": schema.BoolAttribute{
-				MarkdownDescription: "When `true`, return only policies whose settings schema version is behind the " +
-					"one Jamf now offers for their tool. These are the policies worth reviewing after a tool publishes " +
-					"a new schema.",
+				MarkdownDescription: "When `true`, return only policies whose settings schema version is behind " +
+					"the one the platform now offers for their tool. These are the policies worth reviewing " +
+					"after a tool publishes a new schema.",
 				Optional: true,
 			},
 			"policies": schema.ListNestedAttribute{
@@ -96,8 +97,8 @@ func (d *PoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Computed:            true,
 						},
 						"schema_drift": schema.BoolAttribute{
-							MarkdownDescription: "Whether the policy's schema version is behind the one Jamf now " +
-								"offers for the tool.",
+							MarkdownDescription: "Whether the policy's schema version is behind the one the " +
+								"platform now offers for the tool.",
 							Computed: true,
 						},
 						"created_at": schema.StringAttribute{

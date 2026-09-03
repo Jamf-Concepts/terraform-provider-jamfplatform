@@ -92,9 +92,10 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # Send each device's risk level back to Jamf Pro, so Jamf Pro can act on it.
   device_risk_uem_signaling_enabled = true
 
-  # Omit user_data_field_mapping entirely for Jamf's defaults, the same thing the "Use
-  # default data field mapping" checkbox selects. Set it to read a field from
-  # somewhere else; here, building an address for devices Jamf Pro has no email for.
+  # Omit user_data_field_mapping entirely for Jamf Security Cloud's defaults, the
+  # same thing the "Use default data field mapping" checkbox selects. Set it to read
+  # a field from somewhere else; here, building an address for devices Jamf Pro has
+  # no email for.
   user_data_field_mapping = {
     device_name  = "DEVICE_NAME"
     user_name    = "USER_NAME"

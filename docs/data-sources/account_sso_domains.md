@@ -83,6 +83,6 @@ Read-Only:
 - `parent_domain_id` (String) Identifier of the verified parent domain a subdomain inherits its verification from.
 - `shared` (Boolean) Whether the domain is owned by another Jamf Account organization and shared with yours. A shared domain can be assigned to a connection but cannot be changed or withdrawn, so it cannot be managed as a `jamfplatform_account_sso_domain` resource.
 - `verification_expires_at` (String) When the current verification lapses.
-- `verification_key` (String) Token Jamf minted for this claim, published as the value of a TXT record on the domain to prove ownership.
+- `verification_key` (String) Token Jamf Account minted for this claim, published as the value of a TXT record on the domain to prove ownership.
 - `verification_status` (String) Verification state of the claim: `MANUALLY_VERIFIED`, `MS_VERIFIED` (shown as "Microsoft Verified"), `PENDING` (shown as "Pending Approval"), `UNVERIFIED`, `VERIFIED` (shown as "Jamf Verified").
 - `verification_txt_record` (String) Complete TXT record value to publish at the root of the domain.

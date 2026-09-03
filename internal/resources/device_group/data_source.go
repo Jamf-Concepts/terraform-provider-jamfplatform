@@ -83,7 +83,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				ElementType:         types.StringType,
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Smart-group criteria returned by the API.",
+				MarkdownDescription: "Smart-group criteria returned by the platform.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
