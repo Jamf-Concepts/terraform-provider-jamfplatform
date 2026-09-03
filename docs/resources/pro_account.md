@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_account Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). A Custom privilege grid can be assigned via the privileges block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing account_type forces the account to be replaced.
+  Manages a Jamf Pro administrator login account: a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct, which holds end-user and device records. Assign a Custom privilege grid through the privileges block. Base account fields (username, full name, email, access level and so on) are updated in place. Changing account_type forces the account to be replaced.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_account (Resource)
 
-Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing `account_type` forces the account to be replaced.
+Manages a Jamf Pro **administrator login account**: a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct, which holds end-user and device records. Assign a Custom privilege grid through the `privileges` block. Base account fields (username, full name, email, access level and so on) are updated in place. Changing `account_type` forces the account to be replaced.
 
 **Required Jamf permissions**
 
@@ -99,12 +99,12 @@ variable "sam_password" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `access_status` (String) Account status (UI "Access Status"). One of `Enabled` or `Disabled`.
-- `account_type` (String) Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces the account to be replaced.
-- `email_address` (String) Email address (UI "Email Address"). Must be unique across accounts — Jamf Pro rejects a duplicate on create.
+- `account_type` (String) Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable, so changing it forces the account to be replaced.
+- `email_address` (String) Email address (UI "Email Address"). Must be unique across accounts; Jamf Pro rejects a duplicate on create.
 - `force_password_change` (Boolean) Whether the user must change their password at next login (UI "Force change at next login").
 - `full_name` (String) Full name (UI "Full Name").
 - `ldap_server_id` (Number) ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account.
-- `password` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext account password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value AND bump `password_wo_version`.
+- `password` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext account password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value and bump `password_wo_version`.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Set to `1` on create; bump it (any change) to force a base-field update that re-sends `password`. Unset/unchanged means "leave the stored password alone".
 - `privileges` (Attributes) Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. (see [below for nested schema](#nestedatt--privileges))
 - `site_id` (Number) Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`.

@@ -7,7 +7,7 @@
 # The client certificate (a .p12/.pfx keystore) is supplied through the
 # client_certificate block. data_wo and password_wo are WriteOnly: sent to
 # Jamf Pro on writes but never stored in Terraform state, and never returned
-# on read. DigiCert treats the certificate as all-or-nothing — the provider
+# on read. DigiCert treats the certificate as all-or-nothing, so the provider
 # re-sends it only when wo_version changes. Bump wo_version to rotate the
 # stored certificate.
 resource "jamfplatform_pro_pki_digicert" "example" {

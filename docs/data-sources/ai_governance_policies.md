@@ -4,7 +4,7 @@ page_title: "jamfplatform_ai_governance_policies Data Source - terraform-provide
 subcategory: ""
 description: |-
   Reads every Jamf AI Governance policy. Archived policies are not included.
-  Settings are not part of the listing — read a policy's settings from the jamfplatform_ai_governance_policy data source.
+  Settings are not part of the listing. Read a policy's settings from the jamfplatform_ai_governance_policy data source.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -16,7 +16,7 @@ description: |-
 
 Reads every Jamf AI Governance policy. Archived policies are not included.
 
-Settings are not part of the listing — read a policy's settings from the `jamfplatform_ai_governance_policy` data source.
+Settings are not part of the listing. Read a policy's settings from the `jamfplatform_ai_governance_policy` data source.
 
 **Required Jamf permissions**
 
@@ -57,7 +57,7 @@ output "policies_on_an_older_schema" {
 
 ### Optional
 
-- `schema_drift_only` (Boolean) When `true`, return only policies whose settings schema version is behind the one Jamf now offers for their tool — the policies worth reviewing after a tool publishes a new schema.
+- `schema_drift_only` (Boolean) When `true`, return only policies whose settings schema version is behind the one Jamf now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.
 - `sort` (List of String) How to order the results, as `property:asc` or `property:desc` entries applied in order. Sortable properties: `name`, `createdAt`, `updatedAt`. Unset leaves the order to Jamf.
 
 ### Read-Only

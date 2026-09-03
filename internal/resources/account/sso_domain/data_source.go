@@ -79,7 +79,7 @@ func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 				Computed: true,
 			},
 			"verification_txt_record": schema.StringAttribute{
-				MarkdownDescription: "Complete TXT record value to publish at the root of the domain — the " +
+				MarkdownDescription: "Complete TXT record value to publish at the root of the domain: the " +
 					"`jamf-site-verification=` prefix followed by `verification_key`.",
 				Computed: true,
 			},
@@ -138,7 +138,7 @@ func (d *DomainDataSource) Schema(ctx context.Context, _ datasource.SchemaReques
 							Computed: true,
 						},
 						"region": schema.StringAttribute{
-							MarkdownDescription: "**\"Hosting region\"** in the Jamf Account console — the region " +
+							MarkdownDescription: "**\"Hosting region\"** in the Jamf Account console: the region " +
 								"the connection's identity provider details live in and its sign-in traffic is " +
 								"routed through.",
 							Computed: true,

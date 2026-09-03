@@ -3,9 +3,9 @@
 page_title: "jamfplatform_pro_jamf_teacher_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro Jamf Teacher settings page (UI: Settings → Jamf apps → Jamf Teacher). Singleton — one record per tenant. These options control limited management of students' devices by the Jamf Teacher app.
-  Omit = preserve — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. timezone must always be set — the Jamf Pro API requires it on every write.
-  Destroy — terraform destroy removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.
+  Manages the Jamf Pro Jamf Teacher settings page (UI: Settings → Jamf apps → Jamf Teacher). One record per tenant. These options control limited management of students' devices by the Jamf Teacher app.
+  An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. timezone must always be set, because Jamf Pro requires it on every write.
+  terraform destroy removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_jamf_teacher_settings.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -16,11 +16,11 @@ description: |-
 
 # jamfplatform_pro_jamf_teacher_settings (Resource)
 
-Manages the Jamf Pro **Jamf Teacher** settings page (UI: Settings → Jamf apps → Jamf Teacher). Singleton — one record per tenant. These options control limited management of students' devices by the Jamf Teacher app.
+Manages the Jamf Pro **Jamf Teacher** settings page (UI: Settings → Jamf apps → Jamf Teacher). One record per tenant. These options control limited management of students' devices by the Jamf Teacher app.
 
-**Omit = preserve** — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. `timezone` must always be set — the Jamf Pro API requires it on every write.
+An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. `timezone` must always be set, because Jamf Pro requires it on every write.
 
-**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.
+`terraform destroy` removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_jamf_teacher_settings.<name> singleton`.
 
@@ -39,9 +39,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # SPDX-License-Identifier: MPL-2.0
 
 # Manage the Jamf Pro Jamf Teacher settings (Settings > Jamf apps > Jamf Teacher).
-# Singleton — one record per tenant. Optional attributes you omit keep their
-# current Jamf Pro value, including on the first apply (the resource adopts the
-# existing settings); timezone must always be set.
+# One record per tenant. Optional attributes you omit keep their current Jamf
+# Pro value, including on the first apply (the resource adopts the existing
+# settings); timezone must always be set.
 resource "jamfplatform_pro_jamf_teacher_settings" "example" {
   # Allow limited management of students' devices by Jamf Teacher.
   enabled = true
@@ -49,7 +49,7 @@ resource "jamfplatform_pro_jamf_teacher_settings" "example" {
   # IANA time zone the restriction times are evaluated in.
   timezone = "Europe/London"
 
-  # Restrictions End Time — all restrictions set by Jamf Teacher are cleared
+  # Restrictions End Time: all restrictions set by Jamf Teacher are cleared
   # from student devices at this time (24-hour HH:MM:SS). Set to "" to clear.
   restrictions_end_time = "17:30:00"
 
@@ -83,8 +83,8 @@ resource "jamfplatform_pro_jamf_teacher_settings" "example" {
 ### Optional
 
 - `enabled` (Boolean) Allow limited management of students' devices by Jamf Teacher. Matches the page's enable checkbox. Disabling does not clear the other settings. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
-- `maximum_restriction_time_seconds` (Number) **"Maximum Restriction Time"** — the longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.
-- `restrictions_end_time` (String) **"Restrictions End Time"** — time at which all restrictions set by Jamf Teacher are cleared from student devices, as a 24-hour `HH:MM:SS` time (e.g. `"17:30:00"`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `maximum_restriction_time_seconds` (Number) **"Maximum Restriction Time"**. The longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `restrictions_end_time` (String) **"Restrictions End Time"**. The time at which all restrictions set by Jamf Teacher are cleared from student devices, as a 24-hour `HH:MM:SS` time (e.g. `"17:30:00"`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `safelisted_apps` (Attributes Set) Apps students can always use, even while restricted (**Safelisted Apps** tab). Safelisting more than one app prevents teachers from enabling Single App Mode; safelisting exactly one app lets teachers lock student devices to it. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them. (see [below for nested schema](#nestedatt--safelisted_apps))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

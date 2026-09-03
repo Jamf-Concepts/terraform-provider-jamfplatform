@@ -91,7 +91,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled** — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled**. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID assigned by Jamf Pro.",
@@ -145,7 +145,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Computed:            true,
 					},
 					"date_time_limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Optional schedule limitations for when the policy may run. Only the user-authored date/time inputs are surfaced — the derived epoch / UTC siblings Jamf Pro also stores are deterministic transforms of `activation_date` / `expiration_date` and can be reproduced client-side with Terraform stdlib (`formatdate`, etc.).",
+						MarkdownDescription: "Optional schedule limitations for when the policy may run. Only the user-authored date/time inputs are surfaced. The derived epoch and UTC siblings Jamf Pro also stores are deterministic transforms of `activation_date` / `expiration_date`, reproducible client-side with Terraform stdlib functions such as `formatdate`.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"activation_date": schema.StringAttribute{
@@ -184,7 +184,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								},
 							},
 							"no_execute_start": schema.StringAttribute{
-								MarkdownDescription: "Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).",
+								MarkdownDescription: "Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -196,7 +196,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								},
 							},
 							"no_execute_end": schema.StringAttribute{
-								MarkdownDescription: "Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).",
+								MarkdownDescription: "Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -210,7 +210,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						},
 					},
 					"network_limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Optional network limitations for when the policy may run. This `network_limitations.network_segment_ids` list applies independently of `scope.limitations.network_segment_ids` — both can carry network-segment IDs but apply to different policy stages.",
+						MarkdownDescription: "Optional network limitations for when the policy may run. This `network_limitations.network_segment_ids` list applies independently of `scope.limitations.network_segment_ids`. Both can carry network-segment IDs, but they apply to different policy stages.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"minimum_network_connection": optComputedString("Minimum network connection label (`Ethernet`, `Wireless`, `No Minimum`)."),
@@ -236,7 +236,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Policy scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
+				MarkdownDescription: "Policy scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, with updates preserving it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
 				Optional:            true,
 				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: true}),
 			},
@@ -264,7 +264,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					"notification_subject": optComputedString("Notification subject line."),
 					"notification_message": optComputedString("Notification body text."),
 					"self_service_icon": schema.SingleNestedAttribute{
-						MarkdownDescription: "Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported — open an issue if you need it.",
+						MarkdownDescription: "Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported. Open an issue if you need it.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"id":       optComputedString("Icon ID assigned by Jamf Pro."),
@@ -298,7 +298,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"distribution_point": schema.StringAttribute{
-						MarkdownDescription: "Name of the file share distribution point used for the policy. Omit to inherit the tenant default.",
+						MarkdownDescription: "Name of the file share distribution point the policy uses. Omit to inherit the tenant default.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -397,12 +397,12 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			// <account_maintenance> object — the input/state builders join
 			// these four fields on write and split them on read.
 			"local_accounts": schema.ListNestedAttribute{
-				MarkdownDescription: "Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate. Modelled as a List (rather than a Set) so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect.",
+				MarkdownDescription: "Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute: sent to Jamf Pro on writes, never persisted in state. Pair it with `password_wo_version` to rotate. Modelled as a List rather than a Set so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username`, and the order has no semantic effect.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.StringAttribute{
-							MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action \"Disable FileVault\" — supply `DisableFileVault` here, with no trailing `2`). **Note:** the Jamf Pro classic `/policies` API silently strips `DisableFileVault` account entries on both create and update — they do not round-trip and the policy will report no such account afterwards (confirmed against the live API regardless of username existence, sibling accounts, or extra fields). Only the Jamf Pro web UI can persist this action. Avoid `DisableFileVault` in Terraform-managed policies; it will produce a perpetual diff.",
+							MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault`. The admin UI labels the last action \"Disable FileVault\"; supply `DisableFileVault` here, with no trailing `2`. Jamf Pro silently strips `DisableFileVault` account entries on both create and update: they do not round-trip, and the policy reports no such account afterwards. That holds regardless of whether the username exists, which sibling accounts are present, or what extra fields are sent. Only the Jamf Pro web UI can persist this action. Avoid `DisableFileVault` in Terraform-managed policies; it produces a perpetual diff.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -413,13 +413,13 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						"username": optComputedString("Account username."),
 						"realname": optComputedString("Account real (full) name."),
 						"password": schema.StringAttribute{
-							MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `local_accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).",
+							MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `local_accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index. Jamf Pro matches accounts by `username`.",
 							Optional:            true,
 							Sensitive:           true,
 							WriteOnly:           true,
 						},
 						"password_wo_version": schema.Int64Attribute{
-							MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+							MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals \"leave the stored password alone\": the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 							Optional:            true,
 						},
 						"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox \"Permanently delete home directory\"."),
@@ -439,13 +439,13 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Attributes: map[string]schema.Attribute{
 					"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
 					"managed_password": schema.StringAttribute{
-						MarkdownDescription: "Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
+						MarkdownDescription: "Plaintext managed password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
 					},
 					"managed_password_wo_version": schema.Int64Attribute{
-						MarkdownDescription: "Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Set `managed_password_wo_version = 1` on create. Leaving it unset or unchanged signals \"leave the stored password alone\": the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 						Optional:            true,
 					},
 					"managed_password_length": optComputedInt("Length used when randomly generating the managed password."),
@@ -467,13 +467,13 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Attributes: map[string]schema.Attribute{
 					"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
 					"of_password": schema.StringAttribute{
-						MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
+						MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
 					},
 					"of_password_wo_version": schema.Int64Attribute{
-						MarkdownDescription: "Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Set `of_password_wo_version = 1` on create. Leaving it unset or unchanged signals \"leave the stored password alone\": the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 						Optional:            true,
 					},
 				},
@@ -485,7 +485,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					"message":      optComputedString("Reboot prompt message."),
 					"startup_disk": optComputedString("Startup disk label."),
 					"specify_startup": schema.StringAttribute{
-						MarkdownDescription: "Reboot-method discriminator. Empty string is the default (standard reboot, no explicit method). `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. Note: the admin UI surfaces a separate \"KEXT PATH\" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not currently exposed here.",
+						MarkdownDescription: "Reboot-method discriminator. Empty string is the default: a standard reboot with no explicit method. `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The admin UI surfaces a separate \"KEXT PATH\" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not exposed here.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -534,7 +534,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Attributes: map[string]schema.Attribute{
 					"start_message": optComputedString("Message displayed before the policy runs. Mirrors the admin UI \"Start Message\" input."),
 					"deferral_type": schema.StringAttribute{
-						MarkdownDescription: "User deferral mode. Mirrors the admin UI \"Deferral Type\" dropdown. One of:\n  - `none` — no deferral allowed (the policy runs without prompting).\n  - `date` — deferral allowed until `deferral_until_utc`; the policy runs after that cut-off regardless.\n  - `duration` — deferral allowed for `deferral_days` days from first prompt.",
+						MarkdownDescription: "User deferral mode. Mirrors the admin UI \"Deferral Type\" dropdown. One of:\n  - `none`: no deferral allowed, and the policy runs without prompting.\n  - `date`: deferral allowed until `deferral_until_utc`; the policy runs after that cut-off regardless.\n  - `duration`: deferral allowed for `deferral_days` days from the first prompt.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},

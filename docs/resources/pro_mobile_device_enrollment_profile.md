@@ -3,8 +3,8 @@
 page_title: "jamfplatform_pro_mobile_device_enrollment_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
-  Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
+  Manages a Jamf Pro mobile device enrollment profile: the Apple Configurator and over-the-air enrollment profile devices use to enrol into Jamf Pro. It carries enrolment metadata alongside user and location information and purchasing information.
+  Attachments are read-only. Jamf Pro refuses this provider's authentication when an attachment is uploaded to an enrollment profile, so attachments can be listed here but not managed. Add or remove them in the Jamf Pro admin UI.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,9 +14,9 @@ description: |-
 
 # jamfplatform_pro_mobile_device_enrollment_profile (Resource)
 
-Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
+Manages a Jamf Pro mobile device enrollment profile: the Apple Configurator and over-the-air enrollment profile devices use to enrol into Jamf Pro. It carries enrolment metadata alongside user and location information and purchasing information.
 
-Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
+Attachments are read-only. Jamf Pro refuses this provider's authentication when an attachment is uploaded to an enrollment profile, so attachments can be listed here but not managed. Add or remove them in the Jamf Pro admin UI.
 
 **Required Jamf permissions**
 
@@ -56,7 +56,7 @@ output "enrollment_invitation" {
   value = jamfplatform_pro_mobile_device_enrollment_profile.configurator.invitation
 }
 
-# Attachments are read-only — manage them in the Jamf Pro admin UI.
+# Attachments are read-only. Manage them in the Jamf Pro admin UI.
 output "enrollment_attachments" {
   value = jamfplatform_pro_mobile_device_enrollment_profile.configurator.attachments
 }

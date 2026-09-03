@@ -1,5 +1,5 @@
 # Self Service macOS branding (Settings > Self Service > Branding > macOS Branding).
-# Singleton — one configuration per tenant. All fields optional.
+# One configuration per tenant. All fields optional.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png"
 }

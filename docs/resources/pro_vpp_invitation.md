@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_vpp_invitation Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
+  Manages a Jamf Pro VPP invitation, a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
   Related: device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_pro_vpp_invitation (Resource)
 
-Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
+Manages a Jamf Pro VPP invitation, a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
 
 Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.
 
@@ -92,7 +92,7 @@ output "vpp_invitation_usages" {
 Requires the referenced VPP location to have automatic registration enabled (`auto_register_managed_users = true` on `jamfplatform_pro_volume_purchasing_location`); otherwise Jamf Pro rejects `true` with "not enabled on Vpp Location". Set to `false` for locations without it.
 - `message` (String) Body of the invitation email. Use `%@` where the registration URL should be inserted. Required (and only used) when `distribution_method` is `Send emails`.
 - `require_login` (Boolean) Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`.
-- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and updates preserve whatever is configured outside Terraform. (see [below for nested schema](#nestedatt--scope))
 - `sender_email_address` (String) Sender email address for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
 - `sender_name` (String) Sender display name for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
 - `subject` (String) Subject of the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
@@ -110,7 +110,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) The Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`

@@ -33,8 +33,8 @@ func (d *UEMConnectDataSource) Metadata(_ context.Context, req datasource.Metada
 // there is nothing to select between.
 func (d *UEMConnectDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the Jamf Security Cloud **UEM Connect** integration. Takes no arguments — a " +
-			"tenant holds at most one.\n\n" +
+		MarkdownDescription: "Reads the Jamf Security Cloud **UEM Connect** integration. It takes no arguments, " +
+			"because a tenant holds at most one.\n\n" +
 			"Alongside the configuration, this reports what the resource deliberately leaves out: whether the " +
 			"integration is currently connected, the Jamf Pro version behind it, and the most recent sync. Those " +
 			"change on their own, so they belong to a read rather than to managed state." +
@@ -58,7 +58,7 @@ func (d *UEMConnectDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Computed: true,
 			},
 			"client_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Client ID\"** in the Jamf Security Cloud admin UI — the credential the " +
+				MarkdownDescription: "**\"Client ID\"** in the Jamf Security Cloud admin UI: the credential the " +
 					"integration authenticates with. Where the integration was set up by naming a tenant, this is " +
 					"the credential Jamf Security Cloud provisioned for itself. The secret is never readable.",
 				Computed: true,
@@ -151,7 +151,7 @@ func (d *UEMConnectDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 				Attributes: map[string]schema.Attribute{
 					"transaction_id":    schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Transaction ID\"** in the Jamf Security Cloud admin UI's sync logs."},
 					"status":            schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Sync result\"** in the Jamf Security Cloud admin UI."},
-					"trigger":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Type\"** in the Jamf Security Cloud admin UI — what started the sync."},
+					"trigger":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Type\"** in the Jamf Security Cloud admin UI: what started the sync."},
 					"started":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Sync start\"** in the Jamf Security Cloud admin UI, in RFC 3339."},
 					"finished":          schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Sync completed\"** in the Jamf Security Cloud admin UI, in RFC 3339. Null while a sync is running."},
 					"error_reason":      schema.StringAttribute{Computed: true, MarkdownDescription: "Why the sync failed, as a category. Null when it did not."},

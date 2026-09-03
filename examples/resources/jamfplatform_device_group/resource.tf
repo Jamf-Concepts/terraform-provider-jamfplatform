@@ -44,7 +44,7 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 # Directory-service (LDAP / cloud-IdP) group criteria. Write the group by NAME and
 # the provider resolves it to the base64 {uuid,serverId} value the API stores
 # (and back again on read, so state keeps the readable name). A raw base64 value
-# is also accepted verbatim — useful to disambiguate a name that exists on more
+# is also accepted verbatim. Use one to disambiguate a name that exists on more
 # than one directory server, or to paste a value straight from the API/UI.
 resource "jamfplatform_device_group" "example_directory_service_group" {
   name        = "Example Directory Service Smart Group"

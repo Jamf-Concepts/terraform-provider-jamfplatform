@@ -66,7 +66,7 @@ data "jamfplatform_pro_package" "by_name" {
 - `notes` (String) Free-form notes field.
 - `os_requirements` (String) Operating system requirements (comma-separated).
 - `parent_package_id` (String) Parent package ID (`"-1"` for no parent).
-- `priority` (Number) Install priority (1-20).
+- `priority` (Number) Install priority (1–20).
 - `reboot_required` (Boolean) Requires restart flag.
 - `self_heal_notify` (Boolean) Self-healing notify flag.
 - `self_healing_action` (String) Self-healing action.

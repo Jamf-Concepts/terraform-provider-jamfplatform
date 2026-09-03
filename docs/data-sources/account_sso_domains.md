@@ -3,7 +3,7 @@
 page_title: "jamfplatform_account_sso_domains Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every DNS domain your Jamf Account organization holds, including any shared with it by another organization. Jamf Account exposes no search arguments for domains, so this data source takes none — filter the result in Terraform.
+  Lists every DNS domain your Jamf Account organization holds, including any shared with it by another organization. Jamf Account exposes no search arguments for domains, so this data source takes none. Filter the result in Terraform.
   Assignment information is not included: the connections a domain is in use by are read one domain at a time, so use the singular jamfplatform_account_sso_domain data source for that.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_account_sso_domains (Data Source)
 
-Lists every DNS domain your Jamf Account organization holds, including any shared with it by another organization. Jamf Account exposes no search arguments for domains, so this data source takes none — filter the result in Terraform.
+Lists every DNS domain your Jamf Account organization holds, including any shared with it by another organization. Jamf Account exposes no search arguments for domains, so this data source takes none. Filter the result in Terraform.
 
 Assignment information is not included: the connections a domain is in use by are read one domain at a time, so use the singular `jamfplatform_account_sso_domain` data source for that.
 

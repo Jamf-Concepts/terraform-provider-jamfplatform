@@ -162,16 +162,16 @@ func (r *GatewayResource) ConfigValidators(_ context.Context) []resource.ConfigV
 // Schema returns the Terraform schema for the ZTNA gateway resource.
 func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a dedicated Jamf Security Cloud ZTNA gateway — the tenant's own egress point " +
-			"into Jamf Security Cloud, and what a custom DNS zone's name servers and a ZTNA app's routing are " +
-			"reachable through.\n\n" +
+		MarkdownDescription: "Manages a dedicated Jamf Security Cloud ZTNA gateway, the tenant's own egress point " +
+			"into Jamf Security Cloud. A custom DNS zone's name servers and a ZTNA app's routing are reachable " +
+			"through it.\n\n" +
 			"A gateway takes one of two forms, chosen by whether the `ipsec` block is present:\n\n" +
-			"- **Dedicated IPsec gateway** — set `ipsec` to build a tunnel to your own VPN concentrator.\n" +
-			"- **Dedicated internet gateway** — omit `ipsec` to route to the internet through a pair of private " +
+			"- **Dedicated IPsec gateway**: set `ipsec` to build a tunnel to your own VPN concentrator.\n" +
+			"- **Dedicated internet gateway**: omit `ipsec` to route to the internet through a pair of private " +
 			"egress IP addresses Jamf provisions, reported in `dedicated_egress_ip_addresses`.\n\n" +
 			"The form is fixed for the life of the gateway: Jamf Security Cloud refuses to convert one into the " +
 			"other, so adding or removing `ipsec` replaces the gateway. Deleting a gateway that a custom DNS zone " +
-			"or a grouped gateway still references is also refused — drop the reference in a separate apply first." +
+			"or a grouped gateway still references is also refused; drop the reference in a separate apply first." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -191,7 +191,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			"egress_region": egressRegionAttribute(),
 			"contact": schema.SingleNestedAttribute{
 				MarkdownDescription: "**\"Contact name\"** and **\"Contact email\"** in the Jamf Security Cloud " +
-					"admin UI — who Jamf should reach about this gateway's operation.",
+					"admin UI: who Jamf should reach about this gateway's operation.",
 				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
@@ -214,7 +214,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				MarkdownDescription: "Whether the deployment is active. A disabled gateway reports its status as " +
 					"`DISABLED` and carries no traffic. Defaults to `true`. Disabling a gateway reports " +
 					"`PENDING` for a few seconds before it settles, so an apply that disables one waits for " +
-					"`DISABLED` in the same way an apply that enables one waits for `UP` — either way the " +
+					"`DISABLED` in the same way an apply that enables one waits for `UP`. Either way the " +
 					"status recorded is the settled one, not the transient.",
 				Optional: true,
 				Computed: true,
@@ -222,7 +222,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"tenant_ids": schema.SetAttribute{
 				MarkdownDescription: "IDs of the tenants granted access to this gateway. At least one, and every " +
-					"one must belong to the same organization as the credentials the provider is configured with — " +
+					"one must belong to the same organization as the credentials the provider is configured with; " +
 					"a tenant outside it is refused.",
 				Required:    true,
 				ElementType: types.StringType,
@@ -233,7 +233,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"ipsec_source_ip_addresses": schema.SetAttribute{
 				MarkdownDescription: "**\"Jamf Security Cloud IPsec source IP addresses\"** in the Jamf Security " +
-					"Cloud admin UI — the addresses IPsec traffic from Jamf Security Cloud originates from, which " +
+					"Cloud admin UI: the addresses IPsec traffic from Jamf Security Cloud originates from, which " +
 					"your firewall must allow. Supply both addresses your egress region offers for dynamic " +
 					"addressing, or one to pin a single source address. Only valid on an IPsec gateway: a dedicated " +
 					"internet gateway must leave this unset.\n\n" +
@@ -249,10 +249,11 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
 				MarkdownDescription: "The private egress IP addresses Jamf provisions for a dedicated internet " +
-					"gateway. Allocated within seconds of the gateway being created, which is roughly four and a " +
-					"half minutes before it finishes provisioning — so a populated list means the addresses are " +
-					"reserved, not that the gateway reports itself operational. Read `status` for that. Always " +
-					"empty on an IPsec gateway, wire-confirmed on 2026-08-31. Read-only.",
+					"gateway. Allocated within seconds of the gateway being created, roughly four and a half " +
+					"minutes before it finishes provisioning, so a populated list means the addresses are " +
+					"reserved rather than that the gateway reports itself operational. Read `status` for that. " +
+					"Always empty on an IPsec gateway, confirmed against Jamf Security Cloud on 2026-08-31. " +
+					"Read-only.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -286,14 +287,14 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 // does and what was observed, and does not claim Jamf supports it.
 func egressRegionAttribute() schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: "**\"Egress region\"** in the Jamf Security Cloud admin UI — the region this " +
+		MarkdownDescription: "**\"Egress region\"** in the Jamf Security Cloud admin UI: the region this " +
 			"gateway is deployed to.\n\n" +
 			"Changing it re-provisions the gateway in the new region: connectivity drops and the reported " +
 			"status returns to `PENDING`. Any dedicated egress IP addresses are replaced in place rather than " +
-			"cleared — measured at around 35 seconds after the change — so for a short window the list is " +
+			"cleared (measured at around 35 seconds after the change), so for a short window the list is " +
 			"non-empty, entirely plausible and still the old region's. The apply waits for the gateway to " +
 			"report itself operational again, which covers that window.\n\n" +
-			"Note that the published documentation states the egress region cannot be changed once a gateway is " +
+			"The published documentation states the egress region cannot be changed once a gateway is " +
 			"created. The provider allows the change because it was observed to be accepted and to " +
 			"re-provision the gateway, and because replacing the gateway instead would surrender its " +
 			"dedicated IP addresses. Treat a region change as disruptive.\n\n" +
@@ -331,10 +332,10 @@ func ipsecAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"phase_1": cipherSuiteAttribute(
-				"**\"Phase 1\"** in the Jamf Security Cloud admin UI — the cipher suite protecting the key exchange itself.",
+				"**\"Phase 1\"** in the Jamf Security Cloud admin UI: the cipher suite protecting the key exchange itself.",
 			),
 			"phase_2": cipherSuiteAttribute(
-				"**\"Phase 2\"** in the Jamf Security Cloud admin UI — the cipher suite protecting the tunnelled traffic.",
+				"**\"Phase 2\"** in the Jamf Security Cloud admin UI: the cipher suite protecting the tunnelled traffic.",
 			),
 			"jamf_side":     jamfSideAttribute(),
 			"customer_side": customerSideAttribute(),
@@ -390,7 +391,7 @@ func cipherSuiteAttribute(description string) schema.SingleNestedAttribute {
 // jamfSideAttribute builds the Jamf-side tunnel endpoint — the wire's `left`.
 func jamfSideAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Jamf Security Cloud side\"** in the Jamf Security Cloud admin UI — the endpoint " +
+		MarkdownDescription: "**\"Jamf Security Cloud side\"** in the Jamf Security Cloud admin UI: the endpoint " +
 			"Jamf presents to your VPN concentrator.",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
@@ -403,14 +404,14 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 			},
 			"ike_domain_id": schema.StringAttribute{
 				MarkdownDescription: "**\"Jamf Security Cloud IKE domain ID\"** in the Jamf Security Cloud admin " +
-					"UI — the IKE identity Jamf presents, for example `wpa.wandera.com`.",
+					"UI: the IKE identity Jamf presents, for example `wpa.wandera.com`.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"subnet": schema.StringAttribute{
-				MarkdownDescription: "**\"Jamf Security Cloud subnet\"** in the Jamf Security Cloud admin UI — the " +
+				MarkdownDescription: "**\"Jamf Security Cloud subnet\"** in the Jamf Security Cloud admin UI: the " +
 					"range all end-user traffic originates from through the tunnel, in CIDR notation. Must be a " +
 					"private range: `10.0.0.0/8` with a `/8`–`/30` prefix, `172.16.0.0/12` with `/12`–`/30`, or " +
 					"`192.168.0.0/16` with `/16`–`/30`. The range must not exist anywhere else on your network.",
@@ -420,9 +421,9 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"authentication_secret": schema.StringAttribute{
-				MarkdownDescription: "**\"Authentication secret\"** in the Jamf Security Cloud admin UI — the IPsec " +
-					"pre-shared key, applied to both ends of the tunnel. `WriteOnly` — sent to Jamf Security Cloud " +
-					"on writes but **never persisted in Terraform state**, because Jamf never returns it. Pair with " +
+				MarkdownDescription: "**\"Authentication secret\"** in the Jamf Security Cloud admin UI: the IPsec " +
+					"pre-shared key, applied to both ends of the tunnel. Write-only. It is sent to Jamf Security " +
+					"Cloud on writes and never held in Terraform state, because Jamf never returns it. Pair with " +
 					"`authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.",
 				Required:  true,
 				Sensitive: true,
@@ -432,10 +433,10 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"authentication_secret_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `authentication_secret`. Bump this integer to " +
+				MarkdownDescription: "Rotation trigger for the write-only `authentication_secret`. Bump this integer to " +
 					"force an update that re-sends the secret. Set it to `1` on create. Leaving it unset or " +
-					"unchanged means \"leave the stored key alone\" — the provider omits the secret from the next " +
-					"update so Jamf Security Cloud retains the existing one.",
+					"unchanged means \"leave the stored key alone\", so the provider omits the secret from the " +
+					"next update and Jamf Security Cloud retains the existing one.",
 				Optional: true,
 			},
 			"auth_method": schema.StringAttribute{
@@ -450,7 +451,7 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 // customerSideAttribute builds the remote-peer endpoint — the wire's `right`.
 func customerSideAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Customer side\"** in the Jamf Security Cloud admin UI — your own VPN " +
+		MarkdownDescription: "**\"Customer side\"** in the Jamf Security Cloud admin UI: your own VPN " +
 			"concentrator, and the subnets reachable through it.",
 		Required: true,
 		Attributes: map[string]schema.Attribute{
@@ -462,7 +463,7 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"ike_domain_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Your IKE domain ID\"** in the Jamf Security Cloud admin UI — the IKE " +
+				MarkdownDescription: "**\"Your IKE domain ID\"** in the Jamf Security Cloud admin UI: the IKE " +
 					"identity your concentrator presents.",
 				Required: true,
 				Validators: []validator.String{
@@ -470,7 +471,7 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"subnets": schema.SetAttribute{
-				MarkdownDescription: "**\"Customer subnets\"** in the Jamf Security Cloud admin UI — the subnets " +
+				MarkdownDescription: "**\"Customer subnets\"** in the Jamf Security Cloud admin UI: the subnets " +
 					"reachable through this gateway, in CIDR notation, usually where your applications live. At " +
 					"least one. `0.0.0.0/0` is accepted, and narrowing access on the firewall instead is the " +
 					"documented approach for most firewalls.",
@@ -482,7 +483,7 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 				},
 			},
 			"vendor": schema.StringAttribute{
-				MarkdownDescription: "**\"IPsec network vendor\"** in the Jamf Security Cloud admin UI — the VPN " +
+				MarkdownDescription: "**\"IPsec network vendor\"** in the Jamf Security Cloud admin UI: the VPN " +
 					"vendor of your concentrator. Case-sensitive. Valid values: " + markdownList(vendorValues()) + ".",
 				Required: true,
 				Validators: []validator.String{
@@ -533,21 +534,21 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 func statusAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway. Read-only, and " +
-			"live: a create or an egress-region change starts the gateway at `PENDING` — shown as **Pending** " +
-			"in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Available**, once the " +
+			"live: a create or an egress-region change starts the gateway at `PENDING` (**Pending** in the " +
+			"Jamf Security Cloud admin UI), and it settles to `UP`, shown as **Available**, once the " +
 			"infrastructure is provisioned.\n\n" +
 			"For a dedicated internet gateway the provider waits for the status to settle before finishing a " +
-			"create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — " +
-			"so state records the settled status rather than the `PENDING` both transitions pass through. An " +
-			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
-			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
-			"naming the status reached, and the status settles on a later refresh.\n\n" +
-			"**Creating** an IPsec gateway waits for `DOWN` as readily as `UP`, because `UP` is not yet within " +
+			"create or an update: for `UP` when the gateway is enabled, and for `DISABLED` when it is not. " +
+			"State therefore records the settled status rather than the `PENDING` both transitions pass " +
+			"through. An update that does not re-provision the gateway, such as a name or contact change, " +
+			"finds it already settled and waits for nothing. If a wait runs out first the apply still " +
+			"succeeds, with a warning naming the status reached, and the status settles on a later refresh.\n\n" +
+			"Creating an IPsec gateway waits for `DOWN` as readily as `UP`, because `UP` is not yet within " +
 			"reach: the tunnel's other end is configured from values this resource returns, so the " +
 			"concentrator, its NAT rules and its firewall openings all come afterwards. `DOWN` is the settled " +
-			"status until the tunnel is established, and it is what state records — not the `PENDING` the " +
-			"gateway passes through first. If you configured your side in advance the gateway may reach `UP` " +
-			"directly, which is accepted just the same. **Updating** one waits for `UP`, since by then the " +
+			"status until the tunnel is established, and it is what state records rather than the `PENDING` " +
+			"the gateway passes through first. If you configured your side in advance the gateway may reach " +
+			"`UP` directly, which is accepted just the same. Updating one waits for `UP`, since by then the " +
 			"tunnel may be established; if it is not, the apply gives up once the gateway has reported `DOWN` " +
 			"for a minute and warns, rather than holding for the whole budget.\n\n" +
 			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +

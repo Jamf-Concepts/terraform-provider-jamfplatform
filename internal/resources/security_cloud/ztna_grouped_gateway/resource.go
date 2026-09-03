@@ -81,12 +81,12 @@ func (r *GroupedGatewayResource) IdentitySchema(_ context.Context, _ resource.Id
 // Schema returns the Terraform schema for the ZTNA grouped gateway resource.
 func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Security Cloud ZTNA grouped gateway — a routing and failover group " +
+		MarkdownDescription: "Manages a Jamf Security Cloud ZTNA grouped gateway, a routing and failover group " +
 			"over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single " +
 			"gateway can, including a custom DNS zone's name servers.\n\n" +
 			"Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all " +
-			"members must be the same form — all IPsec or all internet. Deleting a member gateway while it is " +
-			"still in a group is refused." + resourcePrivileges,
+			"members must be the same form, either all IPsec or all internet. Deleting a member gateway while it " +
+			"is still in a group is refused." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Grouped gateway ID assigned by Jamf Security Cloud.",
@@ -103,11 +103,11 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"gateway_ids": schema.ListAttribute{
-				MarkdownDescription: "**\"Choose your gateways\"** in the Jamf Security Cloud admin UI — the IDs of " +
-					"the member gateways, at least two. **Order is significant**: it is the priority order the " +
+				MarkdownDescription: "**\"Choose your gateways\"** in the Jamf Security Cloud admin UI: the IDs of " +
+					"the member gateways, at least two. Order is significant. It is the priority order the " +
 					"`First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. " +
 					"Jamf Security Cloud stores the order exactly as given.\n\n" +
-					"Members must be your own dedicated gateways, all of the same form — mixing an IPsec gateway " +
+					"Members must be your own dedicated gateways, all of the same form, so mixing an IPsec gateway " +
 					"with an internet one is refused, and so is naming one of Jamf's shared gateways.",
 				Required:    true,
 				ElementType: types.StringType,
@@ -117,11 +117,11 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"routing_strategy": schema.StringAttribute{
-				MarkdownDescription: "**\"Routing strategy\"** in the Jamf Security Cloud admin UI — which member " +
+				MarkdownDescription: "**\"Routing strategy\"** in the Jamf Security Cloud admin UI. Which member " +
 					"a device uses:\n\n" +
-					"- `Nearest` — the geographically closest available member.\n" +
-					"- `Random` — a random available member, for load balancing.\n" +
-					"- `First available` — the first available member in `gateway_ids` order, failing over to the " +
+					"- `Nearest`: the geographically closest available member.\n" +
+					"- `Random`: a random available member, for load balancing.\n" +
+					"- `First available`: the first available member in `gateway_ids` order, failing over to the " +
 					"next and back again after `required_gateway_stability`.",
 				Required: true,
 				Validators: []validator.String{
@@ -129,9 +129,9 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 				},
 			},
 			"required_gateway_stability": schema.StringAttribute{
-				MarkdownDescription: "**\"Required gateway stability\"** in the Jamf Security Cloud admin UI — how " +
+				MarkdownDescription: "**\"Required gateway stability\"** in the Jamf Security Cloud admin UI: how " +
 					"long a recovered member must stay healthy before traffic returns to it. Applies to the " +
-					"`First available` strategy, and is **required whatever the strategy**: Jamf Security Cloud " +
+					"`First available` strategy, and is required whatever the strategy: Jamf Security Cloud " +
 					"rejects a create without it even when the value is ignored. Valid values: " +
 					markdownList(gatewayStabilityValues()) + ".",
 				Required: true,

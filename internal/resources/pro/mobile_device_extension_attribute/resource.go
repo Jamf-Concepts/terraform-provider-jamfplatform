@@ -80,7 +80,7 @@ func (r *MobileDeviceExtensionAttributeResource) ConfigValidators(ctx context.Co
 // Schema returns the Terraform schema for the mobile device extension attribute.
 func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device extension attribute — a custom inventory field collected from managed mobile devices. Mirrors the Settings → Mobile device management → Extension Attributes UI. Mobile-device EAs cannot run scripts, so there is no script/enabled field. The `input_type` acts as a discriminator: `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. A plan-time validator enforces these rules before apply." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro mobile device extension attribute, a custom inventory field collected from managed mobile devices (Settings → Mobile device management → Extension Attributes). Mobile device extension attributes cannot run scripts, so there is no script or enabled field. `input_type` acts as a discriminator: `popup_menu_choices` is valid only with `POPUP`, and `directory_service_attribute` (together with `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. A plan-time validator enforces both rules before apply." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Mobile device extension attribute ID assigned by Jamf Pro.",
@@ -90,14 +90,14 @@ func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Extension attribute display name. Must be unique within the tenant.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Display name for the extension attribute. Must be unique within the tenant.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Free-text description of the extension attribute. Omit to leave any existing value untouched; it is not cleared on update. Set `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -126,7 +126,7 @@ func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req
 				},
 			},
 			"popup_menu_choices": schema.SetAttribute{
-				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched (they are not cleared on an unrelated update); set to `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.",
+				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP`, and optional even then. Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched; they are not cleared on an unrelated update. Set `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,

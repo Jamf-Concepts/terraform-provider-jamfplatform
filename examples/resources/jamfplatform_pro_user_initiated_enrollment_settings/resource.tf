@@ -41,7 +41,7 @@ resource "jamfplatform_pro_user_initiated_enrollment_settings" "this" {
   # language code. Set only the fields you want to override; unset fields are
   # seeded from the current English messaging when a language is first added,
   # and otherwise left at their current server value. The built-in English
-  # language always exists and is never removed — set the "en" key to edit its
+  # language always exists and is never removed. Set the "en" key to edit its
   # text, or omit it to leave it untouched.
   messaging_languages = {
     fr = {

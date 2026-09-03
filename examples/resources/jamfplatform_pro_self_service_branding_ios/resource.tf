@@ -1,5 +1,5 @@
 # Self Service iOS & iPadOS branding (Settings > Self Service > Branding > iOS & iPadOS Branding).
-# Singleton — one configuration per tenant. main_header + colour codes are required.
+# One configuration per tenant. main_header + colour codes are required.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png"
 }

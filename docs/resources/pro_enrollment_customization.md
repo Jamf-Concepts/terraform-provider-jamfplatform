@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_enrollment_customization Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (icon_source, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (branding_settings.icon_url); the two are mutually exclusive.
+  Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (icon_source, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (branding_settings.icon_url); the two are mutually exclusive.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_enrollment_customization (Resource)
 
-Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.
+Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.
 
 **Required Jamf permissions**
 
@@ -26,7 +26,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Manages a Jamf Pro enrollment customization — the parent record carrying the
+# Manages a Jamf Pro enrollment customization: the parent record carrying the
 # branding palette plus any combination of text, LDAP, and SSO authentication
 # panes shown to users during enrollment.
 #
@@ -42,7 +42,7 @@ resource "jamfplatform_pro_enrollment_customization" "welcome" {
   description  = "Default enrollment experience for staff devices"
 
   # Either set icon_source (local path) OR branding_settings.icon_url
-  # (pre-uploaded URL) — not both. Leave both unset to skip the icon.
+  # (pre-uploaded URL), not both. Leave both unset to skip the icon.
   icon_source = "${path.module}/welcome.png"
 
   branding_settings = {
@@ -102,11 +102,11 @@ output "enrollment_customization_id" {
 
 ### Optional
 
-- `icon_source` (String) Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url` — supply one or the other, not both. When neither is set the customization is created without an icon.
+- `icon_source` (String) Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.
 - `ldap_panes` (Attributes List) Optional LDAP authentication pane. At most one authentication pane (LDAP or SSO) may be configured per customization; supplying both `ldap_panes` and `sso_panes` is rejected at plan time. (see [below for nested schema](#nestedatt--ldap_panes))
 - `site_id` (String) Optional Jamf Pro site ID to associate with this customization. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors that value into state.
 - `sso_panes` (Attributes List) Optional SSO authentication pane. At most one authentication pane (LDAP or SSO) may be configured per customization; supplying both `sso_panes` and `ldap_panes` is rejected at plan time. (see [below for nested schema](#nestedatt--sso_panes))
-- `text_panes` (Attributes List) Ordered list of text panes shown during enrollment. Each pane is identified server-side by `id` after creation; the framework reconciles panes by list position, so reordering elements in the middle of the list will trigger a churn of create + delete operations. Append new panes to the end of the list to avoid churn. (see [below for nested schema](#nestedatt--text_panes))
+- `text_panes` (Attributes List) Ordered list of text panes shown during enrollment. Jamf Pro assigns each pane an `id` after creation, and the framework reconciles panes by list position, so reordering elements in the middle of the list will trigger a churn of create + delete operations. Append new panes to the end of the list to avoid churn. (see [below for nested schema](#nestedatt--text_panes))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -144,7 +144,7 @@ Required:
 
 Optional:
 
-- `directory_service_groups` (Attributes List) **"Directory Service Groups"** in the Jamf Pro admin UI. Optional allow-list restricting enrollment to members of specific directory-service groups. Jamf Pro de-duplicates entries server-side by `(group_name, directory_service_server_id)` and does not validate that the supplied server ID exists. (see [below for nested schema](#nestedatt--ldap_panes--directory_service_groups))
+- `directory_service_groups` (Attributes List) **"Directory Service Groups"** in the Jamf Pro admin UI. Optional allow-list restricting enrollment to members of specific directory-service groups. Jamf Pro de-duplicates entries by `(group_name, directory_service_server_id)` and does not validate that the supplied server ID exists. (see [below for nested schema](#nestedatt--ldap_panes--directory_service_groups))
 
 Read-Only:
 
@@ -174,7 +174,7 @@ Optional:
 - `access_group_name` (String) IdP group name allowed to enrol. Required when `enrollment_access = "specific_group"`; ignored otherwise.
 - `account_full_name_attribute` (String) **"Account Full Name"** in the Jamf Pro admin UI. SSO claim used as the account full name on the enrolled device.
 - `account_name_attribute` (String) **"Account Name"** in the Jamf Pro admin UI. SSO claim used as the account short name on the enrolled device.
-- `pass_user_info_to_jamf_connect` (Boolean) **"Enable Jamf Pro to pass user information to Jamf Connect"** in the Jamf Pro admin UI. Toggle controlling whether enrolment user info is forwarded to Jamf Connect.
+- `pass_user_info_to_jamf_connect` (Boolean) **"Enable Jamf Pro to pass user information to Jamf Connect"** in the Jamf Pro admin UI. Whether enrolment user info is forwarded to Jamf Connect.
 
 Read-Only:
 

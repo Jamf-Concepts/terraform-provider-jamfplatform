@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_jamf_protect Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing api_url, client_id, or bumping password_wo_version re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. Unregistering note: destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the jamfplatform_pro_jamf_protect_plans data source). Import with terraform import jamfplatform_pro_jamf_protect.<name> singleton.
+  Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). One registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing api_url, client_id, or bumping password_wo_version re-registers in place: Jamf Pro overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. Destroying this resource removes the registration only. Configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the jamfplatform_pro_jamf_protect_plans data source). Import with terraform import jamfplatform_pro_jamf_protect.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_jamf_protect (Resource)
 
-Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. **Unregistering note:** destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`.
+Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). One registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place: Jamf Pro overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. Destroying this resource removes the registration only. Configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -27,12 +27,12 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Registers Jamf Pro with a Jamf Protect instance (Settings → Jamf apps →
-# Jamf Protect). Singleton — one registration per tenant. Creating the
-# resource validates the credentials live against Protect and triggers an
-# initial plans sync; destroying it unregisters (configuration profiles
-# already created from Protect plans remain in Jamf Pro).
+# Jamf Protect). One registration per tenant. Creating the resource validates
+# the credentials live against Protect and triggers an initial plans sync.
+# Destroying it unregisters, and configuration profiles already created from
+# Protect plans remain in Jamf Pro.
 #
-# `password` is `WriteOnly` — sent to Jamf Pro on writes but never persisted
+# `password` is `WriteOnly`, sent to Jamf Pro on writes but never persisted
 # in Terraform state. Bump `password_wo_version` to re-register with a rotated
 # password on the next apply. Changing `api_url` or `client_id` also
 # re-registers in place.
@@ -42,7 +42,7 @@ resource "jamfplatform_pro_jamf_protect" "example" {
   password            = sensitive("change-me")
   password_wo_version = 1
 
-  # "Automatically deploy the Jamf Protect PKG with plans" — server default false.
+  # "Automatically deploy the Jamf Protect PKG with plans": server default false.
   auto_install = false
 }
 ```
@@ -54,9 +54,9 @@ resource "jamfplatform_pro_jamf_protect" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `api_url` (String) **"Jamf Protect API URL"** in the Jamf Pro admin UI. The Jamf Protect tenant's GraphQL API endpoint, e.g. `https://instance.protect.jamfcloud.com/graphql`. The server echoes it verbatim, so normal drift detection applies. Changing it triggers an in-place re-register.
-- `client_id` (String) **"Client ID"** in the Jamf Pro admin UI. Jamf Protect API client identifier — create an API client in the Jamf Protect web console to obtain it. Changing it triggers an in-place re-register.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Jamf Protect API client password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**, and the API never returns it. The only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger an in-place re-register carrying the current `password`).
+- `api_url` (String) **"Jamf Protect API URL"** in the Jamf Pro admin UI. The Jamf Protect tenant's GraphQL API address, e.g. `https://instance.protect.jamfcloud.com/graphql`. Jamf Pro echoes it verbatim, so normal drift detection applies. Changing it triggers an in-place re-register.
+- `client_id` (String) **"Client ID"** in the Jamf Pro admin UI. Jamf Protect API client identifier. Create an API client in the Jamf Protect web console to obtain it. Changing it triggers an in-place re-register.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Jamf Protect API client password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state, and never returned on read. Rotate the stored password by bumping the companion `password_wo_version` integer, which triggers an in-place re-register carrying the current `password`.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force an in-place re-register that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`.
 
 ### Optional
@@ -68,9 +68,9 @@ resource "jamfplatform_pro_jamf_protect" "example" {
 
 - `api_client_name` (String) Display name of the API client, as configured in the Jamf Protect web console. Returned by Jamf Pro; not user-settable.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `last_sync_time` (String) Timestamp of the most recent plans sync. Returned by Jamf Pro; volatile — it changes whenever a sync runs.
-- `platform_plan_sync` (Boolean) Whether platform plan sync is enabled. Read-only — the API rejects writes to this field and the admin UI has no control for it.
-- `registration_id` (String) Server-minted registration identifier. Returned by Jamf Pro; not user-settable. **Not stable** — a new identifier is minted on every re-register.
+- `last_sync_time` (String) Timestamp of the most recent plans sync. Returned by Jamf Pro; volatile, since it changes whenever a sync runs.
+- `platform_plan_sync` (Boolean) Whether platform plan sync is enabled. Read-only: Jamf Pro rejects writes to this field and the admin UI has no control for it.
+- `registration_id` (String) Registration identifier assigned by Jamf Pro; not user-settable. Not stable: a new identifier is minted on every re-register.
 - `sync_status` (String) Status of the most recent plans sync. One of `UNKNOWN`, `IN_PROGRESS`, `COMPLETED`, `ERROR`. Returned by Jamf Pro; volatile.
 
 <a id="nestedatt--timeouts"></a>

@@ -66,7 +66,7 @@ func (r *ImpactAlertNotificationSettingsResource) IdentitySchema(ctx context.Con
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Impact Alert Notification settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Impact Alert Notification settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -89,9 +89,9 @@ func alertToggleAttribute(description string) schema.BoolAttribute {
 func (r *ImpactAlertNotificationSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). " +
-			"Singleton — one record per tenant. " +
-			"**Omit = preserve** — each toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. " +
-			"**Dependency:** a confirmation-code toggle requires its matching alert toggle to be `true` — Jamf Pro rejects `*_confirmation_code_enabled = true` while the matching `*_alert_enabled` is `false`. **To turn an alert off, set its matching `*_confirmation_code_enabled = false` in the same apply** — omitting the confirmation-code toggle preserves the prior `true` and the apply fails with a 400. " +
+			"One record per tenant. " +
+			"A toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the toggles you declare. A boolean has no \"unset\", so omit it to preserve the value or set `true`/`false` to change it. " +
+			"A confirmation-code toggle requires its matching alert toggle to be `true`. Jamf Pro rejects `*_confirmation_code_enabled = true` while the matching `*_alert_enabled` is `false`. **To turn an alert off, set its matching `*_confirmation_code_enabled = false` in the same apply.** Omitting the confirmation-code toggle preserves the prior `true` and Jamf Pro rejects the apply. " +
 			"Import with `terraform import jamfplatform_pro_impact_alert_notification_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

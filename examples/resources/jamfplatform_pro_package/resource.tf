@@ -1,7 +1,7 @@
 # Cloud distribution point upload from a local path. The provider uploads
 # the file to the Jamf Cloud Distribution Point, then waits until Jamf Pro
 # has calculated every hash and `cloud_transfer_status` becomes "READY".
-# The hash attributes are read-only in this mode — setting any of them in
+# The hash attributes are read-only in this mode. Setting any of them in
 # configuration is rejected before the change runs.
 resource "jamfplatform_pro_package" "cloud_dp_local" {
   display_name        = "MyApp 1.0.0"
@@ -13,8 +13,8 @@ resource "jamfplatform_pro_package" "cloud_dp_local" {
   package_file_source = "/path/to/MyApp-1.0.0.pkg"
 
   # Optional integrity check: verified against the file locally before
-  # anything is uploaded. A mismatch fails the apply and skips the upload —
-  # useful for catching on-disk corruption.
+  # anything is uploaded. A mismatch fails the apply and skips the upload,
+  # which catches on-disk corruption.
   package_file_source_checksum = "0123456789abcdef..." # hex sha3-512
 
   # Uploads can take minutes for very large files. The upload inherits this

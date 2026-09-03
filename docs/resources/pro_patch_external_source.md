@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_patch_external_source Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro patch external source, configured in the UI under Settings → Computer management → Patch management in the Patch External Source section (the New External Patch Source form). External patch sources host third-party software title definitions consumed by patch management.
+  Manages a Jamf Pro patch external source, configured in the UI under Settings → Computer management → Patch management, in the Patch External Source section (the New External Patch Source form). An external patch source hosts third-party software title definitions for patch management to consume.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_patch_external_source (Resource)
 
-Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management.
+Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management**, in the **Patch External Source** section (the **New External Patch Source** form). An external patch source hosts third-party software title definitions for patch management to consume.
 
 **Required Jamf permissions**
 
@@ -51,10 +51,10 @@ resource "jamfplatform_pro_patch_external_source" "custom" {
 
 ### Optional
 
-- `certificate_validation_enabled` (Boolean) Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI "Validate Software Title Definitions"); unsigned definitions are not downloaded. Server-defaulted when omitted.
-- `enabled` (Boolean) Whether the patch external source is enabled. Server-defaulted when omitted.
-- `port` (Number) TCP port of the external patch source (the port portion of the UI "Server and Port" field). May be left unset; an empty value is treated as unset. Must be at least 1 when set — Jamf Pro echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.
-- `ssl_enabled` (Boolean) Whether the source is contacted over SSL (UI "Use SSL"). Server-defaulted when omitted.
+- `certificate_validation_enabled` (Boolean) Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI "Validate Software Title Definitions"); unsigned definitions are not downloaded. Jamf Pro applies its own default when omitted.
+- `enabled` (Boolean) Whether the patch external source is enabled. Jamf Pro applies its own default when omitted.
+- `port` (Number) TCP port of the external patch source (the port portion of the UI "Server and Port" field). May be left unset, and an empty value is treated as unset. Must be at least 1 when set. Jamf Pro reports an unset port as empty, which the provider stores as null, so an explicit `0` is rejected at plan time to keep that mapping consistent.
+- `ssl_enabled` (Boolean) Whether the source is contacted over SSL (UI "Use SSL"). Jamf Pro applies its own default when omitted.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

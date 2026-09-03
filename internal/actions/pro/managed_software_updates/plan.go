@@ -114,9 +114,9 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 				MarkdownDescription: "The install action to take. One of: " +
 					"`DOWNLOAD_ONLY` (download to devices only), " +
 					"`DOWNLOAD_INSTALL` (download and install), " +
-					"`DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer — see `max_deferrals`), " +
+					"`DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer; see `max_deferrals`), " +
 					"`DOWNLOAD_INSTALL_RESTART` (download, install, and restart), " +
-					"`DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install — see `force_install_local_date_time`).",
+					"`DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install; see `force_install_local_date_time`).",
 				Validators: []validator.String{
 					stringvalidator.OneOf(updateActions...),
 				},
@@ -127,8 +127,8 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 					"`LATEST_ANY` (latest version each device is eligible for), " +
 					"`LATEST_MAJOR` (latest major version), " +
 					"`LATEST_MINOR` (latest minor version), " +
-					"`SPECIFIC_VERSION` (a specific OS version — set `specific_version`), " +
-					"`CUSTOM_VERSION` (a custom OS version — set `specific_version`).",
+					"`SPECIFIC_VERSION` (a specific OS version; set `specific_version`), " +
+					"`CUSTOM_VERSION` (a custom OS version; set `specific_version`).",
 				Validators: []validator.String{
 					stringvalidator.OneOf(versionTypes...),
 				},
@@ -143,7 +143,7 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 			"build_version": actionschema.StringAttribute{
 				Optional: true,
 				MarkdownDescription: "A specific OS build to enforce, paired with `specific_version`. " +
-					"Only valid when `version_type` is `CUSTOM_VERSION` — Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.",
+					"Only valid when `version_type` is `CUSTOM_VERSION`. Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},

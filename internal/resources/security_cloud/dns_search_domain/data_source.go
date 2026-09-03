@@ -40,17 +40,17 @@ func (d *SearchDomainDataSource) Metadata(_ context.Context, req datasource.Meta
 func (d *SearchDomainDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads the **\"Search domain\"** under Custom DNS in the Jamf Security Cloud admin " +
-			"UI — the domain used to complete an incomplete host name for apps that only accept short host " +
+			"UI: the domain that completes an incomplete host name for apps that only accept short host " +
 			"names.\n\n" +
 			"There is one search domain per tenant, so this data source takes no arguments. Reading it when no " +
 			"search domain is configured is an error." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Always `singleton` — there is one search domain per tenant.",
+				MarkdownDescription: "Always `singleton`, since a tenant holds one search domain.",
 				Computed:            true,
 			},
 			"domain_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Domain name\"** in the Jamf Security Cloud admin UI — the configured " +
+				MarkdownDescription: "**\"Domain name\"** in the Jamf Security Cloud admin UI: the configured " +
 					"search domain.",
 				Computed: true,
 			},

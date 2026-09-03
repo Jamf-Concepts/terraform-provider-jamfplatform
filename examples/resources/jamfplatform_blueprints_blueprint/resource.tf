@@ -1,9 +1,9 @@
-# Blueprints are authored with `component_blocks` — an ordered list where each block appears as a
+# Blueprints are authored with `component_blocks`, an ordered list where each block appears as a
 # step in the Jamf Blueprints editor, with its own name, its own optional activation condition, and
 # its own components. Blocks are applied in the order listed, and a block may contain more than one
 # component.
 
-# Single block — Software Update Settings
+# Single block: Software Update Settings
 resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   name        = "Software Update Settings"
   description = "Managed by Terraform"
@@ -41,7 +41,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   ]
 }
 
-# Two components in a single block — a block may carry more than one component.
+# Two components in a single block. A block may carry more than one component.
 resource "jamfplatform_blueprints_blueprint" "baseline_restrictions" {
   name        = "Baseline Restrictions"
   description = "Managed by Terraform"
@@ -65,7 +65,7 @@ resource "jamfplatform_blueprints_blueprint" "baseline_restrictions" {
   ]
 }
 
-# Multiple blocks — each is a separate step, applied in order. The same component type may appear in
+# Multiple blocks. Each is a separate step, applied in order. The same component type may appear in
 # more than one block, and each block can carry its own activation condition.
 resource "jamfplatform_blueprints_blueprint" "multi_step" {
   name        = "Multi-Step Components"
@@ -174,7 +174,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 # https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
 #
 # Device groups in the expression are referenced by their Platform UUID, so a managed device group
-# can be referenced by its `id` with ordinary Terraform interpolation — keeping the condition in
+# can be referenced by its `id` with ordinary Terraform interpolation, keeping the condition in
 # sync with the group it points at.
 resource "jamfplatform_device_group" "shared_ipads" {
   name        = "Shared iPads"
@@ -213,7 +213,7 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 }
 
 # Deliver a managed AI tool configuration. The blueprint pins a published policy
-# version, so interpolating `published_version` keeps the two moving together —
+# version, so interpolating `published_version` keeps the two moving together.
 # Jamf refuses a blueprint that names a version which does not exist.
 data "jamfplatform_ai_governance_tool" "claude_code" {
   id = "com.anthropic.claudecode"

@@ -3,7 +3,7 @@
 page_title: "jamfplatform_ai_governance_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf AI Governance policy — the managed configuration for one AI tool, such as Claude Code, Claude Desktop or OpenAI Codex.
+  Manages a Jamf AI Governance policy, the managed configuration for one AI tool such as Claude Code, Claude Desktop or OpenAI Codex.
   A policy carries a draft and a history of published versions. Applying a change saves the draft and, unless publish is disabled, publishes it as a new version. Deploying a published version to devices is a separate step: add an AI Governance component to a blueprint and reference the policy's id and published_version. Nothing reaches a device until a blueprint that names the policy is deployed.
   The settings_json body is the tool vendor's own configuration format, checked during terraform plan against the schema Jamf publishes for the tool and schema_version. See the AI Governance policies guide ../guides/ai-governance-policies for where each tool's settings are documented.
   Required Jamf permissions
@@ -15,7 +15,7 @@ description: |-
 
 # jamfplatform_ai_governance_policy (Resource)
 
-Manages a Jamf AI Governance policy — the managed configuration for one AI tool, such as Claude Code, Claude Desktop or OpenAI Codex.
+Manages a Jamf AI Governance policy, the managed configuration for one AI tool such as Claude Code, Claude Desktop or OpenAI Codex.
 
 A policy carries a draft and a history of published versions. Applying a change saves the draft and, unless `publish` is disabled, publishes it as a new version. Deploying a published version to devices is a separate step: add an **AI Governance** component to a blueprint and reference the policy's `id` and `published_version`. Nothing reaches a device until a blueprint that names the policy is deployed.
 
@@ -95,30 +95,30 @@ output "claude_code_engineering_deployable_version" {
 ### Required
 
 - `name` (String) **"Name"** in the Jamf Account admin UI. Policy names are not required to be unique, so prefer the policy ID when referencing a policy elsewhere.
-- `schema_version` (String) The version of the tool's settings format that `settings_json` is written against, such as `2026-08-14`. Must be one of the versions Jamf offers for the tool — read them from the `jamfplatform_ai_governance_tool` data source. A policy left on an older version than the tool's current one still works, and reports `schema_drift`.
+- `schema_version` (String) The version of the tool's settings format that `settings_json` is written against, such as `2026-08-14`. Must be one of the versions Jamf offers for the tool. Read them from the `jamfplatform_ai_governance_tool` data source. A policy left on an older version than the tool's current one still works, and reports `schema_drift`.
 - `settings_json` (String) The tool's settings as a JSON object string. Author it with `jsonencode({ ... })`, `file("settings.json")`, or by copying the configuration exported from the Jamf Account admin UI. Only the settings you include are managed; the tool's own defaults apply to the rest.
 
-Formatting and key order are not significant — the value is compared as JSON, so reindenting it produces no change. Contents are checked during `terraform plan` against the tool's published schema for `schema_version`: a setting of the wrong type or outside its accepted values is an error, and a setting the schema does not declare is a warning, because a tool may accept settings added after that schema version was published.
+Formatting and key order are not significant: the value is compared as JSON, so reindenting it produces no change. Contents are checked during `terraform plan` against the tool's published schema for `schema_version`: a setting of the wrong type or outside its accepted values is an error, and a setting the schema does not declare is a warning, because a tool may accept settings added after that schema version was published.
 
 Keep credentials out of these settings: the value is held in Terraform state and shown in plan output in cleartext. Where a tool needs an API key, prefer a setting that names a command to fetch the key over one that carries the key itself.
-- `tool_id` (String) **"Product"** in the Jamf Account admin UI — the identifier of the AI tool this policy configures, such as `com.anthropic.claudecode`. Read the available identifiers from the `jamfplatform_ai_governance_tools` data source. Changing the tool replaces the policy, because a policy's tool is fixed once it exists.
+- `tool_id` (String) **"Product"** in the Jamf Account admin UI: the identifier of the AI tool this policy configures, such as `com.anthropic.claudecode`. Read the available identifiers from the `jamfplatform_ai_governance_tools` data source. Changing the tool replaces the policy, because a policy's tool is fixed once it exists.
 
 ### Optional
 
-- `description` (String) **"Description"** in the Jamf Account admin UI — what this policy is for.
-- `publish` (Boolean) Whether to publish a new version after saving changes. Defaults to `true`, so an applied policy is always deployable. Publishing only happens when something actually changed — an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished changes exist.
+- `description` (String) **"Description"** in the Jamf Account admin UI: what this policy is for.
+- `publish` (Boolean) Whether to publish a new version after saving changes. Defaults to `true`, so an applied policy is always deployable. Publishing only happens when something actually changed; an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished changes exist.
 
-While this is enabled, a draft that already exists is published by the next apply — whether it was left behind by a publish that failed, or saved in the Jamf Account admin UI. Such a plan shows `has_draft` and `published_version` as known after apply even when nothing else changed.
+While this is enabled, a draft that already exists is published by the next apply, whether it was left behind by a publish that failed or saved in the Jamf Account admin UI. Such a plan shows `has_draft` and `published_version` as known after apply even when nothing else changed.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
 - `created_at` (String) When the policy was created, in RFC 3339 format.
-- `has_draft` (Boolean) Whether the policy holds changes that have not been published. `false` after a successful apply with `publish` enabled. A draft that outlives an apply — because publishing it failed, or because someone saved one in the Jamf Account admin UI — is published by the next apply while `publish` is enabled.
+- `has_draft` (Boolean) Whether the policy holds changes that have not been published. `false` after a successful apply with `publish` enabled. A draft that outlives an apply is published by the next apply while `publish` is enabled, whether publishing it failed or someone saved one in the Jamf Account admin UI.
 - `id` (String) Policy ID assigned by Jamf. Reference this from a blueprint's AI Governance component.
-- `published_version` (Number) **"Published version"** in the Jamf Account admin UI — the number of the most recently published version, counting from 1. Null until the policy is first published. This is the value a blueprint's AI Governance component pins.
+- `published_version` (Number) **"Published version"** in the Jamf Account admin UI: the number of the most recently published version, counting from 1. Null until the policy is first published. This is the value a blueprint's AI Governance component pins.
 
-Any change to the policy plans this as known after apply, because whether a version is minted depends on how Jamf compares the settings — and on whether anyone published in the admin UI meanwhile. An apply that publishes nothing leaves the number unchanged.
+Any change to the policy plans this as known after apply, because whether a version is minted depends on how Jamf compares the settings, and on whether anyone published in the admin UI meanwhile. An apply that publishes nothing leaves the number unchanged.
 - `schema_drift` (Boolean) Whether `schema_version` is behind the version Jamf now offers for the tool. The policy keeps working; moving it forward means setting `schema_version` to the current version and reconciling `settings_json` with it.
 - `updated_at` (String) When the policy was last changed, in RFC 3339 format.
 

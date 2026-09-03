@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_computer_inventory_collection_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). Singleton — one record per tenant. Backed by the V2 API. application_search_paths covers custom application search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to APP). Import with terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton.
+  Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). One record per tenant. application_search_paths covers custom application search paths only. Jamf Pro does not expose Fonts or Plug-ins custom paths here, and the scope is fixed to APP. Import with terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_pro_computer_inventory_collection_settings (Resource)
 
-Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). Singleton — one record per tenant. Backed by the V2 API. `application_search_paths` covers custom **application** search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to `APP`). Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`.
+Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). One record per tenant. `application_search_paths` covers custom application search paths only. Jamf Pro does not expose Fonts or Plug-ins custom paths here, and the scope is fixed to `APP`. Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -61,7 +61,7 @@ resource "jamfplatform_pro_computer_inventory_collection_settings" "this" {
 ### Optional
 
 - `allow_jamf_binary_user_and_location_changes` (Boolean) Allow local administrators to use the jamf binary recon verb to change User and Location inventory information in Jamf Pro (Advanced).
-- `application_search_paths` (Set of String) Custom **application** search paths used when collecting applications (Software → Applications → Custom Search Paths). Built-in paths (e.g. `/Applications/`, `/System/Applications/`) are managed by Jamf Pro and are not included here. Changing an entry replaces it (the API has no path-update endpoint). Omit the attribute to leave the tenant's custom paths unmanaged; set it to `[]` to remove all custom application paths.
+- `application_search_paths` (Set of String) Custom application search paths used when collecting applications (Software → Applications → Custom Search Paths). Built-in paths such as `/Applications/` and `/System/Applications/` are managed by Jamf Pro and are not included here. Changing an entry replaces it, because Jamf Pro cannot update a path in place. Omit the attribute to leave the tenant's custom paths unmanaged; set it to `[]` to remove all custom application paths.
 - `collect_active_services` (Boolean) Collect active services.
 - `collect_application_usage_information` (Boolean) Collect Application Usage Information.
 - `collect_available_software_updates` (Boolean) Collect available software updates.
@@ -80,7 +80,7 @@ resource "jamfplatform_pro_computer_inventory_collection_settings" "this" {
 ### Read-Only
 
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `include_software_id` (Boolean) Whether the inventory submission includes a software identifier. Server-managed; exposed read-only.
+- `include_software_id` (Boolean) Whether the inventory submission includes a software identifier. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

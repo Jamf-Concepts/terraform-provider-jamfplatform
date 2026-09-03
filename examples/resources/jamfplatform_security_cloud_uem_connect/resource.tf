@@ -2,7 +2,7 @@
 # Security Cloud, and can signal device risk back to Jamf Pro.
 #
 # A tenant holds one integration, so this configuration declares one. Where an
-# integration already exists, import it rather than adding a second — a second is
+# integration already exists, import it rather than adding a second. A second is
 # refused. See import.sh.
 
 # Naming the Jamf Pro tenant is the preferred way to authenticate: Jamf Security
@@ -31,7 +31,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   #
   #     # The secret is write-only: it is sent on apply and never stored in state,
   #     # so there is nothing to compare against. Increment this to send a rotated
-  #     # secret — Jamf Security Cloud cannot update the credentials of an
+  #     # secret. Jamf Security Cloud cannot update the credentials of an
   #     # integration that already exists, so doing so replaces the integration and
   #     # briefly interrupts syncing.
   #     client_secret_wo_version = 1
@@ -46,7 +46,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # Send each device's risk level back to Jamf Pro, so Jamf Pro can act on it.
   device_risk_uem_signaling_enabled = true
 
-  # Omit user_data_field_mapping entirely for Jamf's defaults — the same thing the "Use
+  # Omit user_data_field_mapping entirely for Jamf's defaults, the same thing the "Use
   # default data field mapping" checkbox selects. Set it to read a field from
   # somewhere else; here, building an address for devices Jamf Pro has no email for.
   user_data_field_mapping = {
@@ -66,7 +66,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # entry it matches. Devices matching nothing join the default group.
   #
   # uem_group_id names a Jamf Pro group as computer_ or mobile_ followed by the
-  # group's number — which composes straight out of a jamfplatform_device_group,
+  # group's number, which composes straight out of a jamfplatform_device_group,
   # whose device_type is already "computer" or "mobile" and whose jamf_pro_id is that
   # number. Better than a hard-coded "computer_12", which means nothing to a reader
   # and silently stops matching if the group is ever recreated.
@@ -76,9 +76,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # after creating the group may need a second run.
   #
   # Jamf Security Cloud verifies neither side of a mapping exists, so a wrong ID is
-  # accepted and simply never matches — nothing will tell you it is wrong. That is
-  # the argument for referencing a jamfplatform_security_cloud_device_group rather
-  # than pasting a UUID: Terraform then guarantees the group exists, and creates it
+  # accepted and never matches; nothing will tell you it is wrong. That is the
+  # argument for referencing a jamfplatform_security_cloud_device_group rather than
+  # pasting a UUID: Terraform then guarantees the group exists, and creates it
   # before the mapping that names it.
   group_membership_mapping = {
     enabled = true
@@ -100,7 +100,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   }
 }
 
-# The Jamf Security Cloud side of each mapping. These hold nothing but a name —
+# The Jamf Security Cloud side of each mapping. These hold nothing but a name;
 # membership comes from the mapping above.
 resource "jamfplatform_security_cloud_device_group" "executives" {
   name = "Executives"

@@ -81,7 +81,7 @@ func (r *ClassResource) IdentitySchema(ctx context.Context, req resource.Identit
 // the Jamf Pro admin UI labels; user-facing descriptions are UI-aligned.
 func (r *ClassResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro class — the \"Classes\" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro class: the \"Classes\" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers by username, and student, teacher and mobile device groups by ID. Membership is authoritative, so each set is applied in full on every change. Classes synchronised from a roster in Apple School Manager are managed by that sync and should not be managed with this resource." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Class ID assigned by Jamf Pro.",
@@ -89,18 +89,18 @@ func (r *ClassResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Display name for the class; must be unique within the tenant.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Must be unique within the tenant.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description for the class.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Free-text description for the class.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the class. Use `-1` for \"None\" (the default).",
+				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Site ID scoping the class. Use `-1` for \"None\", the default.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString(noSiteID),
@@ -123,27 +123,27 @@ func (r *ClassResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 			// usernames case-insensitively and may echo a different casing; the
 			// provider preserves the configured casing to avoid spurious drift.
 			"students": schema.SetAttribute{
-				MarkdownDescription: "**\"Students\"** in the Jamf Pro admin UI. Usernames of the students assigned to the class. Authoritative: the full set is applied on every change, so removing a username removes the member and omitting the attribute leaves the class with no students. Unrecognised usernames are created as Jamf Pro users.",
+				MarkdownDescription: "**\"Students\"** in the Jamf Pro admin UI. Usernames of the students assigned to the class. The full set is applied on every change: removing a username removes the member, and omitting the attribute leaves the class with no students. Unrecognised usernames are created as Jamf Pro users.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
 			"teachers": schema.SetAttribute{
-				MarkdownDescription: "**\"Teachers\"** in the Jamf Pro admin UI. Usernames of the teachers assigned to the class. Authoritative: the full set is applied on every change, so removing a username removes the member and omitting the attribute leaves the class with no teachers. Unrecognised usernames are created as Jamf Pro users.",
+				MarkdownDescription: "**\"Teachers\"** in the Jamf Pro admin UI. Usernames of the teachers assigned to the class. The full set is applied on every change: removing a username removes the member, and omitting the attribute leaves the class with no teachers. Unrecognised usernames are created as Jamf Pro users.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
 			"student_group_ids": schema.SetAttribute{
-				MarkdownDescription: "**\"Student Groups\"** in the Jamf Pro admin UI. Jamf Pro user group IDs (as strings) assigned as student groups. Authoritative: the full set is applied on every change. Referenced IDs must already exist.",
+				MarkdownDescription: "**\"Student Groups\"** in the Jamf Pro admin UI. Jamf Pro user group IDs, as strings, assigned as student groups. The full set is applied on every change. Referenced IDs must already exist.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
 			"teacher_group_ids": schema.SetAttribute{
-				MarkdownDescription: "**\"Teacher Groups\"** in the Jamf Pro admin UI. Jamf Pro user group IDs (as strings) assigned as teacher groups. Authoritative: the full set is applied on every change. Referenced IDs must already exist.",
+				MarkdownDescription: "**\"Teacher Groups\"** in the Jamf Pro admin UI. Jamf Pro user group IDs, as strings, assigned as teacher groups. The full set is applied on every change. Referenced IDs must already exist.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
 			"mobile_device_group_ids": schema.SetAttribute{
-				MarkdownDescription: "**\"Mobile Device Groups\"** in the Jamf Pro admin UI. Jamf Pro mobile device group IDs (as strings) assigned to the class. Authoritative: the full set is applied on every change. Referenced IDs must already exist.",
+				MarkdownDescription: "**\"Mobile Device Groups\"** in the Jamf Pro admin UI. Jamf Pro mobile device group IDs, as strings, assigned to the class. The full set is applied on every change. Referenced IDs must already exist.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},

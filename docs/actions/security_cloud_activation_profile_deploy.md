@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_activation_profile_deploy Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  "Deploy to Jamf Pro" under UEM actions on a Jamf Security Cloud activation profile — creates the activation profile's configuration profile in Jamf Pro for one operating system, and scopes it to the Jamf Pro groups you name.
+  "Deploy to Jamf Pro" under UEM actions on a Jamf Security Cloud activation profile. Creates the activation profile's configuration profile in Jamf Pro for one operating system, and scopes it to the Jamf Pro groups you name.
   Re-running it is safe: deploying the same activation profile and operating system again updates the configuration profile Jamf Security Cloud already created rather than adding a second one, and it recreates the configuration profile if it has since been deleted in Jamf Pro.
   ~> Scope only ever accumulates. jamf_pro_group_ids adds groups to the configuration profile's scope; it never removes one. Deploying group 3 to a profile already scoped to groups 1 and 2 leaves it scoped to all three, and deploying with the argument omitted leaves the existing scope untouched. To narrow or clear the scope, edit the configuration profile in Jamf Pro.
   ~> Omitting jamf_pro_group_ids on a first deployment scopes the configuration profile to nothing, so it reaches no devices. Jamf Security Cloud reports success either way, so name at least one group unless you intend to scope the profile in Jamf Pro yourself.
@@ -16,7 +16,7 @@ description: |-
 
 # jamfplatform_security_cloud_activation_profile_deploy (Action)
 
-**"Deploy to Jamf Pro"** under **UEM actions** on a Jamf Security Cloud activation profile — creates the activation profile's configuration profile in Jamf Pro for one operating system, and scopes it to the Jamf Pro groups you name.
+**"Deploy to Jamf Pro"** under **UEM actions** on a Jamf Security Cloud activation profile. Creates the activation profile's configuration profile in Jamf Pro for one operating system, and scopes it to the Jamf Pro groups you name.
 
 Re-running it is safe: deploying the same activation profile and operating system again updates the configuration profile Jamf Security Cloud already created rather than adding a second one, and it recreates the configuration profile if it has since been deleted in Jamf Pro.
 
@@ -42,8 +42,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # The activation profile code is issued when the profile is created. A profile
 # Terraform manages exposes it as its id, so the deploy can take it directly. For
 # a profile created in Jamf Security Cloud instead, read the code off the last
-# path segment of the profile's deployment page and pass it in as an input —
-# there is no way to look a code up by profile name.
+# path segment of the profile's deployment page and pass it in as an input.
+# There is no way to look a code up by profile name.
 resource "jamfplatform_security_cloud_activation_profile" "field_staff" {
   name      = "Field Staff"
   platforms = ["ios", "mac"]
@@ -67,9 +67,9 @@ resource "jamfplatform_device_group" "laptops" {
 }
 
 # jamf_pro_group_ids takes bare Jamf Pro group IDs, so jamf_pro_id goes in
-# unadorned. Note the contrast with uem_group_id on the
+# unadorned. Contrast uem_group_id on the
 # jamfplatform_security_cloud_uem_connect resource, which wants the same group
-# written as "mobile_20" — the two are not interchangeable.
+# written as "mobile_20". The two are not interchangeable.
 action "jamfplatform_security_cloud_activation_profile_deploy" "supervised_ios" {
   config {
     activation_profile_code = jamfplatform_security_cloud_activation_profile.field_staff.id
@@ -116,13 +116,13 @@ resource "terraform_data" "deploy" {
 ### Required
 
 - `activation_profile_code` (String) The code of the activation profile to deploy. Jamf Security Cloud issues it during activation profile setup; it is the last path segment when you open the activation profile's deployment page in the Jamf Security Cloud console. For a profile Terraform manages, use `jamfplatform_security_cloud_activation_profile.<name>.id` instead. There is no way to look a code up by profile name.
-- `os` (String) **"Select your OS"** — which of the activation profile's configuration profiles to deploy. One deployment per operating system: to cover more than one, invoke this action once for each.
+- `os` (String) **"Select your OS"**: which of the activation profile's configuration profiles to deploy. One deployment per operating system: to cover more than one, invoke this action once for each.
 
 Valid values: `ios_byod`, `ios_supervised`, `ios_unsupervised`, `macos`.
 
 ### Optional
 
-- `jamf_pro_group_ids` (Set of String) **"Optionally select UEM group"** — the Jamf Pro groups to add to the deployed configuration profile's scope, as group IDs.
+- `jamf_pro_group_ids` (Set of String) **"Optionally select UEM group"**: the Jamf Pro groups to add to the deployed configuration profile's scope, as group IDs.
 
 Computer groups when `os` is `macos`, mobile device groups otherwise. A group of the wrong kind for the chosen `os`, or one that does not exist, is refused.
 

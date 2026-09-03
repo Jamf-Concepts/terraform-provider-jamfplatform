@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_file_share_distribution_point Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro file share distribution point — an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use jamfplatform_pro_cloud_distribution_point. The three plaintext passwords (read_write_password, read_only_password, https_password) are Terraform WriteOnly attributes — sent to Jamf Pro but never stored in state. Pair each with its *_wo_version companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
+  Manages a Jamf Pro file share distribution point: an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use jamfplatform_pro_cloud_distribution_point. The three plaintext passwords (read_write_password, read_only_password, https_password) are Terraform WriteOnly attributes, sent to Jamf Pro but never stored in state. Pair each with its *_wo_version companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_file_share_distribution_point (Resource)
 
-Manages a Jamf Pro file share distribution point — an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use `jamfplatform_pro_cloud_distribution_point`. The three plaintext passwords (`read_write_password`, `read_only_password`, `https_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro but never stored in state. Pair each with its `*_wo_version` companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
+Manages a Jamf Pro file share distribution point: an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use `jamfplatform_pro_cloud_distribution_point`. The three plaintext passwords (`read_write_password`, `read_only_password`, `https_password`) are Terraform `WriteOnly` attributes, sent to Jamf Pro but never stored in state. Pair each with its `*_wo_version` companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
 
 **Required Jamf permissions**
 
@@ -39,7 +39,7 @@ resource "jamfplatform_pro_file_share_distribution_point" "primary" {
   port                         = 445
   workgroup                    = "WORKGROUP"
 
-  # Read/Write account. The password is WriteOnly — bump
+  # Read/Write account. The password is WriteOnly. Bump
   # read_write_password_wo_version to rotate it.
   read_write_username            = "casperadmin"
   read_write_password            = sensitive("change-me-rw")
@@ -85,7 +85,7 @@ resource "jamfplatform_pro_file_share_distribution_point" "failover" {
 
 ### Required
 
-- `file_sharing_connection_type` (String) File sharing protocol the distribution point uses (the **Protocol** field). One of `AFP`, `SMB`, or `NONE`. Use `NONE` for a distribution point that serves packages over HTTPS only — in that case `https_enabled` must be `true`.
+- `file_sharing_connection_type` (String) File sharing protocol the distribution point uses (the **Protocol** field). One of `AFP`, `SMB`, or `NONE`. Use `NONE` for a distribution point that serves packages over HTTPS only; `https_enabled` must then be `true`.
 - `name` (String) Display name of the distribution point. Must not be empty.
 - `server_name` (String) Hostname or IP address of the distribution point server. Must not be empty.
 
@@ -93,21 +93,21 @@ resource "jamfplatform_pro_file_share_distribution_point" "failover" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `backup_distribution_point_id` (String) Failover distribution point (the **Failover distribution point** option). Set to `-1` for none, `-2` for the Jamf Cloud distribution point, or the ID of another file share distribution point — reference one with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`.
-- `enable_load_balancing` (Boolean) Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point — not when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`).
+- `backup_distribution_point_id` (String) Failover distribution point (the **Failover distribution point** option). Set to `-1` for none, `-2` for the Jamf Cloud distribution point, or the ID of another file share distribution point, which you can reference with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`.
+- `enable_load_balancing` (Boolean) Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point. Load sharing does not apply when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`).
 - `https_context` (String) Context path appended to the server for HTTPS downloads (the **Context** field).
 - `https_enabled` (Boolean) Whether packages may be downloaded over HTTPS (the **Use HTTPS downloads** option).
-- `https_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the HTTPS account (the **HTTPS Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`. Rotate it by bumping `https_password_wo_version`.
+- `https_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the HTTPS account (the **HTTPS Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`. Rotate it by bumping `https_password_wo_version`.
 - `https_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `https_password`. Bump this integer (any change) to force an update that re-sends `https_password`. Set it to `1` when you first set the password. Leaving it unchanged keeps the stored password as-is.
 - `https_port` (Number) Port used for HTTPS downloads (the **Port** field on the HTTPS tab; typically 443). Required by Jamf Pro when `https_enabled` is `true`.
 - `https_security_type` (String) Authentication type for HTTPS downloads (the **Authentication type** field). One of `USERNAME_PASSWORD` or `NONE`. When `USERNAME_PASSWORD`, Jamf Pro requires `https_username` and `https_password`.
 - `https_username` (String) Username for the HTTPS account (the **HTTPS Account** username). Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`.
 - `port` (Number) Port used for file sharing (the **Port** field; typically 548 for AFP, 445 for SMB).
-- `principal` (Boolean) Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time — designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one.
-- `read_only_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the read-only account (the **Read-only Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_only_password_wo_version`.
+- `principal` (Boolean) Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time. Designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one.
+- `read_only_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the read-only account (the **Read-only Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_only_password_wo_version`.
 - `read_only_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `read_only_password`. Bump this integer (any change) to force an update that re-sends `read_only_password`. Set it to `1` when you first set the password. Leaving it unchanged keeps the stored password as-is.
 - `read_only_username` (String) Username for the read-only account (the **Read-only Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.
-- `read_write_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the read/write account (the **Read/Write Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_write_password_wo_version`.
+- `read_write_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password for the read/write account (the **Read/Write Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_write_password_wo_version`.
 - `read_write_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `read_write_password`. Bump this integer (any change) to force an update that re-sends `read_write_password`. Set it to `1` when you first set the password. Leaving it unchanged keeps the stored password as-is.
 - `read_write_username` (String) Username for the read/write account (the **Read/Write Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.
 - `share_name` (String) Name of the file share (the **Share name** field). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.

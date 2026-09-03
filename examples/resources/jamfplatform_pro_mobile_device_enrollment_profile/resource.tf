@@ -25,7 +25,7 @@ output "enrollment_invitation" {
   value = jamfplatform_pro_mobile_device_enrollment_profile.configurator.invitation
 }
 
-# Attachments are read-only — manage them in the Jamf Pro admin UI.
+# Attachments are read-only. Manage them in the Jamf Pro admin UI.
 output "enrollment_attachments" {
   value = jamfplatform_pro_mobile_device_enrollment_profile.configurator.attachments
 }

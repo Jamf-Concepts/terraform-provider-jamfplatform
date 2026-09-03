@@ -38,7 +38,7 @@ func (d *PkiVenafiDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema returns the data source schema.
 func (d *PkiVenafiDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Venafi certificate authority by ID (Settings → Global → PKI certificates). The refresh token is never exposed — Jamf Pro does not return it on read. **Preview feature** — may change in a future Jamf Pro release." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro Venafi certificate authority by ID (Settings → Global → PKI certificates). The refresh token is never exposed; Jamf Pro does not return it on read. **Preview feature:** it may change in a future Jamf Pro release." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Venafi CA ID to look up.",

@@ -4,7 +4,7 @@ page_title: "jamfplatform_ai_governance_tool Data Source - terraform-provider-ja
 subcategory: ""
 description: |-
   Reads one AI tool Jamf can govern, and the schema describing what its settings may contain.
-  Use this to discover the schema_version values a jamfplatform_ai_governance_policy may be written against, and settings_schema_json to see what settings that version accepts. The schema is the tool vendor's own document — see the AI Governance policies guide ../guides/ai-governance-policies for where each vendor documents its settings.
+  Use this to discover the schema_version values a jamfplatform_ai_governance_policy may be written against, and settings_schema_json to see what settings that version accepts. The schema is the tool vendor's own document. See the AI Governance policies guide ../guides/ai-governance-policies for where each vendor documents its settings.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -16,7 +16,7 @@ description: |-
 
 Reads one AI tool Jamf can govern, and the schema describing what its settings may contain.
 
-Use this to discover the `schema_version` values a `jamfplatform_ai_governance_policy` may be written against, and `settings_schema_json` to see what settings that version accepts. The schema is the tool vendor's own document — see the [AI Governance policies guide](../guides/ai-governance-policies) for where each vendor documents its settings.
+Use this to discover the `schema_version` values a `jamfplatform_ai_governance_policy` may be written against, and `settings_schema_json` to see what settings that version accepts. The schema is the tool vendor's own document. See the [AI Governance policies guide](../guides/ai-governance-policies) for where each vendor documents its settings.
 
 **Required Jamf permissions**
 
@@ -63,4 +63,4 @@ output "claude_code_settings_keys" {
 - `current_schema_version` (String) The tool's current settings schema version. A policy written against an older version keeps working and reports `schema_drift`.
 - `display_name` (String) The tool's name as the Jamf Account admin UI shows it, such as `Claude Code`.
 - `schema_versions` (List of String) Every settings schema version the tool offers, newest first.
-- `settings_schema_json` (String) The JSON Schema document describing what a policy's `settings_json` may contain for this tool at `schema_version`. This is the tool vendor's own document, and it is large — tens to hundreds of kilobytes.
+- `settings_schema_json` (String) The JSON Schema document describing what a policy's `settings_json` may contain for this tool at `schema_version`. This is the tool vendor's own document, and it is large: tens to hundreds of kilobytes.

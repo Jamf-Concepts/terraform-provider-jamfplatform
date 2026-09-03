@@ -3,8 +3,8 @@
 page_title: "jamfplatform_security_cloud_activation_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Security Cloud activation profile — the enrollment credential end users activate Jamf Trust against. Creating one mints an activation code, which you can hand to a UEM with jamfplatform_security_cloud_activation_profile_deploy or distribute as a link.
-  This resource manages a deliberately small part of an activation profile. Jamf Security Cloud offers considerably more on an activation profile than it accepts here — the end user application, authentication and identity provider, in-app secure DNS control, customizable block pages, expiration date and device location settings are all configurable in Jamf Security Cloud and not through this resource. A profile created here takes the Jamf Security Cloud default for each of them, and Terraform can neither set nor detect changes to them.
+  Manages a Jamf Security Cloud activation profile, the enrollment credential end users activate Jamf Trust against. Creating one mints an activation code, which you can hand to a UEM with jamfplatform_security_cloud_activation_profile_deploy or distribute as a link.
+  This resource manages a deliberately small part of an activation profile. Jamf Security Cloud offers considerably more on an activation profile than it accepts here: the end user application, authentication and identity provider, in-app secure DNS control, customizable block pages, expiration date and device location settings are all configurable in Jamf Security Cloud and not through this resource. A profile created here takes the Jamf Security Cloud default for each of them, and Terraform can neither set nor detect changes to them.
   Three limitations are worth understanding before adopting this resource, all of them consequences of Jamf Security Cloud returning only the activation code when a profile is read:
   Changing any setting replaces the profile, which mints a new activation code and invalidates the old one. Anything already distributed with the previous code stops working.Terraform cannot detect changes made outside Terraform. A profile edited or deleted in Jamf Security Cloud continues to appear healthy, and terraform plan reports no changes.Destroying a profile cannot be confirmed, and does not remove it from the Jamf Security Cloud list. Jamf Security Cloud retains destroyed profiles, so the list grows with every profile Terraform has ever created.
   Importing is not supported: Jamf Security Cloud does not return enough of an existing profile for Terraform to adopt it without immediately replacing it.
@@ -18,9 +18,9 @@ description: |-
 
 # jamfplatform_security_cloud_activation_profile (Resource)
 
-Manages a Jamf Security Cloud activation profile — the enrollment credential end users activate Jamf Trust against. Creating one mints an activation code, which you can hand to a UEM with `jamfplatform_security_cloud_activation_profile_deploy` or distribute as a link.
+Manages a Jamf Security Cloud activation profile, the enrollment credential end users activate Jamf Trust against. Creating one mints an activation code, which you can hand to a UEM with `jamfplatform_security_cloud_activation_profile_deploy` or distribute as a link.
 
-This resource manages a deliberately small part of an activation profile. Jamf Security Cloud offers considerably more on an activation profile than it accepts here — the end user application, authentication and identity provider, in-app secure DNS control, customizable block pages, expiration date and device location settings are all configurable in Jamf Security Cloud and not through this resource. A profile created here takes the Jamf Security Cloud default for each of them, and Terraform can neither set nor detect changes to them.
+This resource manages a deliberately small part of an activation profile. Jamf Security Cloud offers considerably more on an activation profile than it accepts here: the end user application, authentication and identity provider, in-app secure DNS control, customizable block pages, expiration date and device location settings are all configurable in Jamf Security Cloud and not through this resource. A profile created here takes the Jamf Security Cloud default for each of them, and Terraform can neither set nor detect changes to them.
 
 Three limitations are worth understanding before adopting this resource, all of them consequences of Jamf Security Cloud returning only the activation code when a profile is read:
 
@@ -62,8 +62,8 @@ resource "jamfplatform_security_cloud_activation_profile" "content_filtering" {
 }
 
 # Adding devices to a group as they enrol keeps policy assignment declarative.
-# Note that Jamf Security Cloud does not check the group exists: an identifier
-# that matches nothing leaves enrolling devices in no group at all, silently.
+# Jamf Security Cloud does not check the group exists: an identifier that
+# matches nothing leaves enrolling devices in no group at all, silently.
 resource "jamfplatform_security_cloud_device_group" "field_staff" {
   name = "Field Staff"
 }
@@ -94,7 +94,7 @@ resource "jamfplatform_security_cloud_activation_profile" "seasonal" {
   }
 }
 
-# The activation code is what reaches a device — as a link, or deployed to a UEM.
+# The activation code is what reaches a device, as a link or deployed to a UEM.
 # It is a credential: anyone holding it can enrol a device, so the attribute is
 # sensitive and any output carrying it must be marked sensitive too.
 output "field_staff_activation_code" {
@@ -111,7 +111,7 @@ output "field_staff_activation_code" {
 
 - `capabilities` (Attributes) Service capabilities enabled for devices enrolled with this profile. At least one capability must be enabled. Changing them replaces the profile. (see [below for nested schema](#nestedatt--capabilities))
 - `name` (String) Name shown for this activation profile in Jamf Security Cloud. Changing the name replaces the profile and mints a new activation code.
-- `platforms` (Set of String) Device platforms this activation profile targets: `ios`, `mac`, or both. Jamf Security Cloud requires at least one and accepts at most two. Note that Jamf Security Cloud does not show this selection anywhere on the profile, and the platforms a profile actually supports are determined by the service capabilities you enable rather than by this value.
+- `platforms` (Set of String) Device platforms this activation profile targets: `ios`, `mac`, or both. Jamf Security Cloud requires at least one and accepts at most two. Jamf Security Cloud does not show this selection anywhere on the profile, and the platforms a profile actually supports follow from the service capabilities you enable rather than from this value.
 
 The `jamfplatform_security_cloud_activation_profile_deploy` action spells the Mac platform `macos` in its own `os` argument. The two are deliberately different vocabularies: this attribute selects platforms, while that argument selects one deployment form (`ios_byod`, `ios_supervised`, `ios_unsupervised` or `macos`).
 

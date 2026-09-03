@@ -3,9 +3,9 @@
 page_title: "jamfplatform_pro_re_enrollment_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro Re-enrollment settings page (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.
-  Omit = preserve — each clear_* toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no "unset" — omit to preserve, or set true/false to change it. clear_management_history must always be set (the dropdown always has a selection).
-  Destroy — terraform destroy removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
+  Manages the Jamf Pro Re-enrollment settings page (Settings → Global → Re-enrollment). One record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.
+  Each clear_* toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and is restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no "unset": omit to preserve, or set true/false to change it. clear_management_history must always be set, because the dropdown always has a selection.
+  terraform destroy removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -16,11 +16,11 @@ description: |-
 
 # jamfplatform_pro_re_enrollment_settings (Resource)
 
-Manages the Jamf Pro **Re-enrollment** settings page (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.
+Manages the Jamf Pro Re-enrollment settings page (Settings → Global → Re-enrollment). One record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.
 
-**Omit = preserve** — each `clear_*` toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no "unset" — omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set (the dropdown always has a selection).
+Each `clear_*` toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and is restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no "unset": omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set, because the dropdown always has a selection.
 
-**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
+`terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`.
 
@@ -39,8 +39,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # SPDX-License-Identifier: MPL-2.0
 
 # Manage the Jamf Pro Re-enrollment settings (Settings > Global > Re-enrollment).
-# Singleton — one record per tenant. These options decide which data Jamf Pro
-# clears from a computer or mobile device when it re-enrolls.
+# One record per tenant. These options decide which data Jamf Pro clears from a
+# computer or mobile device when it re-enrolls.
 resource "jamfplatform_pro_re_enrollment_settings" "this" {
   clear_policy_logs                  = true
   clear_location_information         = true
@@ -58,11 +58,11 @@ resource "jamfplatform_pro_re_enrollment_settings" "this" {
 
 ### Required
 
-- `clear_management_history` (String) How much of a device's management command history is cleared when it re-enrolls. Matches the "Clear Management History" dropdown. Required — the dropdown always has a selection, and this resource overwrites it on every apply, so the value must be set explicitly. One of:
-- `DELETE_NOTHING` — Clear nothing.
-- `DELETE_ERRORS` — Clear failed commands.
-- `DELETE_EVERYTHING_EXCEPT_ACKNOWLEDGED` — Clear pending and failed commands.
-- `DELETE_EVERYTHING` — Clear completed, failed and pending commands.
+- `clear_management_history` (String) How much of a device's management command history is cleared when it re-enrolls. Matches the "Clear Management History" dropdown. Required: the dropdown always has a selection, and this resource overwrites it on every apply, so set the value explicitly. One of:
+- `DELETE_NOTHING`: clear nothing.
+- `DELETE_ERRORS`: clear failed commands.
+- `DELETE_EVERYTHING_EXCEPT_ACKNOWLEDGED`: clear pending and failed commands.
+- `DELETE_EVERYTHING`: clear completed, failed and pending commands.
 
 ### Optional
 

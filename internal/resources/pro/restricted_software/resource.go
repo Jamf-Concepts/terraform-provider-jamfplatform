@@ -113,7 +113,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 	}
 
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro restricted software record — the \"Restricted software\" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro restricted software record, the \"Restricted software\" entry under the Computers sidebar in the Jamf Pro admin UI. It restricts a process by name on the targeted computers, and can also kill the process, delete the application, and notify admins. Scope is computer-only, with targets and exclusions but no limitations." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Restricted software ID assigned by Jamf Pro.",
@@ -121,7 +121,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"general": schema.SingleNestedAttribute{
-				MarkdownDescription: "General settings — the admin UI \"Options\" tab. `name` and `process_name` are required on create.",
+				MarkdownDescription: "General settings. Mirrors the admin UI's \"Options\" tab. `name` and `process_name` are required on create.",
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -189,11 +189,11 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software.",
+				MarkdownDescription: "Scope, mirroring the \"Scope\" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, with updates preserving it. Targets nest under `targets`, mirroring the Targets sub-tab, as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"targets": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope targets — the audience the record applies to. Mirrors the admin UI's Scope > Targets tab: set `all_computers = true` for tenant-wide scope, or list specific IDs.",
+						MarkdownDescription: "Scope targets: the audience the record applies to. Mirrors the admin UI's Scope > Targets tab. Set `all_computers = true` for tenant-wide scope, or list specific IDs.",
 						Optional:            true,
 						Attributes:          targets,
 					},

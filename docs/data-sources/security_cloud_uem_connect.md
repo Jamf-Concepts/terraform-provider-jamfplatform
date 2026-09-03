@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_uem_connect Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads the Jamf Security Cloud UEM Connect integration. Takes no arguments — a tenant holds at most one.
+  Reads the Jamf Security Cloud UEM Connect integration. It takes no arguments, because a tenant holds at most one.
   Alongside the configuration, this reports what the resource deliberately leaves out: whether the integration is currently connected, the Jamf Pro version behind it, and the most recent sync. Those change on their own, so they belong to a read rather than to managed state.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_security_cloud_uem_connect (Data Source)
 
-Reads the Jamf Security Cloud **UEM Connect** integration. Takes no arguments — a tenant holds at most one.
+Reads the Jamf Security Cloud **UEM Connect** integration. It takes no arguments, because a tenant holds at most one.
 
 Alongside the configuration, this reports what the resource deliberately leaves out: whether the integration is currently connected, the Jamf Pro version behind it, and the most recent sync. Those change on their own, so they belong to a read rather than to managed state.
 
@@ -61,7 +61,7 @@ output "uem_connect_id" {
 
 ### Read-Only
 
-- `client_id` (String) **"Client ID"** in the Jamf Security Cloud admin UI — the credential the integration authenticates with. Where the integration was set up by naming a tenant, this is the credential Jamf Security Cloud provisioned for itself. The secret is never readable.
+- `client_id` (String) **"Client ID"** in the Jamf Security Cloud admin UI: the credential the integration authenticates with. Where the integration was set up by naming a tenant, this is the credential Jamf Security Cloud provisioned for itself. The secret is never readable.
 - `concurrent_device_sync_enabled` (Boolean) **"Sync multiple devices simultaneously for faster inventory updates"** in the Jamf Security Cloud admin UI.
 - `connected` (Boolean) Whether Jamf Security Cloud currently reaches the Jamf Pro instance.
 - `device_risk_uem_signaling_enabled` (Boolean) **"Enable device risk UEM signaling"** in the Jamf Security Cloud admin UI.
@@ -118,7 +118,7 @@ Read-Only:
 - `started` (String) **"Sync start"** in the Jamf Security Cloud admin UI, in RFC 3339.
 - `status` (String) **"Sync result"** in the Jamf Security Cloud admin UI.
 - `transaction_id` (String) **"Transaction ID"** in the Jamf Security Cloud admin UI's sync logs.
-- `trigger` (String) **"Type"** in the Jamf Security Cloud admin UI — what started the sync.
+- `trigger` (String) **"Type"** in the Jamf Security Cloud admin UI: what started the sync.
 
 
 <a id="nestedatt--user_data_field_mapping"></a>

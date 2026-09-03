@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_supervision_identity Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro supervision identity — the certificate used to supervise and enroll devices through Apple Configurator (Settings > Apple Configurator Enrollment).
+  Manages a Jamf Pro supervision identity, the certificate used to supervise and enroll devices through Apple Configurator (Settings → Apple Configurator Enrollment).
   Provide certificate_data to import an existing .p12 identity, or omit it to have Jamf Pro generate a new identity for you. The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. Only display_name can be changed in place; changing the password or certificate replaces the identity.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_pro_supervision_identity (Resource)
 
-Manages a Jamf Pro supervision identity — the certificate used to supervise and enroll devices through Apple Configurator (Settings > Apple Configurator Enrollment).
+Manages a Jamf Pro supervision identity, the certificate used to supervise and enroll devices through Apple Configurator (Settings → Apple Configurator Enrollment).
 
 Provide `certificate_data` to import an existing `.p12` identity, or omit it to have Jamf Pro generate a new identity for you. The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. Only `display_name` can be changed in place; changing the password or certificate replaces the identity.
 
@@ -74,13 +74,13 @@ output "generated_identity_expiration" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `display_name` (String) Display name for the supervision identity. Must not be empty. Can be changed in place to rename the identity.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password that protects the supervision identity's `.p12`. When generating a new identity this is the password Jamf Pro assigns to the minted certificate; when importing an existing `.p12` this is its passphrase. `WriteOnly` — sent to Jamf Pro when the identity is created but never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password that protects the supervision identity's `.p12`. When generating a new identity this is the password Jamf Pro assigns to the minted certificate; when importing an existing `.p12` this is its passphrase. `WriteOnly`: sent to Jamf Pro when the identity is created, never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.
 
 ### Optional
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `certificate_data` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded `.p12` certificate to import as the supervision identity. Supply with `filebase64("identity.p12")`. Omit this to have Jamf Pro generate a new identity instead. `WriteOnly` — sent to Jamf Pro when the identity is created but never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.
+- `certificate_data` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded `.p12` certificate to import as the supervision identity. Supply with `filebase64("identity.p12")`. Omit this to have Jamf Pro generate a new identity instead. `WriteOnly`: sent to Jamf Pro when the identity is created, never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

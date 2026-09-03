@@ -105,7 +105,7 @@ func (r *SearchDomainResource) IdentitySchema(_ context.Context, _ resource.Iden
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Always \"singleton\" — there is one search domain per tenant.",
+				Description:       "Always \"singleton\", since a tenant holds one search domain.",
 				RequiredForImport: true,
 			},
 		},
@@ -116,14 +116,14 @@ func (r *SearchDomainResource) IdentitySchema(_ context.Context, _ resource.Iden
 func (r *SearchDomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the **\"Search domain\"** under Custom DNS in the Jamf Security Cloud admin " +
-			"UI — the domain used to complete an incomplete host name for apps that only accept short host " +
+			"UI: the domain that completes an incomplete host name for apps that only accept short host " +
 			"names. With the search domain set to `example.com`, a user who asks for `product` is directed to " +
 			"`product.example.com`.\n\n" +
 			"There is one search domain per tenant, so only one instance of this resource should exist in your " +
 			"configuration. Destroying it clears the search domain for the whole tenant." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Always `singleton` — there is one search domain per tenant.",
+				MarkdownDescription: "Always `singleton`, since a tenant holds one search domain.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -131,7 +131,7 @@ func (r *SearchDomainResource) Schema(ctx context.Context, _ resource.SchemaRequ
 			},
 			"domain_name": schema.StringAttribute{
 				MarkdownDescription: "**\"Domain name\"** in the Jamf Security Cloud admin UI. Up to 253 " +
-					"characters. A single domain, not a list — writing a new value replaces the previous one. " +
+					"characters. A single domain, not a list: writing a new value replaces the previous one. " +
 					"Wildcards are not accepted, and letter case is stored exactly as written.",
 				Required: true,
 				Validators: []validator.String{

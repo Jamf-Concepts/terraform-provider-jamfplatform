@@ -3,10 +3,10 @@ data "jamfplatform_account_sso_connection" "by_id" {
   id = "con_XXXXXXXXXXXXXXXX"
 }
 
-# Or by the name Jamf holds for it, which may be a uniquified form of the name it
-# was created with — jamfplatform_account_sso_connections reports the stored
-# names. Jamf does not require them to be unique, so this reports an error rather
-# than choosing when more than one matches.
+# Or by the name Jamf holds for it, which may be a uniquified form of the name
+# it was created with. jamfplatform_account_sso_connections reports the stored
+# names. Jamf does not require them to be unique, so this reports an error
+# rather than choosing when more than one matches.
 data "jamfplatform_account_sso_connection" "corp" {
   name = "CorpOIDC"
 }
@@ -16,7 +16,7 @@ output "domains_signed_in_by_this_connection" {
 }
 
 # The products this connection is enabled for. Only the product names are
-# reported — the tenants within each product are not.
+# reported; the tenants within each product are not.
 output "products" {
   value = data.jamfplatform_account_sso_connection.corp.enabled_product_names
 }

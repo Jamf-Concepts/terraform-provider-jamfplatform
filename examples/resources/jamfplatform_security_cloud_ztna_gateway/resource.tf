@@ -1,6 +1,6 @@
 # A gateway takes one of two forms, chosen by whether the ipsec block is present.
 
-# Form 1 — dedicated internet gateway. Omit ipsec, and Jamf provisions a pair of
+# Form 1: dedicated internet gateway. Omit ipsec, and Jamf provisions a pair of
 # private egress IP addresses, reported in dedicated_egress_ip_addresses.
 resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
   name          = "London Internet Egress"
@@ -13,7 +13,7 @@ resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
   }
 }
 
-# Form 2 — dedicated IPSec gateway. Set ipsec to build a tunnel to your own VPN
+# Form 2: dedicated IPSec gateway. Set ipsec to build a tunnel to your own VPN
 # concentrator. Adding or removing the block later replaces the gateway: Jamf
 # Security Cloud will not convert one form into the other.
 resource "jamfplatform_security_cloud_ztna_gateway" "ipsec" {

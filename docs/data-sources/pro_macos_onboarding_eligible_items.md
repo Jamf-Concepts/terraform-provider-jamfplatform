@@ -57,7 +57,7 @@ output "eligible_policy_ids" {
 
 Read-Only:
 
-- `id` (String) Object ID — use as `entity_id` in an onboarding item.
+- `id` (String) Object ID. Use it as the `entity_id` of an onboarding item.
 - `name` (String) Object display name.
 - `scope_description` (String) Human-readable scope summary.
 - `site_description` (String) Site summary.

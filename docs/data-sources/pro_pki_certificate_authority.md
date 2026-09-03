@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_pki_certificate_authority Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit id to read the active CA (the Jamf Pro built-in CA on most tenants); set id to read a specific CA. Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed pem.
+  Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit id to read the active CA (the Jamf Pro built-in CA on most tenants); set id to read a specific CA. Read-only. Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed pem.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_pki_certificate_authority (Data Source)
 
-Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit `id` to read the **active** CA (the Jamf Pro built-in CA on most tenants); set `id` to read a specific CA. Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed `pem`.
+Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit `id` to read the **active** CA (the Jamf Pro built-in CA on most tenants); set `id` to read a specific CA. Read-only. Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed `pem`.
 
 **Required Jamf permissions**
 
@@ -48,7 +48,7 @@ data "jamfplatform_pro_pki_certificate_authority" "by_id" {
 
 ### Optional
 
-- `id` (String) The Certificate Authority id to read. Omit to read the **active** CA — in that case `id` is set to `active` in state.
+- `id` (String) The Certificate Authority id to read. Omit to read the **active** CA; `id` is then set to `active` in state.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

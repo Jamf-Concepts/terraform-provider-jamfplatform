@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_return_to_service Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup.
+  Manages a Jamf Pro Return to Service configuration, which pairs a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it rejoin a network and re-enrol into Jamf Pro without manual setup.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_return_to_service (Resource)
 
-Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup.
+Manages a Jamf Pro Return to Service configuration, which pairs a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it rejoin a network and re-enrol into Jamf Pro without manual setup.
 
 **Required Jamf permissions**
 
@@ -26,7 +26,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Return to Service configuration — pairs a display name with a Wi-Fi
+# Return to Service configuration. Pairs a display name with a Wi-Fi
 # configuration profile. When a device is erased with Return to Service, the
 # referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol
 # into Jamf Pro without manual setup.

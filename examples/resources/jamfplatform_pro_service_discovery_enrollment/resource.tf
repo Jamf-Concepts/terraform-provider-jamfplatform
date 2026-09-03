@@ -5,9 +5,9 @@
 #
 # The set of rows is server-keyed: you can only set enrollment_type on a server_uuid Jamf
 # Pro already knows (a synced AxM org). This resource manages only the rows you declare
-# (merge) — undeclared orgs are left untouched. To turn off Jamf-hosted service discovery
-# for an org, set its enrollment_type = "none"; REMOVING a block stops managing it and
-# leaves the current value unchanged.
+# and merges them, so undeclared orgs are left untouched. To turn off Jamf-hosted service
+# discovery for an org, set its enrollment_type = "none". Removing a block stops managing
+# it and leaves the current value unchanged.
 
 # Reference the Server UUID from ADE instances managed by this provider:
 resource "jamfplatform_pro_service_discovery_enrollment" "this" {

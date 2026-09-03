@@ -77,7 +77,7 @@ func (r *GsxConnectionSettingsResource) IdentitySchema(ctx context.Context, req 
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — GSX Connection settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". GSX Connection settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -90,7 +90,7 @@ func (r *GsxConnectionSettingsResource) IdentitySchema(ctx context.Context, req 
 // no _wo_version companion because the "omit when unchanged" path can never apply.
 func writeOnlySecret(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: desc + " `Required` + `WriteOnly` — sent to Jamf Pro on **every** apply but **never persisted in Terraform state**, and never returned on read. The GSX API re-validates the certificate against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.",
+		MarkdownDescription: desc + " Required and `WriteOnly`: sent to Jamf Pro on every apply, never persisted in Terraform state, and never returned on read. The certificate is re-validated against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.",
 		Required:            true,
 		Sensitive:           true,
 		WriteOnly:           true,
@@ -102,9 +102,9 @@ func (r *GsxConnectionSettingsResource) Schema(ctx context.Context, req resource
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). " +
 			"Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. " +
-			"Singleton — one record per tenant. " +
+			"One record per tenant. " +
 			"**Requires a valid Apple-registered GSX certificate.** Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. " +
-			"**Secrets are re-sent on every apply** — `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are `Required` + `WriteOnly` (never stored in state); the GSX API mandates them on every write, so they must always be present in config. " +
+			"Secrets are re-sent on every apply: `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are Required and `WriteOnly`, so they are never stored in state and must always be present in config. " +
 			"Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -123,7 +123,7 @@ func (r *GsxConnectionSettingsResource) Schema(ctx context.Context, req resource
 				},
 			},
 			"username": schema.StringAttribute{
-				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI. The GSX account email — a GSX account with Manager privileges and access to Web Services.",
+				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI. The GSX account email. The account needs Manager privileges and access to Web Services.",
 				Required:            true,
 			},
 			"service_account_number": schema.StringAttribute{

@@ -145,21 +145,21 @@ func (r *ZtnaAppResource) IdentitySchema(_ context.Context, _ resource.IdentityS
 // Schema returns the Terraform schema for the ZTNA app resource.
 func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Security Cloud access policy application — one entry on the " +
+		MarkdownDescription: "Manages a Jamf Security Cloud access policy application, one entry on the " +
 			"**Access policy** page. An application is defined by the host names and address ranges its " +
 			"traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting " +
 			"to that traffic.\n\n" +
 			"An application is either **predefined**, based on one of the Jamf-maintained definitions the " +
 			"`jamfplatform_security_cloud_ztna_predefined_apps` data source lists, or **custom**, defined " +
 			"entirely by you. Set `predefined_app_id` for the first and `name` for the second. The choice " +
-			"cannot be changed afterwards — Terraform replaces the application instead.\n\n" +
+			"cannot be changed afterwards, so Terraform replaces the application instead.\n\n" +
 			"Host names and address ranges may belong to only one application across the whole tenant, so two " +
 			"applications cannot claim the same one. Misconfiguring an application can cut end users off from " +
 			"the resources it covers.\n\n" +
 			"See the [Jamf Security Cloud guide](../guides/security-cloud) for what that tenant-wide uniqueness " +
-			"means in practice — how overlapping host names are resolved, and why renaming an application by " +
-			"replacing it fails — and for a worked example taking one internal application all the way from a " +
-			"device group to a device that can reach it." +
+			"means in practice: how overlapping host names are resolved, and why renaming an application by " +
+			"replacing it fails. The guide also carries a worked example taking one internal application all " +
+			"the way from a device group to a device that can reach it." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -171,8 +171,8 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "**\"App name\"** in the Jamf Security Cloud admin UI. Required for a " +
-					"custom application, and not accepted for a predefined one — a predefined application " +
-					"takes its name from the Jamf-maintained definition. Application names are not required " +
+					"custom application, and not accepted for a predefined one, which takes its name from the " +
+					"Jamf-maintained definition. Application names are not required " +
 					"to be unique, so prefer the application ID when referencing one elsewhere.",
 				Optional: true,
 				Validators: []validator.String{
@@ -185,8 +185,8 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"Setting it makes this a predefined application: the definition owns the name and " +
 					"contributes its own host names, which the admin UI shows as \"Default\" and which do not " +
 					"appear in `hostnames`. Additional host names can still be added. Only one application " +
-					"per definition is allowed on a tenant. Changing this — in either direction — replaces " +
-					"the application, because the choice of form is fixed once made.",
+					"per definition is allowed on a tenant. Changing this in either direction replaces the " +
+					"application, because the choice of form is fixed once made.",
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -201,7 +201,7 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				Computed: true,
 			},
 			"category": schema.StringAttribute{
-				MarkdownDescription: "**\"Category\"** in the Jamf Security Cloud admin UI — how this " +
+				MarkdownDescription: "**\"Category\"** in the Jamf Security Cloud admin UI: how this " +
 					"application is classified for reporting. Must match a category Jamf Security Cloud " +
 					"defines: use the `display_name` from the " +
 					"`jamfplatform_security_cloud_content_categories` data source, not its `name`. " +
@@ -213,7 +213,7 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"hostnames": schema.SetAttribute{
 				MarkdownDescription: "**\"Hostname\"** entries under Traffic matching in the Jamf Security " +
-					"Cloud admin UI — the host names whose traffic belongs to this application. A wildcard " +
+					"Cloud admin UI: the host names whose traffic belongs to this application. A wildcard " +
 					"may replace the whole leading label (`*.example.com`), and `*` on its own matches " +
 					"everything. Entries must be mutually exclusive: `*.example.com` already covers " +
 					"`sub.example.com`, and the parent domain has to be listed separately from its " +
@@ -233,12 +233,12 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"direct_ips_and_subnets": schema.SetAttribute{
-				MarkdownDescription: "**\"Direct IPs and subnets\"** in the Jamf Security Cloud admin UI — " +
+				MarkdownDescription: "**\"Direct IPs and subnets\"** in the Jamf Security Cloud admin UI: " +
 					"address ranges for applications that cannot be reached by host name. Use this only when " +
 					"the application does not support connecting by the host names above; it also requires a " +
 					"current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as " +
 					"`10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range must name its " +
-					"own network address rather than a host inside it — write `10.1.2.0/24`, not " +
+					"own network address rather than a host inside it: write `10.1.2.0/24`, not " +
 					"`10.1.2.3/24`, because Jamf Security Cloud stores only the network. A range already " +
 					"claimed by another application is rejected. Removing an entry stops Jamf Security Cloud " +
 					"treating its traffic as part of this application; omitting the attribute clears the list.",
@@ -254,8 +254,8 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			"all_device_groups": schema.BoolAttribute{
 				MarkdownDescription: "**\"All device groups\"** under Device group permissions in the Jamf " +
 					"Security Cloud admin UI. `true` lets users reach this application from any device in " +
-					"the fleet. `false` restricts it to the groups in `device_group_ids` — the admin UI's " +
-					"\"Selected device groups\".",
+					"the fleet. `false` restricts it to the groups in `device_group_ids`, which the admin UI " +
+					"calls \"Selected device groups\".",
 				Required: true,
 			},
 			"device_group_ids": schema.SetAttribute{
@@ -272,12 +272,12 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"routing": schema.SingleNestedAttribute{
 				MarkdownDescription: "**\"Application traffic routing\"** in the Jamf Security Cloud admin " +
-					"UI — how authorised devices reach this application's servers.",
+					"UI: how authorised devices reach this application's servers.",
 				Required:   true,
 				Attributes: routingSchemaAttributes(),
 			},
 			"routing_overrides": schema.ListNestedAttribute{
-				MarkdownDescription: "**\"Custom group assignments\"** in the Jamf Security Cloud admin UI — " +
+				MarkdownDescription: "**\"Custom group assignments\"** in the Jamf Security Cloud admin UI: " +
 					"per-group routing that overrides `routing` for the groups it names. A device group may " +
 					"appear in only one override, and unless `all_device_groups` is true it must also be in " +
 					"`device_group_ids`.",
@@ -306,24 +306,25 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"security": schema.SingleNestedAttribute{
-				MarkdownDescription: "The **Security** tab in the Jamf Security Cloud admin UI — what a " +
+				MarkdownDescription: "The **Security** tab in the Jamf Security Cloud admin UI: what a " +
 					"device must prove before it may reach this application. Each block corresponds to one " +
 					"card on that tab. A block left out is one Jamf Security Cloud keeps its own setting " +
 					"for; include a block to take control of it.\n\n" +
 					"Unlike every other attribute here, *removing* a block you had previously applied stops " +
-					"Terraform managing that requirement without turning it off — Jamf Security Cloud keeps " +
+					"Terraform managing that requirement without turning it off; Jamf Security Cloud keeps " +
 					"it as last applied. Set `enabled = false` to lift a requirement.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"managed_device": schema.SingleNestedAttribute{
-						MarkdownDescription: "**\"Access requires device to be managed\"** — access is " +
-							"denied unless the device is enrolled in device management.",
+						MarkdownDescription: "**\"Access requires device to be managed\"** in the Jamf Security " +
+							"Cloud admin UI. Access is denied unless the device is enrolled in device " +
+							"management.",
 						Optional:   true,
 						Attributes: securityControlSchemaAttributes(),
 					},
 					"device_risk": schema.SingleNestedAttribute{
-						MarkdownDescription: "**\"Access requires device risk validation\"** — access is " +
-							"denied to devices at or above a risk level.",
+						MarkdownDescription: "**\"Access requires device risk validation\"** in the Jamf " +
+							"Security Cloud admin UI. Access is denied to devices at or above a risk level.",
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"enabled":                   securityEnabledAttribute(),
@@ -332,8 +333,9 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 						},
 					},
 					"jamf_trust": schema.SingleNestedAttribute{
-						MarkdownDescription: "**\"Access requires Jamf Trust to be enabled\"** — access is " +
-							"denied unless the device is protecting its traffic through Jamf Trust.",
+						MarkdownDescription: "**\"Access requires Jamf Trust to be enabled\"** in the Jamf " +
+							"Security Cloud admin UI. Access is denied unless the device is protecting its " +
+							"traffic through Jamf Trust.",
 						Optional:   true,
 						Attributes: securityControlSchemaAttributes(),
 					},
@@ -369,7 +371,7 @@ func routingSchemaAttributes() map[string]schema.Attribute {
 			},
 		},
 		"gateway_id": schema.StringAttribute{
-			MarkdownDescription: "**\"Access gateway\"** in the Jamf Security Cloud admin UI — the ID of the " +
+			MarkdownDescription: "**\"Access gateway\"** in the Jamf Security Cloud admin UI: the ID of the " +
 				"gateway this application's traffic is routed through. Accepts a Jamf-managed shared gateway " +
 				"from the `jamfplatform_security_cloud_ztna_shared_gateways` data source (\"Nearest Data " +
 				"Center\" or one of the shared IP pools), one of your own gateways, or a grouped gateway. " +
@@ -382,8 +384,9 @@ func routingSchemaAttributes() map[string]schema.Attribute {
 		"routing_mode": schema.StringAttribute{
 			MarkdownDescription: "**\"Routing mode\"** in the Jamf Security Cloud admin UI: " +
 				markdownList(dnsResolutionValues()) + ". \"Standard\" is recommended and resolves " +
-				"addresses as IPv6; choose \"Legacy\" — IPv4 — only for devices or applications known to be " +
-				"incompatible with IPv6. Required when routing via ZTNA and not accepted for direct routing.",
+				"addresses as IPv6; choose \"Legacy\", which is IPv4, only for devices or applications known " +
+				"to be incompatible with IPv6. Required when routing via ZTNA and not accepted for direct " +
+				"routing.",
 			Optional: true,
 			Validators: []validator.String{
 				stringvalidator.OneOf(dnsResolutionValues()...),
@@ -417,7 +420,7 @@ func securityEnabledAttribute() schema.Attribute {
 // three security cards.
 func devicePushNotificationsAttribute() schema.Attribute {
 	return schema.BoolAttribute{
-		MarkdownDescription: "**\"Device push notifications\"** in the Jamf Security Cloud admin UI — " +
+		MarkdownDescription: "**\"Device push notifications\"** in the Jamf Security Cloud admin UI: " +
 			"whether the user is told when access is denied by this requirement. Defaults to `true`, " +
 			"matching Jamf Security Cloud's own default.",
 		Optional: true,

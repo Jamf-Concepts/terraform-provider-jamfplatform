@@ -72,7 +72,7 @@ func (r *ServiceDiscoveryEnrollmentResource) IdentitySchema(ctx context.Context,
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — service-discovery well-known settings are one record per tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Service-discovery well-known settings are one record per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -83,20 +83,22 @@ func (r *ServiceDiscoveryEnrollmentResource) IdentitySchema(ctx context.Context,
 // resource.
 func (r *ServiceDiscoveryEnrollmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro's hosted service-discovery (\"well-known\") settings for Account-Driven enrollment " +
-			"(Jamf Pro API `service-discovery-enrollment/well-known-settings`). When configured, Jamf Pro hosts the " +
+		MarkdownDescription: "Manages Jamf Pro's hosted service-discovery (\"well-known\") settings for Account-Driven enrollment. " +
+			"When configured, Jamf Pro hosts the " +
 			"`.well-known` redirect that Apple devices fetch during Account-Driven Device (`mdm-adde`) or User (`mdm-byod`) " +
 			"enrollment, so you do not have to self-host the service-discovery JSON. Requires Jamf Pro 11.25.0 or later. " +
-			"Singleton — one record per tenant.\n\n" +
-			"**The set of rows is server-keyed and fixed.** Each row corresponds to a synced Apple Business/School Manager " +
+			"One record per tenant.\n\n" +
+			"### Jamf Pro fixes the set of rows\n\n" +
+			"Each row corresponds to a synced Apple Business/School Manager " +
 			"(AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > " +
 			"Automated Device Enrollment > Server UUID). You can only set `enrollment_type` on a `server_uuid` Jamf Pro " +
-			"already knows — a `server_uuid` that does not match a synced AxM org is silently ignored by Jamf Pro (the " +
-			"provider emits a warning when this happens).\n\n" +
-			"**This resource manages only the rows you declare (merge semantics, wire-probed).** Rows for AxM orgs you do " +
-			"not declare are left untouched. **Removing a `well_known_setting` block stops managing that org and leaves its " +
-			"current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, " +
-			"set its `enrollment_type = \"none\"` (do not delete the block).**\n\n" +
+			"already knows. A `server_uuid` that does not match a synced AxM org is silently ignored by Jamf Pro, and the " +
+			"provider emits a warning when that happens.\n\n" +
+			"### Only the rows you declare are managed\n\n" +
+			"Rows for AxM orgs you do " +
+			"not declare are left untouched. Removing a `well_known_setting` block stops managing that org and leaves its " +
+			"current Jamf Pro value unchanged; it does **not** reset it. To turn off Jamf-hosted service discovery for an org, " +
+			"set its `enrollment_type = \"none\"` rather than deleting the block.\n\n" +
 			"Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -109,8 +111,8 @@ func (r *ServiceDiscoveryEnrollmentResource) Schema(ctx context.Context, req res
 			"well_known_setting": schema.ListNestedAttribute{
 				MarkdownDescription: "The per-organization service-discovery rows to manage. Each row sets the Account-Driven " +
 					"enrollment type for one synced AxM organization, keyed by its `server_uuid`. Only the rows declared here " +
-					"are written; undeclared orgs are left untouched (merge). Removing a row stops managing it (its server value " +
-					"is preserved) — set `enrollment_type = \"none\"` to disable an org. An empty list writes nothing.",
+					"are written; undeclared orgs are left untouched (merge). Removing a row stops managing it and preserves its " +
+					"current Jamf Pro value: set `enrollment_type = \"none\"` to disable an org. An empty list writes nothing.",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					// org_name is a plain Computed echo (read-only; the server returns the
@@ -138,7 +140,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Schema(ctx context.Context, req res
 						},
 						"org_name": schema.StringAttribute{
 							MarkdownDescription: "Display name of the Apple Business/School Manager organization, as returned by Jamf Pro. " +
-								"Read-only — set automatically; any value supplied is ignored.",
+								"Returned by Jamf Pro; not user-settable. Any value supplied is ignored.",
 							Computed: true,
 						},
 					},

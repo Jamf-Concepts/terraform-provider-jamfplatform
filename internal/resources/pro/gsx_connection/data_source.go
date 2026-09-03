@@ -39,7 +39,7 @@ func (d *GsxConnectionSettingsDataSource) Metadata(ctx context.Context, req data
 // Schema returns the data source schema.
 func (d *GsxConnectionSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). One record per tenant. Jamf Pro never returns the token or keystore secrets, so they are not exposed here." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

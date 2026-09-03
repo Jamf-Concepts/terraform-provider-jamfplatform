@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_dns_hostname_mappings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI — the custom IPv4 and IPv6 mappings for internal host names your organization uses.
+  Reads "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI: the custom IPv4 and IPv6 mappings for internal host names your organization uses.
   There is one set per tenant, so this data source takes no arguments. A tenant with no mappings reads back an empty collection rather than an error.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_security_cloud_dns_hostname_mappings (Data Source)
 
-Reads **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin UI — the custom IPv4 and IPv6 mappings for internal host names your organization uses.
+Reads **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin UI: the custom IPv4 and IPv6 mappings for internal host names your organization uses.
 
 There is one set per tenant, so this data source takes no arguments. A tenant with no mappings reads back an empty collection rather than an error.
 
@@ -29,8 +29,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# The tenant's hostname mappings. Takes no arguments — there is one set per tenant.
-# A tenant with no mappings reads back an empty collection rather than an error.
+# The tenant's hostname mappings. Takes no arguments, since there is one set per
+# tenant. A tenant with no mappings reads back an empty collection rather than
+# an error.
 data "jamfplatform_security_cloud_dns_hostname_mappings" "current" {}
 
 # Which host names are routed through ZTNA.
@@ -51,8 +52,8 @@ output "ztna_hostnames" {
 
 ### Read-Only
 
-- `id` (String) Always `singleton` — there is one set of hostname mappings per tenant.
-- `mappings` (Attributes List) The tenant's hostname mappings, in the order Jamf returns them — which is not the order they were written in. (see [below for nested schema](#nestedatt--mappings))
+- `id` (String) Always `singleton`, since a tenant holds one set of hostname mappings.
+- `mappings` (Attributes List) The tenant's hostname mappings, in the order Jamf returns them, which is not the order they were written in. (see [below for nested schema](#nestedatt--mappings))
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

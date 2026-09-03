@@ -49,10 +49,10 @@ func (d *ConnectionsDataSource) Metadata(_ context.Context, req datasource.Metad
 func (d *ConnectionsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every SSO connection your Jamf Account organization holds. Jamf Account " +
-			"exposes no search arguments for connections, so this data source takes none — filter the result in " +
+			"exposes no search arguments for connections, so this data source takes none. Filter the result in " +
 			"Terraform.\n\n" +
 			"Each entry carries only what the organization's connection list reports. The provider-specific " +
-			"settings — the addresses, the domains of an Entra tenant, the group and profile options — are " +
+			"settings (the addresses, the domains of an Entra tenant, the group and profile options) are " +
 			"reported one connection at a time, so use the singular `jamfplatform_account_sso_connection` data " +
 			"source for those rather than paying an extra read per connection here.\n\n" +
 			"This is the construct for finding the name Jamf actually holds for a connection, which may be a " +

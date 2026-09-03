@@ -76,7 +76,7 @@ func SafariBookmarksComponentSchema() map[string]schema.Attribute {
 									Required:            true,
 								},
 								"url": schema.StringAttribute{
-									MarkdownDescription: "The URL for direct bookmarks (not used for folders).",
+									MarkdownDescription: "The URL for a direct bookmark. Folders do not take one.",
 									Optional:            true,
 								},
 								"folder": schema.SetNestedAttribute{

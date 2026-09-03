@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_uem_connect_synchronize Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  "Synchronize" on the Jamf Security Cloud UEM Connect Actions menu — starts a sync run immediately, rather than waiting for the next scheduled one.
+  "Synchronize" on the Jamf Security Cloud UEM Connect Actions menu. Starts a sync run immediately, rather than waiting for the next scheduled one.
   Jamf Security Cloud accepts the request and runs the sync in the background, so this returns as soon as the run has started and does not wait for it or report what it did. Read the outcome from the latest_sync attribute of the jamfplatform_security_cloud_uem_connect data source, or from the sync logs in the admin UI.
   Synchronizing a disabled integration is refused.
   Required Jamf permissions
@@ -15,7 +15,7 @@ description: |-
 
 # jamfplatform_security_cloud_uem_connect_synchronize (Action)
 
-**"Synchronize"** on the Jamf Security Cloud UEM Connect **Actions** menu — starts a sync run immediately, rather than waiting for the next scheduled one.
+**"Synchronize"** on the Jamf Security Cloud UEM Connect **Actions** menu. Starts a sync run immediately, rather than waiting for the next scheduled one.
 
 Jamf Security Cloud accepts the request and runs the sync in the background, so this returns as soon as the run has started and does not wait for it or report what it did. Read the outcome from the `latest_sync` attribute of the `jamfplatform_security_cloud_uem_connect` data source, or from the sync logs in the admin UI.
 
@@ -42,9 +42,9 @@ action "jamfplatform_security_cloud_uem_connect_synchronize" "now" {
   config {}
 }
 
-# Naming the resource's id is how you make the synchronize wait for the integration
-# to exist — useful for pulling inventory in straight after setting it up, rather
-# than up to a full refresh interval later.
+# Naming the resource's id makes the synchronize wait for the integration to
+# exist. Useful for pulling inventory in straight after setup, rather than up to
+# a full refresh interval later.
 action "jamfplatform_security_cloud_uem_connect_synchronize" "after_setup" {
   config {
     uem_connect_id = jamfplatform_security_cloud_uem_connect.jamf_pro.id

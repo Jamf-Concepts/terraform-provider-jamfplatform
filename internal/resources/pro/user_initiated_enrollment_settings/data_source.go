@@ -39,7 +39,7 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Metadata(ctx context.Context
 // style guide it is kept inline and flat — no attribute-returning helpers.
 func (d *UserInitiatedEnrollmentSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Fixed singleton identifier. Always `singleton`."},
 
@@ -91,7 +91,7 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Schema(ctx context.Context, 
 				MarkdownDescription: "Directory-service Access Groups permitted to perform user-initiated enrollment.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":                                     schema.StringAttribute{Computed: true, MarkdownDescription: "Server-assigned Access Group identifier."},
+						"id":                                     schema.StringAttribute{Computed: true, MarkdownDescription: "Access Group identifier assigned by Jamf Pro."},
 						"directory_service_group_id":             schema.StringAttribute{Computed: true, MarkdownDescription: "Identifier of the directory-service group."},
 						"ldap_server_id":                         schema.StringAttribute{Computed: true, MarkdownDescription: "Identifier of the LDAP / directory-service server."},
 						"name":                                   schema.StringAttribute{Computed: true, MarkdownDescription: "Display name of the Access Group."},

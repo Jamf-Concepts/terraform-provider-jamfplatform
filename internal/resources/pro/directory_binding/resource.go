@@ -85,7 +85,7 @@ func (r *DirectoryBindingResource) IdentitySchema(ctx context.Context, req resou
 // Schema returns the Terraform schema for the directory binding resource.
 func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf Pro policies use to join Mac computers to an Active Directory, Open Directory, PowerBroker, ADmitMac or Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks, selected by `type`. A plan-time cross-field validator checks that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute, sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to rotate: bump the integer to force a new update carrying the current `password` value." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID assigned by Jamf Pro.",
@@ -102,7 +102,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"priority": schema.Int64Attribute{
-				MarkdownDescription: "Binding priority — accepted range is 1–10. Lower numbers run earlier when Jamf evaluates multiple bindings. Optional+Computed: omit to let the server assign the default.",
+				MarkdownDescription: "Binding priority, in the range 1–10. Lower numbers run earlier when Jamf Pro evaluates multiple bindings. Omit it to let Jamf Pro assign the default.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{
@@ -113,28 +113,28 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "Directory service type. Selects which nested block is permitted. Valid values (note that the admin UI labels the Open Directory option \"Apple Open Directory\" but the value Jamf Pro stores is `\"Open Directory\"`): `\"Active Directory\"`, `\"Open Directory\"`, `\"PowerBroker Identity Services\"`, `\"ADmitMac\"`, `\"Centrify\"`.",
+				MarkdownDescription: "Directory service type. Selects which nested block is permitted. One of `\"Active Directory\"`, `\"Open Directory\"`, `\"PowerBroker Identity Services\"`, `\"ADmitMac\"`, `\"Centrify\"`. The admin UI labels the Open Directory option \"Apple Open Directory\", but the value Jamf Pro stores is `\"Open Directory\"`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(allDirectoryBindingTypes...),
 				},
 			},
 			"domain": schema.StringAttribute{
-				MarkdownDescription: "**\"Domain Server\"** in the Jamf Pro admin UI. The interpretation depends on `type` — DNS domain for Active Directory; LDAP host for Open Directory; bind domain for PowerBroker / ADmitMac / Centrify.",
+				MarkdownDescription: "**\"Domain Server\"** in the Jamf Pro admin UI. The interpretation depends on `type`: DNS domain for Active Directory, LDAP host for Open Directory, and bind domain for PowerBroker, ADmitMac and Centrify.",
 				Optional:            true,
 			},
 			"username": schema.StringAttribute{
-				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI. The directory account used to perform the bind. May be a domain account name, an LDAP DN, or another type-specific identifier.",
+				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI. The directory account that performs the bind. May be a domain account name, an LDAP distinguished name, or another type-specific identifier.",
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro also never returns the plaintext on read, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new update carrying the current `password`).",
+				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly`: the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro also never returns the plaintext on read, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer. Bump it to trigger a new update carrying the current `password`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"password_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving the attribute unset or unchanged leaves the stored password alone: the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 				Optional:            true,
 			},
 			"computer_ou": schema.StringAttribute{

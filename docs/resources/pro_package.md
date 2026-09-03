@@ -3,13 +3,12 @@
 page_title: "jamfplatform_pro_package Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, operating system requirement, info/notes, optional manifest, optional hashes) that Jamf Pro pairs with a file on a distribution point.
-  The operating mode is inferred from the configuration:
-  Cloud distribution point upload — set package_file_source (a local path or https?:// URL). The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and cloud_transfer_status becomes READY. In this mode Jamf Pro populates the hash attributes (sha3_512, sha256, md5, size, hash_type, hash_value); setting any of them in configuration is rejected before the change runs.Distribution point with supplied hashes — omit package_file_source and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.Metadata only — omit package_file_source and all hash attributes. The provider manages only the package record; no file is uploaded.
-  Notes:
-  package_file_source_checksum (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.size is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.Changing only metadata (info, notes, priority, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.
-  Manifest: manifest_file_source (optional) uploads a .plist manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.
-  URL sources: both package_file_source and manifest_file_source accept http(s):// URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
+  Manages a Jamf Pro package. A package record carries the metadata Jamf Pro pairs with a file on a distribution point: name, category, restart requirement, operating system requirement, info and notes, an optional manifest and optional hashes.
+  Operating modes
+  The mode is inferred from your configuration.
+  Cloud distribution point upload. Set package_file_source to a local path or an https?:// URL. The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and cloud_transfer_status becomes READY. In this mode Jamf Pro populates the hash attributes (sha3_512, sha256, md5, size, hash_type, hash_value), and setting any of them in configuration is rejected before the change runs.Distribution point with supplied hashes. Omit package_file_source and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.Metadata only. Omit package_file_source and every hash attribute. The provider manages the package record alone, and no file is uploaded.
+  Uploads and updates
+  package_file_source_checksum (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading, which catches on-disk corruption.size is read-only. Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.Changing only metadata (info, notes, priority and so on) updates the record without re-uploading the file. The file is re-uploaded only when its contents change.manifest_file_source (optional) uploads a .plist manifest for the package. Setting it uploads the manifest, and clearing it removes the manifest from Jamf Pro. The manifest is likewise re-uploaded only when its contents change.Both package_file_source and manifest_file_source accept http(s):// URLs. The provider downloads the URL to a temporary file, up to 8 GiB and following at most 10 redirects, before uploading.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -19,23 +18,23 @@ description: |-
 
 # jamfplatform_pro_package (Resource)
 
-Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, operating system requirement, info/notes, optional manifest, optional hashes) that Jamf Pro pairs with a file on a distribution point.
+Manages a Jamf Pro package. A package record carries the metadata Jamf Pro pairs with a file on a distribution point: name, category, restart requirement, operating system requirement, info and notes, an optional manifest and optional hashes.
 
-**The operating mode is inferred from the configuration**:
+### Operating modes
 
-- **Cloud distribution point upload** — set `package_file_source` (a local path or `https?://` URL). The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and `cloud_transfer_status` becomes `READY`. In this mode Jamf Pro populates the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`); setting any of them in configuration is rejected before the change runs.
-- **Distribution point with supplied hashes** — omit `package_file_source` and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.
-- **Metadata only** — omit `package_file_source` and all hash attributes. The provider manages only the package record; no file is uploaded.
+The mode is inferred from your configuration.
 
-**Notes:**
+- Cloud distribution point upload. Set `package_file_source` to a local path or an `https?://` URL. The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and `cloud_transfer_status` becomes `READY`. In this mode Jamf Pro populates the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`), and setting any of them in configuration is rejected before the change runs.
+- Distribution point with supplied hashes. Omit `package_file_source` and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.
+- Metadata only. Omit `package_file_source` and every hash attribute. The provider manages the package record alone, and no file is uploaded.
 
-- `package_file_source_checksum` (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.
-- `size` is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.
-- Changing only metadata (`info`, `notes`, `priority`, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.
+### Uploads and updates
 
-**Manifest**: `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.
-
-**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
+- `package_file_source_checksum` (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading, which catches on-disk corruption.
+- `size` is read-only. Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.
+- Changing only metadata (`info`, `notes`, `priority` and so on) updates the record without re-uploading the file. The file is re-uploaded only when its contents change.
+- `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest, and clearing it removes the manifest from Jamf Pro. The manifest is likewise re-uploaded only when its contents change.
+- Both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file, up to 8 GiB and following at most 10 redirects, before uploading.
 
 **Required Jamf permissions**
 
@@ -51,7 +50,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Cloud distribution point upload from a local path. The provider uploads
 # the file to the Jamf Cloud Distribution Point, then waits until Jamf Pro
 # has calculated every hash and `cloud_transfer_status` becomes "READY".
-# The hash attributes are read-only in this mode — setting any of them in
+# The hash attributes are read-only in this mode. Setting any of them in
 # configuration is rejected before the change runs.
 resource "jamfplatform_pro_package" "cloud_dp_local" {
   display_name        = "MyApp 1.0.0"
@@ -63,8 +62,8 @@ resource "jamfplatform_pro_package" "cloud_dp_local" {
   package_file_source = "/path/to/MyApp-1.0.0.pkg"
 
   # Optional integrity check: verified against the file locally before
-  # anything is uploaded. A mismatch fails the apply and skips the upload —
-  # useful for catching on-disk corruption.
+  # anything is uploaded. A mismatch fails the apply and skips the upload,
+  # which catches on-disk corruption.
   package_file_source_checksum = "0123456789abcdef..." # hex sha3-512
 
   # Uploads can take minutes for very large files. The upload inherits this
@@ -135,18 +134,18 @@ resource "jamfplatform_pro_package" "meta_only" {
 
 ### Optional
 
-- `available_in_software_update` (Boolean) **"Install only if available in Software Update"** in the Jamf Pro admin UI. Defaults to `false`. NOT the same as the deferred `osInstall` flag.
+- `available_in_software_update` (Boolean) **"Install only if available in Software Update"** in the Jamf Pro admin UI. Defaults to `false`. This is not the separate OS-installer flag, which this resource does not expose.
 - `category_id` (String) **"Category"** in the Jamf Pro admin UI. Defaults to `"-1"` (None).
 - `fill_existing_users` (Boolean) **"Fill existing user home directories (FEU)"** in the Jamf Pro admin UI. Defaults to `false`.
 - `fill_user_template` (Boolean) **"Fill user templates (FUT)"** in the Jamf Pro admin UI. Defaults to `false`.
 - `hash_type` (String) Hash algorithm for the package. One of `MD5`, `SHA_256`, `SHA_512`, `SHA3_512`. A record that has never had a file uploaded reads back `SHA_512`. Cannot be combined with `package_file_source` (a cloud distribution point upload sets this to `SHA3_512`).
 - `hash_value` (String) Primary hash Jamf Pro uses to match the package on a distribution point. Set to the SHA-3-512 of the file after a cloud distribution point upload, or supply a digest matching `hash_type` when managing the record directly. Cannot be combined with `package_file_source`, and requires `hash_type` when set.
-- `info` (String) **"Info"** in the Jamf Pro admin UI. Free-form metadata field. Jamf Pro returns `""` when null — the provider reconciles to keep state stable.
+- `info` (String) **"Info"** in the Jamf Pro admin UI. Free-form metadata field. Jamf Pro returns an empty string when the field is unset, and the provider reconciles that to keep state stable.
 - `manifest_file_source` (String) **"Manifest file"** in the Jamf Pro admin UI. Optional local path or `http(s)://` URL to a `.plist` manifest. The provider uploads when this is set and the stored `manifest` body differs from the freshly-loaded source content. Clearing this attribute deletes the manifest in Jamf Pro.
 - `md5` (String) MD5 hex digest of the package file. Calculated by Jamf Pro after a cloud distribution point upload, or set directly when managing the record without an uploaded file. Cannot be combined with `package_file_source`.
-- `notes` (String) **"Notes"** in the Jamf Pro admin UI. Free-form notes field. Jamf Pro returns `""` when null — the provider reconciles to keep state stable.
+- `notes` (String) **"Notes"** in the Jamf Pro admin UI. Free-form notes field. Jamf Pro returns an empty string when the field is unset, and the provider reconciles that to keep state stable.
 - `os_requirements` (String) **"Operating system requirement"** in the Jamf Pro admin UI (Limitations tab). Comma-separated string, e.g. `"13.5.2, 13.6.x, 14.3"`.
-- `package_file_source` (String) Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes — setting both is rejected before the change runs.
+- `package_file_source` (String) Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes; setting both is rejected before the change runs.
 - `package_file_source_checksum` (String) Optional SHA-3-512 hex digest checked against the file locally before it is uploaded. A mismatch fails the apply without uploading. Cannot be combined with `stream_url_directly`.
 - `priority` (Number) **"Priority"** in the Jamf Pro admin UI. Defaults to `10`. Lower values install first when multiple packages are queued.
 - `reboot_required` (Boolean) **"Requires restart"** in the Jamf Pro admin UI. Defaults to `false`.
@@ -157,7 +156,7 @@ resource "jamfplatform_pro_package" "meta_only" {
 
 ### Read-Only
 
-- `cloud_transfer_status` (String) Cloud distribution point transfer status — updated as Jamf Pro processes an uploaded file, reaching `"READY"` once the upload is complete. Empty for records with no uploaded file.
+- `cloud_transfer_status` (String) Cloud distribution point transfer status. Jamf Pro updates it as it processes an uploaded file, reaching `"READY"` once the upload is complete. Empty for a record with no uploaded file.
 - `format` (String) Distribution-point format string. Returned by Jamf Pro; not user-settable.
 - `id` (String) Package ID assigned by Jamf Pro.
 - `indexed` (Boolean) Distribution-point indexing telemetry. Returned by Jamf Pro; not user-settable.
@@ -167,7 +166,7 @@ resource "jamfplatform_pro_package" "meta_only" {
 - `parent_package_id` (String) Parent package ID, default `"-1"` (no parent). Returned by Jamf Pro; not user-settable.
 - `self_heal_notify` (Boolean) Self-healing notification flag. Default `false`. Returned by Jamf Pro; not user-settable.
 - `self_healing_action` (String) Self-healing action, default `"nothing"`. Returned by Jamf Pro; not user-settable.
-- `size` (String) Package binary size in bytes. Read-only — Jamf Pro calculates this from the uploaded package file, so any value set in configuration is ignored. Packages managed as metadata only (no uploaded file) leave this empty. Shown as `(known after apply)` on any update that changes the package, because Jamf Pro recalculates the size after the change is saved.
+- `size` (String) Package binary size in bytes. Read-only: Jamf Pro calculates it from the uploaded package file, so any value set in configuration is ignored. A package managed as metadata only, with no uploaded file, leaves this empty. It shows as `(known after apply)` on any update that changes the package, because Jamf Pro recalculates the size after the change is saved.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

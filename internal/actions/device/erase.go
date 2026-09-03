@@ -85,7 +85,7 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 		},
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**." + eraseDevicePrivileges,
+		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API** access." + eraseDevicePrivileges,
 		Attributes:          attrs,
 	}
 }

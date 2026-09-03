@@ -59,7 +59,7 @@ func (a *DeployActivationProfileAction) Metadata(_ context.Context, req action.M
 func (a *DeployActivationProfileAction) Schema(_ context.Context, _ action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "**\"Deploy to Jamf Pro\"** under **UEM actions** on a Jamf Security Cloud " +
-			"activation profile — creates the activation profile's configuration profile in Jamf Pro for one " +
+			"activation profile. Creates the activation profile's configuration profile in Jamf Pro for one " +
 			"operating system, and scopes it to the Jamf Pro groups you name.\n\n" +
 			"Re-running it is safe: deploying the same activation profile and operating system again updates " +
 			"the configuration profile Jamf Security Cloud already created rather than adding a second one, " +
@@ -86,7 +86,7 @@ func (a *DeployActivationProfileAction) Schema(_ context.Context, _ action.Schem
 				},
 			},
 			"os": actionschema.StringAttribute{
-				MarkdownDescription: "**\"Select your OS\"** — which of the activation profile's " +
+				MarkdownDescription: "**\"Select your OS\"**: which of the activation profile's " +
 					"configuration profiles to deploy. One deployment per operating system: to cover more than " +
 					"one, invoke this action once for each.\n\n" +
 					"Valid values: " + markdownValueList(osValues()) + ".",
@@ -96,7 +96,7 @@ func (a *DeployActivationProfileAction) Schema(_ context.Context, _ action.Schem
 				},
 			},
 			"jamf_pro_group_ids": actionschema.SetAttribute{
-				MarkdownDescription: "**\"Optionally select UEM group\"** — the Jamf Pro groups to add to " +
+				MarkdownDescription: "**\"Optionally select UEM group\"**: the Jamf Pro groups to add to " +
 					"the deployed configuration profile's scope, as group IDs.\n\n" +
 					"Computer groups when `os` is `" + macOSValue + "`, mobile device groups otherwise. A " +
 					"group of the wrong kind for the chosen `os`, or one that does not exist, is refused.\n\n" +

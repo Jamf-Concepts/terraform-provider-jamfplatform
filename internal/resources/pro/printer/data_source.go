@@ -67,7 +67,7 @@ func (d *PrinterDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"use_generic":     schema.BoolAttribute{MarkdownDescription: "Whether the bundled macOS Generic.ppd is used.", Computed: true},
 			"ppd":             schema.StringAttribute{MarkdownDescription: "Short name of the PPD file.", Computed: true},
 			"ppd_path":        schema.StringAttribute{MarkdownDescription: "Filesystem path to the PPD file.", Computed: true},
-			"ppd_contents":    schema.StringAttribute{MarkdownDescription: "Inline contents of the PPD file. Trailing whitespace is semantically ignored — the server strips it on every round-trip.", CustomType: trimmedStringType{}, Computed: true},
+			"ppd_contents":    schema.StringAttribute{MarkdownDescription: "Inline contents of the PPD file. Trailing whitespace is semantically ignored, because Jamf Pro strips it on every round-trip.", CustomType: trimmedStringType{}, Computed: true},
 			"shared":          schema.BoolAttribute{MarkdownDescription: "Whether the printer is shared.", Computed: true},
 			"os_requirements": schema.StringAttribute{MarkdownDescription: "Operating-system version requirement.", Computed: true},
 			"timeouts":        timeouts.Attributes(ctx),

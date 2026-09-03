@@ -1,5 +1,4 @@
-# Minimal policy: just an enabled flag and a name. Every other section
-# is optional.
+# Minimal policy: an enabled flag and a name. Every other section is optional.
 resource "jamfplatform_pro_policy" "minimal" {
   general = {
     name    = "tf-acc-minimal-policy"
@@ -8,8 +7,8 @@ resource "jamfplatform_pro_policy" "minimal" {
 }
 
 # Fully-scoped policy demonstrating per-target IDs sourced from sibling
-# resources. Interpolate `.jamf_pro_id` on Platform Services device groups —
-# `scope.computer_group_ids` takes Jamf Pro IDs as strings.
+# resources. Interpolate `.jamf_pro_id` on Platform Services device groups,
+# because `scope.computer_group_ids` takes Jamf Pro IDs as strings.
 resource "jamfplatform_pro_policy" "scoped" {
   general = {
     name            = "tf-acc-scoped-policy"
@@ -95,7 +94,7 @@ resource "jamfplatform_pro_policy" "options" {
     ]
   }
 
-  # Options ▸ Local Accounts. `password` is WriteOnly — rotate it by bumping
+  # Options ▸ Local Accounts. `password` is WriteOnly. Rotate it by bumping
   # `password_wo_version`.
   local_accounts = [
     {

@@ -103,11 +103,11 @@ func fullReplaceStringAttribute(desc string) schema.StringAttribute {
 func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a single Jamf Pro Inventory Preload record. " +
-			"The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records via CSV upload; " +
-			"this resource manages individual records through the API instead. " +
-			"Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, " +
+			"The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records by CSV upload; " +
+			"this resource manages them one at a time instead. " +
+			"Preloaded data is applied at every inventory collection by matching the device serial number, " +
 			"and overwrites manual inventory edits each time it is applied. " +
-			"Records persist after a device enrolls — they are consumed, not deleted." +
+			"Records persist after a device enrolls; applying one does not remove it." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -119,8 +119,8 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 			},
 			"serial_number": schema.StringAttribute{
 				MarkdownDescription: "Serial number of the device the record applies to. " +
-					"Jamf Pro enforces case-insensitive uniqueness across records — creating a second record whose serial number differs only in case fails — " +
-					"while the value itself is stored and returned exactly as entered. Can be changed in place.",
+					"Jamf Pro enforces case-insensitive uniqueness across records, so creating a second record whose serial number differs only in case fails. " +
+					"The value itself is stored and returned exactly as entered. Can be changed in place.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),

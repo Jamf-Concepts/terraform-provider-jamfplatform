@@ -3,11 +3,11 @@
 page_title: "jamfplatform_account_sso_connection Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages an SSO connection for your Jamf Account organization — one identity provider the people in your organization sign in through, and the Jamf products they reach with it.
-  Pick the provider family with connection_type and supply the matching settings block: exactly one of generic_oidc, entra, okta or google_workspace, and it has to be the one the family names. Neither the family nor hosting_region can be changed afterwards — both replace the connection.
+  Manages an SSO connection for your Jamf Account organization: one identity provider the people in your organization sign in through, and the Jamf products they reach with it.
+  Pick the provider family with connection_type and supply the matching settings block: exactly one of generic_oidc, entra, okta or google_workspace, and it has to be the one the family names. Neither the family nor hosting_region can be changed afterwards. Both replace the connection.
   Every domain in domains must already be claimed and verified by your organization; a connection cannot be created without at least one. Use jamfplatform_account_sso_domain to claim a domain and the jamfplatform_account_sso_domain_verify action to prove it, and depend on the verification so the ordering is explicit.
-  Jamf cannot currently apply a change to an existing connection. Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created — so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a create_before_destroy lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
-  Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone — it exists, and Terraform must not drop it from state.
+  Jamf cannot currently apply a change to an existing connection. Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created, so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a create_before_destroy lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
+  Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone: it exists, and Terraform must not drop it from state.
   enabled_products and enabled_environments are configuration-authoritative. Nothing Jamf returns echoes the tenants back, so Terraform cannot notice a change made outside it and cannot recover them on import. enabled_product_names reports the products alone, which is the only part that comes back.
   The connection's callback address is not exposed: the console shows one, Jamf's data does not carry it, and deriving it here would mean publishing a value that could silently go wrong. Copy it from the console.
   Needs an organization-scoped Jamf integration, created against neither a platform environment nor a tenant, and is reachable only in the United States region.
@@ -20,15 +20,15 @@ description: |-
 
 # jamfplatform_account_sso_connection (Resource)
 
-Manages an SSO connection for your Jamf Account organization — one identity provider the people in your organization sign in through, and the Jamf products they reach with it.
+Manages an SSO connection for your Jamf Account organization: one identity provider the people in your organization sign in through, and the Jamf products they reach with it.
 
-Pick the provider family with `connection_type` and supply the matching settings block: exactly one of `generic_oidc`, `entra`, `okta` or `google_workspace`, and it has to be the one the family names. Neither the family nor `hosting_region` can be changed afterwards — both replace the connection.
+Pick the provider family with `connection_type` and supply the matching settings block: exactly one of `generic_oidc`, `entra`, `okta` or `google_workspace`, and it has to be the one the family names. Neither the family nor `hosting_region` can be changed afterwards. Both replace the connection.
 
 Every domain in `domains` must already be claimed *and* verified by your organization; a connection cannot be created without at least one. Use `jamfplatform_account_sso_domain` to claim a domain and the `jamfplatform_account_sso_domain_verify` action to prove it, and depend on the verification so the ordering is explicit.
 
-**Jamf cannot currently apply a change to an existing connection.** Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created — so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a `create_before_destroy` lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
+**Jamf cannot currently apply a change to an existing connection.** Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created, so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a `create_before_destroy` lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
 
-Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone — it exists, and Terraform must not drop it from state.
+Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone: it exists, and Terraform must not drop it from state.
 
 `enabled_products` and `enabled_environments` are configuration-authoritative. Nothing Jamf returns echoes the tenants back, so Terraform cannot notice a change made outside it and cannot recover them on import. `enabled_product_names` reports the products alone, which is the only part that comes back.
 
@@ -52,9 +52,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # instead of signing in with a Jamf ID.
 #
 # Jamf refuses a connection naming a domain that is not yet verified, and
-# verification cannot happen in the same run as the claim — Jamf allows one check
-# every five minutes per domain and claiming it starts that clock. So this takes
-# three applies, not one:
+# verification cannot happen in the same run as the claim. Jamf allows one
+# check every five minutes per domain, and claiming it starts that clock. So
+# this takes three applies, not one:
 #
 #   1. apply the domain below, then publish its verification_txt_record in DNS
 #   2. terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'
@@ -70,11 +70,11 @@ resource "jamfplatform_account_sso_domain" "corp" {
 #
 # That matters for a connection carrying real sign-in traffic. Terraform destroys
 # before it creates by default, and while the connection is gone nobody on its
-# domains can authenticate through it. create_before_destroy closes that gap —
+# domains can authenticate through it. create_before_destroy closes that gap:
 # Jamf allows two connections on the same domain, so the replacement can exist
 # before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
-  # Letters and digits only — Jamf refuses a name with any other character, and
+  # Letters and digits only. Jamf refuses a name with any other character, and
   # says nothing about which field was at fault when it does. Jamf also appends a
   # suffix of its own to whatever you choose; internal_name reports the result.
   name            = "CorpOIDC"
@@ -113,7 +113,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
 
   # Which Jamf products this connection signs users in to. Jamf does not report
   # the tenant list back, so a change made in the Jamf Account console is
-  # invisible here — treat this configuration as the source of truth.
+  # invisible here. Treat this configuration as the source of truth.
   enabled_products = [
     {
       product = "ACCOUNT"
@@ -145,31 +145,31 @@ variable "idp_client_secret" {
 
 ### Required
 
-- `connection_type` (String) **"Connection type"** in the Jamf Account console — the identity provider family. One of `entra`, `generic_oidc`, `google_workspace`, `okta`. Choose the family that matches your provider; `generic_oidc` is for any OpenID Connect provider Jamf has no purpose-built integration with. The matching settings block is required and no other may be set. A connection cannot be moved to another family, so changing this replaces it.
-- `domains` (Set of String) **"Associated Domains"** in the Jamf Account console — the domain names this connection signs people in for, such as `example.com`. At least one is required, and every one must already be claimed and verified by your organization: an unverified or unclaimed name is refused. A domain belongs to one organization and Jamf's own copy is lower case, so give lower-case names.
+- `connection_type` (String) **"Connection type"** in the Jamf Account console: the identity provider family. One of `entra`, `generic_oidc`, `google_workspace`, `okta`. Choose the family that matches your provider; `generic_oidc` is for any OpenID Connect provider Jamf has no purpose-built integration with. The matching settings block is required and no other may be set. A connection cannot be moved to another family, so changing this replaces it.
+- `domains` (Set of String) **"Associated Domains"** in the Jamf Account console: the domain names this connection signs people in for, such as `example.com`. At least one is required, and every one must already be claimed and verified by your organization: an unverified or unclaimed name is refused. A domain belongs to one organization and Jamf's own copy is lower case, so give lower-case names.
 
-Destroying a `jamfplatform_account_sso_domain` also withdraws that domain from every connection naming it, quietly narrowing this set — the `jamfplatform_account_sso_domain` data source reports which connections a domain is assigned to.
-- `hosting_region` (String) **"Hosting region"** in the Jamf Account console — the region your provider details are held in and your sign-in traffic is routed through. One of `AU`, `EU`, `JP`, `RAMP`, `US`. The console says this cannot be changed after the connection is created, so changing it replaces the connection. Note this is unrelated to the region of the `base_url` you configure the provider with.
-- `name` (String) **"Connection name"** in the Jamf Account console — the name to give the connection, and the name the console displays. Letters and digits only: Jamf rejects anything else without saying which field was at fault, so this is checked before the plan is applied.
+Destroying a `jamfplatform_account_sso_domain` also withdraws that domain from every connection naming it, quietly narrowing this set. The `jamfplatform_account_sso_domain` data source reports which connections a domain is assigned to.
+- `hosting_region` (String) **"Hosting region"** in the Jamf Account console: the region your provider details are held in and your sign-in traffic is routed through. One of `AU`, `EU`, `JP`, `RAMP`, `US`. The console says this cannot be changed after the connection is created, so changing it replaces the connection. This is unrelated to the region of the `base_url` you configure the provider with.
+- `name` (String) **"Connection name"** in the Jamf Account console: the name to give the connection, and the name the console displays. Letters and digits only: Jamf rejects anything else without saying which field was at fault, so this is checked before the plan is applied.
 
-Jamf does not require connection names to be unique, and appends a suffix of its own to whichever name you choose. So two connections created with the same name both exist, and the console shows both under that one name — only `internal_name` and `id` tell them apart. Give each connection a distinct name unless you mean to have duplicates.
+Jamf does not require connection names to be unique, and appends a suffix of its own to whichever name you choose. So two connections created with the same name both exist, and the console shows both under that one name. Only `internal_name` and `id` tell them apart. Give each connection a distinct name unless you mean to have duplicates.
 
 ### Optional
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `attribute_map` (String) How claims from your provider are mapped onto Jamf user details, as a JSON object string. Author it with `jsonencode({ ... })`. Formatting and key order are not significant — the value is compared as JSON, so reindenting it produces no change.
+- `attribute_map` (String) How claims from your provider are mapped onto Jamf user details, as a JSON object string. Author it with `jsonencode({ ... })`. Formatting and key order are not significant: the value is compared as JSON, so reindenting it produces no change.
 
-Every connection read carried one, in one of three shapes: `{"mapping_mode":"bind_all"}`, `{"mapping_mode":"basic_profile"}`, or `{"mapping_mode":"use_map", "userinfo_scope":"…", "attributes":{…}}` whose values are claim templates. Jamf publishes no schema and validates nothing here, so a mode this provider does not recognise is a warning rather than an error — but a value that is not a JSON object is refused, because Jamf stores it and quietly ignores it. Jamf populates a default when you leave it out.
-- `auth_method` (String) **"Connection auth method"** in the Jamf Account console — how Jamf proves itself to your provider when it redeems an authorization code. One of `client_secret`, `private_key_jwt`. With `client_secret` you supply `client_secret`; with `private_key_jwt` Jamf holds a key of its own and there is no shared secret to supply, so `client_secret` is refused. The console offers no choice for `google_workspace`, so this is refused there. Defaults to `client_secret`.
-- `client_id` (String) **"Client ID"** in the Jamf Account console — the identifier of the application you registered with your provider. Required for every family except an Entra connection using `entra.use_common_endpoint`, where a multi-tenant application needs none.
-- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Account console — the secret of the application you registered with your provider. Never held in Terraform state and never returned by Jamf, so Terraform cannot tell whether the stored secret still matches this value. Leave it out to keep the stored secret as it is; supply it to set or rotate it, and bump `client_secret_wo_version` in the same change so Terraform knows a rotation was asked for.
-- `client_secret_wo_version` (Number) Rotation trigger for `client_secret`. Because a write-only value is not held in state, changing the secret alone produces no difference for Terraform to act on — bump this whole number to make it rotate.
-- `custom_username_claim_name` (String) **"Custom username claim name"** in the Jamf Account console — the claim to read a username from when your provider does not place it in the standard one, so people are matched by an identifier such as a user principal name instead of an email address. Typically `upn` or `nickname`, and needs Jamf Pro 11.20.0 or later where Jamf Pro is one of the enabled products.
-- `enabled_environments` (Attributes Set) Products scoped by platform environment rather than by tenant, and the environments of them this connection applies to. Leave it out unless a product needs it — Jamf documents no list of which do. Configuration-authoritative and blind to outside change, exactly as `enabled_products` is, and for the same reason. (see [below for nested schema](#nestedatt--enabled_environments))
-- `enabled_products` (Attributes Set) **"Applications"** in the Jamf Account console — the Jamf products, and the tenants of those products, this connection may be used to sign in to. Jamf Account itself is always enabled and is not a choice, so it need not be listed. Leave the whole set out, or give an empty one, to enable no tenant-scoped product.
+Every connection read carried one, in one of three shapes: `{"mapping_mode":"bind_all"}`, `{"mapping_mode":"basic_profile"}`, or `{"mapping_mode":"use_map", "userinfo_scope":"…", "attributes":{…}}` whose values are claim templates. Jamf publishes no schema and validates nothing here, so a mode this provider does not recognise is a warning rather than an error. A value that is not a JSON object is refused, though, because Jamf stores it and quietly ignores it. Jamf populates a default when you leave it out.
+- `auth_method` (String) **"Connection auth method"** in the Jamf Account console: how Jamf proves itself to your provider when it redeems an authorization code. One of `client_secret`, `private_key_jwt`. With `client_secret` you supply `client_secret`; with `private_key_jwt` Jamf holds a key of its own and there is no shared secret to supply, so `client_secret` is refused. The console offers no choice for `google_workspace`, so this is refused there. Defaults to `client_secret`.
+- `client_id` (String) **"Client ID"** in the Jamf Account console: the identifier of the application you registered with your provider. Required for every family except an Entra connection using `entra.use_common_endpoint`, where a multi-tenant application needs none.
+- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Account console: the secret of the application you registered with your provider. Never held in Terraform state and never returned by Jamf, so Terraform cannot tell whether the stored secret still matches this value. Leave it out to keep the stored secret as it is; supply it to set or rotate it, and bump `client_secret_wo_version` in the same change so Terraform knows a rotation was asked for.
+- `client_secret_wo_version` (Number) Rotation trigger for `client_secret`. Because a write-only value is not held in state, changing the secret alone produces no difference for Terraform to act on. Bump this whole number to make it rotate.
+- `custom_username_claim_name` (String) **"Custom username claim name"** in the Jamf Account console: the claim to read a username from when your provider does not place it in the standard one, so people are matched by an identifier such as a user principal name instead of an email address. Typically `upn` or `nickname`, and needs Jamf Pro 11.20.0 or later where Jamf Pro is one of the enabled products.
+- `enabled_environments` (Attributes Set) Products scoped by platform environment rather than by tenant, and the environments of them this connection applies to. Leave it out unless a product needs it; Jamf documents no list of which do. Configuration-authoritative and blind to outside change, exactly as `enabled_products` is, and for the same reason. (see [below for nested schema](#nestedatt--enabled_environments))
+- `enabled_products` (Attributes Set) **"Applications"** in the Jamf Account console: the Jamf products, and the tenants of those products, this connection may be used to sign in to. Jamf Account itself is always enabled and is not a choice, so it need not be listed. Leave the whole set out, or give an empty one, to enable no tenant-scoped product.
 
-**Configuration-authoritative and blind to outside change.** Nothing Jamf returns echoes the tenants back, so Terraform cannot notice a change made in the console, cannot recover this on import, and will always plan whatever you configure. `enabled_product_names` reports the products alone, which is the only part that does come back. Nothing in this provider can list an organization's tenant identifiers either, so they have to be copied from the Jamf Account console. (see [below for nested schema](#nestedatt--enabled_products))
+This set is configuration-authoritative and blind to outside change. Nothing Jamf returns echoes the tenants back, so Terraform cannot notice a change made in the console, cannot recover this on import, and will always plan whatever you configure. `enabled_product_names` reports the products alone, which is the only part that does come back. Nothing in this provider can list an organization's tenant identifiers either, so they have to be copied from the Jamf Account console. (see [below for nested schema](#nestedatt--enabled_products))
 - `entra` (Attributes) Settings for a Microsoft Entra connection. Required when `connection_type` is `entra`, and refused otherwise.
 
 This is the manually-configured form. Microsoft's admin-consent flow, the "Connect with Microsoft" button in the Jamf Account console, is an interactive browser handshake with no unattended equivalent and cannot be set up here. (see [below for nested schema](#nestedatt--entra))
@@ -179,15 +179,15 @@ The console fills the three addresses in for you by reading your provider's disc
 - `google_workspace` (Attributes) Settings for a Google Workspace connection. Required when `connection_type` is `google_workspace`, and refused otherwise.
 
 No live Google Workspace connection was available anywhere while this was built, so treat this block as provisional: every field comes from Jamf's published shape and from the console, and none of it has been seen round-tripped. (see [below for nested schema](#nestedatt--google_workspace))
-- `group_name_filter` (Attributes) **"IdP group name filter"** in the Jamf Account console — which of your provider's groups are passed through to Jamf, for a directory holding more groups than Jamf needs. Leave the whole block out to send no filter at all; supply it with an empty `groups` set to send an empty filter, which is a different thing and the shape most connections carry. (see [below for nested schema](#nestedatt--group_name_filter))
-- `inactivity_timeout_minutes` (Number) **"Inactivity timeout (minutes)"** in the Jamf Account console — how long a session survives without activity. Leave it out to use the Jamf default.
-- `okta` (Attributes) Settings for an Okta connection. Required when `connection_type` is `okta`, and refused otherwise. Only the org domain is yours to set — Jamf works the four addresses out from it. (see [below for nested schema](#nestedatt--okta))
-- `omit_login_hint` (Boolean) **"Omit `login_hint` IdP parameter"** in the Jamf Account console — whether the address someone typed at Jamf is withheld from your provider, so they type it again there. Leave it `false` for the smoother sign-in; set it `true` if your provider mishandles the hint. Defaults to `false`.
-- `pkce` (String) **"PKCE configuration"** in the Jamf Account console — the Proof Key for Code Exchange method used with your provider. One of `auto`, `disabled`, `plain`, `s256`, where `auto` lets Jamf pick. The console offers this only for `generic_oidc` and `okta`, so it is refused for the other two families. Defaults to `disabled`.
-- `scopes` (String) **"Scopes"** in the Jamf Account console — the OAuth scopes Jamf asks your provider for, separated by spaces exactly as the console shows them. `openid` is required, and a `groups` scope is needed if you want group memberships passed through; the console's default is `openid email profile`. Required for `generic_oidc` and `okta`, optional for `google_workspace`, and refused for `entra`, which takes none.
-- `send_nonce` (Boolean) **"Send nonce"** in the Jamf Account console — whether a nonce is sent on the authentication request. Leave it alone unless your provider requires one. Defaults to `false`.
-- `session_duration_minutes` (Number) **"Session duration (minutes)"** in the Jamf Account console — how long a session lasts before the person signs in again, however active they are. Leave it out to use the Jamf default. Respected by Jamf Pro, Jamf Protect and Jamf Account.
-- `sync_attributes_at_login` (Boolean) **"Sync at each login"** in the Jamf Account console — whether a person's profile details are refreshed from your provider every time they sign in. Defaults to `true`, which is what every connection read carried.
+- `group_name_filter` (Attributes) **"IdP group name filter"** in the Jamf Account console: which of your provider's groups are passed through to Jamf, for a directory holding more groups than Jamf needs. Leave the whole block out to send no filter at all; supply it with an empty `groups` set to send an empty filter, which is a different thing and the shape most connections carry. (see [below for nested schema](#nestedatt--group_name_filter))
+- `inactivity_timeout_minutes` (Number) **"Inactivity timeout (minutes)"** in the Jamf Account console: how long a session survives without activity. Leave it out to use the Jamf default.
+- `okta` (Attributes) Settings for an Okta connection. Required when `connection_type` is `okta`, and refused otherwise. Only the org domain is yours to set; Jamf works the four addresses out from it. (see [below for nested schema](#nestedatt--okta))
+- `omit_login_hint` (Boolean) **"Omit `login_hint` IdP parameter"** in the Jamf Account console: whether the address someone typed at Jamf is withheld from your provider, so they type it again there. Leave it `false` for the smoother sign-in; set it `true` if your provider mishandles the hint. Defaults to `false`.
+- `pkce` (String) **"PKCE configuration"** in the Jamf Account console: the Proof Key for Code Exchange method used with your provider. One of `auto`, `disabled`, `plain`, `s256`, where `auto` lets Jamf pick. The console offers this only for `generic_oidc` and `okta`, so it is refused for the other two families. Defaults to `disabled`.
+- `scopes` (String) **"Scopes"** in the Jamf Account console: the OAuth scopes Jamf asks your provider for, separated by spaces exactly as the console shows them. `openid` is required, and a `groups` scope is needed if you want group memberships passed through; the console's default is `openid email profile`. Required for `generic_oidc` and `okta`, optional for `google_workspace`, and refused for `entra`, which takes none.
+- `send_nonce` (Boolean) **"Send nonce"** in the Jamf Account console: whether a nonce is sent on the authentication request. Leave it alone unless your provider requires one. Defaults to `false`.
+- `session_duration_minutes` (Number) **"Session duration (minutes)"** in the Jamf Account console: how long a session lasts before the person signs in again, however active they are. Leave it out to use the Jamf default. Respected by Jamf Pro, Jamf Protect and Jamf Account.
+- `sync_attributes_at_login` (Boolean) **"Sync at each login"** in the Jamf Account console: whether a person's profile details are refreshed from your provider every time they sign in. Defaults to `true`, which is what every connection read carried.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `username_domain` (String) Domain appended to a bare username from your provider to form the person's email address. No console control was observed for this; leave it out unless your provider returns usernames without a domain.
 
@@ -195,9 +195,9 @@ No live Google Workspace connection was available anywhere while this was built,
 
 - `consent_flow` (Boolean) Whether the connection authenticates through Microsoft's admin-consent flow rather than through a client you registered. Managed by Jamf and only ever set up in the Jamf Account console: such a connection has no client of its own and cannot be written back, so this resource refuses to manage one. Read-only.
 - `easy_config` (Boolean) Whether the connection was built by Jamf's guided setup rather than configured directly. Managed by Jamf. Read-only.
-- `enabled_product_names` (Set of String) The Jamf products Jamf Account reports this connection as enabled for. This is the only part of `enabled_products` that can be read back — never the tenants — so it is a partial signal rather than a full picture. Read-only.
+- `enabled_product_names` (Set of String) The Jamf products Jamf Account reports this connection as enabled for. This is the only part of `enabled_products` that can be read back, never the tenants, so it is a partial signal rather than a full picture. Read-only.
 - `id` (String) Identifier Jamf Account assigned to the connection. Read-only.
-- `internal_name` (String) Internal name Jamf Account stores for the connection. Jamf appends a suffix of its own to the name you choose, and this is the result. The console does not show it — it lists `name` — so this is the only place two connections sharing a name can be told apart. Read-only.
+- `internal_name` (String) Internal name Jamf Account stores for the connection. Jamf appends a suffix of its own to the name you choose, and this is the result. The console does not show it, listing `name` instead, so this is the only place two connections sharing a name can be told apart. Read-only.
 - `ticket_url` (String) Address of the Google Workspace administrator consent request for this connection, where one is outstanding. Null for every other family and for a Google connection needing no consent. Read-only.
 
 <a id="nestedatt--enabled_environments"></a>
@@ -222,7 +222,7 @@ Required:
 
 Optional:
 
-- `managed_account_id` (String) Set this only when the tenants belong to an account you manage on someone else's behalf as a Jamf partner, rather than to your own organization. Nothing Jamf returns reveals it, so Terraform cannot tell you that a connection points at a managed account — this attribute is write-only in practice, like the block that holds it.
+- `managed_account_id` (String) Set this only when the tenants belong to an account you manage on someone else's behalf as a Jamf partner, rather than to your own organization. Nothing Jamf returns reveals it, so Terraform cannot tell you that a connection points at a managed account. This attribute is write-only in practice, like the block that holds it.
 - `tenants` (Set of String) Identifiers of the product's tenants this connection applies to. Leave it out or give an empty set for a product scoped to the whole organization rather than to a tenant, such as `ACCOUNT`.
 
 
@@ -231,25 +231,25 @@ Optional:
 
 Required:
 
-- `domain` (String) **"Microsoft Entra AD domain"** in the Jamf Account console — the primary domain of your Entra tenant. Real connections carry every shape here: an `onmicrosoft.com` host, a plain company domain, a bare tenant identifier, and a full Microsoft sign-in address including the tenant identifier. Nothing is checked beyond it not being empty, deliberately — anything stricter would refuse a working value.
-- `tenant_domain` (String) **"Tenant domain"** in the Jamf Account console — the domain identifying the Entra tenant to authenticate against. Often the same as `domain` but not reliably so, and it takes the same range of shapes, so it is not checked either.
+- `domain` (String) **"Microsoft Entra AD domain"** in the Jamf Account console: the primary domain of your Entra tenant. Real connections carry every shape here: an `onmicrosoft.com` host, a plain company domain, a bare tenant identifier, and a full Microsoft sign-in address including the tenant identifier. Nothing is checked beyond it not being empty, deliberately, because anything stricter would refuse a working value.
+- `tenant_domain` (String) **"Tenant domain"** in the Jamf Account console: the domain identifying the Entra tenant to authenticate against. Often the same as `domain` but not reliably so, and it takes the same range of shapes, so it is not checked either.
 
 Optional:
 
-- `enable_users_api` (Boolean) **"Enable users API"** in the Jamf Account console — whether Microsoft Graph is queried for details the token does not carry. Your application registration has to hold the matching Graph permission. Defaults to `false`.
-- `extended_profile` (Boolean) **"Extended profile"** in the Jamf Account console — whether a person's extended profile details are read from Entra when they sign in. Defaults to `false`.
-- `get_user_groups` (Boolean) **"Get user groups"** in the Jamf Account console — whether a person's Entra group memberships are passed through to Jamf. Defaults to `false`.
+- `enable_users_api` (Boolean) **"Enable users API"** in the Jamf Account console: whether Microsoft Graph is queried for details the token does not carry. Your application registration has to hold the matching Graph permission. Defaults to `false`.
+- `extended_profile` (Boolean) **"Extended profile"** in the Jamf Account console: whether a person's extended profile details are read from Entra when they sign in. Defaults to `false`.
+- `get_user_groups` (Boolean) **"Get user groups"** in the Jamf Account console: whether a person's Entra group memberships are passed through to Jamf. Defaults to `false`.
 - `groups_scope` (String) The Microsoft Graph permission groups are read with. One of `DIRECTORY_READ_ALL`, `GROUP_READ_ALL`. `GROUP_READ_ALL` is the narrower of the two and the right choice for a new connection; `DIRECTORY_READ_ALL` is kept for existing ones. Only meaningful with `get_user_groups`, so it is refused without it.
-- `identity_api` (String) **"Identity API"** in the Jamf Account console — the Microsoft identity platform version the connection uses. One of `AZURE_ACTIVE_DIRECTORY_V1`, `MICROSOFT_IDENTITY_PLATFORM_V2`. Defaults to `MICROSOFT_IDENTITY_PLATFORM_V2`, which every Entra connection read carried.
+- `identity_api` (String) **"Identity API"** in the Jamf Account console: the Microsoft identity platform version the connection uses. One of `AZURE_ACTIVE_DIRECTORY_V1`, `MICROSOFT_IDENTITY_PLATFORM_V2`. Defaults to `MICROSOFT_IDENTITY_PLATFORM_V2`, which every Entra connection read carried.
 - `include_nested_groups` (Boolean) **"Include all groups the user is a member of, including child groups"** in the Jamf Account console. Only meaningful with `get_user_groups`, so setting it `true` without that is refused. Defaults to `false`.
-- `max_groups` (Number) **"Max number of groups to retrieve"** in the Jamf Account console — the most groups read for one person. Entra truncates group claims on a large directory, so raising this only helps as far as Entra will go. Defaults to `250`, which every Entra connection read carried.
-- `set_emails_verified` (Boolean) **"Always set email verified to 'true'"** in the Jamf Account console — whether addresses from Entra are treated as already confirmed, so people are not asked to confirm them again. Defaults to `true`, matching the console.
-- `use_common_endpoint` (Boolean) **"Use common endpoint"** in the Jamf Account console — whether Microsoft's multi-tenant sign-in address is used instead of your tenant's own. Turn it on for a multi-tenant application registration, in which case `client_id` may be left out. Defaults to `false`.
+- `max_groups` (Number) **"Max number of groups to retrieve"** in the Jamf Account console: the most groups read for one person. Entra truncates group claims on a large directory, so raising this only helps as far as Entra will go. Defaults to `250`, which every Entra connection read carried.
+- `set_emails_verified` (Boolean) **"Always set email verified to 'true'"** in the Jamf Account console: whether addresses from Entra are treated as already confirmed, so people are not asked to confirm them again. Defaults to `true`, matching the console.
+- `use_common_endpoint` (Boolean) **"Use common endpoint"** in the Jamf Account console: whether Microsoft's multi-tenant sign-in address is used instead of your tenant's own. Turn it on for a multi-tenant application registration, in which case `client_id` may be left out. Defaults to `false`.
 - `use_wsfed` (Boolean) Whether WS-Federation is used instead of OpenID Connect. Leave it `false` unless your tenant requires it. Defaults to `false`.
 
 Read-Only:
 
-- `basic_profile` (Boolean) **"Basic profile"** in the Jamf Account console — whether a person's basic profile is read from Entra when they sign in. The console shows it ticked and greyed out because it is always on, so it is reported here rather than offered as a choice. Read-only.
+- `basic_profile` (Boolean) **"Basic profile"** in the Jamf Account console: whether a person's basic profile is read from Entra when they sign in. The console shows it ticked and greyed out because it is always on, so it is reported here rather than offered as a choice. Read-only.
 
 
 <a id="nestedatt--generic_oidc"></a>
@@ -258,7 +258,7 @@ Read-Only:
 Required:
 
 - `authorization_endpoint` (String) Address people are redirected to in order to sign in. Taken from your provider's discovery document as `authorization_endpoint`.
-- `issuer_url` (String) **"Issuer URL"** in the Jamf Account console — your provider's issuer, exactly as it appears in the tokens it signs.
+- `issuer_url` (String) **"Issuer URL"** in the Jamf Account console: your provider's issuer, exactly as it appears in the tokens it signs.
 - `jwks_uri` (String) Address your provider publishes its signing keys at. Taken from your provider's discovery document as `jwks_uri`.
 - `token_endpoint` (String) Address an authorization code is exchanged at. Taken from your provider's discovery document as `token_endpoint`.
 
@@ -272,13 +272,13 @@ Optional:
 
 Required:
 
-- `domain` (String) **"Google Workspace domain"** in the Jamf Account console — the primary domain of your Google Workspace account.
+- `domain` (String) **"Google Workspace domain"** in the Jamf Account console: the primary domain of your Google Workspace account.
 
 Optional:
 
-- `enable_users_api` (Boolean) **"Enable user API"** in the Jamf Account console — whether the Google Directory is queried for details the token does not carry. You have to turn the Admin SDK on in the Google console and allow access for each Google Workspace domain. Defaults to `false`.
+- `enable_users_api` (Boolean) **"Enable user API"** in the Jamf Account console: whether the Google Directory is queried for details the token does not carry. You have to turn the Admin SDK on in the Google console and allow access for each Google Workspace domain. Defaults to `false`.
 - `extended_groups` (Boolean) Whether groups are read through the Google Directory rather than from the token, which returns groups the token leaves out. Defaults to `false`.
-- `get_user_groups` (Boolean) **"Groups"** in the Jamf Account console — whether a person's Google Workspace group memberships are passed through to Jamf. Defaults to `false`.
+- `get_user_groups` (Boolean) **"Groups"** in the Jamf Account console: whether a person's Google Workspace group memberships are passed through to Jamf. Defaults to `false`.
 
 
 <a id="nestedatt--group_name_filter"></a>
@@ -286,7 +286,7 @@ Optional:
 
 Required:
 
-- `groups` (Set of String) Group names to filter on. A group is passed through when its own name **contains** one of these, so `Engineering` also passes `Non-Engineering-Contractors` — give the whole name if you mean an exact list. An empty set is meaningful and means no filtering; a name may not contain a comma, which is how Jamf separates them.
+- `groups` (Set of String) Group names to filter on. A group is passed through when its own name **contains** one of these, so `Engineering` also passes `Non-Engineering-Contractors`. Give the whole name if you mean an exact list. An empty set is meaningful and means no filtering; a name may not contain a comma, which is how Jamf separates them.
 - `operator` (String) The console's AND/OR toggle beside the group list: `or` passes a group matching any entry, `and` requires every entry. A group matches an entry when its own name contains it.
 
 
@@ -295,7 +295,7 @@ Required:
 
 Required:
 
-- `domain` (String) **"Okta domain"** in the Jamf Account console — your Okta org domain, without a scheme, such as `example.okta.com`.
+- `domain` (String) **"Okta domain"** in the Jamf Account console: your Okta org domain, without a scheme, such as `example.okta.com`.
 
 Read-Only:
 

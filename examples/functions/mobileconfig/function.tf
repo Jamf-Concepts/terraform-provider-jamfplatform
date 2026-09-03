@@ -32,8 +32,8 @@ resource "jamfplatform_pro_macos_configuration_profile" "workstation" {
 }
 
 # A real-world, multi-payload example: everything the open-source SAP
-# Privileges app needs in one profile. This mixes three different payload
-# types — the case the generic mobileconfig function exists for, since a
+# Privileges app needs in one profile. It mixes three different payload types.
+# That is the case the generic mobileconfig function exists for, since a
 # single-payload helper like mcx_forced_payload cannot express it.
 resource "jamfplatform_pro_macos_configuration_profile" "privileges" {
   general = {

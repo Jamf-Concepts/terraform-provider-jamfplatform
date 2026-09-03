@@ -66,7 +66,7 @@ func (d *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, res
 			"id":                  schema.StringAttribute{MarkdownDescription: "Profile ID. Mutually exclusive with `name`.", Optional: true, Computed: true},
 			"name":                schema.StringAttribute{MarkdownDescription: "Profile display name (exact match). Mutually exclusive with `id`.", Optional: true, Computed: true},
 			"description":         schema.StringAttribute{MarkdownDescription: "Profile description.", Computed: true},
-			"level":               schema.StringAttribute{MarkdownDescription: "Delivery level — `Computer Level` or `User Level`.", Computed: true},
+			"level":               schema.StringAttribute{MarkdownDescription: "Delivery level. Either `Computer Level` or `User Level`.", Computed: true},
 			"distribution_method": schema.StringAttribute{MarkdownDescription: "How the profile reaches devices.", Computed: true},
 			"user_removable":      schema.BoolAttribute{MarkdownDescription: "Whether the device user can remove the profile.", Computed: true},
 			"redeploy_on_update":  schema.StringAttribute{MarkdownDescription: "Re-deploy policy on update.", Computed: true},

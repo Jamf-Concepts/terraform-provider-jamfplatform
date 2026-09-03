@@ -74,7 +74,7 @@ func deviceTargetAttributes() map[string]actionschema.Attribute {
 		},
 		"serial_number": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.",
+			MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API** access when set. Set exactly one of this or `device_id`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
 			},

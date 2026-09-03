@@ -4,13 +4,15 @@ page_title: "jamfplatform_pro_icon Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro icon. Icons are uploaded to Jamf Pro and referenced by ID from Self Service branding configurations.
-  Source-driven change detection: the provider opens icon_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro does not support icon updates). When the hash is unchanged the resource is stable.
-  Source types:
-  Local file: icon_file_source = "./icon.png". Provider reads bytes on every plan. Stable across plans unless file content changes.URL: icon_file_source = "https://cdn.example.com/icon.png". Provider downloads on every plan (~tens of KB). Triggers replacement when the remote content changes — useful for tracking upstream icons (e.g. App Store CDN).Frozen URL behaviour: if you need a URL-sourced icon to NOT track upstream changes, download the icon locally and switch icon_file_source to the local path.
-  Destroy behaviour: Jamf Pro does not support deleting an icon record. terraform destroy and replacements both remove the resource from Terraform state only; the icon record persists on the tenant.
-  Import workflow (no spurious replacement):
-  terraform import jamfplatform_pro_icon.example 42. Provider downloads the icon bytes via the CDN URL and stores the SHA-256 in state.Download the icon locally from the URL stored in state (e.g. curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')"). You must download from the URL — do NOT reuse the file you originally uploaded. Jamf Pro re-encodes uploaded PNGs (different zlib compression and/or metadata), so the bytes served back from the CDN are not byte-identical to what you uploaded.Add icon_file_source = "./icon.png" to your config.terraform plan shows an in-place update on icon_file_source (null → path). No replacement because the local bytes now match what was stored on import.
-  If you skip step 2 and point icon_file_source at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a replacement — the local bytes' hash will not match the import-stored hash (Jamf transformed them).
+  Change detection
+  The provider opens icon_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. A changed hash replaces the resource, because Jamf Pro cannot update an icon in place. An unchanged hash leaves the resource stable.
+  Source types
+  A local path (icon_file_source = "./icon.png"): the provider reads the bytes on every plan, and the resource stays stable unless the file content changes.A URL (icon_file_source = "https://cdn.example.com/icon.png"): the provider downloads the bytes on every plan (tens of kilobytes) and replaces the icon when the remote content changes. Useful for tracking an upstream icon, such as one on the App Store CDN.To stop a URL-sourced icon tracking upstream changes, download it locally and point icon_file_source at the local path.
+  Destroy behaviour
+  Jamf Pro cannot delete an icon record. terraform destroy and replacements remove the resource from Terraform state only; the icon stays on the tenant.
+  Import workflow
+  terraform import jamfplatform_pro_icon.example 42. The provider downloads the icon bytes from the CDN URL and stores their SHA-256 in state.Download the icon locally from the URL stored in state, for example curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')". Download it from that URL rather than reusing the file you uploaded. Jamf Pro re-encodes uploaded PNGs, with different zlib compression or metadata, so the bytes the CDN serves back are not byte-identical to the ones you sent.Add icon_file_source = "./icon.png" to your configuration.terraform plan shows an in-place update on icon_file_source (null to path). Nothing is replaced, because the local bytes now match what import stored.
+  Point icon_file_source at your original upload instead of the CDN-downloaded copy and the first plan after import shows a replacement: the local bytes hash to something other than what import stored, since Jamf Pro transformed them.
   Required Jamf permissions
   None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 ---
@@ -19,22 +21,28 @@ description: |-
 
 Manages a Jamf Pro icon. Icons are uploaded to Jamf Pro and referenced by ID from Self Service branding configurations.
 
-**Source-driven change detection**: the provider opens `icon_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro does not support icon updates). When the hash is unchanged the resource is stable.
+### Change detection
 
-**Source types**:
-- **Local file**: `icon_file_source = "./icon.png"`. Provider reads bytes on every plan. Stable across plans unless file content changes.
-- **URL**: `icon_file_source = "https://cdn.example.com/icon.png"`. Provider downloads on every plan (~tens of KB). Triggers replacement when the remote content changes — useful for tracking upstream icons (e.g. App Store CDN).
-- **Frozen URL behaviour**: if you need a URL-sourced icon to NOT track upstream changes, download the icon locally and switch `icon_file_source` to the local path.
+The provider opens `icon_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. A changed hash replaces the resource, because Jamf Pro cannot update an icon in place. An unchanged hash leaves the resource stable.
 
-**Destroy behaviour**: Jamf Pro does not support deleting an icon record. `terraform destroy` and replacements both remove the resource from Terraform state only; the icon record persists on the tenant.
+### Source types
 
-**Import workflow** (no spurious replacement):
-1. `terraform import jamfplatform_pro_icon.example 42`. Provider downloads the icon bytes via the CDN URL and stores the SHA-256 in state.
-2. Download the icon locally from the URL stored in state (e.g. `curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')"`). **You must download from the URL — do NOT reuse the file you originally uploaded.** Jamf Pro re-encodes uploaded PNGs (different zlib compression and/or metadata), so the bytes served back from the CDN are not byte-identical to what you uploaded.
-3. Add `icon_file_source = "./icon.png"` to your config.
-4. `terraform plan` shows an in-place update on `icon_file_source` (null → path). No replacement because the local bytes now match what was stored on import.
+- A local path (`icon_file_source = "./icon.png"`): the provider reads the bytes on every plan, and the resource stays stable unless the file content changes.
+- A URL (`icon_file_source = "https://cdn.example.com/icon.png"`): the provider downloads the bytes on every plan (tens of kilobytes) and replaces the icon when the remote content changes. Useful for tracking an upstream icon, such as one on the App Store CDN.
+- To stop a URL-sourced icon tracking upstream changes, download it locally and point `icon_file_source` at the local path.
 
-If you skip step 2 and point `icon_file_source` at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a **replacement** — the local bytes' hash will not match the import-stored hash (Jamf transformed them).
+### Destroy behaviour
+
+Jamf Pro cannot delete an icon record. `terraform destroy` and replacements remove the resource from Terraform state only; the icon stays on the tenant.
+
+### Import workflow
+
+1. `terraform import jamfplatform_pro_icon.example 42`. The provider downloads the icon bytes from the CDN URL and stores their SHA-256 in state.
+2. Download the icon locally from the URL stored in state, for example `curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')"`. **Download it from that URL rather than reusing the file you uploaded.** Jamf Pro re-encodes uploaded PNGs, with different zlib compression or metadata, so the bytes the CDN serves back are not byte-identical to the ones you sent.
+3. Add `icon_file_source = "./icon.png"` to your configuration.
+4. `terraform plan` shows an in-place update on `icon_file_source` (null to path). Nothing is replaced, because the local bytes now match what import stored.
+
+Point `icon_file_source` at your original upload instead of the CDN-downloaded copy and the first plan after import shows a replacement: the local bytes hash to something other than what import stored, since Jamf Pro transformed them.
 
 **Required Jamf permissions**
 
@@ -43,12 +51,12 @@ None — any authenticated Jamf Platform API integration may call the underlying
 ## Example Usage
 
 ```terraform
-# Local file — provider hashes bytes on every plan. Stable unless file changes.
+# Local file. Provider hashes bytes on every plan. Stable unless file changes.
 resource "jamfplatform_pro_icon" "from_local" {
   icon_file_source = "./icon.png"
 }
 
-# URL — provider downloads on every plan. Replaces when upstream content changes.
+# URL. Provider downloads on every plan. Replaces when upstream content changes.
 # Useful for tracking App Store / vendor CDN icons.
 resource "jamfplatform_pro_icon" "from_url" {
   icon_file_source = "https://is1-ssl.mzstatic.com/image/thumb/.../512x512bb.jpg"

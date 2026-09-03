@@ -56,7 +56,7 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, _ datasource.Schema
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every Jamf Security Cloud device group on the tenant, including the built-in " +
 			"group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no " +
-			"search arguments — filter the result in Terraform." + pluralDataSourcePrivileges,
+			"search arguments. Filter the result in Terraform." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",
@@ -71,7 +71,7 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, _ datasource.Schema
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							MarkdownDescription: "Device group ID assigned by Jamf Security Cloud. Null for the " +
-								"built-in group, which Jamf Security Cloud does not give an identifier — filter on " +
+								"built-in group, which Jamf Security Cloud does not give an identifier. Filter on " +
 								"`built_in` before using this value to reference a group.",
 							Computed: true,
 						},

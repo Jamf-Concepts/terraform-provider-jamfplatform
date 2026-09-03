@@ -84,9 +84,9 @@ func (r *JamfConnectResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *JamfConnectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). " +
-			"This resource **adopts an existing configuration profile** — one that already contains a Jamf Connect payload — and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with `jamfplatform_pro_macos_configuration_profile` (or in the Jamf Pro UI) first and reference the profile's `id` as `profile_id`. " +
-			"**Adopting a profile applies the configured deployment settings immediately** — a profile left at the default `auto_deployment_type = \"NONE\"` turns automatic deployment off. " +
-			"**Destroying this resource does not remove Jamf Connect from the configuration profile** and does not change the profile itself — it only stops Terraform from managing the deployment and update settings (the settings already applied remain in place). " +
+			"This resource adopts an existing configuration profile, one that already contains a Jamf Connect payload, and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with `jamfplatform_pro_macos_configuration_profile` (or in the Jamf Pro UI) first and reference the profile's `id` as `profile_id`. " +
+			"**Adopting a profile applies the configured deployment settings immediately.** A profile left at the default `auto_deployment_type = \"NONE\"` turns automatic deployment off. " +
+			"Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself. It only stops Terraform from managing the deployment and update settings; the settings already applied remain in place. " +
 			"Import with `terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -97,7 +97,7 @@ func (r *JamfConnectResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"profile_id": schema.Int64Attribute{
-				MarkdownDescription: "Jamf Pro ID of the configuration profile to manage — the `id` of a `jamfplatform_pro_macos_configuration_profile` that contains a Jamf Connect payload. The profile must already exist and carry a Jamf Connect payload (it then appears automatically under Settings → Jamf apps → Jamf Connect); otherwise apply fails. Changing it manages a different profile and forces replacement.",
+				MarkdownDescription: "Jamf Pro ID of the configuration profile to manage: the `id` of a `jamfplatform_pro_macos_configuration_profile` that contains a Jamf Connect payload. The profile must already exist and carry a Jamf Connect payload (it then appears automatically under Settings → Jamf apps → Jamf Connect); otherwise apply fails. Changing it manages a different profile and forces replacement.",
 				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplace(),
@@ -109,10 +109,10 @@ func (r *JamfConnectResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"auto_deployment_type": schema.StringAttribute{
 				MarkdownDescription: "How Jamf Connect is deployed and updated on the profile's computers, matching the Jamf Pro \"Update Type\" choices. " +
-					"`NONE` — automatic deployment is off (the deploy toggle is No); `version` is ignored. " +
-					"`INITIAL_INSTALLATION_ONLY` — \"Manual\": deploys the chosen `version` for the initial install only; later updates are manual. " +
-					"`PATCH_UPDATES` — \"Maintenance\": deploys and keeps the app updated with patch releases. " +
-					"`MINOR_AND_PATCH_UPDATES` — \"Minor & Maintenance\": deploys and keeps the app updated with minor and patch releases. " +
+					"`NONE`: automatic deployment is off (the deploy toggle is No), and `version` is ignored. " +
+					"`INITIAL_INSTALLATION_ONLY` (\"Manual\"): deploys the chosen `version` for the initial install only; later updates are manual. " +
+					"`PATCH_UPDATES` (\"Maintenance\"): deploys and keeps the app updated with patch releases. " +
+					"`MINOR_AND_PATCH_UPDATES` (\"Minor & Maintenance\"): deploys and keeps the app updated with minor and patch releases. " +
 					"Defaults to `NONE`.",
 				Optional: true,
 				Computed: true,
@@ -128,7 +128,7 @@ func (r *JamfConnectResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"version": schema.StringAttribute{
 				MarkdownDescription: "Jamf Connect version to deploy (e.g. `2.45.1`), as offered in the Jamf Pro version picker. **Required** when `auto_deployment_type` is anything other than `NONE`, and **must be omitted** when it is `NONE` (Jamf Connect ignores the version in that mode). Must be Jamf Connect 2.3.0 or higher. " +
-					"Jamf Pro does not allow lowering an already-deployed version — only the same or a higher version is accepted.",
+					"Jamf Pro does not allow lowering an already-deployed version; only the same or a higher version is accepted.",
 				Optional: true,
 			},
 			"profile_name": schema.StringAttribute{

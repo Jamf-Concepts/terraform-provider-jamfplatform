@@ -3,8 +3,8 @@ data "jamfplatform_security_cloud_ztna_app" "by_id" {
   id = "27f04387-0a12-4f70-9256-eeccc67d7304"
 }
 
-# Or by name. Application names are not required to be unique, so a name matching
-# more than one application is an error — use the ID in that case.
+# Or by name. Application names are not required to be unique, so a name
+# matching more than one application is an error. Use the ID in that case.
 data "jamfplatform_security_cloud_ztna_app" "by_name" {
   name = "Internal CRM"
 }

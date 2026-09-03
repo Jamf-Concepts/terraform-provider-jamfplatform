@@ -5,8 +5,8 @@ subcategory: ""
 description: |-
   Manages the Jamf Security Cloud UEM Connect integration, which syncs device inventory and group membership from Jamf Pro into Jamf Security Cloud and can signal device risk back to Jamf Pro.
   A tenant holds one UEM Connect integration. Creating a second is refused, so where an integration already exists, import it rather than declaring a new one.
-  Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here — prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
-  ~> platform_tenant leaves credentials behind when the integration is destroyed. Jamf Security Cloud creates a Jamf Pro API integration named JSC Connector to authenticate with, and that integration survives the destroy — neither Jamf Security Cloud nor this provider removes it, and this provider holds no Jamf Pro credentials for that tenant to remove it with. Each create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro instance, each carrying the 31-privilege JSC Connector role — which includes writing configuration profiles, computer and mobile device records, extension attributes and group memberships. Audit Settings → API roles and clients on the Jamf Pro instance after any destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled JSC Connector integrations against zero live connectors, 88% of every integration on it.
+  Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here. Prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
+  ~> platform_tenant leaves credentials behind when the integration is destroyed. Jamf Security Cloud creates a Jamf Pro API integration named JSC Connector to authenticate with, and that integration survives the destroy. Neither Jamf Security Cloud nor this provider removes it, and this provider holds no Jamf Pro credentials for that tenant to remove it with. Each create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro instance, each carrying the 31-privilege JSC Connector role, which includes writing configuration profiles, computer and mobile device records, extension attributes and group memberships. Audit Settings → API roles and clients on the Jamf Pro instance after any destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled JSC Connector integrations against zero live connectors, 88% of every integration on it.
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
   After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
   See the Jamf Security Cloud guide ../guides/security-cloud for how a Jamf Pro group is named in a membership mapping, why the order of the mappings decides which group a device joins, and what an import leaves you to reconcile.
@@ -23,9 +23,9 @@ Manages the Jamf Security Cloud **UEM Connect** integration, which syncs device 
 
 A tenant holds one UEM Connect integration. Creating a second is refused, so where an integration already exists, import it rather than declaring a new one.
 
-Choose one of two ways to authenticate to Jamf Pro. With `platform_tenant`, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here — prefer it. With `oauth`, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
+Choose one of two ways to authenticate to Jamf Pro. With `platform_tenant`, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here. Prefer it. With `oauth`, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
 
-~> **`platform_tenant` leaves credentials behind when the integration is destroyed.** Jamf Security Cloud creates a Jamf Pro API integration named `JSC Connector` to authenticate with, and that integration survives the destroy — neither Jamf Security Cloud nor this provider removes it, and this provider holds no Jamf Pro credentials for that tenant to remove it with. Each create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro instance, each carrying the 31-privilege `JSC Connector` role — which includes writing configuration profiles, computer and mobile device records, extension attributes and group memberships. Audit **Settings → API roles and clients** on the Jamf Pro instance after any destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled `JSC Connector` integrations against zero live connectors, 88% of every integration on it.
+~> **`platform_tenant` leaves credentials behind when the integration is destroyed.** Jamf Security Cloud creates a Jamf Pro API integration named `JSC Connector` to authenticate with, and that integration survives the destroy. Neither Jamf Security Cloud nor this provider removes it, and this provider holds no Jamf Pro credentials for that tenant to remove it with. Each create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro instance, each carrying the 31-privilege `JSC Connector` role, which includes writing configuration profiles, computer and mobile device records, extension attributes and group memberships. Audit **Settings → API roles and clients** on the Jamf Pro instance after any destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled `JSC Connector` integrations against zero live connectors, 88% of every integration on it.
 
 The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
 
@@ -48,7 +48,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Security Cloud, and can signal device risk back to Jamf Pro.
 #
 # A tenant holds one integration, so this configuration declares one. Where an
-# integration already exists, import it rather than adding a second — a second is
+# integration already exists, import it rather than adding a second. A second is
 # refused. See import.sh.
 
 # Naming the Jamf Pro tenant is the preferred way to authenticate: Jamf Security
@@ -77,7 +77,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   #
   #     # The secret is write-only: it is sent on apply and never stored in state,
   #     # so there is nothing to compare against. Increment this to send a rotated
-  #     # secret — Jamf Security Cloud cannot update the credentials of an
+  #     # secret. Jamf Security Cloud cannot update the credentials of an
   #     # integration that already exists, so doing so replaces the integration and
   #     # briefly interrupts syncing.
   #     client_secret_wo_version = 1
@@ -92,7 +92,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # Send each device's risk level back to Jamf Pro, so Jamf Pro can act on it.
   device_risk_uem_signaling_enabled = true
 
-  # Omit user_data_field_mapping entirely for Jamf's defaults — the same thing the "Use
+  # Omit user_data_field_mapping entirely for Jamf's defaults, the same thing the "Use
   # default data field mapping" checkbox selects. Set it to read a field from
   # somewhere else; here, building an address for devices Jamf Pro has no email for.
   user_data_field_mapping = {
@@ -112,7 +112,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # entry it matches. Devices matching nothing join the default group.
   #
   # uem_group_id names a Jamf Pro group as computer_ or mobile_ followed by the
-  # group's number — which composes straight out of a jamfplatform_device_group,
+  # group's number, which composes straight out of a jamfplatform_device_group,
   # whose device_type is already "computer" or "mobile" and whose jamf_pro_id is that
   # number. Better than a hard-coded "computer_12", which means nothing to a reader
   # and silently stops matching if the group is ever recreated.
@@ -122,9 +122,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # after creating the group may need a second run.
   #
   # Jamf Security Cloud verifies neither side of a mapping exists, so a wrong ID is
-  # accepted and simply never matches — nothing will tell you it is wrong. That is
-  # the argument for referencing a jamfplatform_security_cloud_device_group rather
-  # than pasting a UUID: Terraform then guarantees the group exists, and creates it
+  # accepted and never matches; nothing will tell you it is wrong. That is the
+  # argument for referencing a jamfplatform_security_cloud_device_group rather than
+  # pasting a UUID: Terraform then guarantees the group exists, and creates it
   # before the mapping that names it.
   group_membership_mapping = {
     enabled = true
@@ -146,7 +146,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   }
 }
 
-# The Jamf Security Cloud side of each mapping. These hold nothing but a name —
+# The Jamf Security Cloud side of each mapping. These hold nothing but a name;
 # membership comes from the mapping above.
 resource "jamfplatform_security_cloud_device_group" "executives" {
   name = "Executives"
@@ -185,50 +185,50 @@ resource "jamfplatform_device_group" "field_staff" {
 ### Optional
 
 - `concurrent_device_sync_enabled` (Boolean) **"Sync multiple devices simultaneously for faster inventory updates"** in the Jamf Security Cloud admin UI.
-- `device_risk_uem_signaling_enabled` (Boolean) **"Enable device risk UEM signaling"** in the Jamf Security Cloud admin UI — whether a device's risk level is sent back to Jamf Pro.
+- `device_risk_uem_signaling_enabled` (Boolean) **"Enable device risk UEM signaling"** in the Jamf Security Cloud admin UI: whether a device's risk level is sent back to Jamf Pro.
 - `disable_sync_on_auth_error` (Boolean) **"Disable syncs when the credentials are expired or the user account is locked"** in the Jamf Security Cloud admin UI. Leaving this on stops repeated failing syncs after the credentials stop working.
 - `enabled` (Boolean) Whether the integration syncs. Disabling it stops scheduled and manual syncs without removing the integration or the devices already synced.
-- `group_membership_mapping` (Attributes) **"Group membership mapping"** in the Jamf Security Cloud admin UI — links Jamf Pro groups to Jamf Security Cloud device groups so membership syncs between the two. Devices matching no mapping join the default group. (see [below for nested schema](#nestedatt--group_membership_mapping))
-- `oauth` (Attributes) **"OAuth authentication"** in the Jamf Security Cloud admin UI — authenticate with credentials from an API integration you created on the Jamf Pro instance. Mutually exclusive with `platform_tenant`, and requires `uem_server_url`. (see [below for nested schema](#nestedatt--oauth))
+- `group_membership_mapping` (Attributes) **"Group membership mapping"** in the Jamf Security Cloud admin UI. Links Jamf Pro groups to Jamf Security Cloud device groups so membership syncs between the two. Devices matching no mapping join the default group. (see [below for nested schema](#nestedatt--group_membership_mapping))
+- `oauth` (Attributes) **"OAuth authentication"** in the Jamf Security Cloud admin UI: authenticate with credentials from an API integration you created on the Jamf Pro instance. Mutually exclusive with `platform_tenant`, and requires `uem_server_url`. (see [below for nested schema](#nestedatt--oauth))
 - `platform_tenant` (Attributes) Authenticate by naming the Jamf Pro tenant, letting Jamf Security Cloud provision and manage its own credentials there. Mutually exclusive with `oauth`. (see [below for nested schema](#nestedatt--platform_tenant))
 - `scheduled_sync_enabled` (Boolean) Whether Jamf Security Cloud syncs on the schedule set by `sync_refresh_interval_minutes`. With this off, only a manually triggered sync runs.
 - `sync_refresh_interval_minutes` (Number) **"Sync refresh interval"** in the Jamf Security Cloud admin UI, in minutes. Jamf Security Cloud accepts only the intervals its admin UI offers and rejects anything else, so the accepted values are 60, 120, 240, 480, 720 and 1440. Defaults to 1440 (24 hours).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `uem_auto_delete_behavior` (String) **"Configure UEM auto-delete behavior"** in the Jamf Security Cloud admin UI — what happens in Jamf Security Cloud to devices that leave Jamf Pro.
+- `uem_auto_delete_behavior` (String) **"Configure UEM auto-delete behavior"** in the Jamf Security Cloud admin UI: what happens in Jamf Security Cloud to devices that leave Jamf Pro.
 
-- `keep_deleted_or_retired` — keep deleted or retired devices in Jamf Security Cloud.
-- `remove_deleted_or_retired` — remove deleted or retired devices from Jamf Security Cloud.
-- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro reports as no longer managed.
-- `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI — the full address of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set with `platform_tenant`, which resolves the address from the tenant itself.
-- `user_data_field_mapping` (Attributes) **"User data field mapping"** in the Jamf Security Cloud admin UI — which Jamf Pro attribute each Jamf Security Cloud device field is populated from. Omit the whole block for the defaults, which is what the admin UI's "Use default data field mapping" checkbox selects. (see [below for nested schema](#nestedatt--user_data_field_mapping))
+- `keep_deleted_or_retired`: keep deleted or retired devices in Jamf Security Cloud.
+- `remove_deleted_or_retired`: remove deleted or retired devices from Jamf Security Cloud.
+- `remove_deleted_or_unmanaged`: also remove devices Jamf Pro reports as no longer managed.
+- `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI: the full address of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set with `platform_tenant`, which resolves the address from the tenant itself.
+- `user_data_field_mapping` (Attributes) **"User data field mapping"** in the Jamf Security Cloud admin UI: which Jamf Pro attribute each Jamf Security Cloud device field is populated from. Omit the whole block for the defaults, which is what the admin UI's "Use default data field mapping" checkbox selects. (see [below for nested schema](#nestedatt--user_data_field_mapping))
 
 ### Read-Only
 
 - `id` (String) Integration ID assigned by Jamf Security Cloud.
-- `unmanaged_sync_threshold` (Number) Days since a device last checked in before Jamf Security Cloud treats it as unmanaged. Read-only, and reported as `0`: Jamf Security Cloud does not apply this setting to a Jamf Pro connection, taking device status from Jamf Pro directly instead, so there is nothing for this provider to set. Wire-probed 2026-09-01 — every value sent for a `JAMF_PRO` connector is accepted and then discarded.
+- `unmanaged_sync_threshold` (Number) Days since a device last checked in before Jamf Security Cloud treats it as unmanaged. Read-only, and reported as `0`: Jamf Security Cloud does not apply this setting to a Jamf Pro connection, taking device status from Jamf Pro directly instead, so there is nothing for this provider to set. Confirmed on 2026-09-01: every value sent for a `JAMF_PRO` connector is accepted and then discarded.
 
 <a id="nestedatt--group_membership_mapping"></a>
 ### Nested Schema for `group_membership_mapping`
 
 Optional:
 
-- `default_security_cloud_group_id` (String) **"Default mapping"** in the Jamf Security Cloud admin UI — the Jamf Security Cloud device group devices join when no mapping matches. Leave unset for the built-in Default Group.
+- `default_security_cloud_group_id` (String) **"Default mapping"** in the Jamf Security Cloud admin UI: the Jamf Security Cloud device group devices join when no mapping matches. Leave unset for the built-in Default Group.
 - `enabled` (Boolean) **"Enable group membership mapping"** in the Jamf Security Cloud admin UI.
-- `mappings` (Attributes List) Group assignments, evaluated in order: a device joins the group of the first entry it matches, so put the most specific first. An empty list clears every mapping, and so does omitting this while still declaring `group_membership_mapping` — the block replaces what it does not mention. (see [below for nested schema](#nestedatt--group_membership_mapping--mappings))
+- `mappings` (Attributes List) Group assignments, evaluated in order: a device joins the group of the first entry it matches, so put the most specific first. An empty list clears every mapping, and so does omitting this while still declaring `group_membership_mapping`, because the block replaces what it does not mention. (see [below for nested schema](#nestedatt--group_membership_mapping--mappings))
 
 <a id="nestedatt--group_membership_mapping--mappings"></a>
 ### Nested Schema for `group_membership_mapping.mappings`
 
 Required:
 
-- `security_cloud_group_id` (String) **"Jamf Security Cloud group"** in the Jamf Security Cloud admin UI — the ID of the device group members of the Jamf Pro group are assigned to. Jamf Security Cloud does not check that the group exists.
-- `uem_group_id` (String) **"UEM group"** in the Jamf Security Cloud admin UI — the Jamf Pro group, written as `computer_` or `mobile_` followed by the group's number, for example `computer_12`.
+- `security_cloud_group_id` (String) **"Jamf Security Cloud group"** in the Jamf Security Cloud admin UI: the ID of the device group members of the Jamf Pro group are assigned to. Jamf Security Cloud does not check that the group exists.
+- `uem_group_id` (String) **"UEM group"** in the Jamf Security Cloud admin UI: the Jamf Pro group, written as `computer_` or `mobile_` followed by the group's number, for example `computer_12`.
 
 This composes out of a `jamfplatform_device_group`, whose `device_type` is already `computer` or `mobile` and whose `jamf_pro_id` is the number:
 
     uem_group_id = "${jamfplatform_device_group.x.device_type}_${jamfplatform_device_group.x.jamf_pro_id}"
 
-Jamf Security Cloud does not check that the group exists, so a wrong number is accepted and simply never matches.
+Jamf Security Cloud does not check that the group exists, so a wrong number is accepted and never matches.
 
 
 
@@ -237,14 +237,14 @@ Jamf Security Cloud does not check that the group exists, so a wrong number is a
 
 Required:
 
-- `client_id` (String) **"Client ID"** in the Jamf Security Cloud admin UI — the client ID of the API integration on the Jamf Pro instance.
+- `client_id` (String) **"Client ID"** in the Jamf Security Cloud admin UI: the client ID of the API integration on the Jamf Pro instance.
 - `client_secret` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Security Cloud admin UI. Never returned once stored, so it is write-only: it is sent when supplied and never held in state. Change `client_secret_wo_version` to send a new one.
 
 Optional:
 
 - `client_secret_wo_version` (Number) Increment after rotating the credential in Jamf Pro to send the new `client_secret`. The secret itself is not stored, so there is nothing to compare against and no other way to trigger a rotation.
 
-Jamf Security Cloud has no endpoint that updates an existing integration's credentials, so a rotation **replaces** the integration, which briefly interrupts syncing.
+Jamf Security Cloud offers no way to change an existing integration's credentials, so a rotation **replaces** the integration, which briefly interrupts syncing.
 
 
 <a id="nestedatt--platform_tenant"></a>
@@ -272,7 +272,7 @@ Optional:
 Optional:
 
 - `device_name` (String) **"Device name"** in the Jamf Security Cloud admin UI. Defaults to `DEVICE_NAME`.
-- `email` (Attributes) **"Email"** in the Jamf Security Cloud admin UI — how a device's email address is derived. (see [below for nested schema](#nestedatt--user_data_field_mapping--email))
+- `email` (Attributes) **"Email"** in the Jamf Security Cloud admin UI: how a device's email address is derived. (see [below for nested schema](#nestedatt--user_data_field_mapping--email))
 - `phone_number` (String) **"Phone number"** in the Jamf Security Cloud admin UI. `NO_PHONE_NUMBER` leaves the field empty. Defaults to `PHONE_NUMBER`.
 - `user_id` (String) **"User ID"** in the Jamf Security Cloud admin UI. `NO_CHANGE` leaves the field as Jamf Security Cloud already has it. Defaults to `EXTERNAL_USER_ID`.
 - `user_name` (String) **"User name"** in the Jamf Security Cloud admin UI. `NO_CHANGE` leaves the field as Jamf Security Cloud already has it. Defaults to `USER_NAME`.

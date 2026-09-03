@@ -1,7 +1,7 @@
 # Manages the Jamf Connect deployment and update settings for a single macOS
 # configuration profile (Settings → Jamf apps → Jamf Connect).
 #
-# The configuration profile must already contain a Jamf Connect payload — it
+# The configuration profile must already contain a Jamf Connect payload. It
 # then appears automatically under Jamf Connect. This resource adopts it by
 # the profile's `id` and controls how Jamf Connect is deployed/updated.
 # Destroying the resource does NOT remove Jamf Connect from the profile; it

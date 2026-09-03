@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_device_groups Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments — filter the result in Terraform.
+  Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments. Filter the result in Terraform.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_device_groups (Data Source)
 
-Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments — filter the result in Terraform.
+Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments. Filter the result in Terraform.
 
 **Required Jamf permissions**
 
@@ -34,8 +34,8 @@ output "group_names" {
   value = [for group in data.jamfplatform_security_cloud_device_groups.all.device_groups : group.name]
 }
 
-# The built-in group is included, and it is the one entry with no id — nothing can
-# reference it. Filter it out before mapping names to IDs.
+# The built-in group is included, and it is the one entry with no id, so nothing
+# can reference it. Filter it out before mapping names to IDs.
 output "group_ids_by_name" {
   value = {
     for group in data.jamfplatform_security_cloud_device_groups.all.device_groups :
@@ -70,5 +70,5 @@ Optional:
 Read-Only:
 
 - `built_in` (Boolean) Whether this is the built-in group every tenant carries. The built-in group cannot be renamed, deleted, or referenced by ID, and is not manageable by the `jamfplatform_security_cloud_device_group` resource.
-- `id` (String) Device group ID assigned by Jamf Security Cloud. Null for the built-in group, which Jamf Security Cloud does not give an identifier — filter on `built_in` before using this value to reference a group.
+- `id` (String) Device group ID assigned by Jamf Security Cloud. Null for the built-in group, which Jamf Security Cloud does not give an identifier. Filter on `built_in` before using this value to reference a group.
 - `name` (String) Device group name.

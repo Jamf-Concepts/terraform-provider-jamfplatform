@@ -43,6 +43,6 @@ const legacyPayloadSettingsBehaviour = "Jamf validates each payload against Appl
 	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
 	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
 	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +
-	"Values Jamf treats as credentials — a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` " +
-	"and `OuterIdentity` — are returned redacted, and the provider keeps what you wrote so the plan still settles; " +
+	"Values Jamf treats as credentials (a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` " +
+	"and `OuterIdentity`) are returned redacted, and the provider keeps what you wrote so the plan still settles. " +
 	"an imported blueprint carries the redaction, because the real value cannot be read back."

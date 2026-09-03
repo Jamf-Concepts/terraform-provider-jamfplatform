@@ -3,8 +3,8 @@
 page_title: "jamfplatform_security_cloud_content_categories Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads the content categories available in Jamf Security Cloud — the classification of web and app traffic, such as Social or Cloud & File Storage. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
-  Use this to reference a category without hard-coding a name that may be revised — in an output, or to pre-stage an identifier. Note that a category has two names: reference display_name, not name.
+  Reads the content categories available in Jamf Security Cloud: the classification of web and app traffic, such as Social or Cloud & File Storage. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
+  Use this to reference a category without hard-coding a name that may be revised, in an output or to pre-stage an identifier. A category has two names: reference display_name, not name.
   A jamfplatform_security_cloud_ztna_app is what matches a category, so resolve the category here and wire display_name into its category rather than writing the name out.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -15,9 +15,9 @@ description: |-
 
 # jamfplatform_security_cloud_content_categories (Data Source)
 
-Reads the content categories available in Jamf Security Cloud — the classification of web and app traffic, such as `Social` or `Cloud & File Storage`. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
+Reads the content categories available in Jamf Security Cloud: the classification of web and app traffic, such as `Social` or `Cloud & File Storage`. The catalogue is centrally curated, identical for every entitled tenant, and cannot be changed.
 
-Use this to reference a category without hard-coding a name that may be revised — in an output, or to pre-stage an identifier. Note that a category has two names: reference `display_name`, not `name`.
+Use this to reference a category without hard-coding a name that may be revised, in an output or to pre-stage an identifier. A category has two names: reference `display_name`, not `name`.
 
 A `jamfplatform_security_cloud_ztna_app` is what matches a category, so resolve the category here and wire `display_name` into its `category` rather than writing the name out.
 
@@ -77,6 +77,6 @@ Optional:
 
 Read-Only:
 
-- `display_name` (String) The category name as shown in Jamf Security Cloud, for example `Social`. **This is the name that identifies the category** — a Zero Trust Network Access app's category matches on it, and it is the name to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s `category`.
+- `display_name` (String) The category name as shown in Jamf Security Cloud, for example `Social`. **This is the name that identifies the category.** A Zero Trust Network Access app's category matches on it, and it is the name to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s `category`.
 - `id` (String) Content category identifier.
-- `name` (String) Jamf's internal label for the category, for example `Category - Social`. Informational only — reference `display_name` instead.
+- `name` (String) Jamf's internal label for the category, for example `Category - Social`. Informational only; reference `display_name` instead.

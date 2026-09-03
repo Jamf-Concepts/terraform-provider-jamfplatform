@@ -55,7 +55,7 @@ func (d *ToolDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			"contain.\n\n" +
 			"Use this to discover the `schema_version` values a `jamfplatform_ai_governance_policy` may be written " +
 			"against, and `settings_schema_json` to see what settings that version accepts. The schema is the tool " +
-			"vendor's own document — see the [AI Governance policies guide](../guides/ai-governance-policies) for " +
+			"vendor's own document. See the [AI Governance policies guide](../guides/ai-governance-policies) for " +
 			"where each vendor documents its settings." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -85,7 +85,7 @@ func (d *ToolDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 			},
 			"settings_schema_json": schema.StringAttribute{
 				MarkdownDescription: "The JSON Schema document describing what a policy's `settings_json` may contain " +
-					"for this tool at `schema_version`. This is the tool vendor's own document, and it is large — " +
+					"for this tool at `schema_version`. This is the tool vendor's own document, and it is large: " +
 					"tens to hundreds of kilobytes.",
 				Computed: true,
 			},

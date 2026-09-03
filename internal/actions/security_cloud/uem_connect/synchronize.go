@@ -48,8 +48,8 @@ func (a *SynchronizeAction) Metadata(_ context.Context, req action.MetadataReque
 // Schema returns the action schema.
 func (a *SynchronizeAction) Schema(_ context.Context, _ action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "**\"Synchronize\"** on the Jamf Security Cloud UEM Connect **Actions** menu — starts " +
-			"a sync run immediately, rather than waiting for the next scheduled one.\n\n" +
+		MarkdownDescription: "**\"Synchronize\"** on the Jamf Security Cloud UEM Connect **Actions** menu. Starts a sync " +
+			"run immediately, rather than waiting for the next scheduled one.\n\n" +
 			"Jamf Security Cloud accepts the request and runs the sync in the background, so this returns as soon " +
 			"as the run has started and does not wait for it or report what it did. Read the outcome from the " +
 			"`latest_sync` attribute of the `jamfplatform_security_cloud_uem_connect` data source, or from the " +

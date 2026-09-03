@@ -3,8 +3,8 @@
 page_title: "jamfplatform_pro_ldap_server Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro on-premises LDAP server (Settings → "LDAP Servers"). Use this resource for classic, directly-reachable directories — Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (Custom) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by jamfplatform_pro_cloud_identity_provider, not this resource.
-  The connection_settings block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The mappings_for_users block maps directory attributes onto Jamf Pro user / user-group / membership fields. The bind password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in state; pair it with password_wo_version to rotate.
+  Manages a Jamf Pro on-premises LDAP server (Settings → "LDAP Servers"). Use this resource for classic, directly-reachable directories: Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (Custom) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by jamfplatform_pro_cloud_identity_provider instead.
+  The connection_settings block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The mappings_for_users block maps directory attributes onto Jamf Pro user, user-group and membership fields. The bind password is a Terraform WriteOnly attribute, sent to Jamf Pro on writes but never persisted in state; pair it with password_wo_version to rotate.
   This resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -15,9 +15,9 @@ description: |-
 
 # jamfplatform_pro_ldap_server (Resource)
 
-Manages a Jamf Pro on-premises LDAP server (Settings → "LDAP Servers"). Use this resource for **classic, directly-reachable directories** — Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (`Custom`) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by `jamfplatform_pro_cloud_identity_provider`, not this resource.
+Manages a Jamf Pro on-premises LDAP server (Settings → "LDAP Servers"). Use this resource for classic, directly-reachable directories: Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (`Custom`) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by `jamfplatform_pro_cloud_identity_provider` instead.
 
-The `connection_settings` block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The `mappings_for_users` block maps directory attributes onto Jamf Pro user / user-group / membership fields. The bind `password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate.
+The `connection_settings` block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The `mappings_for_users` block maps directory attributes onto Jamf Pro user, user-group and membership fields. The bind `password` is a Terraform `WriteOnly` attribute, sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate.
 
 This resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping.
 
@@ -97,7 +97,7 @@ variable "ldap_bind_password" {
   sensitive = true
 }
 
-# Anonymous (unauthenticated) bind — omit the account block entirely.
+# Anonymous (unauthenticated) bind: omit the account block entirely.
 resource "jamfplatform_pro_ldap_server" "anon" {
   connection_settings = {
     display_name        = "Read-only Directory"
@@ -115,11 +115,11 @@ resource "jamfplatform_pro_ldap_server" "anon" {
 
 ### Required
 
-- `connection_settings` (Attributes) Server connection settings — the **Connection** tab in the admin UI. (see [below for nested schema](#nestedatt--connection_settings))
+- `connection_settings` (Attributes) Server connection settings. The **Connection** tab in the admin UI. (see [below for nested schema](#nestedatt--connection_settings))
 
 ### Optional
 
-- `mappings_for_users` (Attributes) Attribute mappings — the **Mappings** tab in the admin UI. Declare only the sub-blocks you want Terraform to manage; sub-blocks you omit are left as-is and not tracked. (see [below for nested schema](#nestedatt--mappings_for_users))
+- `mappings_for_users` (Attributes) Attribute mappings. The **Mappings** tab in the admin UI. Declare only the sub-blocks you want Terraform to manage; sub-blocks you omit are left as-is and not tracked. (see [below for nested schema](#nestedatt--mappings_for_users))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -138,7 +138,7 @@ Required:
 Optional:
 
 - `account` (Attributes) **"LDAP Server Account"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. To fully remove a bind account from an existing server, recreate the server. (see [below for nested schema](#nestedatt--connection_settings--account))
-- `authentication_type` (String) **"Authentication Type"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind — omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.
+- `authentication_type` (String) **"Authentication Type"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind: omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.
 - `connection_timeout` (Number) **"Connection Timeout"** in the Jamf Pro admin UI. Seconds to wait before cancelling a connection attempt. Defaults to 15 when omitted.
 - `port` (Number) **"Server and Port"** (port) in the Jamf Pro admin UI. Defaults to 389 (or 636 for LDAPS) when omitted.
 - `referral_response` (String) **"Referral Response"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `""` (use default from LDAP service), `follow`, `ignore`.
@@ -148,9 +148,9 @@ Optional:
 
 Read-Only:
 
-- `certificates_used` (String) Server-reported certificate usage summary. Server-managed.
-- `is_enabled` (Boolean) Whether the LDAP server connection is enabled. Server-managed.
-- `migrated_to_id` (Number) ID of the Cloud Identity Provider this server was migrated to, or 0 if not migrated. Server-managed.
+- `certificates_used` (String) Summary of how the server's certificates are used. Returned by Jamf Pro; not user-settable.
+- `is_enabled` (Boolean) Whether the LDAP server connection is enabled. Returned by Jamf Pro; not user-settable.
+- `migrated_to_id` (Number) ID of the Cloud Identity Provider this server was migrated to, or 0 if not migrated. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--connection_settings--account"></a>
 ### Nested Schema for `connection_settings.account`
@@ -158,8 +158,8 @@ Read-Only:
 Optional:
 
 - `distinguished_username` (String) **"Distinguished Username"** in the Jamf Pro admin UI. Distinguished name of the bind account (e.g. `CN=svc,CN=Users,DC=example,DC=com`) or another type-specific identifier.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro never returns the plaintext on read, so rotation is driven by the companion `password_wo_version` integer.
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force the next update to re-send `password`. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state. Jamf Pro never returns the plaintext on read, so rotation is driven by the companion `password_wo_version` integer.
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force the next update to re-send `password`. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals "leave the stored password alone": the provider omits the password from the next update, so Jamf Pro retains the existing value.
 
 
 

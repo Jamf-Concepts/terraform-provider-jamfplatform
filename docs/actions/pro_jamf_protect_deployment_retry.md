@@ -36,7 +36,7 @@ locals {
   deployment_id = data.jamfplatform_pro_jamf_protect_plans.all.plans[0].uuid
 }
 
-# Mode 1 — retry one computer's failed task(s), by serial number.
+# Mode 1: retry one computer's failed task(s), by serial number.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_serial" {
   config {
     deployment_id = local.deployment_id
@@ -44,7 +44,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_serial" {
   }
 }
 
-# Mode 2 — retry one computer's failed task(s), by management id.
+# Mode 2: retry one computer's failed task(s), by management id.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_management_id" {
   config {
     deployment_id = local.deployment_id
@@ -52,7 +52,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_management_id" {
   }
 }
 
-# Mode 2b — retry one computer's failed task(s), by hardware UDID.
+# Mode 2b: retry one computer's failed task(s), by hardware UDID.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_udid" {
   config {
     deployment_id = local.deployment_id
@@ -60,7 +60,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_udid" {
   }
 }
 
-# Mode 3 — retry every failed task in the deployment (UI "Retry Failed").
+# Mode 3: retry every failed task in the deployment (UI "Retry Failed").
 action "jamfplatform_pro_jamf_protect_deployment_retry" "all_failed" {
   config {
     deployment_id = local.deployment_id
@@ -68,7 +68,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "all_failed" {
   }
 }
 
-# Mode 4 — retry an explicit set of deployment task ids (advanced escape hatch).
+# Mode 4: retry an explicit set of deployment task ids (advanced escape hatch).
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_task_ids" {
   config {
     deployment_id = local.deployment_id
@@ -86,9 +86,9 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_task_ids" {
 
 ### Optional
 
-- `all_failed` (Boolean) Retry every failed task in the deployment. Mirrors the admin UI "Retry Failed" button — this can re-queue installs across many computers. Mutually exclusive with the computer selector and `task_ids`.
+- `all_failed` (Boolean) Retry every failed task in the deployment. Mirrors the admin UI "Retry Failed" button. It can re-queue installs across many computers. Mutually exclusive with the computer selector and `task_ids`.
 - `management_id` (String) Jamf Pro Management ID (UUID) of the computer to retry, as reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this, `serial_number`, or `udid`.
 - `only_failed` (Boolean) Only meaningful with the computer selector. When `true` (the default), retries only the computer's failed task(s); when `false`, retries all of that computer's tasks regardless of status. Ignored for `task_ids` and `all_failed`.
 - `serial_number` (String) Serial number of the computer to retry (case-sensitive). Retries that computer's deployment task(s). Provide this, `management_id`, or `udid`.
-- `task_ids` (List of String) Explicit deployment task IDs to retry (the `id` values returned by the deployment's task search). Advanced escape hatch — mutually exclusive with the computer selector and `all_failed`.
+- `task_ids` (List of String) Explicit deployment task IDs to retry (the `id` values returned by the deployment's task search). Advanced escape hatch. Mutually exclusive with the computer selector and `all_failed`.
 - `udid` (String) Hardware UDID of the computer to retry. Retries that computer's deployment task(s). Provide this, `serial_number`, or `management_id`.

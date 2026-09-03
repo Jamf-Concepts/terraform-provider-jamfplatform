@@ -3,10 +3,10 @@
 page_title: "jamfplatform_account_sso_domain_verify Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  "Verify" beside a claimed domain on Jamf Account's Single Sign-On > Domains page — asks Jamf to look up the DNS TXT record that proves your organization owns the domain, and reports whether ownership is now proven.
+  "Verify" beside a claimed domain on Jamf Account's Single Sign-On > Domains page. Asks Jamf to look up the DNS TXT record that proves your organization owns the domain, and reports whether ownership is now proven.
   Claiming a domain and releasing it are the jamfplatform_account_sso_domain resource's own lifecycle; verifying is a check Jamf runs on demand, so it lives here. The usual sequence is: claim the domain, publish the TXT record its verification_txt_record attribute exports, then invoke this action. A domain has to be verified before an SSO connection can use it.
   A verification that does not succeed fails the run. Jamf reports "checked, and ownership is still not proven" exactly the way it reports success, so this action reads the domain's verification status back and raises an error whenever it is not verified. Reporting success instead would leave a plan going green on a domain that is still pending, and the consequence would surface much later as an unexplained refusal to create the connection that needs it.
-  Jamf allows one verification every five minutes per domain, counted from the last time the domain changed — and claiming it counts as a change. So a verification invoked in the same run that claims the domain is refused, and this action reports that refusal rather than waiting it out. Do not trigger this action from the claiming resource's own lifecycle — that arrangement is refused every single time. Give the DNS record time to publish, then invoke the action on a later run: terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'.
+  Jamf allows one verification every five minutes per domain, counted from the last time the domain changed, and claiming it counts as a change. So a verification invoked in the same run that claims the domain is refused, and this action reports that refusal rather than waiting it out. Do not trigger this action from the claiming resource's own lifecycle; that arrangement is refused every single time. Give the DNS record time to publish, then invoke the action on a later run: terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'.
   Invoking it is never free, even when ownership is not proven. Every verification resets that five-minute window and moves the point the domain's verification lapses out to 14 days from now, so the domain's last_modified_at and verification_expires_at change on every invocation. Triggering it repeatedly against a domain whose record is not published yet does nothing but push those two forward.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -17,15 +17,15 @@ description: |-
 
 # jamfplatform_account_sso_domain_verify (Action)
 
-**"Verify"** beside a claimed domain on Jamf Account's **Single Sign-On > Domains** page — asks Jamf to look up the DNS TXT record that proves your organization owns the domain, and reports whether ownership is now proven.
+**"Verify"** beside a claimed domain on Jamf Account's **Single Sign-On > Domains** page. Asks Jamf to look up the DNS TXT record that proves your organization owns the domain, and reports whether ownership is now proven.
 
 Claiming a domain and releasing it are the `jamfplatform_account_sso_domain` resource's own lifecycle; verifying is a check Jamf runs on demand, so it lives here. The usual sequence is: claim the domain, publish the TXT record its `verification_txt_record` attribute exports, then invoke this action. A domain has to be verified before an SSO connection can use it.
 
-**A verification that does not succeed fails the run.** Jamf reports "checked, and ownership is still not proven" exactly the way it reports success, so this action reads the domain's verification status back and raises an error whenever it is not verified. Reporting success instead would leave a plan going green on a domain that is still pending, and the consequence would surface much later as an unexplained refusal to create the connection that needs it.
+A verification that does not succeed fails the run. Jamf reports "checked, and ownership is still not proven" exactly the way it reports success, so this action reads the domain's verification status back and raises an error whenever it is not verified. Reporting success instead would leave a plan going green on a domain that is still pending, and the consequence would surface much later as an unexplained refusal to create the connection that needs it.
 
-**Jamf allows one verification every five minutes per domain, counted from the last time the domain changed — and claiming it counts as a change.** So a verification invoked in the same run that claims the domain is refused, and this action reports that refusal rather than waiting it out. Do not trigger this action from the claiming resource's own lifecycle — that arrangement is refused every single time. Give the DNS record time to publish, then invoke the action on a later run: `terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`.
+Jamf allows one verification every five minutes per domain, counted from the last time the domain changed, and claiming it counts as a change. So a verification invoked in the same run that claims the domain is refused, and this action reports that refusal rather than waiting it out. Do not trigger this action from the claiming resource's own lifecycle; that arrangement is refused every single time. Give the DNS record time to publish, then invoke the action on a later run: `terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`.
 
-**Invoking it is never free, even when ownership is not proven.** Every verification resets that five-minute window and moves the point the domain's verification lapses out to 14 days from now, so the domain's `last_modified_at` and `verification_expires_at` change on every invocation. Triggering it repeatedly against a domain whose record is not published yet does nothing but push those two forward.
+Invoking it is never free, even when ownership is not proven. Every verification resets that five-minute window and moves the point the domain's verification lapses out to 14 days from now, so the domain's `last_modified_at` and `verification_expires_at` change on every invocation. Triggering it repeatedly against a domain whose record is not published yet does nothing but push those two forward.
 
 **Required Jamf permissions**
 
@@ -41,7 +41,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Asks Jamf to re-check the ownership record for a claimed domain. Run it once
 # the TXT record is published and has had time to propagate.
 #
-# Do NOT wire this action to the claiming resource's own lifecycle — no
+# Do NOT wire this action to the claiming resource's own lifecycle: no
 # action_trigger with events = [after_create] on jamfplatform_account_sso_domain.
 # Jamf allows one check every five minutes per domain and claiming a domain
 # starts that clock, so a check in the same run as the claim is refused every
@@ -87,9 +87,9 @@ resource "jamfplatform_account_sso_domain" "corp" {
 
 ### Optional
 
-- `domain` (String) The claimed domain to verify, as it appears on Jamf Account's **Single Sign-On > Domains** page — for example `example.com`. Case is ignored: Jamf stores a claimed domain in lower case however it was claimed.
+- `domain` (String) The claimed domain to verify, as it appears on Jamf Account's **Single Sign-On > Domains** page, such as `example.com`. Case is ignored: Jamf stores a claimed domain in lower case however it was claimed.
 
-This is the identifier a practitioner actually holds. Do not trigger this action from the lifecycle of the `jamfplatform_account_sso_domain` resource that claims the domain: claiming it starts the five-minute window, so a check in the same run is always refused. Invoke it on a later run, once the TXT record is live — `terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`. Set this or `domain_id`, never both.
+This is the identifier a practitioner holds. Do not trigger this action from the lifecycle of the `jamfplatform_account_sso_domain` resource that claims the domain: claiming it starts the five-minute window, so a check in the same run is always refused. Invoke it on a later run, once the TXT record is live: `terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'`. Set this or `domain_id`, never both.
 - `domain_id` (String) The identifier Jamf assigned the claimed domain, as exported by the `id` attribute of `jamfplatform_account_sso_domain`.
 
-Jamf Account never shows this identifier, so `domain` is usually the easier form. Naming the identifier skips the lookup that resolving a name needs, so it also needs one permission fewer — see the table below. A domain that is released and claimed again is issued a new identifier, so avoid hard-coding one. Set this or `domain`, never both.
+Jamf Account never shows this identifier, so `domain` is usually the easier form. Naming the identifier skips the lookup that resolving a name needs, so it also needs one permission fewer; see the table below. A domain that is released and claimed again is issued a new identifier, so avoid hard-coding one. Set this or `domain`, never both.

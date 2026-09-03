@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_enrollment_customization List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
+  Lists Jamf Pro enrollment customizations. An optional case-insensitive name_substring filter is applied client-side after the full list is fetched. Each row carries the parent record: display name, description, site, branding palette and icon URL. Panes are not included; read them with the singular resource per ID.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_enrollment_customization (List Resource)
 
-Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
+Lists Jamf Pro enrollment customizations. An optional case-insensitive `name_substring` filter is applied client-side after the full list is fetched. Each row carries the parent record: display name, description, site, branding palette and icon URL. Panes are not included; read them with the singular resource per ID.
 
 **Required Jamf permissions**
 

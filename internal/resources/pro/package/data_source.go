@@ -61,7 +61,7 @@ func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"category_id":                  schema.StringAttribute{MarkdownDescription: "Category ID (`\"-1\"` sentinel for None).", Computed: true},
 			"info":                         schema.StringAttribute{MarkdownDescription: "Free-form info field.", Computed: true},
 			"notes":                        schema.StringAttribute{MarkdownDescription: "Free-form notes field.", Computed: true},
-			"priority":                     schema.Int64Attribute{MarkdownDescription: "Install priority (1-20).", Computed: true},
+			"priority":                     schema.Int64Attribute{MarkdownDescription: "Install priority (1–20).", Computed: true},
 			"fill_user_template":           schema.BoolAttribute{MarkdownDescription: "Fill User Template (FUT) flag.", Computed: true},
 			"fill_existing_users":          schema.BoolAttribute{MarkdownDescription: "Fill Existing User home directories (FEU) flag.", Computed: true},
 			"reboot_required":              schema.BoolAttribute{MarkdownDescription: "Requires restart flag.", Computed: true},

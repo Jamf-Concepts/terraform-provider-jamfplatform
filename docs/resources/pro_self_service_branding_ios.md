@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_self_service_branding_ios Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. main_header and the three colour codes are required by the API. Import with terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton.
+  Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. Jamf Pro requires main_header and the three colour codes. Import with terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_self_service_branding_ios (Resource)
 
-Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. `main_header` and the three colour codes are required by the API. Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`.
+Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. Jamf Pro requires `main_header` and the three colour codes. Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -27,7 +27,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Self Service iOS & iPadOS branding (Settings > Self Service > Branding > iOS & iPadOS Branding).
-# Singleton — one configuration per tenant. main_header + colour codes are required.
+# One configuration per tenant. main_header + colour codes are required.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png"
 }
@@ -49,13 +49,13 @@ resource "jamfplatform_pro_self_service_branding_ios" "this" {
 
 - `branding_name_color_code` (String) Hex colour (6 digits, no `#`, e.g. `000000`) of the Main Header text. Required.
 - `header_background_color_code` (String) Hex colour (6 digits, no `#`, e.g. `FFFFFF`) of the header background. Required.
-- `main_header` (String) UI: **Main Header**. Title shown at the top of the Self Service iOS app. Required (the Jamf Pro default is `Self Service`).
+- `main_header` (String) **"Main Header"** in the Jamf Pro admin UI. Title shown at the top of the Self Service iOS app. Required. The Jamf Pro default is `Self Service`.
 - `menu_icon_color_code` (String) Hex colour (6 digits, no `#`, e.g. `007AFF`) of the menu icons. Required.
 - `status_bar_text_color` (String) Status bar text appearance. One of `light` or `dark`. Required.
 
 ### Optional
 
-- `icon_id` (Number) UI: **Icon**. ID of the branding image shown as the Self Service app icon. Use a `jamfplatform_pro_self_service_branding_image` ID — **not** a `jamfplatform_pro_icon` ID (separate stores). Omit to leave unset.
+- `icon_id` (Number) **"Icon"** in the Jamf Pro admin UI. ID of the branding image shown as the Self Service app icon. Use a `jamfplatform_pro_self_service_branding_image` ID, **not** a `jamfplatform_pro_icon` ID; the two stores are separate. Omit to leave unset.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

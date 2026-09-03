@@ -92,8 +92,8 @@ func (r *ConnectionListResource) ListResourceConfigSchema(_ context.Context, _ l
 			"connection including those.\n\n" +
 			"Neither kind can be told apart from the list alone, so this reads each connection individually: " +
 			"expect one extra read per connection in your organization.\n\n" +
-			"An imported connection cannot recover `enabled_products` or `enabled_environments` — nothing Jamf " +
-			"returns echoes the tenants back — so add those to the configuration by hand after importing." +
+			"An imported connection cannot recover `enabled_products` or `enabled_environments`, because nothing " +
+			"Jamf returns echoes the tenants back. Add those to the configuration by hand after importing." +
 			listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{},
 	}

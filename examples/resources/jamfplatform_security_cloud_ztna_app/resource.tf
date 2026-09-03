@@ -39,7 +39,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   # and matches nothing at all, so keep at least one populated.
 
   # A wildcard covers only subdomains, so list the parent alongside it if it needs
-  # to match too. Entries must be mutually exclusive — listing both
+  # to match too. Entries must be mutually exclusive: listing both
   # "*.crm.example.com" and "eu.crm.example.com" is rejected.
   hostnames = [
     "crm.example.com",
@@ -95,7 +95,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
 
 # A predefined application: the definition owns the name and contributes its own host names,
 # which do not appear in hostnames. Anything listed here is an addition to them, and
-# an empty hostnames is normal — the definition's own names still match.
+# an empty hostnames is normal, because the definition's own names still match.
 # Only one application per predefined definition is allowed on a tenant.
 resource "jamfplatform_security_cloud_ztna_app" "slack" {
   predefined_app_id = local.slack

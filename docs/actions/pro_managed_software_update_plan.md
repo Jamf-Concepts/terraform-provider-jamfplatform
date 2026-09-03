@@ -33,7 +33,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Enforce a target OS version on the members of a smart or static group.
-# Submitting an update plan is a fire-once directive — it is invoked from a resource's
+# Submitting an update plan is a fire-once directive, invoked from a resource's
 # lifecycle action_trigger (Terraform >= 1.14).
 
 action "jamfplatform_pro_managed_software_update_plan" "enforce_latest" {
@@ -48,13 +48,13 @@ action "jamfplatform_pro_managed_software_update_plan" "enforce_latest" {
     # Required only when version_type is SPECIFIC_VERSION or CUSTOM_VERSION:
     # specific_version = "15.1"
 
-    # Only valid when version_type is CUSTOM_VERSION — Jamf Pro rejects a build
+    # Only valid when version_type is CUSTOM_VERSION. Jamf Pro rejects a build
     # version for every other version_type, including SPECIFIC_VERSION:
     # build_version = "21F79"
 
     # Optional, by update_action:
     # force_install_local_date_time = "2026-07-01T09:00:00" # DOWNLOAD_INSTALL_SCHEDULE
-    # max_deferrals                 = 3                     # DOWNLOAD_INSTALL_ALLOW_DEFERRAL, 0-99
+    # max_deferrals                 = 3                     # DOWNLOAD_INSTALL_ALLOW_DEFERRAL, 0–99
   }
 }
 ```
@@ -66,12 +66,12 @@ action "jamfplatform_pro_managed_software_update_plan" "enforce_latest" {
 
 - `group_id` (String) The Jamf Pro ID of the target smart or static group. Use the `jamf_pro_id` exported by `jamfplatform_device_group`.
 - `object_type` (String) The kind of group being targeted: `COMPUTER_GROUP` or `MOBILE_DEVICE_GROUP`.
-- `update_action` (String) The install action to take. One of: `DOWNLOAD_ONLY` (download to devices only), `DOWNLOAD_INSTALL` (download and install), `DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer — see `max_deferrals`), `DOWNLOAD_INSTALL_RESTART` (download, install, and restart), `DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install — see `force_install_local_date_time`).
-- `version_type` (String) Which OS version to target. One of: `LATEST_ANY` (latest version each device is eligible for), `LATEST_MAJOR` (latest major version), `LATEST_MINOR` (latest minor version), `SPECIFIC_VERSION` (a specific OS version — set `specific_version`), `CUSTOM_VERSION` (a custom OS version — set `specific_version`).
+- `update_action` (String) The install action to take. One of: `DOWNLOAD_ONLY` (download to devices only), `DOWNLOAD_INSTALL` (download and install), `DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer; see `max_deferrals`), `DOWNLOAD_INSTALL_RESTART` (download, install, and restart), `DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install; see `force_install_local_date_time`).
+- `version_type` (String) Which OS version to target. One of: `LATEST_ANY` (latest version each device is eligible for), `LATEST_MAJOR` (latest major version), `LATEST_MINOR` (latest minor version), `SPECIFIC_VERSION` (a specific OS version; set `specific_version`), `CUSTOM_VERSION` (a custom OS version; set `specific_version`).
 
 ### Optional
 
-- `build_version` (String) A specific OS build to enforce, paired with `specific_version`. Only valid when `version_type` is `CUSTOM_VERSION` — Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.
+- `build_version` (String) A specific OS build to enforce, paired with `specific_version`. Only valid when `version_type` is `CUSTOM_VERSION`. Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.
 - `force_install_local_date_time` (String) The local date and time by which the update must be installed, in `YYYY-MM-DDThh:mm:ss` form (for example `2026-12-25T21:09:31`). Applies when `update_action` is `DOWNLOAD_INSTALL_SCHEDULE`.
 - `max_deferrals` (Number) How many times a user may defer the update, from `0` to `99`. Applies when `update_action` is `DOWNLOAD_INSTALL_ALLOW_DEFERRAL`.
 - `specific_version` (String) The OS version to enforce. Required when `version_type` is `SPECIFIC_VERSION` or `CUSTOM_VERSION`; leave unset otherwise.

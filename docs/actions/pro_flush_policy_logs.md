@@ -64,4 +64,4 @@ resource "terraform_data" "log_maintenance" {
 
 - `period` (String) The unit `quantity` counts. One of `Days`, `Weeks`, `Months`, `Years`.
 - `policy_id` (String) Jamf Pro policy ID whose logs are flushed. The policy is checked before flushing, because Jamf Pro reports success even for an ID that does not exist.
-- `quantity` (String) How many `period` units old a log must be to be flushed. One of `Zero`, `One`, `Two`, `Three`, `Six` — Jamf Pro accepts no other quantity, and there is deliberately no `Four` or `Five`. **`Zero` flushes every log for the policy** regardless of `period`, because no log is younger than zero days.
+- `quantity` (String) How many `period` units old a log must be to be flushed. One of `Zero`, `One`, `Two`, `Three`, `Six`. Jamf Pro accepts no other quantity, and there is deliberately no `Four` or `Five`. **`Zero` flushes every log for the policy** regardless of `period`, because no log is younger than zero days.

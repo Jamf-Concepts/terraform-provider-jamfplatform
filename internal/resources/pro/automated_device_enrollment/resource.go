@@ -102,12 +102,12 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"`site_id` / `supervision_identity_id` associations. If the rename step fails the " +
 			"provider deletes the partially-created instance so Terraform's create either fully " +
 			"succeeds or leaves no resource behind. " +
-			"After every token write (initial create AND any update that bumps " +
+			"After every token write (initial create, and any update that bumps " +
 			"`server_token_wo_version`), the provider blocks until Jamf Pro reports the " +
-			"Apple ADE sync as `SUCCESSFUL` — until that completes the device list is not known " +
-			"to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` " +
-			"scope assignments) will fail. Default create/update timeout is 5 minutes; override " +
-			"via the `timeouts` block when Apple's round-trip is slower on a particular tenant." + resourcePrivileges,
+			"Apple ADE sync as `SUCCESSFUL`. Until that completes the device list is not known " +
+			"to Jamf Pro, and downstream resources such as `jamfplatform_pro_computer_prestage_enrollment` " +
+			"scope assignments will fail. Default create and update timeout is 5 minutes; override " +
+			"it with the `timeouts` block when Apple's round-trip is slower on a particular tenant." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Automated Device Enrollment instance ID assigned by Jamf Pro.",
@@ -125,8 +125,8 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			},
 			"server_token": schema.StringAttribute{
 				MarkdownDescription: "Base64-encoded contents of the `.p7m` server token downloaded from Apple " +
-					"Business Manager / Apple School Manager for this MDM server. `WriteOnly` — the value is " +
-					"sent to Jamf Pro on create and on token-rotating updates but **never persisted in " +
+					"Business Manager / Apple School Manager for this MDM server. `WriteOnly`: the value is " +
+					"sent to Jamf Pro on create and on token-rotating updates, and **never persisted in " +
 					"Terraform state**. Jamf Pro also never returns the token on reads, so the only signal " +
 					"Terraform can use to rotate the stored token is the companion `server_token_wo_version` " +
 					"integer. The provider trims surrounding whitespace and then base64-decodes the supplied " +
@@ -142,23 +142,23 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 				MarkdownDescription: "Rotation trigger for the `WriteOnly` `server_token`. Bump this integer " +
 					"(any change) to force an update that re-sends the current `server_token` to Jamf Pro. " +
 					"Initial create should set `server_token_wo_version = 1`. Required because `server_token` " +
-					"itself is Required — keeping the companion Required keeps the rotation signal explicit in " +
+					"is Required; keeping the companion Required keeps the rotation signal explicit in " +
 					"config. " +
-					"Bumping this value triggers a fresh Apple ADE sync; the update operation blocks until " +
+					"Bumping the value triggers a fresh Apple ADE sync, and the update blocks until " +
 					"Jamf Pro reports the sync as `SUCCESSFUL` (subject to `timeouts.update`, default 5 minutes).",
 				Required: true,
 			},
 			"token_file_name": schema.StringAttribute{
 				MarkdownDescription: "Optional file name to send alongside the uploaded token (e.g. " +
 					"`\"my-org-ade-token.p7m\"`). Jamf Pro does not return this field on reads, so the " +
-					"attribute is plain `Optional` (not `Optional+Computed`) — it is only used at upload time " +
+					"attribute is plain `Optional` rather than `Optional+Computed`: it is used only at upload time " +
 					"and is not refreshed on read.",
 				Optional: true,
 			},
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro " +
-					"reports the sentinel `\"-1\"` when no site is set; the provider mirrors whatever Jamf Pro " +
-					"reports into state and does not apply a default — leave the attribute unset to let Jamf " +
+					"reports the sentinel `\"-1\"` when no site is set. The provider mirrors whatever Jamf Pro " +
+					"reports into state and applies no default, so leave the attribute unset to let Jamf " +
 					"Pro decide.",
 				Optional: true,
 				Computed: true,

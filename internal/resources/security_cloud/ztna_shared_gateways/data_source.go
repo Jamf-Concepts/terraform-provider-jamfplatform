@@ -62,7 +62,7 @@ func (d *SharedGatewaysDataSource) Metadata(_ context.Context, req datasource.Me
 // Schema returns the data source schema.
 func (d *SharedGatewaysDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the **\"Shared gateways\"** catalogue in the Jamf Security Cloud admin UI — " +
+		MarkdownDescription: "Reads the **\"Shared gateways\"** catalogue in the Jamf Security Cloud admin UI: " +
 			"Jamf-operated gateways available to every entitled tenant, alongside any dedicated gateways of your " +
 			"own. They cannot be modified or deleted, and no status is reported for them.\n\n" +
 			"Use this to resolve the ID a custom DNS zone name server needs without hard-coding it. A shared " +
@@ -78,7 +78,7 @@ func (d *SharedGatewaysDataSource) Schema(ctx context.Context, _ datasource.Sche
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							MarkdownDescription: "Shared gateway ID — the value a custom DNS zone name server's " +
+							MarkdownDescription: "Shared gateway ID. This is the value a custom DNS zone name server's " +
 								"`gateway_id` takes.",
 							Computed: true,
 						},

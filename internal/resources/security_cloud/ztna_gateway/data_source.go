@@ -48,7 +48,7 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to " +
 			"resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never " +
-			"reported — Jamf Security Cloud does not return it." + dataSourcePrivileges,
+			"reported, because Jamf Security Cloud does not return it." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Gateway ID to look up. Exactly one of `id` or `name` must be set.",
@@ -95,7 +95,7 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				MarkdownDescription: "The private egress IP addresses Jamf provisioned for a dedicated internet " +
 					"gateway. Allocated within seconds of the gateway being created, well before it finishes " +
 					"provisioning, so a populated list means the addresses are reserved rather than that the " +
-					"gateway reports itself operational — read `status` for that. Always empty on an IPsec " +
+					"gateway reports itself operational. Read `status` for that. Always empty on an IPsec " +
 					"gateway.",
 				Computed:    true,
 				ElementType: types.StringType,

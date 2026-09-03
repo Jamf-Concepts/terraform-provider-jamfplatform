@@ -127,7 +127,7 @@ func (r *PolicyResource) IdentitySchema(_ context.Context, _ resource.IdentitySc
 // Schema returns the Terraform schema for the AI policy resource.
 func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf AI Governance policy — the managed configuration for one AI tool, " +
+		MarkdownDescription: "Manages a Jamf AI Governance policy, the managed configuration for one AI tool " +
 			"such as Claude Code, Claude Desktop or OpenAI Codex.\n\n" +
 			"A policy carries a draft and a history of published versions. Applying a change saves the draft and, " +
 			"unless `publish` is disabled, publishes it as a new version. Deploying a published version to devices " +
@@ -155,14 +155,14 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Account admin UI — what this policy is for.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Account admin UI: what this policy is for.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(maxDescriptionLength),
 				},
 			},
 			"tool_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Product\"** in the Jamf Account admin UI — the identifier of the AI tool this " +
+				MarkdownDescription: "**\"Product\"** in the Jamf Account admin UI: the identifier of the AI tool this " +
 					"policy configures, such as `com.anthropic.claudecode`. Read the available identifiers from the " +
 					"`jamfplatform_ai_governance_tools` data source. Changing the tool replaces the policy, because a " +
 					"policy's tool is fixed once it exists.",
@@ -176,7 +176,7 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"schema_version": schema.StringAttribute{
 				MarkdownDescription: "The version of the tool's settings format that `settings_json` is written " +
-					"against, such as `2026-08-14`. Must be one of the versions Jamf offers for the tool — read them " +
+					"against, such as `2026-08-14`. Must be one of the versions Jamf offers for the tool. Read them " +
 					"from the `jamfplatform_ai_governance_tool` data source. A policy left on an older version than " +
 					"the tool's current one still works, and reports `schema_drift`.",
 				Required: true,
@@ -188,7 +188,7 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "The tool's settings as a JSON object string. Author it with `jsonencode({ ... })`, " +
 					"`file(\"settings.json\")`, or by copying the configuration exported from the Jamf Account admin " +
 					"UI. Only the settings you include are managed; the tool's own defaults apply to the rest.\n\n" +
-					"Formatting and key order are not significant — the value is compared as JSON, so reindenting it " +
+					"Formatting and key order are not significant: the value is compared as JSON, so reindenting it " +
 					"produces no change. Contents are checked during `terraform plan` against the tool's published " +
 					"schema for `schema_version`: a setting of the wrong type or outside its accepted values is an " +
 					"error, and a setting the schema does not declare is a warning, because a tool may accept settings " +
@@ -204,31 +204,31 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"publish": schema.BoolAttribute{
 				MarkdownDescription: "Whether to publish a new version after saving changes. Defaults to `true`, so an " +
-					"applied policy is always deployable. Publishing only happens when something actually changed — " +
+					"applied policy is always deployable. Publishing only happens when something actually changed; " +
 					"an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft " +
 					"and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished " +
 					"changes exist.\n\n" +
-					"While this is enabled, a draft that already exists is published by the next apply — whether it " +
-					"was left behind by a publish that failed, or saved in the Jamf Account admin UI. Such a plan " +
+					"While this is enabled, a draft that already exists is published by the next apply, whether it " +
+					"was left behind by a publish that failed or saved in the Jamf Account admin UI. Such a plan " +
 					"shows `has_draft` and `published_version` as known after apply even when nothing else changed.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
 			},
 			"published_version": schema.Int64Attribute{
-				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI — the number of the most " +
+				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI: the number of the most " +
 					"recently published version, counting from 1. Null until the policy is first published. This is " +
 					"the value a blueprint's AI Governance component pins.\n\n" +
 					"Any change to the policy plans this as known after apply, because whether a version is minted " +
-					"depends on how Jamf compares the settings — and on whether anyone published in the admin UI " +
+					"depends on how Jamf compares the settings, and on whether anyone published in the admin UI " +
 					"meanwhile. An apply that publishes nothing leaves the number unchanged.",
 				Computed: true,
 			},
 			"has_draft": schema.BoolAttribute{
 				MarkdownDescription: "Whether the policy holds changes that have not been published. `false` after a " +
-					"successful apply with `publish` enabled. A draft that outlives an apply — because publishing it " +
-					"failed, or because someone saved one in the Jamf Account admin UI — is published by the next " +
-					"apply while `publish` is enabled.",
+					"successful apply with `publish` enabled. A draft that outlives an apply is published by the next " +
+					"apply while `publish` is enabled, whether publishing it failed or someone saved one in the Jamf " +
+					"Account admin UI.",
 				Computed: true,
 			},
 			"schema_drift": schema.BoolAttribute{

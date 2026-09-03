@@ -189,7 +189,7 @@ func (r *HostnameMappingsResource) IdentitySchema(_ context.Context, _ resource.
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Always \"singleton\" — there is one set of hostname mappings per tenant.",
+				Description:       "Always \"singleton\", since a tenant holds one set of hostname mappings.",
 				RequiredForImport: true,
 			},
 		},
@@ -200,7 +200,7 @@ func (r *HostnameMappingsResource) IdentitySchema(_ context.Context, _ resource.
 func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages **\"Hostname mapping\"** under Custom DNS in the Jamf Security Cloud admin " +
-			"UI — custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users " +
+			"UI: custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users " +
 			"reach internal resources while staying protected from mobile and network threats.\n\n" +
 			"This resource owns the tenant's **entire** set of hostname mappings: a mapping added elsewhere and " +
 			"absent from this configuration is removed on the next apply. There is one set per tenant, so only " +
@@ -208,21 +208,21 @@ func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.Schema
 			"mapping." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Always `singleton` — there is one set of hostname mappings per tenant.",
+				MarkdownDescription: "Always `singleton`, since a tenant holds one set of hostname mappings.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"mappings": schema.SetNestedAttribute{
-				MarkdownDescription: "The hostname mappings for this tenant. Between 1 and 500 entries — to " +
+				MarkdownDescription: "The hostname mappings for this tenant. Between 1 and 500 entries. To " +
 					"remove them all, destroy the resource rather than emptying this collection. Each host name " +
 					"may appear only once.",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"hostname": schema.StringAttribute{
-							MarkdownDescription: "**\"Insert hostname\"** in the Jamf Security Cloud admin UI — " +
+							MarkdownDescription: "**\"Insert hostname\"** in the Jamf Security Cloud admin UI: " +
 								"the fully qualified host name this mapping applies to. Up to 253 characters. " +
 								"Wildcards are not accepted, and letter case is stored exactly as written. Write " +
 								"the name without a trailing dot: Jamf Security Cloud stores the name without " +
@@ -234,7 +234,7 @@ func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.Schema
 							},
 						},
 						"ipv4_addresses": schema.SetAttribute{
-							MarkdownDescription: "**\"Insert IPv4\"** in the Jamf Security Cloud admin UI — the " +
+							MarkdownDescription: "**\"Insert IPv4\"** in the Jamf Security Cloud admin UI: the " +
 								"IPv4 addresses the host name resolves to. Up to 10 entries. Omit the attribute " +
 								"when there are none; an empty collection is not accepted. At least one of " +
 								"`ipv4_addresses` or `ipv6_addresses` must be set.",
@@ -246,7 +246,7 @@ func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.Schema
 							},
 						},
 						"ipv6_addresses": schema.SetAttribute{
-							MarkdownDescription: "**\"Insert IPv6\"** in the Jamf Security Cloud admin UI — the " +
+							MarkdownDescription: "**\"Insert IPv6\"** in the Jamf Security Cloud admin UI: the " +
 								"IPv6 addresses the host name resolves to. Up to 10 entries. Omit the attribute " +
 								"when there are none; an empty collection is not accepted. At least one of " +
 								"`ipv4_addresses` or `ipv6_addresses` must be set.",
@@ -259,15 +259,15 @@ func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.Schema
 						},
 						"connect_to_ztna": schema.BoolAttribute{
 							MarkdownDescription: "**\"Connect to ZTNA\"** under Traffic vectoring in the Jamf " +
-								"Security Cloud admin UI — whether this host name's traffic is routed through " +
-								"Zero Trust Network Access. Set it explicitly on every mapping; note that the " +
-								"admin UI's add dialog pre-selects this checkbox, so a mapping added there and " +
-								"one written here do not start from the same value.",
+								"Security Cloud admin UI: whether this host name's traffic is routed through " +
+								"Zero Trust Network Access. Set it explicitly on every mapping. The admin UI's " +
+								"add dialog pre-selects this checkbox, so a mapping added there and one written " +
+								"here do not start from the same value.",
 							Required: true,
 						},
 						"connect_to_secure_dns": schema.BoolAttribute{
 							MarkdownDescription: "**\"Connect to Secure DNS\"** under Traffic vectoring in the " +
-								"Jamf Security Cloud admin UI — whether this host name's traffic is routed " +
+								"Jamf Security Cloud admin UI: whether this host name's traffic is routed " +
 								"through Secure DNS. Set it explicitly on every mapping.",
 							Required: true,
 						},

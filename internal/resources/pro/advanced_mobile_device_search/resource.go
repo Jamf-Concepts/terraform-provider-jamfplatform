@@ -79,7 +79,7 @@ func (r *AdvancedMobileDeviceSearchResource) IdentitySchema(ctx context.Context,
 // resource.
 func (r *AdvancedMobileDeviceSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro advanced mobile device search, a saved criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are report concerns Jamf Pro computes, and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced mobile device search ID assigned by Jamf Pro.",
@@ -102,7 +102,7 @@ func (r *AdvancedMobileDeviceSearchResource) Schema(ctx context.Context, req res
 				Default:             stringdefault.StaticString(noSiteID),
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria.",
+				MarkdownDescription: "Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omitting the attribute leaves any existing criteria untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all criteria.",
 				Optional:            true,
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
@@ -113,7 +113,7 @@ func (r *AdvancedMobileDeviceSearchResource) Schema(ctx context.Context, req res
 				},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Set of inventory column names to display in the search results (e.g. `Display Name`, `Serial Number`, `Last Inventory Update`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.",
+				MarkdownDescription: "Set of inventory column names shown in the search results, for example `Display Name`, `Serial Number`, `Last Inventory Update`. Order is not significant, because Jamf Pro returns the columns in its own canonical order. Omitting the attribute leaves any existing columns untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all display columns.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,

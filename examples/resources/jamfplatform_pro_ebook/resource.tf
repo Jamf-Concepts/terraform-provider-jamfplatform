@@ -26,7 +26,7 @@ resource "jamfplatform_pro_ebook" "field_guide" {
   }
 }
 
-# App Store ebook — the server derives file_type and version from the Apple
+# App Store ebook. The server derives file_type and version from the Apple
 # Books URL, so leave them unset. Scoped to a specific class.
 resource "jamfplatform_pro_ebook" "swift_intro" {
   general = {

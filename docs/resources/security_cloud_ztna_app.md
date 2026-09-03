@@ -3,10 +3,10 @@
 page_title: "jamfplatform_security_cloud_ztna_app Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Security Cloud access policy application — one entry on the Access policy page. An application is defined by the host names and address ranges its traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting to that traffic.
-  An application is either predefined, based on one of the Jamf-maintained definitions the jamfplatform_security_cloud_ztna_predefined_apps data source lists, or custom, defined entirely by you. Set predefined_app_id for the first and name for the second. The choice cannot be changed afterwards — Terraform replaces the application instead.
+  Manages a Jamf Security Cloud access policy application, one entry on the Access policy page. An application is defined by the host names and address ranges its traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting to that traffic.
+  An application is either predefined, based on one of the Jamf-maintained definitions the jamfplatform_security_cloud_ztna_predefined_apps data source lists, or custom, defined entirely by you. Set predefined_app_id for the first and name for the second. The choice cannot be changed afterwards, so Terraform replaces the application instead.
   Host names and address ranges may belong to only one application across the whole tenant, so two applications cannot claim the same one. Misconfiguring an application can cut end users off from the resources it covers.
-  See the Jamf Security Cloud guide ../guides/security-cloud for what that tenant-wide uniqueness means in practice — how overlapping host names are resolved, and why renaming an application by replacing it fails — and for a worked example taking one internal application all the way from a device group to a device that can reach it.
+  See the Jamf Security Cloud guide ../guides/security-cloud for what that tenant-wide uniqueness means in practice: how overlapping host names are resolved, and why renaming an application by replacing it fails. The guide also carries a worked example taking one internal application all the way from a device group to a device that can reach it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -16,13 +16,13 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_app (Resource)
 
-Manages a Jamf Security Cloud access policy application — one entry on the **Access policy** page. An application is defined by the host names and address ranges its traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting to that traffic.
+Manages a Jamf Security Cloud access policy application, one entry on the **Access policy** page. An application is defined by the host names and address ranges its traffic matches; defining one is what lets Jamf Security Cloud apply access policy and reporting to that traffic.
 
-An application is either **predefined**, based on one of the Jamf-maintained definitions the `jamfplatform_security_cloud_ztna_predefined_apps` data source lists, or **custom**, defined entirely by you. Set `predefined_app_id` for the first and `name` for the second. The choice cannot be changed afterwards — Terraform replaces the application instead.
+An application is either **predefined**, based on one of the Jamf-maintained definitions the `jamfplatform_security_cloud_ztna_predefined_apps` data source lists, or **custom**, defined entirely by you. Set `predefined_app_id` for the first and `name` for the second. The choice cannot be changed afterwards, so Terraform replaces the application instead.
 
 Host names and address ranges may belong to only one application across the whole tenant, so two applications cannot claim the same one. Misconfiguring an application can cut end users off from the resources it covers.
 
-See the [Jamf Security Cloud guide](../guides/security-cloud) for what that tenant-wide uniqueness means in practice — how overlapping host names are resolved, and why renaming an application by replacing it fails — and for a worked example taking one internal application all the way from a device group to a device that can reach it.
+See the [Jamf Security Cloud guide](../guides/security-cloud) for what that tenant-wide uniqueness means in practice: how overlapping host names are resolved, and why renaming an application by replacing it fails. The guide also carries a worked example taking one internal application all the way from a device group to a device that can reach it.
 
 **Required Jamf permissions**
 
@@ -76,7 +76,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   # and matches nothing at all, so keep at least one populated.
 
   # A wildcard covers only subdomains, so list the parent alongside it if it needs
-  # to match too. Entries must be mutually exclusive — listing both
+  # to match too. Entries must be mutually exclusive: listing both
   # "*.crm.example.com" and "eu.crm.example.com" is rejected.
   hostnames = [
     "crm.example.com",
@@ -132,7 +132,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
 
 # A predefined application: the definition owns the name and contributes its own host names,
 # which do not appear in hostnames. Anything listed here is an addition to them, and
-# an empty hostnames is normal — the definition's own names still match.
+# an empty hostnames is normal, because the definition's own names still match.
 # Only one application per predefined definition is allowed on a tenant.
 resource "jamfplatform_security_cloud_ztna_app" "slack" {
   predefined_app_id = local.slack
@@ -159,21 +159,21 @@ resource "jamfplatform_security_cloud_device_group" "contractors" {
 
 ### Required
 
-- `all_device_groups` (Boolean) **"All device groups"** under Device group permissions in the Jamf Security Cloud admin UI. `true` lets users reach this application from any device in the fleet. `false` restricts it to the groups in `device_group_ids` — the admin UI's "Selected device groups".
-- `category` (String) **"Category"** in the Jamf Security Cloud admin UI — how this application is classified for reporting. Must match a category Jamf Security Cloud defines: use the `display_name` from the `jamfplatform_security_cloud_content_categories` data source, not its `name`. `Uncategorized` is the admin UI's own default.
-- `routing` (Attributes) **"Application traffic routing"** in the Jamf Security Cloud admin UI — how authorised devices reach this application's servers. (see [below for nested schema](#nestedatt--routing))
+- `all_device_groups` (Boolean) **"All device groups"** under Device group permissions in the Jamf Security Cloud admin UI. `true` lets users reach this application from any device in the fleet. `false` restricts it to the groups in `device_group_ids`, which the admin UI calls "Selected device groups".
+- `category` (String) **"Category"** in the Jamf Security Cloud admin UI: how this application is classified for reporting. Must match a category Jamf Security Cloud defines: use the `display_name` from the `jamfplatform_security_cloud_content_categories` data source, not its `name`. `Uncategorized` is the admin UI's own default.
+- `routing` (Attributes) **"Application traffic routing"** in the Jamf Security Cloud admin UI: how authorised devices reach this application's servers. (see [below for nested schema](#nestedatt--routing))
 
 ### Optional
 
 - `device_group_ids` (Set of String) IDs of the device groups that may reach this application, from the `jamfplatform_security_cloud_device_group` resource or data source. Applies only when `all_device_groups` is false. Leaving it unset with `all_device_groups` false is accepted and means no device can reach the application.
-- `direct_ips_and_subnets` (Set of String) **"Direct IPs and subnets"** in the Jamf Security Cloud admin UI — address ranges for applications that cannot be reached by host name. Use this only when the application does not support connecting by the host names above; it also requires a current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as `10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range must name its own network address rather than a host inside it — write `10.1.2.0/24`, not `10.1.2.3/24`, because Jamf Security Cloud stores only the network. A range already claimed by another application is rejected. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
-- `hostnames` (Set of String) **"Hostname"** entries under Traffic matching in the Jamf Security Cloud admin UI — the host names whose traffic belongs to this application. A wildcard may replace the whole leading label (`*.example.com`), and `*` on its own matches everything. Entries must be mutually exclusive: `*.example.com` already covers `sub.example.com`, and the parent domain has to be listed separately from its subdomains. Host names must be lower-case with no trailing dot, because Jamf Security Cloud stores them that way. A host name already claimed by another application is rejected. For a predefined application these are additions to the definition's own host names, not a replacement for them. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
-- `name` (String) **"App name"** in the Jamf Security Cloud admin UI. Required for a custom application, and not accepted for a predefined one — a predefined application takes its name from the Jamf-maintained definition. Application names are not required to be unique, so prefer the application ID when referencing one elsewhere.
-- `predefined_app_id` (String) ID of the Jamf-maintained application definition this application is based on, from the `jamfplatform_security_cloud_ztna_predefined_apps` data source. Setting it makes this a predefined application: the definition owns the name and contributes its own host names, which the admin UI shows as "Default" and which do not appear in `hostnames`. Additional host names can still be added. Only one application per definition is allowed on a tenant. Changing this — in either direction — replaces the application, because the choice of form is fixed once made.
-- `routing_overrides` (Attributes List) **"Custom group assignments"** in the Jamf Security Cloud admin UI — per-group routing that overrides `routing` for the groups it names. A device group may appear in only one override, and unless `all_device_groups` is true it must also be in `device_group_ids`. (see [below for nested schema](#nestedatt--routing_overrides))
-- `security` (Attributes) The **Security** tab in the Jamf Security Cloud admin UI — what a device must prove before it may reach this application. Each block corresponds to one card on that tab. A block left out is one Jamf Security Cloud keeps its own setting for; include a block to take control of it.
+- `direct_ips_and_subnets` (Set of String) **"Direct IPs and subnets"** in the Jamf Security Cloud admin UI: address ranges for applications that cannot be reached by host name. Use this only when the application does not support connecting by the host names above; it also requires a current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as `10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range must name its own network address rather than a host inside it: write `10.1.2.0/24`, not `10.1.2.3/24`, because Jamf Security Cloud stores only the network. A range already claimed by another application is rejected. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
+- `hostnames` (Set of String) **"Hostname"** entries under Traffic matching in the Jamf Security Cloud admin UI: the host names whose traffic belongs to this application. A wildcard may replace the whole leading label (`*.example.com`), and `*` on its own matches everything. Entries must be mutually exclusive: `*.example.com` already covers `sub.example.com`, and the parent domain has to be listed separately from its subdomains. Host names must be lower-case with no trailing dot, because Jamf Security Cloud stores them that way. A host name already claimed by another application is rejected. For a predefined application these are additions to the definition's own host names, not a replacement for them. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
+- `name` (String) **"App name"** in the Jamf Security Cloud admin UI. Required for a custom application, and not accepted for a predefined one, which takes its name from the Jamf-maintained definition. Application names are not required to be unique, so prefer the application ID when referencing one elsewhere.
+- `predefined_app_id` (String) ID of the Jamf-maintained application definition this application is based on, from the `jamfplatform_security_cloud_ztna_predefined_apps` data source. Setting it makes this a predefined application: the definition owns the name and contributes its own host names, which the admin UI shows as "Default" and which do not appear in `hostnames`. Additional host names can still be added. Only one application per definition is allowed on a tenant. Changing this in either direction replaces the application, because the choice of form is fixed once made.
+- `routing_overrides` (Attributes List) **"Custom group assignments"** in the Jamf Security Cloud admin UI: per-group routing that overrides `routing` for the groups it names. A device group may appear in only one override, and unless `all_device_groups` is true it must also be in `device_group_ids`. (see [below for nested schema](#nestedatt--routing_overrides))
+- `security` (Attributes) The **Security** tab in the Jamf Security Cloud admin UI: what a device must prove before it may reach this application. Each block corresponds to one card on that tab. A block left out is one Jamf Security Cloud keeps its own setting for; include a block to take control of it.
 
-Unlike every other attribute here, *removing* a block you had previously applied stops Terraform managing that requirement without turning it off — Jamf Security Cloud keeps it as last applied. Set `enabled = false` to lift a requirement. (see [below for nested schema](#nestedatt--security))
+Unlike every other attribute here, *removing* a block you had previously applied stops Terraform managing that requirement without turning it off; Jamf Security Cloud keeps it as last applied. Set `enabled = false` to lift a requirement. (see [below for nested schema](#nestedatt--security))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -190,8 +190,8 @@ Required:
 
 Optional:
 
-- `gateway_id` (String) **"Access gateway"** in the Jamf Security Cloud admin UI — the ID of the gateway this application's traffic is routed through. Accepts a Jamf-managed shared gateway from the `jamfplatform_security_cloud_ztna_shared_gateways` data source ("Nearest Data Center" or one of the shared IP pools), one of your own gateways, or a grouped gateway. Required when routing via ZTNA and not accepted for direct routing.
-- `routing_mode` (String) **"Routing mode"** in the Jamf Security Cloud admin UI: `Standard`, `Legacy`. "Standard" is recommended and resolves addresses as IPv6; choose "Legacy" — IPv4 — only for devices or applications known to be incompatible with IPv6. Required when routing via ZTNA and not accepted for direct routing.
+- `gateway_id` (String) **"Access gateway"** in the Jamf Security Cloud admin UI: the ID of the gateway this application's traffic is routed through. Accepts a Jamf-managed shared gateway from the `jamfplatform_security_cloud_ztna_shared_gateways` data source ("Nearest Data Center" or one of the shared IP pools), one of your own gateways, or a grouped gateway. Required when routing via ZTNA and not accepted for direct routing.
+- `routing_mode` (String) **"Routing mode"** in the Jamf Security Cloud admin UI: `Standard`, `Legacy`. "Standard" is recommended and resolves addresses as IPv6; choose "Legacy", which is IPv4, only for devices or applications known to be incompatible with IPv6. Required when routing via ZTNA and not accepted for direct routing.
 
 
 <a id="nestedatt--routing_overrides"></a>
@@ -211,8 +211,8 @@ Required:
 
 Optional:
 
-- `gateway_id` (String) **"Access gateway"** in the Jamf Security Cloud admin UI — the ID of the gateway this application's traffic is routed through. Accepts a Jamf-managed shared gateway from the `jamfplatform_security_cloud_ztna_shared_gateways` data source ("Nearest Data Center" or one of the shared IP pools), one of your own gateways, or a grouped gateway. Required when routing via ZTNA and not accepted for direct routing.
-- `routing_mode` (String) **"Routing mode"** in the Jamf Security Cloud admin UI: `Standard`, `Legacy`. "Standard" is recommended and resolves addresses as IPv6; choose "Legacy" — IPv4 — only for devices or applications known to be incompatible with IPv6. Required when routing via ZTNA and not accepted for direct routing.
+- `gateway_id` (String) **"Access gateway"** in the Jamf Security Cloud admin UI: the ID of the gateway this application's traffic is routed through. Accepts a Jamf-managed shared gateway from the `jamfplatform_security_cloud_ztna_shared_gateways` data source ("Nearest Data Center" or one of the shared IP pools), one of your own gateways, or a grouped gateway. Required when routing via ZTNA and not accepted for direct routing.
+- `routing_mode` (String) **"Routing mode"** in the Jamf Security Cloud admin UI: `Standard`, `Legacy`. "Standard" is recommended and resolves addresses as IPv6; choose "Legacy", which is IPv4, only for devices or applications known to be incompatible with IPv6. Required when routing via ZTNA and not accepted for direct routing.
 
 
 
@@ -221,9 +221,9 @@ Optional:
 
 Optional:
 
-- `device_risk` (Attributes) **"Access requires device risk validation"** — access is denied to devices at or above a risk level. (see [below for nested schema](#nestedatt--security--device_risk))
-- `jamf_trust` (Attributes) **"Access requires Jamf Trust to be enabled"** — access is denied unless the device is protecting its traffic through Jamf Trust. (see [below for nested schema](#nestedatt--security--jamf_trust))
-- `managed_device` (Attributes) **"Access requires device to be managed"** — access is denied unless the device is enrolled in device management. (see [below for nested schema](#nestedatt--security--managed_device))
+- `device_risk` (Attributes) **"Access requires device risk validation"** in the Jamf Security Cloud admin UI. Access is denied to devices at or above a risk level. (see [below for nested schema](#nestedatt--security--device_risk))
+- `jamf_trust` (Attributes) **"Access requires Jamf Trust to be enabled"** in the Jamf Security Cloud admin UI. Access is denied unless the device is protecting its traffic through Jamf Trust. (see [below for nested schema](#nestedatt--security--jamf_trust))
+- `managed_device` (Attributes) **"Access requires device to be managed"** in the Jamf Security Cloud admin UI. Access is denied unless the device is enrolled in device management. (see [below for nested schema](#nestedatt--security--managed_device))
 
 <a id="nestedatt--security--device_risk"></a>
 ### Nested Schema for `security.device_risk`
@@ -231,7 +231,7 @@ Optional:
 Optional:
 
 - `deny_at_risk_level` (String) **"Deny access to devices starting at the following risk level"** in the Jamf Security Cloud admin UI: `Low`, `Medium`, `High`. Defaults to `High`, matching Jamf Security Cloud's own default. Jamf Security Cloud keeps this value even while the requirement is not enforced.
-- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI — whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
+- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI: whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
 - `enabled` (Boolean) Whether this requirement is enforced. Defaults to `false`, matching Jamf Security Cloud's own default for a new application.
 
 
@@ -240,7 +240,7 @@ Optional:
 
 Optional:
 
-- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI — whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
+- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI: whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
 - `enabled` (Boolean) Whether this requirement is enforced. Defaults to `false`, matching Jamf Security Cloud's own default for a new application.
 
 
@@ -249,7 +249,7 @@ Optional:
 
 Optional:
 
-- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI — whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
+- `device_push_notifications` (Boolean) **"Device push notifications"** in the Jamf Security Cloud admin UI: whether the user is told when access is denied by this requirement. Defaults to `true`, matching Jamf Security Cloud's own default.
 - `enabled` (Boolean) Whether this requirement is enforced. Defaults to `false`, matching Jamf Security Cloud's own default for a new application.
 
 

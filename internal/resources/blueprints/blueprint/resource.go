@@ -158,7 +158,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 
 	resp.Schema = schema.Schema{
 		Version:             3,
-		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf blueprint. Requires **Blueprints API** access." + resourcePrivileges,
 		Attributes:          attributes,
 	}
 }
@@ -312,7 +312,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 	}
 
 	attributes["ai_governance"] = schema.SingleNestedAttribute{
-		MarkdownDescription: "AI Governance component — delivers published AI policy versions, such as managed " +
+		MarkdownDescription: "AI Governance component. Delivers published AI policy versions, such as managed " +
 			"Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the " +
 			"[AI Governance policies guide](../guides/ai-governance-policies).",
 		Optional:   true,

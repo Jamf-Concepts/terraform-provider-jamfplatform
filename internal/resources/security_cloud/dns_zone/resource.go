@@ -107,7 +107,7 @@ func (r *DNSZoneResource) IdentitySchema(_ context.Context, _ resource.IdentityS
 func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains " +
-			"are resolved through authoritative name servers of your choice instead of public DNS — this arrangement is " +
+			"are resolved through authoritative name servers of your choice instead of public DNS. That arrangement is " +
 			"\"split-brain DNS\", and a custom DNS zone is required before enterprise apps on internal private networks " +
 			"become reachable over ZTNA.\n\n" +
 			"Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.\n\n" +
@@ -132,7 +132,7 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"domains": schema.SetAttribute{
-				MarkdownDescription: "**\"Domains\"** in the Jamf Security Cloud admin UI — the domains that match this " +
+				MarkdownDescription: "**\"Domains\"** in the Jamf Security Cloud admin UI: the domains that match this " +
 					"zone. Subdomains take a wildcard, and the parent domain must be listed explicitly alongside it: " +
 					"`company.com` covers only the parent domain and `*.company.com` covers only the subdomains. " +
 					"Between 1 and 100 entries. A domain already claimed by another zone is rejected.",
@@ -144,7 +144,7 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 			},
 			"authoritative_name_servers": schema.SetNestedAttribute{
-				MarkdownDescription: "**\"Authoritative name servers\"** in the Jamf Security Cloud admin UI — the name " +
+				MarkdownDescription: "**\"Authoritative name servers\"** in the Jamf Security Cloud admin UI: the name " +
 					"servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server " +
 					"must be reachable via the gateway it is paired with.",
 				Required: true,
@@ -161,7 +161,7 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 							},
 						},
 						"gateway_id": schema.StringAttribute{
-							MarkdownDescription: "**\"Reachable via\"** in the Jamf Security Cloud admin UI — the ID of " +
+							MarkdownDescription: "**\"Reachable via\"** in the Jamf Security Cloud admin UI: the ID of " +
 								"the gateway this name server is reachable through. Accepts a Jamf-managed shared " +
 								"gateway (\"Nearest Data Center\" or one of the shared IP pools) or one of your own " +
 								"ZTNA gateways. The gateway must already exist: a zone referencing an unknown gateway " +

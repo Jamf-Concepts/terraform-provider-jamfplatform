@@ -1,10 +1,9 @@
 # Manages a Jamf Pro Automated Device Enrollment (ADE) instance.
 #
-# `server_token` is `WriteOnly` — the base64-encoded contents of the `.p7m`
+# `server_token` is `WriteOnly`. The base64-encoded contents of the `.p7m`
 # server token downloaded from Apple Business Manager / Apple School Manager
 # are sent to Jamf Pro on writes but never persisted in Terraform state.
-# Bump `server_token_wo_version` to rotate the stored token on the next apply
-# (triggers `ReplaceDeviceEnrollmentTokenV1`).
+# Bump `server_token_wo_version` to rotate the stored token on the next apply.
 #
 # The token is generated against a tenant-specific MDM public key. Pull the
 # tenant's key with the companion data source

@@ -136,11 +136,11 @@ func (r *ActivationProfileResource) Metadata(_ context.Context, req resource.Met
 // Schema returns the Terraform schema for the activation profile resource.
 func (r *ActivationProfileResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Security Cloud activation profile — the enrollment credential end users " +
+		MarkdownDescription: "Manages a Jamf Security Cloud activation profile, the enrollment credential end users " +
 			"activate Jamf Trust against. Creating one mints an activation code, which you can hand to a UEM with " +
 			"`jamfplatform_security_cloud_activation_profile_deploy` or distribute as a link.\n\n" +
 			"This resource manages a deliberately small part of an activation profile. Jamf Security Cloud offers " +
-			"considerably more on an activation profile than it accepts here — the end user application, " +
+			"considerably more on an activation profile than it accepts here: the end user application, " +
 			"authentication and identity provider, in-app secure DNS control, customizable block pages, expiration " +
 			"date and device location settings are all configurable in Jamf Security Cloud and not through this " +
 			"resource. A profile created here takes the Jamf Security Cloud default for each of them, and Terraform " +
@@ -184,9 +184,9 @@ func (r *ActivationProfileResource) Schema(ctx context.Context, _ resource.Schem
 			},
 			"platforms": schema.SetAttribute{
 				MarkdownDescription: "Device platforms this activation profile targets: `ios`, `mac`, or both. " +
-					"Jamf Security Cloud requires at least one and accepts at most two. Note that Jamf Security " +
-					"Cloud does not show this selection anywhere on the profile, and the platforms a profile " +
-					"actually supports are determined by the service capabilities you enable rather than by this " +
+					"Jamf Security Cloud requires at least one and accepts at most two. Jamf Security Cloud does " +
+					"not show this selection anywhere on the profile, and the platforms a profile actually " +
+					"supports follow from the service capabilities you enable rather than from this " +
 					"value.\n\nThe `jamfplatform_security_cloud_activation_profile_deploy` action spells the Mac " +
 					"platform `macos` in its own `os` argument. The two are deliberately different vocabularies: " +
 					"this attribute selects platforms, while that argument selects one deployment form " +

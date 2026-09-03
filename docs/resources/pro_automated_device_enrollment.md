@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_automated_device_enrollment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible name and any optional site_id / supervision_identity_id associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create AND any update that bumps server_token_wo_version), the provider blocks until Jamf Pro reports the Apple ADE sync as SUCCESSFUL — until that completes the device list is not known to Jamf and downstream resources (e.g. jamfplatform_pro_computer_prestage_enrollment scope assignments) will fail. Default create/update timeout is 5 minutes; override via the timeouts block when Apple's round-trip is slower on a particular tenant.
+  Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible name and any optional site_id / supervision_identity_id associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create, and any update that bumps server_token_wo_version), the provider blocks until Jamf Pro reports the Apple ADE sync as SUCCESSFUL. Until that completes the device list is not known to Jamf Pro, and downstream resources such as jamfplatform_pro_computer_prestage_enrollment scope assignments will fail. Default create and update timeout is 5 minutes; override it with the timeouts block when Apple's round-trip is slower on a particular tenant.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_automated_device_enrollment (Resource)
 
-Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a `.p7m` server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible `name` and any optional `site_id` / `supervision_identity_id` associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create AND any update that bumps `server_token_wo_version`), the provider blocks until Jamf Pro reports the Apple ADE sync as `SUCCESSFUL` — until that completes the device list is not known to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` scope assignments) will fail. Default create/update timeout is 5 minutes; override via the `timeouts` block when Apple's round-trip is slower on a particular tenant.
+Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a `.p7m` server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible `name` and any optional `site_id` / `supervision_identity_id` associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create, and any update that bumps `server_token_wo_version`), the provider blocks until Jamf Pro reports the Apple ADE sync as `SUCCESSFUL`. Until that completes the device list is not known to Jamf Pro, and downstream resources such as `jamfplatform_pro_computer_prestage_enrollment` scope assignments will fail. Default create and update timeout is 5 minutes; override it with the `timeouts` block when Apple's round-trip is slower on a particular tenant.
 
 **Required Jamf permissions**
 
@@ -28,11 +28,10 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # Manages a Jamf Pro Automated Device Enrollment (ADE) instance.
 #
-# `server_token` is `WriteOnly` — the base64-encoded contents of the `.p7m`
+# `server_token` is `WriteOnly`. The base64-encoded contents of the `.p7m`
 # server token downloaded from Apple Business Manager / Apple School Manager
 # are sent to Jamf Pro on writes but never persisted in Terraform state.
-# Bump `server_token_wo_version` to rotate the stored token on the next apply
-# (triggers `ReplaceDeviceEnrollmentTokenV1`).
+# Bump `server_token_wo_version` to rotate the stored token on the next apply.
 #
 # The token is generated against a tenant-specific MDM public key. Pull the
 # tenant's key with the companion data source
@@ -67,15 +66,15 @@ output "ade_prod_token_expiration" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `name` (String) Display name for the ADE instance in the Jamf Pro admin UI. Must not be empty.
-- `server_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.p7m` server token downloaded from Apple Business Manager / Apple School Manager for this MDM server. `WriteOnly` — the value is sent to Jamf Pro on create and on token-rotating updates but **never persisted in Terraform state**. Jamf Pro also never returns the token on reads, so the only signal Terraform can use to rotate the stored token is the companion `server_token_wo_version` integer. The provider trims surrounding whitespace and then base64-decodes the supplied string to raw bytes before sending; a decode failure surfaces as a plan-time diagnostic.
-- `server_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `server_token`. Bump this integer (any change) to force an update that re-sends the current `server_token` to Jamf Pro. Initial create should set `server_token_wo_version = 1`. Required because `server_token` itself is Required — keeping the companion Required keeps the rotation signal explicit in config. Bumping this value triggers a fresh Apple ADE sync; the update operation blocks until Jamf Pro reports the sync as `SUCCESSFUL` (subject to `timeouts.update`, default 5 minutes).
+- `server_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.p7m` server token downloaded from Apple Business Manager / Apple School Manager for this MDM server. `WriteOnly`: the value is sent to Jamf Pro on create and on token-rotating updates, and **never persisted in Terraform state**. Jamf Pro also never returns the token on reads, so the only signal Terraform can use to rotate the stored token is the companion `server_token_wo_version` integer. The provider trims surrounding whitespace and then base64-decodes the supplied string to raw bytes before sending; a decode failure surfaces as a plan-time diagnostic.
+- `server_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `server_token`. Bump this integer (any change) to force an update that re-sends the current `server_token` to Jamf Pro. Initial create should set `server_token_wo_version = 1`. Required because `server_token` is Required; keeping the companion Required keeps the rotation signal explicit in config. Bumping the value triggers a fresh Apple ADE sync, and the update blocks until Jamf Pro reports the sync as `SUCCESSFUL` (subject to `timeouts.update`, default 5 minutes).
 
 ### Optional
 
-- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default — leave the attribute unset to let Jamf Pro decide.
+- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no site is set. The provider mirrors whatever Jamf Pro reports into state and applies no default, so leave the attribute unset to let Jamf Pro decide.
 - `supervision_identity_id` (String) Optional Jamf Pro supervision identity ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no supervision identity is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `token_file_name` (String) Optional file name to send alongside the uploaded token (e.g. `"my-org-ade-token.p7m"`). Jamf Pro does not return this field on reads, so the attribute is plain `Optional` (not `Optional+Computed`) — it is only used at upload time and is not refreshed on read.
+- `token_file_name` (String) Optional file name to send alongside the uploaded token (e.g. `"my-org-ade-token.p7m"`). Jamf Pro does not return this field on reads, so the attribute is plain `Optional` rather than `Optional+Computed`: it is used only at upload time and is not refreshed on read.
 
 ### Read-Only
 

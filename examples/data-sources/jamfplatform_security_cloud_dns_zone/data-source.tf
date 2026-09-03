@@ -4,7 +4,7 @@ data "jamfplatform_security_cloud_dns_zone" "by_id" {
 }
 
 # Or by name. Zone names are not required to be unique, so a name matching more
-# than one zone is an error — look those up by ID.
+# than one zone is an error. Look those up by ID.
 data "jamfplatform_security_cloud_dns_zone" "by_name" {
   name = "Internal Services"
 }

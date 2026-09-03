@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_gsx_connection_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
+  Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). One record per tenant. Jamf Pro never returns the token or keystore secrets, so they are not exposed here.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_pro_gsx_connection_settings (Data Source)
 
-Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
+Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). One record per tenant. Jamf Pro never returns the token or keystore secrets, so they are not exposed here.
 
 **Required Jamf permissions**
 

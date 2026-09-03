@@ -106,24 +106,24 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			Validators:          []validator.String{stringvalidator.OneOf(blueprints.RecommendedCadenceValueValues()...)},
 		},
 		"beta_require_program_token": schema.StringAttribute{
-			MarkdownDescription: "Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.",
+			MarkdownDescription: "Required beta program token (1–1000 characters). Must be specified with `beta_require_program_description`.",
 			Optional:            true,
 		},
 		"beta_require_program_description": schema.StringAttribute{
-			MarkdownDescription: "Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.",
+			MarkdownDescription: "Required beta program description (1–1000 characters). Must be specified with `beta_require_program_token`.",
 			Optional:            true,
 		},
 		"beta_offer_programs": schema.SetNestedAttribute{
-			MarkdownDescription: "Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each).",
+			MarkdownDescription: "Beta programs to offer (max 100). Each program must have a token and description (1–1000 characters each).",
 			Optional:            true,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"token": schema.StringAttribute{
-						MarkdownDescription: "Beta program token (1-1000 characters).",
+						MarkdownDescription: "Beta program token (1–1000 characters).",
 						Required:            true,
 					},
 					"description": schema.StringAttribute{
-						MarkdownDescription: "Beta program description (1-1000 characters).",
+						MarkdownDescription: "Beta program description (1–1000 characters).",
 						Required:            true,
 					},
 				},

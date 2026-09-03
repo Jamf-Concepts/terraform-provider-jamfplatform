@@ -3,8 +3,8 @@
 page_title: "jamfplatform_security_cloud_ztna_grouped_gateway Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Security Cloud ZTNA grouped gateway — a routing and failover group over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single gateway can, including a custom DNS zone's name servers.
-  Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all members must be the same form — all IPsec or all internet. Deleting a member gateway while it is still in a group is refused.
+  Manages a Jamf Security Cloud ZTNA grouped gateway, a routing and failover group over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single gateway can, including a custom DNS zone's name servers.
+  Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all members must be the same form, either all IPsec or all internet. Deleting a member gateway while it is still in a group is refused.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,9 +14,9 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_grouped_gateway (Resource)
 
-Manages a Jamf Security Cloud ZTNA grouped gateway — a routing and failover group over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single gateway can, including a custom DNS zone's name servers.
+Manages a Jamf Security Cloud ZTNA grouped gateway, a routing and failover group over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single gateway can, including a custom DNS zone's name servers.
 
-Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all members must be the same form — all IPsec or all internet. Deleting a member gateway while it is still in a group is refused.
+Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all members must be the same form, either all IPsec or all internet. Deleting a member gateway while it is still in a group is refused.
 
 **Required Jamf permissions**
 
@@ -30,7 +30,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # A grouped gateway is a routing and failover group over two or more of your own
-# dedicated gateways. Every member must be the same form — all IPSec, or all
+# dedicated gateways. Every member must be the same form: all IPSec, or all
 # internet.
 resource "jamfplatform_security_cloud_ztna_grouped_gateway" "eu" {
   name = "EU Egress"
@@ -84,16 +84,16 @@ variable "security_cloud_tenant_id" {
 
 ### Required
 
-- `gateway_ids` (List of String) **"Choose your gateways"** in the Jamf Security Cloud admin UI — the IDs of the member gateways, at least two. **Order is significant**: it is the priority order the `First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. Jamf Security Cloud stores the order exactly as given.
+- `gateway_ids` (List of String) **"Choose your gateways"** in the Jamf Security Cloud admin UI: the IDs of the member gateways, at least two. Order is significant. It is the priority order the `First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. Jamf Security Cloud stores the order exactly as given.
 
-Members must be your own dedicated gateways, all of the same form — mixing an IPsec gateway with an internet one is refused, and so is naming one of Jamf's shared gateways.
+Members must be your own dedicated gateways, all of the same form, so mixing an IPsec gateway with an internet one is refused, and so is naming one of Jamf's shared gateways.
 - `name` (String) **"Name"** in the Jamf Security Cloud admin UI.
-- `required_gateway_stability` (String) **"Required gateway stability"** in the Jamf Security Cloud admin UI — how long a recovered member must stay healthy before traffic returns to it. Applies to the `First available` strategy, and is **required whatever the strategy**: Jamf Security Cloud rejects a create without it even when the value is ignored. Valid values: `5 minutes`, `30 minutes`, `1 hour`, `3 hours`, `8 hours`.
-- `routing_strategy` (String) **"Routing strategy"** in the Jamf Security Cloud admin UI — which member a device uses:
+- `required_gateway_stability` (String) **"Required gateway stability"** in the Jamf Security Cloud admin UI: how long a recovered member must stay healthy before traffic returns to it. Applies to the `First available` strategy, and is required whatever the strategy: Jamf Security Cloud rejects a create without it even when the value is ignored. Valid values: `5 minutes`, `30 minutes`, `1 hour`, `3 hours`, `8 hours`.
+- `routing_strategy` (String) **"Routing strategy"** in the Jamf Security Cloud admin UI. Which member a device uses:
 
-- `Nearest` — the geographically closest available member.
-- `Random` — a random available member, for load balancing.
-- `First available` — the first available member in `gateway_ids` order, failing over to the next and back again after `required_gateway_stability`.
+- `Nearest`: the geographically closest available member.
+- `Random`: a random available member, for load balancing.
+- `First available`: the first available member in `gateway_ids` order, failing over to the next and back again after `required_gateway_stability`.
 - `tenant_ids` (Set of String) IDs of the tenants granted access to this grouped gateway. At least one, and every one must belong to the same organization as the credentials the provider is configured with.
 
 ### Optional

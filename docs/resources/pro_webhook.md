@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_webhook Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro webhook — the "Webhooks" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: "Mutual TLS Authentication" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API.
+  Manages a Jamf Pro webhook (Settings → Global → Webhooks in the Jamf Pro admin UI). A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. "Mutual TLS Authentication" is deliberately unsupported: its certificate material is settable only through the legacy admin web UI, and no API reaches it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_webhook (Resource)
 
-Manages a Jamf Pro webhook — the "Webhooks" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: "Mutual TLS Authentication" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API.
+Manages a Jamf Pro webhook (Settings → Global → Webhooks in the Jamf Pro admin UI). A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. "Mutual TLS Authentication" is deliberately unsupported: its certificate material is settable only through the legacy admin web UI, and no API reaches it.
 
 **Required Jamf permissions**
 
@@ -26,7 +26,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Minimal webhook — no authentication. Server defaults apply (enabled=true,
+# Minimal webhook with no authentication. Server defaults apply (enabled=true,
 # content_type=text/xml, connection_timeout=5, read_timeout=2).
 resource "jamfplatform_pro_webhook" "minimal" {
   name  = "Computer added (no auth)"
@@ -34,7 +34,7 @@ resource "jamfplatform_pro_webhook" "minimal" {
   event = "ComputerAdded"
 }
 
-# Basic authentication. The plaintext password is WriteOnly — bump
+# Basic authentication. The plaintext password is WriteOnly. Bump
 # password_wo_version to rotate it.
 resource "jamfplatform_pro_webhook" "basic" {
   name                = "Check-in (basic auth)"
@@ -103,22 +103,22 @@ variable "webhook_signing_secret" {
 ### Required
 
 - `event` (String) **"Webhook Event"** in the Jamf Pro admin UI. The Jamf Pro event that triggers the webhook. Changing this is an in-place update.
-- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Display name for the webhook.
+- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Must not be empty.
 - `url` (String) **"Webhook URL"** in the Jamf Pro admin UI. The URL the webhook payload is posted to.
 
 ### Optional
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `authentication_type` (String) **"Authentication type"** in the Jamf Pro admin UI. One of `NONE`, `BASIC`, `HEADER`, `HASH_SIGNATURE`, `MTLS`: `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`), or `MTLS` ("Mutual TLS Authentication" — accepted so existing webhooks import, but the client certificate it needs can only be supplied through the Jamf Pro admin UI, so an MTLS webhook created here is inert until that certificate is added). Defaults to `NONE`; because this attribute is computed, switching authentication off again requires explicitly setting `authentication_type = "NONE"` (removing the attribute retains the last applied value).
+- `authentication_type` (String) **"Authentication type"** in the Jamf Pro admin UI. One of `NONE`, `BASIC`, `HEADER`, `HASH_SIGNATURE`, `MTLS`: `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`), or `MTLS` ("Mutual TLS Authentication"). `MTLS` is accepted so existing webhooks import, but the client certificate it needs can only be supplied through the Jamf Pro admin UI, so an MTLS webhook created here is inert until that certificate is added. Defaults to `NONE`. This attribute is computed, so switching authentication off again requires setting `authentication_type = "NONE"` explicitly; removing the attribute retains the last applied value.
 - `connection_timeout` (Number) **"Connection Timeout"** in the Jamf Pro admin UI. Seconds to wait when establishing the connection to the webhook host. Defaults to `5`.
 - `content_type` (String) **"Content Type"** in the Jamf Pro admin UI (the XML/JSON radio). Format of the webhook payload: `application/json` or `text/xml`. Defaults to `text/xml`.
-- `enable_display_fields_for_group_object` (Boolean) **"Include Display Fields for the Group Object"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. (The display field list itself is not settable via the API — see `display_fields`.)
+- `enable_display_fields_for_group_object` (Boolean) **"Include Display Fields for the Group Object"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. The display field list itself cannot be set here; see `display_fields`.
 - `enabled` (Boolean) **"Enabled"** in the Jamf Pro admin UI. Whether the webhook is active. Defaults to `true`.
 - `hash_algorithm` (String) **"Algorithm"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.
 - `header` (String, Sensitive) **"Header Authentication"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{"Authorization":"Bearer …"}`. Only valid when `authentication_type = "HEADER"`. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** (BASIC) / **"Signing Secret"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state** (Jamf returns a redaction sentinel on read). Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the server requires at least 16 characters.
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Initial create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored secret alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** (BASIC) / **"Signing Secret"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state; Jamf Pro returns a redaction sentinel on read. Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the password must be at least 16 characters.
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Set `password_wo_version = 1` on create. Leave it unset or unchanged to keep the stored secret: the provider omits the password from the next update, so Jamf Pro retains the existing value.
 - `read_timeout` (Number) **"Read Timeout"** in the Jamf Pro admin UI. Seconds to wait for a response after sending the request. Defaults to `2`.
 - `smart_group_id` (Number) Jamf Pro smart group ID for the SmartGroup membership-change events. Only valid when `event` is `SmartGroupComputerMembershipChange`, `SmartGroupMobileDeviceMembershipChange`, or `SmartGroupUserMembershipChange`. Interpolate a Jamf Pro smart group ID (e.g. `jamfplatform_device_group.<x>.jamf_pro_id`). Omit for "any" group.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -126,7 +126,7 @@ variable "webhook_signing_secret" {
 
 ### Read-Only
 
-- `display_fields` (Set of String) Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — Jamf Pro rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.
+- `display_fields` (Set of String) Read-only set of display field names included in the group-object payload. Terraform cannot set them: Jamf Pro rejects any populated display field, because the list is managed in the admin UI. This attribute reflects whatever the Jamf Pro UI configured.
 - `id` (String) Webhook ID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>

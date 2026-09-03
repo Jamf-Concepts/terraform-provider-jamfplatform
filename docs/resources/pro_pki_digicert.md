@@ -4,7 +4,8 @@ page_title: "jamfplatform_pro_pki_digicert Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages a Jamf Pro DigiCert Trust Lifecycle Manager integration (Settings → Global → PKI certificates → Certificate Authorities). DigiCert TLM is an external certificate authority Jamf Pro uses to issue certificates referenced by configuration profiles.
-  Client certificate: the certificate (a .p12/.pfx keystore) authenticates Jamf Pro to DigiCert One. It is supplied through the client_certificate block as data_wo (base64 of the keystore — use filebase64("cert.p12")) plus password_wo; both are WriteOnly and never persisted in Terraform state, and Jamf Pro never returns them on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump client_certificate.wo_version (editing data_wo/password_wo without bumping the version is intentionally a no-op). Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only client_certificate_details block.
+  Client certificate
+  The certificate, a .p12/.pfx keystore, authenticates Jamf Pro to DigiCert One. Supply it through the client_certificate block as data_wo (base64 of the keystore: use filebase64("cert.p12")) plus password_wo. Both are WriteOnly, never persisted in Terraform state, and never returned by Jamf Pro on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump client_certificate.wo_version. Editing data_wo/password_wo without bumping the version is deliberately a no-op. Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only client_certificate_details block.
   Import with terraform import jamfplatform_pro_pki_digicert.<name> <id>.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -17,7 +18,9 @@ description: |-
 
 Manages a Jamf Pro DigiCert Trust Lifecycle Manager integration (Settings → Global → PKI certificates → Certificate Authorities). DigiCert TLM is an external certificate authority Jamf Pro uses to issue certificates referenced by configuration profiles.
 
-**Client certificate:** the certificate (a `.p12`/`.pfx` keystore) authenticates Jamf Pro to DigiCert One. It is supplied through the `client_certificate` block as `data_wo` (base64 of the keystore — use `filebase64("cert.p12")`) plus `password_wo`; both are `WriteOnly` and never persisted in Terraform state, and Jamf Pro never returns them on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump `client_certificate.wo_version` (editing `data_wo`/`password_wo` without bumping the version is intentionally a no-op). Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only `client_certificate_details` block.
+### Client certificate
+
+The certificate, a `.p12`/`.pfx` keystore, authenticates Jamf Pro to DigiCert One. Supply it through the `client_certificate` block as `data_wo` (base64 of the keystore: use `filebase64("cert.p12")`) plus `password_wo`. Both are `WriteOnly`, never persisted in Terraform state, and never returned by Jamf Pro on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump `client_certificate.wo_version`. Editing `data_wo`/`password_wo` without bumping the version is deliberately a no-op. Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only `client_certificate_details` block.
 
 Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`.
 
@@ -41,7 +44,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # The client certificate (a .p12/.pfx keystore) is supplied through the
 # client_certificate block. data_wo and password_wo are WriteOnly: sent to
 # Jamf Pro on writes but never stored in Terraform state, and never returned
-# on read. DigiCert treats the certificate as all-or-nothing — the provider
+# on read. DigiCert treats the certificate as all-or-nothing, so the provider
 # re-sends it only when wo_version changes. Bump wo_version to rotate the
 # stored certificate.
 resource "jamfplatform_pro_pki_digicert" "example" {
@@ -69,12 +72,12 @@ resource "jamfplatform_pro_pki_digicert" "example" {
 
 ### Required
 
-- `display_name` (String) **"Display Name for the Integration"** in the Jamf Pro admin UI. A friendly name for this DigiCert integration. Required — Jamf Pro mandates it on create.
-- `host_name` (String) **"DigiCert One Host Name"** in the Jamf Pro admin UI. The DigiCert One host (e.g. `one.digicert.com`). Required — Jamf Pro mandates it on create.
+- `display_name` (String) **"Display Name for the Integration"** in the Jamf Pro admin UI. A friendly name for this DigiCert integration. Jamf Pro requires it on create.
+- `host_name` (String) **"DigiCert One Host Name"** in the Jamf Pro admin UI. The DigiCert One host (e.g. `one.digicert.com`). Jamf Pro requires it on create.
 
 ### Optional
 
-- `client_certificate` (Attributes) The client certificate (`.p12`/`.pfx` keystore) Jamf Pro uses to authenticate to DigiCert One. Optional — omit the whole block to leave the stored certificate untouched. DigiCert treats the certificate as all-or-nothing; the provider re-sends it only on create (when the block is set) or when `wo_version` changes. (see [below for nested schema](#nestedatt--client_certificate))
+- `client_certificate` (Attributes) The client certificate (`.p12`/`.pfx` keystore) Jamf Pro uses to authenticate to DigiCert One. Omit the whole block to leave the stored certificate untouched. DigiCert treats the certificate as all-or-nothing; the provider re-sends it only on create (when the block is set) or when `wo_version` changes. (see [below for nested schema](#nestedatt--client_certificate))
 - `revocation_enabled` (Boolean) Whether Jamf Pro requests certificate revocation through DigiCert. Omit to preserve the current value.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -88,13 +91,13 @@ resource "jamfplatform_pro_pki_digicert" "example" {
 
 Required:
 
-- `filename` (String) The certificate keystore filename (e.g. `client.p12`). Required when the `client_certificate` block is set — Jamf Pro uses the extension (`.p12`/`.pfx`) to detect the certificate format and rejects an upload without it.
+- `filename` (String) The certificate keystore filename (e.g. `client.p12`). Required when the `client_certificate` block is set. Jamf Pro reads the certificate format from the extension (`.p12`/`.pfx`) and rejects an upload without it.
 
 Optional:
 
-- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded certificate keystore (`.p12`/`.pfx`). Supply with `filebase64("cert.p12")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Pair with `wo_version` to rotate.
-- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The password protecting the certificate keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `wo_version` to rotate.
-- `wo_version` (Number) Rotation trigger for the `WriteOnly` certificate fields. Bump this integer (any change) to force the next update to re-send the full certificate (`data_wo` + `password_wo` + `filename`) to Jamf Pro. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals "leave the stored certificate alone" — the provider omits the certificate from the next update so Jamf Pro retains the existing value. Editing `data_wo`/`password_wo` without bumping `wo_version` is intentionally a no-op.
+- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded certificate keystore (`.p12`/`.pfx`). Supply with `filebase64("cert.p12")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Pair with `wo_version` to rotate.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The password protecting the certificate keystore. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `wo_version` to rotate.
+- `wo_version` (Number) Rotation trigger for the `WriteOnly` certificate fields. Bump this integer (any change) to force the next update to re-send the full certificate (`data_wo` + `password_wo` + `filename`) to Jamf Pro. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals "leave the stored certificate alone": the provider omits the certificate from the next update, so Jamf Pro retains the existing value. Editing `data_wo`/`password_wo` without bumping `wo_version` is deliberately a no-op.
 
 
 <a id="nestedatt--timeouts"></a>

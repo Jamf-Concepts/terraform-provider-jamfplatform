@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_ztna_gateway Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
+  Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported, because Jamf Security Cloud does not return it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_gateway (Data Source)
 
-Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
+Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported, because Jamf Security Cloud does not return it.
 
 **Required Jamf permissions**
 
@@ -62,7 +62,7 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 ### Read-Only
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational — read `status` for that. Always empty on an IPsec gateway.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.

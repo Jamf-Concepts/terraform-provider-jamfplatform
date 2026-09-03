@@ -88,7 +88,7 @@ func (r *UserGroupResource) IdentitySchema(ctx context.Context, req resource.Ide
 // Schema returns the Terraform schema for the user group resource.
 func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field is the discriminator and triggers a replace if changed, mirroring `jamfplatform_device_group`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "User group ID assigned by Jamf Pro.",
@@ -136,7 +136,7 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed:            true,
 			},
 			"members": schema.SetAttribute{
-				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"` — Jamf Pro resolves smart-group membership from `criteria`.",
+				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"`: Jamf Pro resolves smart-group membership from `criteria`.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Set{
@@ -148,7 +148,7 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed:            true,
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to determine smart-group membership. Required when `group_type = \"smart\"`. Forbidden when `group_type = \"static\"`. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins.",
+				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to determine smart-group membership. Required when `group_type = \"smart\"`. Forbidden when `group_type = \"static\"`. Order is significant: Jamf Pro evaluates the criteria left to right with the supplied `and_or` joins.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: criteria.CriterionAttributes(ValidOperators),

@@ -38,7 +38,7 @@ func (d *DigicertDataSource) Metadata(ctx context.Context, req datasource.Metada
 // never exposed — Jamf Pro never returns them on read.
 func (d *DigicertDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro DigiCert Trust Lifecycle Manager integration by ID. The certificate bytes and password are never exposed — Jamf Pro does not return them on read." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro DigiCert Trust Lifecycle Manager integration by ID. The certificate bytes and password are never exposed; Jamf Pro does not return them on read." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "DigiCert integration ID to look up.",

@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_device_shutdown (Action)
 
-Requests that a device shut down. Requires **Device Management Actions API access**.
+Requests that a device shut down. Requires **Device Management Actions API** access.
 
 **Required Jamf permissions**
 
@@ -39,4 +39,4 @@ action "jamfplatform_device_shutdown" "power_off" {
 ### Optional
 
 - `device_id` (String) Jamf Pro Management ID. Set exactly one of this or `serial_number`.
-- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.
+- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API** access when set. Set exactly one of this or `device_id`.

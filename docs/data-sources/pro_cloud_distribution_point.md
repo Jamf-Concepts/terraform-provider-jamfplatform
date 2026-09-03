@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_cloud_distribution_point Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. cdn_type is NONE when no cloud distribution point is configured.
+  Read the current Jamf Pro cloud distribution point configuration. One record per tenant. cdn_type is NONE when no cloud distribution point is configured.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_cloud_distribution_point (Data Source)
 
-Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured.
+Read the current Jamf Pro cloud distribution point configuration. One record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured.
 
 **Required Jamf permissions**
 
@@ -53,7 +53,7 @@ output "cloud_distribution_point_connected" {
 - `expiration_seconds` (Number) Signed-URL expiration window in seconds.
 - `has_connection_succeeded` (Boolean) Whether the most recent connection test succeeded.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `inventory_id` (String) Server-allocated inventory identifier.
+- `inventory_id` (String) Inventory identifier for the distribution point. Returned by Jamf Pro; not user-settable.
 - `key_pair_id` (String) Signed-URL key pair identifier.
 - `master` (Boolean) Whether this is the master (primary) distribution point.
 - `message` (String) Connection status message.

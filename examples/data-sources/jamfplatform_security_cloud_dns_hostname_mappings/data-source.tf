@@ -1,5 +1,6 @@
-# The tenant's hostname mappings. Takes no arguments — there is one set per tenant.
-# A tenant with no mappings reads back an empty collection rather than an error.
+# The tenant's hostname mappings. Takes no arguments, since there is one set per
+# tenant. A tenant with no mappings reads back an empty collection rather than
+# an error.
 data "jamfplatform_security_cloud_dns_hostname_mappings" "current" {}
 
 # Which host names are routed through ZTNA.

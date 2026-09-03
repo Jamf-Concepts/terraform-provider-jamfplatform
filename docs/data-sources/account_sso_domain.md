@@ -81,7 +81,7 @@ output "jamf_id_sign_in_allowed" {
 - `verification_expires_at` (String) When the current verification lapses.
 - `verification_key` (String) Token Jamf minted for this claim, published as the value of a TXT record on the domain to prove ownership.
 - `verification_status` (String) Verification state of the claim: `MANUALLY_VERIFIED`, `MS_VERIFIED` (shown as "Microsoft Verified"), `PENDING` (shown as "Pending Approval"), `UNVERIFIED`, `VERIFIED` (shown as "Jamf Verified").
-- `verification_txt_record` (String) Complete TXT record value to publish at the root of the domain — the `jamf-site-verification=` prefix followed by `verification_key`.
+- `verification_txt_record` (String) Complete TXT record value to publish at the root of the domain: the `jamf-site-verification=` prefix followed by `verification_key`.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
@@ -98,4 +98,4 @@ Read-Only:
 
 - `connection_id` (String) Identifier of the SSO connection.
 - `connection_organization_id` (String) Identifier of the identity organization the connection is assigned through. Managed by Jamf; informational only.
-- `region` (String) **"Hosting region"** in the Jamf Account console — the region the connection's identity provider details live in and its sign-in traffic is routed through.
+- `region` (String) **"Hosting region"** in the Jamf Account console: the region the connection's identity provider details live in and its sign-in traffic is routed through.

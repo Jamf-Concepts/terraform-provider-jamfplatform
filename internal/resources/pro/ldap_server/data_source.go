@@ -54,7 +54,7 @@ func (d *LdapServerDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema returns the data source schema.
 func (d *LdapServerDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password; Jamf Pro does not return it on read." + dataSourcePrivileges,
 		Attributes: map[string]dsschema.Attribute{
 			"id": dsschema.StringAttribute{
 				MarkdownDescription: "LDAP server ID. Mutually exclusive with `name`.",
@@ -81,7 +81,7 @@ func (d *LdapServerDataSource) Schema(ctx context.Context, req datasource.Schema
 						Computed:            true,
 						Attributes: map[string]dsschema.Attribute{
 							"distinguished_username": dsStr("Distinguished name of the bind account."),
-							"password":               dsschema.StringAttribute{Computed: true, Sensitive: true, MarkdownDescription: "Always null — Jamf Pro never returns the bind password."},
+							"password":               dsschema.StringAttribute{Computed: true, Sensitive: true, MarkdownDescription: "Always null. Jamf Pro never returns the bind password."},
 							"password_wo_version":    dsschema.Int64Attribute{Computed: true, MarkdownDescription: "Always null in the data source."},
 						},
 					},

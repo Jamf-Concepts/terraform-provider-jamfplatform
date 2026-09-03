@@ -52,7 +52,7 @@ func (d *PatchPolicyDataSource) Metadata(ctx context.Context, req datasource.Met
 // attributes are populated from the SDK response.
 func (d *PatchPolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only `release_date` / `incremental_update` / `reboot` / `minimum_os` / `kill_apps` fields returned by Jamf Pro. Scope and user interaction are not surfaced — manage the policy as a resource for that detail." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps` fields returned by Jamf Pro. Scope and user interaction are not surfaced; manage the policy as a resource for that detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch policy ID.",

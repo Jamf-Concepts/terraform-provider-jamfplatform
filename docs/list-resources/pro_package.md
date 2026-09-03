@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_package List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the selector attribute for the allowed values.
+  Searches Jamf Pro packages using an RSQL filter. Jamf Pro limits which selectors are supported; see the selector attribute for the allowed values.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_package (List Resource)
 
-Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values.
+Searches Jamf Pro packages using an RSQL filter. Jamf Pro limits which selectors are supported; see the `selector` attribute for the allowed values.
 
 **Required Jamf permissions**
 

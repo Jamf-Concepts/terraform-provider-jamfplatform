@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_pki_json_web_token_configuration Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
+  Manages a Jamf Pro JSON Web Token configuration, the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. The configuration holds the encryption key Jamf Pro uses to issue signed tokens, for example to authenticate apps such as Jamf Setup and Jamf Reset. Jamf Pro allows at most one JSON Web Token configuration per instance; creating a second one fails.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_pki_json_web_token_configuration (Resource)
 
-Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
+Manages a Jamf Pro JSON Web Token configuration, the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. The configuration holds the encryption key Jamf Pro uses to issue signed tokens, for example to authenticate apps such as Jamf Setup and Jamf Reset. Jamf Pro allows at most one JSON Web Token configuration per instance; creating a second one fails.
 
 **Required Jamf permissions**
 
@@ -27,12 +27,12 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Jamf Pro allows at most one JSON Web Token configuration per instance.
-# The encryption key is WriteOnly — bump encryption_key_wo_version to rotate it.
+# The encryption key is WriteOnly. Bump encryption_key_wo_version to rotate it.
 resource "jamfplatform_pro_pki_json_web_token_configuration" "example" {
   name                      = "Jamf Setup token"
   encryption_key_wo         = var.jwt_encryption_key # WriteOnly
   encryption_key_wo_version = 1
-  token_expiry              = 30 # minutes (1-120)
+  token_expiry              = 30 # minutes (1–120)
   enabled                   = true
 }
 
@@ -50,15 +50,15 @@ variable "jwt_encryption_key" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `encryption_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Encryption Key"** in the Jamf Pro admin UI. The key Jamf Pro uses to sign issued tokens. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state** (Jamf Pro never returns it). Pair with `encryption_key_wo_version` to rotate.
+- `encryption_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Encryption Key"** in the Jamf Pro admin UI. The key Jamf Pro uses to sign issued tokens. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned by Jamf Pro. Pair with `encryption_key_wo_version` to rotate.
 - `name` (String) **"Display Name"** in the Jamf Pro admin UI. Display name for the JSON Web Token configuration.
 
 ### Optional
 
 - `enabled` (Boolean) Whether the JSON Web Token configuration is active. Defaults to `true`.
-- `encryption_key_wo_version` (Number) Rotation trigger for the `WriteOnly` `encryption_key_wo`. Bump this integer to force an update that re-sends `encryption_key_wo`. Initial create should set `encryption_key_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored key alone" — the provider omits the key from the next update so Jamf Pro retains the existing value.
+- `encryption_key_wo_version` (Number) Rotation trigger for the `WriteOnly` `encryption_key_wo`. Bump this integer to force an update that re-sends `encryption_key_wo`. Initial create should set `encryption_key_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored key alone": the provider omits the key from the next update, so Jamf Pro retains the existing value.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `token_expiry` (Number) **"Token Expiry"** in the Jamf Pro admin UI. Number of minutes an issued token remains valid, between 1 and 120. When unset, Jamf Pro's stored default applies.
+- `token_expiry` (Number) **"Token Expiry"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. When unset, Jamf Pro's stored default applies.
 
 ### Read-Only
 

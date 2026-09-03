@@ -71,7 +71,7 @@ func (r *DockItemListResource) Configure(ctx context.Context, req resource.Confi
 // ListResourceConfigSchema describes the supported list filters.
 func (r *DockItemListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro dock items. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item (`type`, `path`, and the Jamf-computed `contents`)." + listResourcePrivileges,
+		Description: "Lists Jamf Pro dock items. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. By default each row returns `id` and `name`. Set `include_resource = true` to fetch the full record for each item (`type`, `path`, and the Jamf-computed `contents`)." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

@@ -53,7 +53,7 @@ func (d *ZtnaAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every Jamf Security Cloud access policy application on the tenant. Jamf " +
 			"Security Cloud exposes no filter parameters for applications, so this data source takes no " +
-			"search arguments — filter the result in Terraform." + pluralDataSourcePrivileges,
+			"search arguments. Filter the result in Terraform." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",
@@ -61,9 +61,9 @@ func (d *ZtnaAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 			},
 			"ztna_apps": schema.ListNestedAttribute{
 				MarkdownDescription: "The access policy applications on the tenant, in the order Jamf " +
-					"Security Cloud returns them. The endpoint accepts no sort parameter, so the order is " +
-					"the server's and should not be relied on — match on `id`, `name` or " +
-					"`predefined_app_id` instead.",
+					"Security Cloud returns them. Jamf Security Cloud accepts no sort parameter, so the order " +
+					"is its own and should not be relied on. Match on `id`, `name` or `predefined_app_id` " +
+					"instead.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

@@ -4,7 +4,7 @@ page_title: "jamfplatform_security_cloud_ztna_app Data Source - terraform-provid
 subcategory: ""
 description: |-
   Look up a Jamf Security Cloud access policy application by ID, by name, or by the Jamf-maintained definition it is based on.
-  Which key to use follows from the application's form. A custom application has a name, but names are not required to be unique, so a name matching more than one application is an error. A predefined application has no name of its own at all — Jamf Security Cloud reports it as null — so look one up by predefined_app_id, of which a tenant may hold only one.
+  Which key to use follows from the application's form. A custom application has a name, but names are not required to be unique, so a name matching more than one application is an error. A predefined application has no name of its own at all (Jamf Security Cloud reports it as null), so look one up by predefined_app_id, of which a tenant may hold only one.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -16,7 +16,7 @@ description: |-
 
 Look up a Jamf Security Cloud access policy application by ID, by name, or by the Jamf-maintained definition it is based on.
 
-Which key to use follows from the application's form. A **custom** application has a name, but names are not required to be unique, so a name matching more than one application is an error. A **predefined** application has no name of its own at all — Jamf Security Cloud reports it as null — so look one up by `predefined_app_id`, of which a tenant may hold only one.
+Which key to use follows from the application's form. A **custom** application has a name, but names are not required to be unique, so a name matching more than one application is an error. A **predefined** application has no name of its own at all (Jamf Security Cloud reports it as null), so look one up by `predefined_app_id`, of which a tenant may hold only one.
 
 **Required Jamf permissions**
 
@@ -34,8 +34,8 @@ data "jamfplatform_security_cloud_ztna_app" "by_id" {
   id = "27f04387-0a12-4f70-9256-eeccc67d7304"
 }
 
-# Or by name. Application names are not required to be unique, so a name matching
-# more than one application is an error — use the ID in that case.
+# Or by name. Application names are not required to be unique, so a name
+# matching more than one application is an error. Use the ID in that case.
 data "jamfplatform_security_cloud_ztna_app" "by_name" {
   name = "Internal CRM"
 }
@@ -62,7 +62,7 @@ output "crm_routing_gateway" {
 ### Optional
 
 - `id` (String) Application ID to look up. Exactly one of `id`, `name` or `predefined_app_id` must be set.
-- `name` (String) Application name to look up. Custom applications only — a predefined application has no name. Exactly one of `id`, `name` or `predefined_app_id` must be set.
+- `name` (String) Application name to look up. Custom applications only; a predefined application has no name. Exactly one of `id`, `name` or `predefined_app_id` must be set.
 - `predefined_app_id` (String) ID of the Jamf-maintained application definition to look up the application for. Exactly one of `id`, `name` or `predefined_app_id` must be set.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -92,7 +92,7 @@ Optional:
 Read-Only:
 
 - `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
-- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy`. "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
 - `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 
@@ -110,7 +110,7 @@ Read-Only:
 Read-Only:
 
 - `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
-- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy`. "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
 - `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 

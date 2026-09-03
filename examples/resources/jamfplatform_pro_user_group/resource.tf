@@ -1,4 +1,4 @@
-# Static user group — members are assigned explicitly by Jamf Pro user ID.
+# Static user group. Members are assigned explicitly by Jamf Pro user ID.
 resource "jamfplatform_pro_user_group" "exec_team" {
   name       = "Exec Team"
   group_type = "static"
@@ -6,7 +6,7 @@ resource "jamfplatform_pro_user_group" "exec_team" {
   members = ["12", "34", "56"]
 }
 
-# Smart user group — membership is derived from criteria evaluated by Jamf Pro.
+# Smart user group. Membership is derived from criteria evaluated by Jamf Pro.
 # Criteria order is significant: Jamf evaluates left-to-right using the
 # supplied `and_or` joins.
 resource "jamfplatform_pro_user_group" "managed_apple_ids_vpp_associated" {

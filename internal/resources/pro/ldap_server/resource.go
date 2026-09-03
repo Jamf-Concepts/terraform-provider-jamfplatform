@@ -77,7 +77,7 @@ func (r *LdapServerResource) IdentitySchema(ctx context.Context, req resource.Id
 // Schema returns the Terraform schema for the LDAP server resource.
 func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro on-premises LDAP server (Settings → \"LDAP Servers\"). Use this resource for **classic, directly-reachable directories** — Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (`Custom`) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by `jamfplatform_pro_cloud_identity_provider`, not this resource.\n\nThe `connection_settings` block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The `mappings_for_users` block maps directory attributes onto Jamf Pro user / user-group / membership fields. The bind `password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate.\n\nThis resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro on-premises LDAP server (Settings → \"LDAP Servers\"). Use this resource for classic, directly-reachable directories: Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (`Custom`) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by `jamfplatform_pro_cloud_identity_provider` instead.\n\nThe `connection_settings` block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The `mappings_for_users` block maps directory attributes onto Jamf Pro user, user-group and membership fields. The bind `password` is a Terraform `WriteOnly` attribute, sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate.\n\nThis resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "LDAP server ID assigned by Jamf Pro.",
@@ -88,7 +88,7 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 			},
 
 			"connection_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Server connection settings — the **Connection** tab in the admin UI.",
+				MarkdownDescription: "Server connection settings. The **Connection** tab in the admin UI.",
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"display_name":        reqString("**\"Display Name\"** in the Jamf Pro admin UI. Display name for the LDAP server. Must not be empty."),
@@ -96,7 +96,7 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 					"hostname":            reqString("**\"Server and Port\"** (host) in the Jamf Pro admin UI. Hostname or IP address of the LDAP server."),
 					"port":                optInt64("**\"Server and Port\"** (port) in the Jamf Pro admin UI. Defaults to 389 (or 636 for LDAPS) when omitted."),
 					"use_ssl":             optBool("**\"Use SSL\"** in the Jamf Pro admin UI. Connect to the LDAP server over SSL/LDAPS."),
-					"authentication_type": optStringOneOf("**\"Authentication Type\"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind — omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.", allAuthenticationTypes),
+					"authentication_type": optStringOneOf("**\"Authentication Type\"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind: omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.", allAuthenticationTypes),
 
 					"account": schema.SingleNestedAttribute{
 						MarkdownDescription: "**\"LDAP Server Account\"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. To fully remove a bind account from an existing server, recreate the server.",
@@ -107,13 +107,13 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 								Optional:            true,
 							},
 							"password": schema.StringAttribute{
-								MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro never returns the plaintext on read, so rotation is driven by the companion `password_wo_version` integer.",
+								MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state. Jamf Pro never returns the plaintext on read, so rotation is driven by the companion `password_wo_version` integer.",
 								Optional:            true,
 								Sensitive:           true,
 								WriteOnly:           true,
 							},
 							"password_wo_version": schema.Int64Attribute{
-								MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force the next update to re-send `password`. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+								MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force the next update to re-send `password`. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals \"leave the stored password alone\": the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 								Optional:            true,
 							},
 						},
@@ -124,14 +124,14 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 					"referral_response":  optStringOneOf("**\"Referral Response\"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `\"\"` (use default from LDAP service), `follow`, `ignore`.", allReferralResponses),
 					"use_wildcards":      optBool("**\"Use Wildcards When Searching\"** in the Jamf Pro admin UI. Allow partial matches in directory searches. Defaults to true when omitted."),
 
-					"is_enabled":        computedBool("Whether the LDAP server connection is enabled. Server-managed."),
-					"migrated_to_id":    computedInt64("ID of the Cloud Identity Provider this server was migrated to, or 0 if not migrated. Server-managed."),
-					"certificates_used": computedString("Server-reported certificate usage summary. Server-managed."),
+					"is_enabled":        computedBool("Whether the LDAP server connection is enabled. Returned by Jamf Pro; not user-settable."),
+					"migrated_to_id":    computedInt64("ID of the Cloud Identity Provider this server was migrated to, or 0 if not migrated. Returned by Jamf Pro; not user-settable."),
+					"certificates_used": computedString("Summary of how the server's certificates are used. Returned by Jamf Pro; not user-settable."),
 				},
 			},
 
 			"mappings_for_users": schema.SingleNestedAttribute{
-				MarkdownDescription: "Attribute mappings — the **Mappings** tab in the admin UI. Declare only the sub-blocks you want Terraform to manage; sub-blocks you omit are left as-is and not tracked.",
+				MarkdownDescription: "Attribute mappings. The **Mappings** tab in the admin UI. Declare only the sub-blocks you want Terraform to manage; sub-blocks you omit are left as-is and not tracked.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"user_mappings": schema.SingleNestedAttribute{

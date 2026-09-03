@@ -73,7 +73,7 @@ func AIGovernanceComponentSchema() map[string]schema.Attribute {
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"policy_id": schema.StringAttribute{
-						MarkdownDescription: "ID of the AI policy to deliver — the `id` of a " +
+						MarkdownDescription: "ID of the AI policy to deliver: the `id` of a " +
 							"`jamfplatform_ai_governance_policy`.",
 						Required: true,
 					},

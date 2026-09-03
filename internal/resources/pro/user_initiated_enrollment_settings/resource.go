@@ -99,10 +99,13 @@ func (r *UserInitiatedEnrollmentSettingsResource) IdentitySchema(ctx context.Con
 // attribute-returning helpers.
 func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro **User-Initiated Enrollment** settings page (UI: Settings → Global → User-initiated enrollment) — the General, Computers and Devices tabs, the third-party MDM-profile signing certificate, the QuickAdd package signing certificate, and the directory-service Access Groups. Singleton — one record per tenant.\n\n" +
-			"**Shared backing record** — the User-Initiated Enrollment settings and the Re-enrollment settings (`jamfplatform_pro_re_enrollment_settings`) are two views of one tenant record. This resource preserves the Re-enrollment options untouched on every apply; manage those with the dedicated re-enrollment resource. Within a single Terraform run the provider serializes writes to the shared record, but two separate `terraform apply` processes against the same tenant can still race.\n\n" +
-			"**Third-party MDM signing certificate** — set `signing_mdm_profile_enabled = true` and supply the `mdm_signing_certificate` block to upload a keystore. Leaving the block absent on a later apply preserves the existing certificate. Setting `signing_mdm_profile_enabled = false` removes the stored certificate. When `signing_mdm_profile_enabled = true`, the `mdm_signing_certificate` block is required (plan-time validated).\n\n" +
-			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.\n\n" +
+		MarkdownDescription: "Manages the Jamf Pro **User-Initiated Enrollment** settings page (UI: Settings → Global → User-initiated enrollment): the General, Computers and Devices tabs, the third-party MDM-profile signing certificate, the QuickAdd package signing certificate, and the directory-service Access Groups. One record per tenant.\n\n" +
+			"### Shared backing record\n\n" +
+			"The User-Initiated Enrollment settings and the Re-enrollment settings (`jamfplatform_pro_re_enrollment_settings`) are two views of one tenant record. This resource preserves the Re-enrollment options untouched on every apply; manage those with the dedicated re-enrollment resource. Within a single Terraform run the provider serializes writes to the shared record, but two separate `terraform apply` processes against the same tenant can still race.\n\n" +
+			"### Third-party MDM signing certificate\n\n" +
+			"Set `signing_mdm_profile_enabled = true` and supply the `mdm_signing_certificate` block to upload a keystore. Leaving the block absent on a later apply preserves the existing certificate. Setting `signing_mdm_profile_enabled = false` removes the stored certificate. When `signing_mdm_profile_enabled = true`, the `mdm_signing_certificate` block is required, and that is checked at plan time.\n\n" +
+			"### Destroy\n\n" +
+			"`terraform destroy` removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.\n\n" +
 			"Import with `terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -233,18 +236,18 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 
 			// ===== Deprecated =====
 			"personal_device_enrollment_type": schema.StringAttribute{
-				MarkdownDescription: "Personal-device enrollment type. Deprecated as of Jamf Pro 11.25 — the server ignores any supplied value and always reports `USERENROLLMENT`. Read-only.",
+				MarkdownDescription: "Personal-device enrollment type. Deprecated as of Jamf Pro 11.25. Jamf Pro ignores any supplied value and always reports `USERENROLLMENT`. Read-only.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			// ===== Certificates =====
 			"mdm_signing_certificate": schema.SingleNestedAttribute{
-				MarkdownDescription: "Third-party signing certificate used to sign the MDM enrollment profile. Required when `signing_mdm_profile_enabled = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. Removing the block while `signing_mdm_profile_enabled` stays `true` preserves the existing certificate; setting `signing_mdm_profile_enabled = false` removes it.\n\n`keystore_password` is `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password.",
+				MarkdownDescription: "Third-party signing certificate used to sign the MDM enrollment profile. Required when `signing_mdm_profile_enabled = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. Removing the block while `signing_mdm_profile_enabled` stays `true` preserves the existing certificate; setting `signing_mdm_profile_enabled = false` removes it.\n\n`keystore_password` is `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"keystore_file": schema.StringAttribute{
-						MarkdownDescription: "Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64(\"signing.p12\")`. `WriteOnly` — never persisted in Terraform state.",
+						MarkdownDescription: "Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64(\"signing.p12\")`. `WriteOnly`: never persisted in Terraform state.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -254,7 +257,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 						Optional:            true,
 					},
 					"keystore_password": schema.StringAttribute{
-						MarkdownDescription: "Keystore password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.",
+						MarkdownDescription: "Keystore password. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Pair with `keystore_password_wo_version`, the rotation companion; bump that integer to re-send.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -279,11 +282,11 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 				},
 			},
 			"developer_certificate": schema.SingleNestedAttribute{
-				MarkdownDescription: "Developer signing identity used to sign the QuickAdd package when `sign_quickadd_package = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. This path expects an Apple Developer ID signing certificate.\n\n`keystore_password` is `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password.",
+				MarkdownDescription: "Developer signing identity used to sign the QuickAdd package when `sign_quickadd_package = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. This path expects an Apple Developer ID signing certificate.\n\n`keystore_password` is `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"keystore_file": schema.StringAttribute{
-						MarkdownDescription: "Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64(\"signing.p12\")`. `WriteOnly` — never persisted in Terraform state.",
+						MarkdownDescription: "Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64(\"signing.p12\")`. `WriteOnly`: never persisted in Terraform state.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -293,7 +296,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 						Optional:            true,
 					},
 					"keystore_password": schema.StringAttribute{
-						MarkdownDescription: "Keystore password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.",
+						MarkdownDescription: "Keystore password. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Pair with `keystore_password_wo_version`, the rotation companion; bump that integer to re-send.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -320,14 +323,14 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 
 			// ===== Access Groups =====
 			"access_group": schema.SetNestedAttribute{
-				MarkdownDescription: "Directory-service Access Groups permitted to perform user-initiated enrollment (UI: Access tab). Each group is identified by its `name` and `ldap_server_id`; the provider resolves the directory's canonical group id for you (like the UI's \"Resolve\" action). Omit the block entirely to leave the tenant's Access Groups unmanaged. The built-in \"All Directory Service Users\" group always exists and cannot be created or removed — declare it (with `ldap_server_id = \"-1\"`) to edit its toggles, or leave it out to keep it untouched.",
+				MarkdownDescription: "Directory-service Access Groups permitted to perform user-initiated enrollment (UI: Access tab). Each group is identified by its `name` and `ldap_server_id`; the provider resolves the directory's canonical group id for you (like the UI's \"Resolve\" action). Omit the block entirely to leave the tenant's Access Groups unmanaged. The built-in \"All Directory Service Users\" group always exists and cannot be created or removed. Declare it (with `ldap_server_id = \"-1\"`) to edit its toggles, or leave it out to keep it untouched.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							MarkdownDescription: "Server-assigned Access Group identifier.",
+							MarkdownDescription: "Access Group identifier assigned by Jamf Pro.",
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},
@@ -340,7 +343,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 							Required:            true,
 						},
 						"directory_service_group_id": schema.StringAttribute{
-							MarkdownDescription: "Directory's canonical identifier for the group, resolved by the provider from `name` and `ldap_server_id`. Computed — do not set. For the built-in \"All Directory Service Users\" group this is `-1`.",
+							MarkdownDescription: "Directory's canonical identifier for the group, resolved by the provider from `name` and `ldap_server_id`. Computed; do not set. For the built-in \"All Directory Service Users\" group this is `-1`.",
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},
@@ -369,7 +372,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"require_eula": schema.BoolAttribute{
-							MarkdownDescription: "Require members of this group to accept the EULA during enrollment. **Known limitation:** Jamf Pro may override the requested value depending on the other enrollment toggles (it has been observed to force `true`). When the server overrides an explicitly-set value, Terraform will show a perpetual diff for this attribute — leave it unset to defer to the server, or align it with the value the server enforces.",
+							MarkdownDescription: "Require members of this group to accept the EULA during enrollment. Jamf Pro may override the requested value depending on the other enrollment toggles, and has been observed to force `true`. When it overrides an explicitly-set value, Terraform shows a perpetual diff for this attribute. Leave it unset to defer to Jamf Pro, or align it with the value Jamf Pro enforces.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
@@ -379,14 +382,14 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 			},
 
 			"messaging_languages": schema.MapNestedAttribute{
-				MarkdownDescription: "Per-language enrollment messaging (UI: Messaging tab), keyed by ISO 639-1 language code (e.g. `fr`, `de`, `en`; a few locale variants such as `en-gb` and `zh-Hant` are also accepted). Each entry configures the text shown during user-initiated enrollment for that language. All text is displayed to the user exactly as entered. Omit the attribute entirely to leave the tenant's languages unmanaged. Only the fields you set are overridden; unset fields are seeded from the current English messaging when a language is first added, and otherwise left at their current server value. The built-in English language always exists, is the default shown when no language matches a device's locale, and cannot be removed — set the `en` key to edit its messaging, or leave it out to keep it untouched. Map keys are validated at plan time against the language codes Jamf Pro recognises.",
+				MarkdownDescription: "Per-language enrollment messaging (UI: Messaging tab), keyed by ISO 639-1 language code (e.g. `fr`, `de`, `en`; a few locale variants such as `en-gb` and `zh-Hant` are also accepted). Each entry configures the text shown during user-initiated enrollment for that language. All text is displayed to the user exactly as entered. Omit the attribute entirely to leave the tenant's languages unmanaged. Only the fields you set are overridden; unset fields are seeded from the current English messaging when a language is first added, and otherwise left at their current Jamf Pro value. The built-in English language always exists, is the default shown when no language matches a device's locale, and cannot be removed. Set the `en` key to edit its messaging, or leave it out to keep it untouched. Map keys are validated at plan time against the language codes Jamf Pro recognises.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
-							MarkdownDescription: "Display name of the language (e.g. `English`), resolved by the provider from the language-code key. Computed — do not set.",
+							MarkdownDescription: "Display name of the language (e.g. `English`), resolved by the provider from the language-code key. Computed; do not set.",
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},

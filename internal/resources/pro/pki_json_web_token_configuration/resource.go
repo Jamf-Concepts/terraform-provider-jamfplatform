@@ -83,7 +83,7 @@ func (r *JSONWebTokenConfigurationResource) IdentitySchema(ctx context.Context, 
 // admin UI labels (STYLE_GUIDE §Attribute names mirror the admin UI).
 func (r *JSONWebTokenConfigurationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro JSON Web Token configuration — the \"JSON Web Token Configuration\" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro JSON Web Token configuration, the \"JSON Web Token Configuration\" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. The configuration holds the encryption key Jamf Pro uses to issue signed tokens, for example to authenticate apps such as Jamf Setup and Jamf Reset. Jamf Pro allows at most one JSON Web Token configuration per instance; creating a second one fails." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "JSON Web Token configuration ID assigned by Jamf Pro.",
@@ -96,18 +96,18 @@ func (r *JSONWebTokenConfigurationResource) Schema(ctx context.Context, req reso
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"encryption_key_wo": schema.StringAttribute{
-				MarkdownDescription: "**\"Encryption Key\"** in the Jamf Pro admin UI. The key Jamf Pro uses to sign issued tokens. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state** (Jamf Pro never returns it). Pair with `encryption_key_wo_version` to rotate.",
+				MarkdownDescription: "**\"Encryption Key\"** in the Jamf Pro admin UI. The key Jamf Pro uses to sign issued tokens. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned by Jamf Pro. Pair with `encryption_key_wo_version` to rotate.",
 				Required:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"encryption_key_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `encryption_key_wo`. Bump this integer to force an update that re-sends `encryption_key_wo`. Initial create should set `encryption_key_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored key alone\" — the provider omits the key from the next update so Jamf Pro retains the existing value.",
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `encryption_key_wo`. Bump this integer to force an update that re-sends `encryption_key_wo`. Initial create should set `encryption_key_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored key alone\": the provider omits the key from the next update, so Jamf Pro retains the existing value.",
 				Optional:            true,
 			},
 			"token_expiry": schema.Int64Attribute{
-				MarkdownDescription: "**\"Token Expiry\"** in the Jamf Pro admin UI. Number of minutes an issued token remains valid, between 1 and 120. When unset, Jamf Pro's stored default applies.",
+				MarkdownDescription: "**\"Token Expiry\"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. When unset, Jamf Pro's stored default applies.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},

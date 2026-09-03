@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_dns_hostname_mappings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI — custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
+  Manages "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI: custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
   This resource owns the tenant's entire set of hostname mappings: a mapping added elsewhere and absent from this configuration is removed on the next apply. There is one set per tenant, so only one instance of this resource should exist in your configuration, and destroying it removes every mapping.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_security_cloud_dns_hostname_mappings (Resource)
 
-Manages **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin UI — custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
+Manages **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin UI: custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
 
 This resource owns the tenant's **entire** set of hostname mappings: a mapping added elsewhere and absent from this configuration is removed on the next apply. There is one set per tenant, so only one instance of this resource should exist in your configuration, and destroying it removes every mapping.
 
@@ -56,7 +56,7 @@ resource "jamfplatform_security_cloud_dns_hostname_mappings" "internal" {
       connect_to_secure_dns = false
     },
 
-    # IPv6 only. Omit an address list entirely when there is none — an empty
+    # IPv6 only. Omit an address list entirely when there is none. An empty
     # collection is not accepted, and every mapping needs at least one address.
     {
       hostname              = "build.corp.example.com"
@@ -73,7 +73,7 @@ resource "jamfplatform_security_cloud_dns_hostname_mappings" "internal" {
 
 ### Required
 
-- `mappings` (Attributes Set) The hostname mappings for this tenant. Between 1 and 500 entries — to remove them all, destroy the resource rather than emptying this collection. Each host name may appear only once. (see [below for nested schema](#nestedatt--mappings))
+- `mappings` (Attributes Set) The hostname mappings for this tenant. Between 1 and 500 entries. To remove them all, destroy the resource rather than emptying this collection. Each host name may appear only once. (see [below for nested schema](#nestedatt--mappings))
 
 ### Optional
 
@@ -81,21 +81,21 @@ resource "jamfplatform_security_cloud_dns_hostname_mappings" "internal" {
 
 ### Read-Only
 
-- `id` (String) Always `singleton` — there is one set of hostname mappings per tenant.
+- `id` (String) Always `singleton`, since a tenant holds one set of hostname mappings.
 
 <a id="nestedatt--mappings"></a>
 ### Nested Schema for `mappings`
 
 Required:
 
-- `connect_to_secure_dns` (Boolean) **"Connect to Secure DNS"** under Traffic vectoring in the Jamf Security Cloud admin UI — whether this host name's traffic is routed through Secure DNS. Set it explicitly on every mapping.
-- `connect_to_ztna` (Boolean) **"Connect to ZTNA"** under Traffic vectoring in the Jamf Security Cloud admin UI — whether this host name's traffic is routed through Zero Trust Network Access. Set it explicitly on every mapping; note that the admin UI's add dialog pre-selects this checkbox, so a mapping added there and one written here do not start from the same value.
-- `hostname` (String) **"Insert hostname"** in the Jamf Security Cloud admin UI — the fully qualified host name this mapping applies to. Up to 253 characters. Wildcards are not accepted, and letter case is stored exactly as written. Write the name without a trailing dot: Jamf Security Cloud stores the name without one, so a configuration carrying one could never match the stored value.
+- `connect_to_secure_dns` (Boolean) **"Connect to Secure DNS"** under Traffic vectoring in the Jamf Security Cloud admin UI: whether this host name's traffic is routed through Secure DNS. Set it explicitly on every mapping.
+- `connect_to_ztna` (Boolean) **"Connect to ZTNA"** under Traffic vectoring in the Jamf Security Cloud admin UI: whether this host name's traffic is routed through Zero Trust Network Access. Set it explicitly on every mapping. The admin UI's add dialog pre-selects this checkbox, so a mapping added there and one written here do not start from the same value.
+- `hostname` (String) **"Insert hostname"** in the Jamf Security Cloud admin UI: the fully qualified host name this mapping applies to. Up to 253 characters. Wildcards are not accepted, and letter case is stored exactly as written. Write the name without a trailing dot: Jamf Security Cloud stores the name without one, so a configuration carrying one could never match the stored value.
 
 Optional:
 
-- `ipv4_addresses` (Set of String) **"Insert IPv4"** in the Jamf Security Cloud admin UI — the IPv4 addresses the host name resolves to. Up to 10 entries. Omit the attribute when there are none; an empty collection is not accepted. At least one of `ipv4_addresses` or `ipv6_addresses` must be set.
-- `ipv6_addresses` (Set of String) **"Insert IPv6"** in the Jamf Security Cloud admin UI — the IPv6 addresses the host name resolves to. Up to 10 entries. Omit the attribute when there are none; an empty collection is not accepted. At least one of `ipv4_addresses` or `ipv6_addresses` must be set.
+- `ipv4_addresses` (Set of String) **"Insert IPv4"** in the Jamf Security Cloud admin UI: the IPv4 addresses the host name resolves to. Up to 10 entries. Omit the attribute when there are none; an empty collection is not accepted. At least one of `ipv4_addresses` or `ipv6_addresses` must be set.
+- `ipv6_addresses` (Set of String) **"Insert IPv6"** in the Jamf Security Cloud admin UI: the IPv6 addresses the host name resolves to. Up to 10 entries. Omit the attribute when there are none; an empty collection is not accepted. At least one of `ipv4_addresses` or `ipv6_addresses` must be set.
 
 
 <a id="nestedatt--timeouts"></a>

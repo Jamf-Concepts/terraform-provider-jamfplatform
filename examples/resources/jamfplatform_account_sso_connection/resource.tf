@@ -3,9 +3,9 @@
 # instead of signing in with a Jamf ID.
 #
 # Jamf refuses a connection naming a domain that is not yet verified, and
-# verification cannot happen in the same run as the claim — Jamf allows one check
-# every five minutes per domain and claiming it starts that clock. So this takes
-# three applies, not one:
+# verification cannot happen in the same run as the claim. Jamf allows one
+# check every five minutes per domain, and claiming it starts that clock. So
+# this takes three applies, not one:
 #
 #   1. apply the domain below, then publish its verification_txt_record in DNS
 #   2. terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'
@@ -21,11 +21,11 @@ resource "jamfplatform_account_sso_domain" "corp" {
 #
 # That matters for a connection carrying real sign-in traffic. Terraform destroys
 # before it creates by default, and while the connection is gone nobody on its
-# domains can authenticate through it. create_before_destroy closes that gap —
+# domains can authenticate through it. create_before_destroy closes that gap:
 # Jamf allows two connections on the same domain, so the replacement can exist
 # before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
-  # Letters and digits only — Jamf refuses a name with any other character, and
+  # Letters and digits only. Jamf refuses a name with any other character, and
   # says nothing about which field was at fault when it does. Jamf also appends a
   # suffix of its own to whatever you choose; internal_name reports the result.
   name            = "CorpOIDC"
@@ -64,7 +64,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
 
   # Which Jamf products this connection signs users in to. Jamf does not report
   # the tenant list back, so a change made in the Jamf Account console is
-  # invisible here — treat this configuration as the source of truth.
+  # invisible here. Treat this configuration as the source of truth.
   enabled_products = [
     {
       product = "ACCOUNT"

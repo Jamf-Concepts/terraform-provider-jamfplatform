@@ -83,7 +83,7 @@ func (r *VolumePurchasingNotificationResource) IdentitySchema(ctx context.Contex
 // Schema returns the Terraform schema for the resource.
 func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Volume Purchasing notification — the **\"Notifications\"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. " +
+		MarkdownDescription: "Manages a Volume Purchasing notification, configured on the **\"Notifications\"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. " +
 			"A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. " +
 			"Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{

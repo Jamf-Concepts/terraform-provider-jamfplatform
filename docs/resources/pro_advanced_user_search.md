@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_advanced_user_search Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no view_as or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
+  Manages a Jamf Pro advanced user search, a saved criteria-driven user query with a configurable set of display columns. The matched-user result set is report data Jamf Pro computes, and is intentionally not modelled. Unlike advanced computer searches, user searches have no view_as or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_advanced_user_search (Resource)
 
-Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
+Manages a Jamf Pro advanced user search, a saved criteria-driven user query with a configurable set of display columns. The matched-user result set is report data Jamf Pro computes, and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
 
 **Required Jamf permissions**
 
@@ -26,7 +26,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Advanced user search — a saved, criteria-driven user query with a configurable
+# Advanced user search: a saved, criteria-driven user query with a configurable
 # set of display columns. Criteria order is significant: Jamf evaluates
 # left-to-right using the supplied `and_or` joins and parentheses. Unlike
 # advanced computer searches, user searches have no `view_as` or sort columns.
@@ -47,7 +47,7 @@ resource "jamfplatform_pro_advanced_user_search" "example_com_users" {
     },
   ]
 
-  # The set of columns shown in the results. Order is not significant — Jamf Pro
+  # The set of columns shown in the results. Order is not significant; Jamf Pro
   # returns the columns in its own canonical order.
   display_fields = ["Full Name", "Email Address", "Username"]
 }
@@ -62,8 +62,8 @@ resource "jamfplatform_pro_advanced_user_search" "example_com_users" {
 
 ### Optional
 
-- `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria. (see [below for nested schema](#nestedatt--criteria))
-- `display_fields` (Set of String) Set of column names to display in the search results (e.g. `Full Name`, `Email Address`, `Username`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit for no display columns.
+- `criteria` (Attributes List) Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omit the attribute, or supply an empty list, for a search with no criteria. (see [below for nested schema](#nestedatt--criteria))
+- `display_fields` (Set of String) Set of column names shown in the search results, for example `Full Name`, `Email Address`, `Username`. Order is not significant, because Jamf Pro returns the columns in its own canonical order. Omit for no display columns.
 - `site_id` (String) Optional Jamf Pro site ID to scope the search. Omit to leave unscoped (server sets the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

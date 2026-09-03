@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_site Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
+  Manages a Jamf Pro site. Sites partition inventory: most Jamf Pro objects can be scoped to a site for access control and reporting.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_site (Resource)
 
-Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
+Manages a Jamf Pro site. Sites partition inventory: most Jamf Pro objects can be scoped to a site for access control and reporting.
 
 **Required Jamf permissions**
 

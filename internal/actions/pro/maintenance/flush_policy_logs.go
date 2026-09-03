@@ -121,7 +121,7 @@ func (a *FlushPolicyLogsAction) Schema(ctx context.Context, req action.SchemaReq
 				Required: true,
 				MarkdownDescription: "How many `period` units old a log must be to be flushed. One of " +
 					markdownValueList(logFlushQuantities) +
-					" — Jamf Pro accepts no other quantity, and there is deliberately no `Four` or `Five`. " +
+					". Jamf Pro accepts no other quantity, and there is deliberately no `Four` or `Five`. " +
 					"**`Zero` flushes every log for the policy** regardless of `period`, because no log is younger than zero days.",
 				Validators: []validator.String{
 					stringvalidator.OneOf(logFlushQuantities...),

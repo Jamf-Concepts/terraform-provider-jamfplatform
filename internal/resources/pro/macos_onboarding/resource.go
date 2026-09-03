@@ -67,7 +67,7 @@ func (r *OnboardingResource) IdentitySchema(ctx context.Context, req resource.Id
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — macOS Onboarding settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". macOS Onboarding settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -78,9 +78,9 @@ func (r *OnboardingResource) IdentitySchema(ctx context.Context, req resource.Id
 func (r *OnboardingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). " +
-			"Singleton — one record per tenant. " +
-			"Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. " +
-			"The `onboarding_items` list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and `onboarding_items = []` clears all items. " +
+			"One record per tenant. " +
+			"Onboarding presents users with a curated, ordered list of Self Service items during macOS onboarding: policies, configuration profiles and apps. " +
+			"The `onboarding_items` list fully replaces what is stored. Declare the complete set in the order users should see them. An item you remove is removed from onboarding, and `onboarding_items = []` clears every item. " +
 			"`priority` follows the list order automatically. " +
 			"Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -93,13 +93,13 @@ func (r *OnboardingResource) Schema(ctx context.Context, req resource.SchemaRequ
 			},
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether macOS Onboarding is enabled for the tenant (the top-right \"Enabled\" toggle). " +
-					"Items may be staged while disabled — `enabled = false` with a populated `onboarding_items` list is accepted.",
+					"Items may be staged while disabled: `enabled = false` with a populated `onboarding_items` list is accepted.",
 				Required: true,
 			},
 			"onboarding_items": schema.ListNestedAttribute{
 				MarkdownDescription: "Ordered list of Self Service items presented during macOS onboarding. " +
 					"Order is significant: items appear to users in this order, and `priority` follows it (1-based). " +
-					"This list fully replaces what is stored — declare the complete set; an item removed here is removed from onboarding, and `[]` clears all items.",
+					"This list fully replaces what is stored, so declare the complete set. An item removed here is removed from onboarding, and `[]` clears every item.",
 				Required: true,
 				// The server-derived nested fields (priority, id, entity_name,
 				// scope_description, site_description) are modelled as plain Computed with
@@ -119,9 +119,8 @@ func (r *OnboardingResource) Schema(ctx context.Context, req resource.SchemaRequ
 						"entity_id": schema.StringAttribute{
 							MarkdownDescription: "ID of the Jamf Pro object to present, paired with `self_service_entity_type`. " +
 								"Source per type: `OS_X_POLICY` → `jamfplatform_pro_policy`; `OS_X_CONFIG_PROFILE` → `jamfplatform_pro_macos_configuration_profile`; " +
-								"`OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`. An `OS_X_APP_INSTALLER` item has no provider construct — supply the ID from the `jamfplatform_pro_macos_onboarding_eligible_items` data source. " +
-								"The referenced object must be enabled and available in Self Service — Jamf Pro rejects an ineligible item with a clear error. " +
-								"Use the `jamfplatform_pro_macos_onboarding_eligible_items` data source to discover eligible IDs.",
+								"`OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`. An `OS_X_APP_INSTALLER` item has no provider construct: take its ID from the `jamfplatform_pro_macos_onboarding_eligible_items` data source, which also lists the eligible IDs for the other types. " +
+								"The referenced object must be enabled and available in Self Service. Jamf Pro rejects an ineligible item with a clear error.",
 							Required: true,
 						},
 						"self_service_entity_type": schema.StringAttribute{

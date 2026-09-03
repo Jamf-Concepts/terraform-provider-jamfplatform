@@ -51,7 +51,7 @@ func UserScopeAttributes() map[string]schema.Attribute {
 
 	return map[string]schema.Attribute{
 		"targets": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope targets — the Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab.",
+			MarkdownDescription: "The Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab.",
 			Optional:            true,
 			Attributes:          targets,
 		},

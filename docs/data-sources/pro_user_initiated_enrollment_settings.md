@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_user_initiated_enrollment_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
+  Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. One record per tenant.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_user_initiated_enrollment_settings (Data Source)
 
-Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
+Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. One record per tenant.
 
 **Required Jamf permissions**
 
@@ -88,7 +88,7 @@ Read-Only:
 - `account_driven_user_enrollment_enabled` (Boolean) Whether Account-Driven User Enrollment is allowed for this group.
 - `directory_service_group_id` (String) Identifier of the directory-service group.
 - `enterprise_enrollment_enabled` (Boolean) Whether institutional enrollment is allowed for this group.
-- `id` (String) Server-assigned Access Group identifier.
+- `id` (String) Access Group identifier assigned by Jamf Pro.
 - `ldap_server_id` (String) Identifier of the LDAP / directory-service server.
 - `name` (String) Display name of the Access Group.
 - `personal_enrollment_enabled` (Boolean) Whether personal-device enrollment is allowed for this group.

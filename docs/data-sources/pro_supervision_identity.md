@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_supervision_identity Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro supervision identity by ID or display name. Exactly one of id or display_name must be supplied. Display names are not required to be unique; a lookup by display_name errors if more than one identity shares the name — use id to disambiguate.
+  Look up a Jamf Pro supervision identity by ID or display name. Exactly one of id or display_name must be supplied. Display names are not required to be unique. A lookup by display_name errors if more than one identity shares the name; use id to disambiguate.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_supervision_identity (Data Source)
 
-Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `id` or `display_name` must be supplied. Display names are not required to be unique; a lookup by `display_name` errors if more than one identity shares the name — use `id` to disambiguate.
+Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `id` or `display_name` must be supplied. Display names are not required to be unique. A lookup by `display_name` errors if more than one identity shares the name; use `id` to disambiguate.
 
 **Required Jamf permissions**
 
@@ -31,8 +31,8 @@ data "jamfplatform_pro_supervision_identity" "by_id" {
   id = "1"
 }
 
-# Or look up by display name. Display names are not required to be unique; this
-# errors if more than one identity shares the name — use id to disambiguate.
+# Or look up by display name. Display names are not required to be unique. This
+# errors if more than one identity shares the name; use id to disambiguate.
 data "jamfplatform_pro_supervision_identity" "by_name" {
   display_name = "Apple Configurator Identity"
 }

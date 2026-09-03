@@ -144,13 +144,13 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"be pointed at the people who sign in with an address at that domain.\n\n" +
 			"Claiming a domain does not prove you own it. Jamf mints a verification token when the claim is made, " +
 			"and the domain stays unverified until a TXT record holding `verification_txt_record` is published at " +
-			"the root of the domain and the check is run — with the `jamfplatform_account_sso_domain_verify` " +
-			"action, or from the Jamf Account console. Jamf then re-checks a verified domain continuously in the " +
+			"the root of the domain and the check is run, either with the `jamfplatform_account_sso_domain_verify` " +
+			"action or from the Jamf Account console. Jamf then re-checks a verified domain continuously in the " +
 			"background, so leave the TXT record in place.\n\n" +
 			"A claim cannot be edited. Changing `domain` replaces it, and the replacement is issued a fresh " +
 			"`verification_key`, so the TXT record has to be republished before the new claim can verify.\n\n" +
 			"Destroying a claim also withdraws the domain from every SSO connection that names it, which silently " +
-			"narrows those connections — the `jamfplatform_account_sso_domain` data source reports which " +
+			"narrows those connections. The `jamfplatform_account_sso_domain` data source reports which " +
 			"connections a domain is assigned to.\n\n" +
 			"Only a domain your own organization claimed can be managed here. A domain another Jamf Account " +
 			"organization owns and shares with yours (`shared` is `true`) can be assigned to a connection but " +
@@ -161,16 +161,16 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Identifier Jamf Account assigned to the claim. It is not stable — withdrawing " +
-					"a claim and making it again yields a different one — so reference a domain by `domain` " +
-					"rather than by this.",
+				MarkdownDescription: "Identifier Jamf Account assigned to the claim. It is not stable, because " +
+					"withdrawing a claim and making it again yields a different one, so reference a domain by " +
+					"`domain` rather than by this.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"domain": schema.StringAttribute{
-				MarkdownDescription: "**\"Domain Name\"** in the Jamf Account console — the DNS domain to claim, " +
+				MarkdownDescription: "**\"Domain Name\"** in the Jamf Account console: the DNS domain to claim, " +
 					"such as `example.com`. Lower case only, and a bare name: no scheme, no path, no port and no " +
 					"user part. Changing it replaces the claim.",
 				Required: true,
@@ -195,7 +195,7 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				Computed: true,
 			},
 			"verification_txt_record": schema.StringAttribute{
-				MarkdownDescription: "Complete TXT record value to publish at the root of the domain — the " +
+				MarkdownDescription: "Complete TXT record value to publish at the root of the domain: the " +
 					"`jamf-site-verification=` prefix followed by `verification_key`. This is what the Jamf Account " +
 					"console offers behind its Copy button. Publish it with host `@` and a TTL of 86400, then run " +
 					"the verification. Read-only.",
@@ -210,7 +210,7 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"shared": schema.BoolAttribute{
 				MarkdownDescription: "Whether the domain is owned by another Jamf Account organization and shared " +
 					"with yours. A shared domain can be assigned to a connection but cannot be changed or " +
-					"withdrawn, so it cannot be managed by this resource — importing one is refused, and it is " +
+					"withdrawn, so it cannot be managed by this resource. Importing one is refused, and it is " +
 					"read with the `jamfplatform_account_sso_domain` data source instead. Always `false` for a " +
 					"domain this resource manages. Read-only.",
 				Computed: true,
@@ -222,7 +222,7 @@ func (r *DomainResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			},
 			"created_by": schema.StringAttribute{
 				MarkdownDescription: "Name of the Jamf Account user who added the domain. Populated only for " +
-					"domains added through the Jamf Account console — a claim Terraform makes has no user behind " +
+					"domains added through the Jamf Account console. A claim Terraform makes has no user behind " +
 					"it, so this is always null for a domain this provider creates. Read-only.",
 				Computed: true,
 			},

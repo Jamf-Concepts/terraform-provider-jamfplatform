@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_self_service_branding_macos Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.
+  Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). One configuration per tenant. Errors if no macOS branding is configured.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_self_service_branding_macos (Data Source)
 
-Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.
+Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). One configuration per tenant. Errors if no macOS branding is configured.
 
 **Required Jamf permissions**
 
@@ -43,14 +43,14 @@ output "macos_application_header" {
 
 ### Read-Only
 
-- `application_header` (String) UI: **Application Header**.
-- `banner_image_id` (Number) UI: **Home page - Banner Image**.
-- `home_page_heading` (String) UI: **Home page - Heading**.
-- `home_page_subheading` (String) UI: **Home page - Subheading**.
-- `icon_id` (Number) UI: **Icon**. Branding image ID (separate store from `jamfplatform_pro_icon`).
+- `application_header` (String) **"Application Header"** in the Jamf Pro admin UI.
+- `banner_image_id` (Number) **"Home page - Banner Image"** in the Jamf Pro admin UI.
+- `home_page_heading` (String) **"Home page - Heading"** in the Jamf Pro admin UI.
+- `home_page_subheading` (String) **"Home page - Subheading"** in the Jamf Pro admin UI.
+- `icon_id` (Number) **"Icon"** in the Jamf Pro admin UI. Branding image ID, from a store separate to `jamfplatform_pro_icon`.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `sidebar_heading` (String) UI: **Sidebar - Heading**.
-- `sidebar_subheading` (String) UI: **Sidebar - Subheading**.
+- `sidebar_heading` (String) **"Sidebar - Heading"** in the Jamf Pro admin UI.
+- `sidebar_subheading` (String) **"Sidebar - Subheading"** in the Jamf Pro admin UI.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

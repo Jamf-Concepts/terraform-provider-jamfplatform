@@ -82,7 +82,7 @@ func (r *SelfServiceBrandingIosResource) IdentitySchema(ctx context.Context, req
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Self Service iOS branding is one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Self Service iOS branding is one record per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -93,8 +93,8 @@ func (r *SelfServiceBrandingIosResource) IdentitySchema(ctx context.Context, req
 func (r *SelfServiceBrandingIosResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). " +
-			"Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. " +
-			"`main_header` and the three colour codes are required by the API. " +
+			"One configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. " +
+			"Jamf Pro requires `main_header` and the three colour codes. " +
 			"Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -105,7 +105,7 @@ func (r *SelfServiceBrandingIosResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"main_header": schema.StringAttribute{
-				MarkdownDescription: "UI: **Main Header**. Title shown at the top of the Self Service iOS app. Required (the Jamf Pro default is `Self Service`).",
+				MarkdownDescription: "**\"Main Header\"** in the Jamf Pro admin UI. Title shown at the top of the Self Service iOS app. Required. The Jamf Pro default is `Self Service`.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
@@ -130,7 +130,7 @@ func (r *SelfServiceBrandingIosResource) Schema(ctx context.Context, req resourc
 				Validators:          []validator.String{stringvalidator.OneOf("light", "dark")},
 			},
 			"icon_id": schema.Int64Attribute{
-				MarkdownDescription: "UI: **Icon**. ID of the branding image shown as the Self Service app icon. Use a `jamfplatform_pro_self_service_branding_image` ID — **not** a `jamfplatform_pro_icon` ID (separate stores). Omit to leave unset.",
+				MarkdownDescription: "**\"Icon\"** in the Jamf Pro admin UI. ID of the branding image shown as the Self Service app icon. Use a `jamfplatform_pro_self_service_branding_image` ID, **not** a `jamfplatform_pro_icon` ID; the two stores are separate. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.Int64{int64validator.AtLeast(1)},
 			},

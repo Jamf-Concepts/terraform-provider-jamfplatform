@@ -1,4 +1,4 @@
-# Minimal webhook — no authentication. Server defaults apply (enabled=true,
+# Minimal webhook with no authentication. Server defaults apply (enabled=true,
 # content_type=text/xml, connection_timeout=5, read_timeout=2).
 resource "jamfplatform_pro_webhook" "minimal" {
   name  = "Computer added (no auth)"
@@ -6,7 +6,7 @@ resource "jamfplatform_pro_webhook" "minimal" {
   event = "ComputerAdded"
 }
 
-# Basic authentication. The plaintext password is WriteOnly — bump
+# Basic authentication. The plaintext password is WriteOnly. Bump
 # password_wo_version to rotate it.
 resource "jamfplatform_pro_webhook" "basic" {
   name                = "Check-in (basic auth)"

@@ -8,9 +8,9 @@ action "jamfplatform_security_cloud_uem_connect_synchronize" "now" {
   config {}
 }
 
-# Naming the resource's id is how you make the synchronize wait for the integration
-# to exist — useful for pulling inventory in straight after setting it up, rather
-# than up to a full refresh interval later.
+# Naming the resource's id makes the synchronize wait for the integration to
+# exist. Useful for pulling inventory in straight after setup, rather than up to
+# a full refresh interval later.
 action "jamfplatform_security_cloud_uem_connect_synchronize" "after_setup" {
   config {
     uem_connect_id = jamfplatform_security_cloud_uem_connect.jamf_pro.id

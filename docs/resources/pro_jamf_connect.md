@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_jamf_connect Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource adopts an existing configuration profile — one that already contains a Jamf Connect payload — and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with jamfplatform_pro_macos_configuration_profile (or in the Jamf Pro UI) first and reference the profile's id as profile_id. Adopting a profile applies the configured deployment settings immediately — a profile left at the default auto_deployment_type = "NONE" turns automatic deployment off. Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself — it only stops Terraform from managing the deployment and update settings (the settings already applied remain in place). Import with terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>.
+  Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource adopts an existing configuration profile, one that already contains a Jamf Connect payload, and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with jamfplatform_pro_macos_configuration_profile (or in the Jamf Pro UI) first and reference the profile's id as profile_id. Adopting a profile applies the configured deployment settings immediately. A profile left at the default auto_deployment_type = "NONE" turns automatic deployment off. Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself. It only stops Terraform from managing the deployment and update settings; the settings already applied remain in place. Import with terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_jamf_connect (Resource)
 
-Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource **adopts an existing configuration profile** — one that already contains a Jamf Connect payload — and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with `jamfplatform_pro_macos_configuration_profile` (or in the Jamf Pro UI) first and reference the profile's `id` as `profile_id`. **Adopting a profile applies the configured deployment settings immediately** — a profile left at the default `auto_deployment_type = "NONE"` turns automatic deployment off. **Destroying this resource does not remove Jamf Connect from the configuration profile** and does not change the profile itself — it only stops Terraform from managing the deployment and update settings (the settings already applied remain in place). Import with `terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>`.
+Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource adopts an existing configuration profile, one that already contains a Jamf Connect payload, and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with `jamfplatform_pro_macos_configuration_profile` (or in the Jamf Pro UI) first and reference the profile's `id` as `profile_id`. **Adopting a profile applies the configured deployment settings immediately.** A profile left at the default `auto_deployment_type = "NONE"` turns automatic deployment off. Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself. It only stops Terraform from managing the deployment and update settings; the settings already applied remain in place. Import with `terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>`.
 
 **Required Jamf permissions**
 
@@ -29,7 +29,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Manages the Jamf Connect deployment and update settings for a single macOS
 # configuration profile (Settings → Jamf apps → Jamf Connect).
 #
-# The configuration profile must already contain a Jamf Connect payload — it
+# The configuration profile must already contain a Jamf Connect payload. It
 # then appears automatically under Jamf Connect. This resource adopts it by
 # the profile's `id` and controls how Jamf Connect is deployed/updated.
 # Destroying the resource does NOT remove Jamf Connect from the profile; it
@@ -62,13 +62,13 @@ resource "jamfplatform_pro_jamf_connect" "example" {
 
 ### Required
 
-- `profile_id` (Number) Jamf Pro ID of the configuration profile to manage — the `id` of a `jamfplatform_pro_macos_configuration_profile` that contains a Jamf Connect payload. The profile must already exist and carry a Jamf Connect payload (it then appears automatically under Settings → Jamf apps → Jamf Connect); otherwise apply fails. Changing it manages a different profile and forces replacement.
+- `profile_id` (Number) Jamf Pro ID of the configuration profile to manage: the `id` of a `jamfplatform_pro_macos_configuration_profile` that contains a Jamf Connect payload. The profile must already exist and carry a Jamf Connect payload (it then appears automatically under Settings → Jamf apps → Jamf Connect); otherwise apply fails. Changing it manages a different profile and forces replacement.
 
 ### Optional
 
-- `auto_deployment_type` (String) How Jamf Connect is deployed and updated on the profile's computers, matching the Jamf Pro "Update Type" choices. `NONE` — automatic deployment is off (the deploy toggle is No); `version` is ignored. `INITIAL_INSTALLATION_ONLY` — "Manual": deploys the chosen `version` for the initial install only; later updates are manual. `PATCH_UPDATES` — "Maintenance": deploys and keeps the app updated with patch releases. `MINOR_AND_PATCH_UPDATES` — "Minor & Maintenance": deploys and keeps the app updated with minor and patch releases. Defaults to `NONE`.
+- `auto_deployment_type` (String) How Jamf Connect is deployed and updated on the profile's computers, matching the Jamf Pro "Update Type" choices. `NONE`: automatic deployment is off (the deploy toggle is No), and `version` is ignored. `INITIAL_INSTALLATION_ONLY` ("Manual"): deploys the chosen `version` for the initial install only; later updates are manual. `PATCH_UPDATES` ("Maintenance"): deploys and keeps the app updated with patch releases. `MINOR_AND_PATCH_UPDATES` ("Minor & Maintenance"): deploys and keeps the app updated with minor and patch releases. Defaults to `NONE`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `version` (String) Jamf Connect version to deploy (e.g. `2.45.1`), as offered in the Jamf Pro version picker. **Required** when `auto_deployment_type` is anything other than `NONE`, and **must be omitted** when it is `NONE` (Jamf Connect ignores the version in that mode). Must be Jamf Connect 2.3.0 or higher. Jamf Pro does not allow lowering an already-deployed version — only the same or a higher version is accepted.
+- `version` (String) Jamf Connect version to deploy (e.g. `2.45.1`), as offered in the Jamf Pro version picker. **Required** when `auto_deployment_type` is anything other than `NONE`, and **must be omitted** when it is `NONE` (Jamf Connect ignores the version in that mode). Must be Jamf Connect 2.3.0 or higher. Jamf Pro does not allow lowering an already-deployed version; only the same or a higher version is accepted.
 
 ### Read-Only
 

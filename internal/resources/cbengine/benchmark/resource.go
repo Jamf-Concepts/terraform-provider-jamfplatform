@@ -87,10 +87,10 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 func benchmarkResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
+		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: Jamf accepts the request and deploys the associated artifacts to the MDM. The provider polls the benchmark's sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Unique identifier assigned by the API (maps to benchmarkId).",
+				MarkdownDescription: "Unique identifier assigned by the API.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
@@ -139,7 +139,7 @@ func benchmarkResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"selected_os_versions": schema.SetNestedAttribute{
-				MarkdownDescription: "Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source.",
+				MarkdownDescription: "Operating system versions the benchmark applies to. Omit it and the benchmark targets every version available for the baseline; name a subset and it targets only those. Immutable (replace on change). Valid values come from `available_os_versions` on the `jamfplatform_cbengine_rules` data source.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Set{

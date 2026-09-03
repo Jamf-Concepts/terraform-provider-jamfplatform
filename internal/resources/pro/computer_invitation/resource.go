@@ -83,7 +83,7 @@ func (r *ComputerInvitationResource) IdentitySchema(ctx context.Context, req res
 // code.
 func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro computer enrollment invitation. A computer invitation is an enrollment token for the user-initiated enrollment of Mac computers, single-use or multiple-use, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place**: changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute, sent to Jamf Pro when the invitation is created but never persisted in Terraform state." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Numeric computer invitation ID assigned by Jamf Pro. This is the Terraform state ID and the import key.",
@@ -110,7 +110,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"expiration_date": schema.StringAttribute{
-				MarkdownDescription: "Invitation expiration. Either the literal `Unlimited` (never expires) or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` (e.g. `2026-12-31 23:59:00`), interpreted in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value so this does not surface as drift. Omit to let Jamf Pro assign the expiration (the assigned value is then reflected in state). Changing this forces replacement.",
+				MarkdownDescription: "Invitation expiration. Either the literal `Unlimited`, which never expires, or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` such as `2026-12-31 23:59:00`, read in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value, so that does not surface as drift. Omit the attribute to let Jamf Pro assign the expiration, which is then reflected in state. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -133,7 +133,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"enroll_into_site_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI — the site the enrolled computer is assigned to. Jamf Pro site ID; use `-1` for \"None\". Changing this forces replacement.",
+				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. The site the enrolled computer is assigned to, given as a Jamf Pro site ID. Use `-1` for \"None\". Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -207,7 +207,7 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"ssh_password": schema.StringAttribute{
-				MarkdownDescription: "Plaintext password for the SSH management account. `WriteOnly` — sent to Jamf Pro when the invitation is created but **never persisted in Terraform state**. Jamf Pro does not return the plaintext on refresh, so the provider treats it as write-only. Pair with `ssh_password_wo_version`. Changing this forces replacement.",
+				MarkdownDescription: "Plaintext password for the SSH management account. `WriteOnly`: sent to Jamf Pro when the invitation is created but **never persisted in Terraform state**. Jamf Pro does not return the plaintext on refresh, so the provider treats it as write-only. Pair it with `ssh_password_wo_version`. Changing this forces replacement.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,

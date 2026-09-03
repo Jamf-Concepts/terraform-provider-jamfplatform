@@ -14,7 +14,7 @@ resource "jamfplatform_security_cloud_device_group" "field_staff" {
 }
 
 # Names must be unique on the tenant, and Jamf Security Cloud compares them
-# exactly — "Contractors" and "contractors" are two different groups, which is
+# exactly. "Contractors" and "contractors" are two different groups, which is
 # rarely what anyone wants. Leading and trailing whitespace is rejected at plan
 # time, because Jamf Security Cloud would silently strip it and Terraform would
 # then report a result it did not ask for.

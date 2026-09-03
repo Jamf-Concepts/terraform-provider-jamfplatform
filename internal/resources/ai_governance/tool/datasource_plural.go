@@ -35,7 +35,7 @@ func (d *ToolsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 		MarkdownDescription: "Reads every AI tool Jamf can govern, with the settings schema versions each one offers. " +
 			"Use it to discover the `tool_id` and `schema_version` values a `jamfplatform_ai_governance_policy` " +
 			"accepts.\n\n" +
-			"The settings schema documents themselves are not included — read one from the " +
+			"The settings schema documents themselves are not included. Read one from the " +
 			"`jamfplatform_ai_governance_tool` data source." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"tools": schema.ListNestedAttribute{

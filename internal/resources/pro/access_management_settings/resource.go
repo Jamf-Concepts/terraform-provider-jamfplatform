@@ -73,7 +73,7 @@ func (r *AccessManagementSettingsResource) IdentitySchema(ctx context.Context, r
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Access Management settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Access Management settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -83,12 +83,12 @@ func (r *AccessManagementSettingsResource) IdentitySchema(ctx context.Context, r
 // Schema returns the Terraform schema for the Access Management settings resource.
 func (r *AccessManagementSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro Access Management settings for Managed Apple Accounts (`/v4/enrollment/access-management`). " +
-			"Singleton — one record per tenant. " +
+		MarkdownDescription: "Manages Jamf Pro Access Management settings for Managed Apple Accounts. One record per tenant. " +
 			"When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. " +
 			"The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. " +
 			"Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. " +
-			"**Omit = preserve** — omitting `automated_device_enrollment_server_uuid` keeps the value currently set on the tenant (including on the first apply: this resource adopts the existing setting). **To clear the setting, set `automated_device_enrollment_server_uuid = \"\"`** — omitting it does not clear it. " +
+			"Omitting `automated_device_enrollment_server_uuid` keeps the value currently set on the tenant, including on the first apply: this resource adopts the existing setting. " +
+			"To clear the setting, set `automated_device_enrollment_server_uuid = \"\"`. Omitting it does not clear it. " +
 			"Import with `terraform import jamfplatform_pro_access_management_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -100,7 +100,7 @@ func (r *AccessManagementSettingsResource) Schema(ctx context.Context, req resou
 			},
 			"automated_device_enrollment_server_uuid": schema.StringAttribute{
 				MarkdownDescription: "Server UUID of the Automated Device Enrollment (ADE) server object Jamf Pro names in its Get Token response for Managed Apple Account access management. " +
-					"Copy this from an ADE instance — e.g. `jamfplatform_pro_automated_device_enrollment.<name>.server_uuid` — or from Settings > Automated Device Enrollment in the Jamf Pro web app. " +
+					"Copy it from an ADE instance (`jamfplatform_pro_automated_device_enrollment.<name>.server_uuid`) or from Settings > Automated Device Enrollment in the Jamf Pro web app. " +
 					"The server object must be associated with the same Apple Business Manager / Apple School Manager tenant the Managed Apple Accounts originate from. " +
 					"Omit to preserve the current value; set to `\"\"` to clear it (no ADE server configured).",
 				Optional: true,

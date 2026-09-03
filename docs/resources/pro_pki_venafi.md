@@ -5,9 +5,12 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Venafi certificate authority (Settings → Global → PKI certificates → Certificate Authorities).
   Preview feature: Jamf Pro's Venafi integration is a preview and may change in a future Jamf Pro release.
-  Refresh token: refresh_token_wo is WriteOnly — it is sent to Jamf Pro on writes but never stored in Terraform state, and Jamf Pro never returns it on read. Pair it with refresh_token_wo_version to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. refresh_token_configured reports whether Jamf Pro currently holds a token.
-  Jamf public key: jamf_public_key is the PEM public key Jamf Pro mints for this CA — read-only, populated on create and every read. Bump jamf_public_key_rotation to regenerate it (the old key is invalidated).
-  Proxy trust store: proxy_trust_store is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value (not write-only). Set it to upload; set it to "" to remove it.
+  Refresh token
+  refresh_token_wo is WriteOnly: sent to Jamf Pro on writes, never stored in Terraform state, and never returned on read. Pair it with refresh_token_wo_version to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. refresh_token_configured reports whether Jamf Pro currently holds a token.
+  Jamf public key
+  jamf_public_key is the PEM public key Jamf Pro mints for this CA. It is read-only, populated on create and on every read. Bump jamf_public_key_rotation to regenerate it; the old key is invalidated.
+  Proxy trust store
+  proxy_trust_store is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value rather than a write-only one. Set it to upload; set it to "" to remove it.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -21,11 +24,17 @@ Manages a Jamf Pro Venafi certificate authority (Settings → Global → PKI cer
 
 **Preview feature:** Jamf Pro's Venafi integration is a preview and may change in a future Jamf Pro release.
 
-**Refresh token:** `refresh_token_wo` is `WriteOnly` — it is sent to Jamf Pro on writes but never stored in Terraform state, and Jamf Pro never returns it on read. Pair it with `refresh_token_wo_version` to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. `refresh_token_configured` reports whether Jamf Pro currently holds a token.
+### Refresh token
 
-**Jamf public key:** `jamf_public_key` is the PEM public key Jamf Pro mints for this CA — read-only, populated on create and every read. Bump `jamf_public_key_rotation` to regenerate it (the old key is invalidated).
+`refresh_token_wo` is `WriteOnly`: sent to Jamf Pro on writes, never stored in Terraform state, and never returned on read. Pair it with `refresh_token_wo_version` to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. `refresh_token_configured` reports whether Jamf Pro currently holds a token.
 
-**Proxy trust store:** `proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value (not write-only). Set it to upload; set it to `""` to remove it.
+### Jamf public key
+
+`jamf_public_key` is the PEM public key Jamf Pro mints for this CA. It is read-only, populated on create and on every read. Bump `jamf_public_key_rotation` to regenerate it; the old key is invalidated.
+
+### Proxy trust store
+
+`proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value rather than a write-only one. Set it to upload; set it to `""` to remove it.
 
 **Required Jamf permissions**
 
@@ -57,7 +66,7 @@ resource "jamfplatform_pro_pki_venafi" "example" {
   client_id          = "REPLACE_WITH_VENAFI_CLIENT_ID"
   revocation_enabled = true
 
-  # The Venafi refresh token is write-only — sent to Jamf Pro but never stored
+  # The Venafi refresh token is write-only, sent to Jamf Pro but never stored
   # in Terraform state. Bump refresh_token_wo_version to re-send / rotate it.
   refresh_token_wo         = "REPLACE_WITH_VENAFI_REFRESH_TOKEN"
   refresh_token_wo_version = 1
@@ -84,10 +93,10 @@ resource "jamfplatform_pro_pki_venafi" "example" {
 
 - `client_id` (String) **"Client ID"** in the Jamf Pro admin UI. The Venafi OAuth client identifier. Omit to preserve the stored value; set to `""` to clear it.
 - `jamf_public_key_rotation` (Number) Rotation trigger for `jamf_public_key`. Bump this integer (any change) to regenerate the Jamf-minted public key; Jamf Pro invalidates the previous key. Leaving it unset or unchanged leaves the key alone.
-- `proxy_address` (String) **"Proxy Server"** in the Jamf Pro admin UI. The Jamf Pro PKI Proxy Server address as `host:port` with **no scheme** (e.g. `proxy.example.com:8443`; a `https://` prefix is rejected by Jamf Pro). Omit to preserve the stored value. Jamf Pro rejects an empty value (`""`) with "HTTP Host must not be empty", so this cannot be cleared once set.
-- `proxy_trust_store` (String) The PKI Proxy Server's **public** PEM certificate chain, used to secure communication between Jamf Pro and the proxy. Not a secret — it round-trips byte-for-byte through Jamf Pro. Set to upload; set to `""` to remove it. Omit to preserve the stored value.
-- `refresh_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Refresh Token"** in the Jamf Pro admin UI. The Venafi refresh token. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro never returns it on read, so rotation is driven by the companion `refresh_token_wo_version` integer (bump it to re-send `refresh_token_wo`).
-- `refresh_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `refresh_token_wo`. Bump this integer (any change) to force a new write that re-sends `refresh_token_wo` to Jamf Pro. Set it on create alongside `refresh_token_wo` (e.g. `1`). Leaving it unset or unchanged signals "leave the stored token alone" — the provider omits the token from the next write so Jamf Pro retains the existing value.
+- `proxy_address` (String) **"Proxy Server"** in the Jamf Pro admin UI. The Jamf Pro PKI Proxy Server address as `host:port`, with no scheme (e.g. `proxy.example.com:8443`). Jamf Pro rejects a `https://` prefix. Omit to preserve the stored value. Jamf Pro also rejects an empty value (`""`) with "HTTP Host must not be empty", so this cannot be cleared once set.
+- `proxy_trust_store` (String) The PKI Proxy Server's **public** PEM certificate chain, which secures communication between Jamf Pro and the proxy. It is not a secret; it round-trips byte-for-byte through Jamf Pro. Set to upload; set to `""` to remove it. Omit to preserve the stored value.
+- `refresh_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Refresh Token"** in the Jamf Pro admin UI. The Venafi refresh token. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Jamf Pro never returns it on read, so rotation runs through the companion `refresh_token_wo_version` integer. Bump that to re-send `refresh_token_wo`.
+- `refresh_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `refresh_token_wo`. Bump this integer (any change) to force a new write that re-sends `refresh_token_wo` to Jamf Pro. Set it on create alongside `refresh_token_wo` (e.g. `1`). Leaving it unset or unchanged signals "leave the stored token alone": the provider omits the token from the next write, so Jamf Pro retains the existing value.
 - `revocation_enabled` (Boolean) **"Enable certificate revocation"** in the Jamf Pro admin UI. Whether Jamf Pro may revoke certificates issued by this CA. Omit to preserve the stored value.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

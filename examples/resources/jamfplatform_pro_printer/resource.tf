@@ -7,7 +7,7 @@ resource "jamfplatform_pro_printer" "front_desk" {
 }
 
 # Printer with an explicit PPD. use_generic must be false; ppd_path is the
-# gate field — if omitted, the server falls back to Generic.ppd and silently
+# gate field: if omitted, the server falls back to Generic.ppd and silently
 # flips use_generic back to true. ppd and ppd_contents are optional alongside.
 resource "jamfplatform_pro_printer" "lab_color" {
   name        = "Lab Color"

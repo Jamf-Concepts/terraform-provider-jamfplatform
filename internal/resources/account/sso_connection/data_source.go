@@ -66,7 +66,7 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 		MarkdownDescription: "Look up one SSO connection in your Jamf Account organization, by identifier or by " +
 			"the name Jamf holds for it. Exactly one of `id` and `name` is required.\n\n" +
 			"This is also the construct for a connection the `jamfplatform_account_sso_connection` resource " +
-			"refuses to manage — one built with Microsoft's admin-consent flow in the Jamf Account console, which " +
+			"refuses to manage: one built with Microsoft's admin-consent flow in the Jamf Account console, which " +
 			"has no client registration of its own and cannot be written back. Reading it here takes no ownership " +
 			"of it.\n\n" +
 			"Two things no read returns, so neither appears here: the client secret, which Jamf never gives back, " +
@@ -84,9 +84,9 @@ func (d *ConnectionDataSource) Schema(ctx context.Context, _ datasource.SchemaRe
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Name Jamf Account holds for the connection, matched exactly. Set this or " +
-					"`id`, not both. Note that Jamf may store a uniquified form of the name a connection was " +
-					"created with, so the name to match is the one the console lists rather than the one that was " +
-					"asked for — use `jamfplatform_account_sso_connections` to see them.",
+					"`id`, not both. Jamf may store a uniquified form of the name a connection was created with, " +
+					"so the name to match is the one the console lists rather than the one that was asked for. " +
+					"Use `jamfplatform_account_sso_connections` to see them.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{

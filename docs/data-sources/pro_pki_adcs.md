@@ -43,7 +43,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 - `ca_name` (String) The Certificate Authority name.
 - `client_certificate_details` (Attributes) Metadata Jamf Pro parsed from the client certificate; `null` when none is configured. (see [below for nested schema](#nestedatt--client_certificate_details))
 - `connector_last_check_in` (String) Timestamp (RFC 3339) of the AD CS Connector's last check-in; `null` if it has never checked in.
-- `connector_mode` (String) AD CS connector mode — `INBOUND` or `OUTBOUND`.
+- `connector_mode` (String) AD CS connector mode. Either `INBOUND` or `OUTBOUND`.
 - `display_name` (String) Label for the integration.
 - `fqdn` (String) Fully-qualified domain name of the AD CS server.
 - `revocation_enabled` (Boolean) Whether certificate revocation is enabled.

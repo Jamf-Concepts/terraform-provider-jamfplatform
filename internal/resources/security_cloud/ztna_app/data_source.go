@@ -50,8 +50,8 @@ func (d *ZtnaAppDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 			"the Jamf-maintained definition it is based on.\n\n" +
 			"Which key to use follows from the application's form. A **custom** application has a name, but " +
 			"names are not required to be unique, so a name matching more than one application is an error. " +
-			"A **predefined** application has no name of its own at all — Jamf Security Cloud reports it as " +
-			"null — so look one up by `predefined_app_id`, of which a tenant may hold only one." +
+			"A **predefined** application has no name of its own at all (Jamf Security Cloud reports it as " +
+			"null), so look one up by `predefined_app_id`, of which a tenant may hold only one." +
 			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -61,7 +61,7 @@ func (d *ZtnaAppDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				Computed: true,
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Application name to look up. Custom applications only — a predefined " +
+				MarkdownDescription: "Application name to look up. Custom applications only; a predefined " +
 					"application has no name. Exactly one of `id`, `name` or `predefined_app_id` must be set.",
 				Optional: true,
 				Computed: true,
@@ -193,7 +193,7 @@ func dsRoutingSchemaAttributes() map[string]schema.Attribute {
 		},
 		"routing_mode": schema.StringAttribute{
 			MarkdownDescription: "How ZTNA resolves this application's addresses: " +
-				markdownList(dnsResolutionValues()) + " — \"" +
+				markdownList(dnsResolutionValues()) + ". \"" +
 				dnsResolutionLabels[securitycloud.RoutingDnsIpResolutionTypeIPv6] + "\" is IPv6 and \"" +
 				dnsResolutionLabels[securitycloud.RoutingDnsIpResolutionTypeIPv4] + "\" is IPv4. Null for " +
 				"direct device routing.",

@@ -56,7 +56,7 @@ func (d *UsersDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 // Schema returns the plural data source schema.
 func (d *UsersDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Search Jamf Pro **inventory users** (people in *Users → User Inventory*) using optional RSQL filters. Filter selectors use the API-native field names `id`, `username`, `realname`, `email`, `phone`, `position`, and `managedAppleId` — which map to the UI-aligned output attributes `full_name`, `email_address`, and `phone_number` respectively. These are inventory user records, **not** Jamf Pro admin accounts." + pluralDataSourcePrivileges,
+		MarkdownDescription: "Search Jamf Pro **inventory users** (people in *Users → User Inventory*) using optional RSQL filters. Filter selectors use the API-native field names `id`, `username`, `realname`, `email`, `phone`, `position`, and `managedAppleId`. Three of those are spelled differently in the output attributes: `realname` is `full_name`, `email` is `email_address`, and `phone` is `phone_number`. These are inventory user records, **not** Jamf Pro admin accounts." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

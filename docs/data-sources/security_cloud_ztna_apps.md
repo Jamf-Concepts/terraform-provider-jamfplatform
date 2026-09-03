@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_ztna_apps Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this data source takes no search arguments — filter the result in Terraform.
+  Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this data source takes no search arguments. Filter the result in Terraform.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_ztna_apps (Data Source)
 
-Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this data source takes no search arguments — filter the result in Terraform.
+Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this data source takes no search arguments. Filter the result in Terraform.
 
 **Required Jamf permissions**
 
@@ -59,7 +59,7 @@ output "unrestricted_applications" {
 ### Read-Only
 
 - `id` (String) Fixed identifier for this data source.
-- `ztna_apps` (Attributes List) The access policy applications on the tenant, in the order Jamf Security Cloud returns them. The endpoint accepts no sort parameter, so the order is the server's and should not be relied on — match on `id`, `name` or `predefined_app_id` instead. (see [below for nested schema](#nestedatt--ztna_apps))
+- `ztna_apps` (Attributes List) The access policy applications on the tenant, in the order Jamf Security Cloud returns them. Jamf Security Cloud accepts no sort parameter, so the order is its own and should not be relied on. Match on `id`, `name` or `predefined_app_id` instead. (see [below for nested schema](#nestedatt--ztna_apps))
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
@@ -93,7 +93,7 @@ Read-Only:
 Read-Only:
 
 - `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
-- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy`. "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
 - `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 
@@ -111,7 +111,7 @@ Read-Only:
 Read-Only:
 
 - `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
-- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy`. "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
 - `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 

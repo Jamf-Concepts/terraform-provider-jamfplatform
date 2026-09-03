@@ -3,8 +3,8 @@
 page_title: "jamfplatform_pro_mobile_device_app Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata; uploading an in-house binary (IPA) is not supported. general.name, general.version, and general.bundle_id are required. general.os_type is required only for in-house apps; App Store apps (with an itunes_store_url) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
-  Updates are merged, not replaced: removing an entire optional block (scope / self_service / vpp / app_configuration) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
+  Manages a Jamf Pro mobile device app: the "App Store App" and in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata only; uploading an in-house binary (IPA) is not supported. general.name, general.version and general.bundle_id are required. general.os_type is required only for in-house apps, and an App Store app carrying an itunes_store_url does not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations and exclusions are not supported for mobile device apps.
+  Updates are merged rather than replaced. Removing a whole optional block (scope, self_service, vpp or app_configuration) from your configuration does not clear it; the values set previously are retained. To clear a block, null its individual fields instead of deleting the block.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,9 +14,9 @@ description: |-
 
 # jamfplatform_pro_mobile_device_app (Resource)
 
-Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's **metadata**; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version`, and `general.bundle_id` are required. `general.os_type` is required only for in-house apps; App Store apps (with an `itunes_store_url`) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
+Manages a Jamf Pro mobile device app: the "App Store App" and in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata only; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version` and `general.bundle_id` are required. `general.os_type` is required only for in-house apps, and an App Store app carrying an `itunes_store_url` does not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations and exclusions are not supported for mobile device apps.
 
-**Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
+Updates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `vpp` or `app_configuration`) from your configuration does not clear it; the values set previously are retained. To clear a block, null its individual fields instead of deleting the block.
 
 **Required Jamf permissions**
 
@@ -120,7 +120,7 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
 ### Optional
 
 - `app_configuration` (Attributes) Managed-app configuration. `preferences` carries the app-configuration plist; CRLF and LF newlines are treated as equivalent so an import or admin-UI edit does not permadiff against an LF-authored config. (see [below for nested schema](#nestedatt--app_configuration))
-- `scope` (Attributes) App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids` and `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations and exclusions are not supported for mobile device apps. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title; setting `assign_vpp_device_based_licenses = true` on an app that is not VPP-backed is rejected. (see [below for nested schema](#nestedatt--vpp))
@@ -150,7 +150,7 @@ Optional:
 - `is_free` (Boolean) Whether the app is free.
 - `itunes_country_region` (String) Two-letter App Store country/region code used to resolve store metadata.
 - `itunes_store_url` (String) Canonical App Store (iTunes) URL. Setting it also populates the deprecated `url` mirror server-side.
-- `itunes_sync_time` (Number) App Store sync time as a Unix epoch (server-managed counter).
+- `itunes_sync_time` (Number) App Store sync time as a Unix epoch. Maintained by Jamf Pro.
 - `keep_app_updated_on_devices` (Boolean) Automatically update the app on managed devices when a new version ships.
 - `keep_description_and_icon_up_to_date` (Boolean) Keep the app description and icon in sync with the App Store listing.
 - `make_available_after_install` (Boolean) Make the app available in Self Service after it is installed automatically.
@@ -184,7 +184,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) The audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`

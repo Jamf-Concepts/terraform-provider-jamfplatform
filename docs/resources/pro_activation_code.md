@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_activation_code Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with terraform import jamfplatform_pro_activation_code.<name> singleton.
+  Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). One record per tenant. The activation code is a license secret, and an invalid code can disable the tenant. Import with terraform import jamfplatform_pro_activation_code.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_activation_code (Resource)
 
-Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`.
+Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). One record per tenant. The activation code is a license secret, and an invalid code can disable the tenant. Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -45,7 +45,7 @@ variable "jamf_pro_activation_code" {
 
 ### Required
 
-- `code` (String, Sensitive) The Jamf Pro activation code (license key). Treated as sensitive. Changing this to an invalid value can disable the tenant — handle with care.
+- `code` (String, Sensitive) The Jamf Pro activation code (license key). Treated as sensitive. Changing this to an invalid value can disable the tenant, so handle with care.
 - `organization_name` (String) The organization name registered against the activation code.
 
 ### Optional

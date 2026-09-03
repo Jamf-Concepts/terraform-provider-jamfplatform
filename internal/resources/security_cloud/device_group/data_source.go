@@ -43,8 +43,8 @@ func (d *DeviceGroupDataSource) Metadata(_ context.Context, req datasource.Metad
 func (d *DeviceGroupDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on " +
-			"the tenant, but they are matched exactly — a name that differs only in capitalisation is a different " +
-			"group and will not be found." + dataSourcePrivileges,
+			"the tenant, but they are matched exactly, so a name that differs only in capitalisation is a " +
+			"different group and will not be found." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Device group ID to look up. Exactly one of `id` or `name` must be set.",
@@ -53,7 +53,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, _ datasource.SchemaR
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Device group name to look up. Exactly one of `id` or `name` must be set. The " +
-					"built-in \"Default Group\" cannot be looked up here — it has no ID. Use the " +
+					"built-in \"Default Group\" cannot be looked up here, because it has no ID. Use the " +
 					"`jamfplatform_security_cloud_device_groups` data source to see it.",
 				Optional: true,
 				Computed: true,

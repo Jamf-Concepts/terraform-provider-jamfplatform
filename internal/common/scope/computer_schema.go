@@ -98,7 +98,7 @@ func ComputerScopeAttributes(opts ComputerScopeOptions) map[string]schema.Attrib
 
 	return map[string]schema.Attribute{
 		"targets": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs.",
+			MarkdownDescription: "The audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs.",
 			Optional:            true,
 			Attributes:          targets,
 		},

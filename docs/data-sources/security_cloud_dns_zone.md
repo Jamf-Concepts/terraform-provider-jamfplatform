@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_dns_zone Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Security Cloud custom DNS zone by ID or by name. Zone names are not required to be unique, so a name matching more than one zone is an error — use the ID in that case.
+  Look up a Jamf Security Cloud custom DNS zone by ID or by name. Zone names are not required to be unique, so a name matching more than one zone is an error. Use the ID in that case.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_dns_zone (Data Source)
 
-Look up a Jamf Security Cloud custom DNS zone by ID or by name. Zone names are not required to be unique, so a name matching more than one zone is an error — use the ID in that case.
+Look up a Jamf Security Cloud custom DNS zone by ID or by name. Zone names are not required to be unique, so a name matching more than one zone is an error. Use the ID in that case.
 
 **Required Jamf permissions**
 
@@ -32,7 +32,7 @@ data "jamfplatform_security_cloud_dns_zone" "by_id" {
 }
 
 # Or by name. Zone names are not required to be unique, so a name matching more
-# than one zone is an error — look those up by ID.
+# than one zone is an error. Look those up by ID.
 data "jamfplatform_security_cloud_dns_zone" "by_name" {
   name = "Internal Services"
 }

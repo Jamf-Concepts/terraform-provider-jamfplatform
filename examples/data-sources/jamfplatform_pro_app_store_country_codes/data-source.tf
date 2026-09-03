@@ -1,4 +1,4 @@
-# Read the valid App Store country/region codes for the tenant — the values
+# Read the valid App Store country/region codes for the tenant: the values
 # accepted by jamfplatform_pro_app_request_settings.app_store_locale (alongside
 # the literal "deviceLocale").
 

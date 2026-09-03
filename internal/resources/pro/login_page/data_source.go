@@ -38,7 +38,7 @@ func (d *LoginPageSettingsDataSource) Metadata(ctx context.Context, req datasour
 // Schema returns the data source schema.
 func (d *LoginPageSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",
@@ -49,15 +49,15 @@ func (d *LoginPageSettingsDataSource) Schema(ctx context.Context, req datasource
 				Computed:            true,
 			},
 			"disclaimer_heading": schema.StringAttribute{
-				MarkdownDescription: "Text used for the title of the disclaimer dialog.",
+				MarkdownDescription: "Title text of the disclaimer dialog.",
 				Computed:            true,
 			},
 			"disclaimer_main_text": schema.StringAttribute{
-				MarkdownDescription: "Text used for the body of the disclaimer dialog.",
+				MarkdownDescription: "Body text of the disclaimer dialog.",
 				Computed:            true,
 			},
 			"action_text": schema.StringAttribute{
-				MarkdownDescription: "Text used for the button that acknowledges the disclaimer dialog.",
+				MarkdownDescription: "Label on the button that acknowledges the disclaimer dialog.",
 				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx),

@@ -11,7 +11,7 @@ resource "jamfplatform_pro_file_share_distribution_point" "primary" {
   port                         = 445
   workgroup                    = "WORKGROUP"
 
-  # Read/Write account. The password is WriteOnly — bump
+  # Read/Write account. The password is WriteOnly. Bump
   # read_write_password_wo_version to rotate it.
   read_write_username            = "casperadmin"
   read_write_password            = sensitive("change-me-rw")

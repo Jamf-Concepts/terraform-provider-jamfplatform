@@ -40,16 +40,16 @@ func (d *HostnameMappingsDataSource) Metadata(_ context.Context, req datasource.
 func (d *HostnameMappingsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads **\"Hostname mapping\"** under Custom DNS in the Jamf Security Cloud admin " +
-			"UI — the custom IPv4 and IPv6 mappings for internal host names your organization uses.\n\n" +
+			"UI: the custom IPv4 and IPv6 mappings for internal host names your organization uses.\n\n" +
 			"There is one set per tenant, so this data source takes no arguments. A tenant with no mappings " +
 			"reads back an empty collection rather than an error." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Always `singleton` — there is one set of hostname mappings per tenant.",
+				MarkdownDescription: "Always `singleton`, since a tenant holds one set of hostname mappings.",
 				Computed:            true,
 			},
 			"mappings": schema.ListNestedAttribute{
-				MarkdownDescription: "The tenant's hostname mappings, in the order Jamf returns them — which " +
+				MarkdownDescription: "The tenant's hostname mappings, in the order Jamf returns them, which " +
 					"is not the order they were written in.",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{

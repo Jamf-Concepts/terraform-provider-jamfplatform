@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_automated_device_enrollment_public_key Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the public_key attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
+  Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob, and the data source base64-encodes the bytes into the public_key attribute so it can be safely embedded in Terraform configuration, for example when registering an MDM server in Apple Business Manager or Apple School Manager. Your tenant has one key, so no input selector is required.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_automated_device_enrollment_public_key (Data Source)
 
-Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
+Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob, and the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration, for example when registering an MDM server in Apple Business Manager or Apple School Manager. Your tenant has one key, so no input selector is required.
 
 **Required Jamf permissions**
 

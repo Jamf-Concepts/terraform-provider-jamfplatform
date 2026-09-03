@@ -100,7 +100,7 @@ func (r *PatchSoftwareTitleResource) IdentitySchema(ctx context.Context, req res
 func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version: 1,
-		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them." +
+		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source), and Jamf Pro populates the full catalog of `available_versions`. Assign packages to specific versions through `version_packages`, the **Definition** tab's per-version **Package** column, so patch policies can target them." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -118,7 +118,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"name_id": schema.StringAttribute{
-				MarkdownDescription: "Patch catalog key that defines which software title this is (e.g. `285`). Immutable — changing it forces replacement.",
+				MarkdownDescription: "Patch catalog key that defines which software title this is (e.g. `285`). Immutable: changing it forces replacement.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -128,14 +128,14 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"source_id": schema.Int64Attribute{
-				MarkdownDescription: "Patch source ID this title is sourced from. Immutable — changing it forces replacement.",
+				MarkdownDescription: "Patch source ID this title is sourced from. Immutable: changing it forces replacement.",
 				Required:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplace(),
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Set `-1` for \"No category assigned\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.",
+				MarkdownDescription: "Jamf Pro category ID (UI \"Category\"). Set `-1` for \"No category assigned\", the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current category in place, so clear an assigned category by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -146,7 +146,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro site ID (UI \"Site\"). Set `-1` for \"None\" — the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.",
+				MarkdownDescription: "Jamf Pro site ID (UI \"Site\"). Set `-1` for \"None\", the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -157,7 +157,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"web_notification": schema.BoolAttribute{
-				MarkdownDescription: "Whether a Jamf Pro notification is raised for new versions (UI \"Jamf Pro Notification\"). Server-defaulted when omitted.",
+				MarkdownDescription: "Whether a Jamf Pro notification is raised for new versions (UI \"Jamf Pro Notification\"). Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -165,7 +165,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"email_notification": schema.BoolAttribute{
-				MarkdownDescription: "Whether an email notification is sent for new versions (UI \"Email\"). Server-defaulted when omitted.",
+				MarkdownDescription: "Whether an email notification is sent for new versions (UI \"Email\"). Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -173,7 +173,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"version_packages": schema.MapAttribute{
-				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments — an empty map is not accepted.",
+				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments. An empty map is not accepted.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.Map{
@@ -189,11 +189,11 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				ElementType:         types.StringType,
 			},
 			"accept_extension_attributes": schema.BoolAttribute{
-				MarkdownDescription: "Accept the extension attribute(s) Jamf attaches to this title (UI \"Extension Attribute\" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting is one-way** — it cannot be reverted, so setting this back to `false` (or removing it) does not un-accept; it simply stops accepting new ones. Leave unset for titles that have no extension attribute.",
+				MarkdownDescription: "Accept the extension attribute(s) Jamf attaches to this title (UI \"Extension Attribute\" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting cannot be reverted.** Setting this back to `false`, or removing it, does not un-accept anything; it only stops accepting new ones. Leave unset for titles that have no extension attribute.",
 				Optional:            true,
 			},
 			"extension_attributes": schema.ListNestedAttribute{
-				MarkdownDescription: "Extension attributes Jamf has attached to this title, with their acceptance status. Read-only — use `accept_extension_attributes` to accept pending ones. Empty for titles with no extension attribute.",
+				MarkdownDescription: "Extension attributes Jamf has attached to this title, with their acceptance status. Read-only; use `accept_extension_attributes` to accept pending ones. Empty for titles with no extension attribute.",
 				Computed:            true,
 				// Plain Computed (no plan modifier): when accept_extension_attributes
 				// flips a pending EA from accepted=false to true in the same apply,

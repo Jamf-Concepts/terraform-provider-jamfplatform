@@ -38,7 +38,7 @@ func (d *AccessManagementSettingsDataSource) Metadata(ctx context.Context, req d
 // Schema returns the data source schema.
 func (d *AccessManagementSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Access Management settings for Managed Apple Accounts (`/v4/enrollment/access-management`). Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro Access Management settings for Managed Apple Accounts. One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

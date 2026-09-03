@@ -22,8 +22,8 @@ resource "jamfplatform_pro_vpp_assignment" "apps" {
 
 # VPP assignment distributing books to all Jamf users.
 #
-# Note: un-assigning a book removes it from the assignment, but Apple does not
-# return or refund the underlying book license to the account.
+# Un-assigning a book removes it from the assignment, but Apple does not return
+# or refund the underlying book license to the account.
 resource "jamfplatform_pro_vpp_assignment" "books" {
   name                 = "Volume Purchasing — Reading List"
   vpp_admin_account_id = "3"

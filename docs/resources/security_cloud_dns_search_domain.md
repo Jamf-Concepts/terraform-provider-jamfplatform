@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_dns_search_domain Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the "Search domain" under Custom DNS in the Jamf Security Cloud admin UI — the domain used to complete an incomplete host name for apps that only accept short host names. With the search domain set to example.com, a user who asks for product is directed to product.example.com.
+  Manages the "Search domain" under Custom DNS in the Jamf Security Cloud admin UI: the domain that completes an incomplete host name for apps that only accept short host names. With the search domain set to example.com, a user who asks for product is directed to product.example.com.
   There is one search domain per tenant, so only one instance of this resource should exist in your configuration. Destroying it clears the search domain for the whole tenant.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_security_cloud_dns_search_domain (Resource)
 
-Manages the **"Search domain"** under Custom DNS in the Jamf Security Cloud admin UI — the domain used to complete an incomplete host name for apps that only accept short host names. With the search domain set to `example.com`, a user who asks for `product` is directed to `product.example.com`.
+Manages the **"Search domain"** under Custom DNS in the Jamf Security Cloud admin UI: the domain that completes an incomplete host name for apps that only accept short host names. With the search domain set to `example.com`, a user who asks for `product` is directed to `product.example.com`.
 
 There is one search domain per tenant, so only one instance of this resource should exist in your configuration. Destroying it clears the search domain for the whole tenant.
 
@@ -46,7 +46,7 @@ resource "jamfplatform_security_cloud_dns_search_domain" "corp" {
 
 ### Required
 
-- `domain_name` (String) **"Domain name"** in the Jamf Security Cloud admin UI. Up to 253 characters. A single domain, not a list — writing a new value replaces the previous one. Wildcards are not accepted, and letter case is stored exactly as written.
+- `domain_name` (String) **"Domain name"** in the Jamf Security Cloud admin UI. Up to 253 characters. A single domain, not a list: writing a new value replaces the previous one. Wildcards are not accepted, and letter case is stored exactly as written.
 
 ### Optional
 
@@ -54,7 +54,7 @@ resource "jamfplatform_security_cloud_dns_search_domain" "corp" {
 
 ### Read-Only
 
-- `id` (String) Always `singleton` — there is one search domain per tenant.
+- `id` (String) Always `singleton`, since a tenant holds one search domain.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

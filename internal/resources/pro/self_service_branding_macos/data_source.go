@@ -37,16 +37,16 @@ func (d *SelfServiceBrandingMacosDataSource) Metadata(ctx context.Context, req d
 // Schema returns the data source schema — a read mirror of the resource.
 func (d *SelfServiceBrandingMacosDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). One configuration per tenant. Errors if no macOS branding is configured." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                   schema.StringAttribute{MarkdownDescription: "Fixed singleton identifier. Always `singleton`.", Computed: true},
-			"application_header":   schema.StringAttribute{MarkdownDescription: "UI: **Application Header**.", Computed: true},
-			"sidebar_heading":      schema.StringAttribute{MarkdownDescription: "UI: **Sidebar - Heading**.", Computed: true},
-			"sidebar_subheading":   schema.StringAttribute{MarkdownDescription: "UI: **Sidebar - Subheading**.", Computed: true},
-			"home_page_heading":    schema.StringAttribute{MarkdownDescription: "UI: **Home page - Heading**.", Computed: true},
-			"home_page_subheading": schema.StringAttribute{MarkdownDescription: "UI: **Home page - Subheading**.", Computed: true},
-			"icon_id":              schema.Int64Attribute{MarkdownDescription: "UI: **Icon**. Branding image ID (separate store from `jamfplatform_pro_icon`).", Computed: true},
-			"banner_image_id":      schema.Int64Attribute{MarkdownDescription: "UI: **Home page - Banner Image**.", Computed: true},
+			"application_header":   schema.StringAttribute{MarkdownDescription: "**\"Application Header\"** in the Jamf Pro admin UI.", Computed: true},
+			"sidebar_heading":      schema.StringAttribute{MarkdownDescription: "**\"Sidebar - Heading\"** in the Jamf Pro admin UI.", Computed: true},
+			"sidebar_subheading":   schema.StringAttribute{MarkdownDescription: "**\"Sidebar - Subheading\"** in the Jamf Pro admin UI.", Computed: true},
+			"home_page_heading":    schema.StringAttribute{MarkdownDescription: "**\"Home page - Heading\"** in the Jamf Pro admin UI.", Computed: true},
+			"home_page_subheading": schema.StringAttribute{MarkdownDescription: "**\"Home page - Subheading\"** in the Jamf Pro admin UI.", Computed: true},
+			"icon_id":              schema.Int64Attribute{MarkdownDescription: "**\"Icon\"** in the Jamf Pro admin UI. Branding image ID, from a store separate to `jamfplatform_pro_icon`.", Computed: true},
+			"banner_image_id":      schema.Int64Attribute{MarkdownDescription: "**\"Home page - Banner Image\"** in the Jamf Pro admin UI.", Computed: true},
 			"timeouts":             timeouts.Attributes(ctx),
 		},
 	}

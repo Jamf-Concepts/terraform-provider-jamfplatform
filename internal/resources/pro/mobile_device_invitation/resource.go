@@ -82,7 +82,7 @@ func (r *MobileDeviceInvitationResource) IdentitySchema(ctx context.Context, req
 // forces a destroy + recreate, which mints a new `invitation` code.
 func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment invitation: a single-use or multiple-use token for the user-initiated enrollment of mobile devices, carrying a site assignment and an expiration, optionally delivered by email and optionally requiring login. An invitation cannot be updated in place. Changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Numeric mobile device invitation ID assigned by Jamf Pro. This is the Terraform state ID and the import key.",
@@ -109,7 +109,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"expiration_date": schema.StringAttribute{
-				MarkdownDescription: "Invitation expiration. Either the literal `Unlimited` (never expires) or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` (e.g. `2026-12-31 23:59:00`), interpreted in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value so this does not surface as drift. Omit to let Jamf Pro assign the expiration (the assigned value is then reflected in state). Changing this forces replacement.",
+				MarkdownDescription: "Invitation expiration. Either the literal `Unlimited` (never expires) or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` (e.g. `2026-12-31 23:59:00`), interpreted in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value, so that does not surface as drift. Omit to let Jamf Pro assign the expiration, which is then reflected in state. Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -132,7 +132,7 @@ func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"enroll_into_site_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI — the site the enrolled mobile device is assigned to. Jamf Pro site ID; use `-1` for \"None\". Changing this forces replacement.",
+				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. The site the enrolled mobile device is assigned to, given as a Jamf Pro site ID. Use `-1` for \"None\". Changing this forces replacement.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

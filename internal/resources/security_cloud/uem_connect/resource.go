@@ -200,15 +200,15 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"A tenant holds one UEM Connect integration. Creating a second is refused, so where an integration " +
 			"already exists, import it rather than declaring a new one.\n\n" +
 			"Choose one of two ways to authenticate to Jamf Pro. With `platform_tenant`, Jamf Security Cloud " +
-			"creates and manages its own credentials on the named tenant and no secret is configured here — " +
-			"prefer it. With `oauth`, supply the client ID and secret of an API integration you created on the " +
+			"creates and manages its own credentials on the named tenant and no secret is configured here. " +
+			"Prefer it. With `oauth`, supply the client ID and secret of an API integration you created on the " +
 			"Jamf Pro instance yourself.\n\n" +
 			"~> **`platform_tenant` leaves credentials behind when the integration is destroyed.** Jamf Security " +
 			"Cloud creates a Jamf Pro API integration named `JSC Connector` to authenticate with, and that " +
-			"integration survives the destroy — neither Jamf Security Cloud nor this provider removes it, and " +
+			"integration survives the destroy. Neither Jamf Security Cloud nor this provider removes it, and " +
 			"this provider holds no Jamf Pro credentials for that tenant to remove it with. Each " +
 			"create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro " +
-			"instance, each carrying the 31-privilege `JSC Connector` role — which includes writing " +
+			"instance, each carrying the 31-privilege `JSC Connector` role, which includes writing " +
 			"configuration profiles, computer and mobile device records, extension attributes and group " +
 			"memberships. Audit **Settings → API roles and clients** on the Jamf Pro instance after any " +
 			"destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled `JSC " +
@@ -242,7 +242,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"uem_server_url": schema.StringAttribute{
-				MarkdownDescription: "**\"UEM server URL\"** in the Jamf Security Cloud admin UI — the full address " +
+				MarkdownDescription: "**\"UEM server URL\"** in the Jamf Security Cloud admin UI: the full address " +
 					"of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set " +
 					"with `platform_tenant`, which resolves the address from the tenant itself.",
 				Optional: true,
@@ -280,13 +280,13 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"oauth": schema.SingleNestedAttribute{
-				MarkdownDescription: "**\"OAuth authentication\"** in the Jamf Security Cloud admin UI — " +
+				MarkdownDescription: "**\"OAuth authentication\"** in the Jamf Security Cloud admin UI: " +
 					"authenticate with credentials from an API integration you created on the Jamf Pro instance. " +
 					"Mutually exclusive with `platform_tenant`, and requires `uem_server_url`.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"client_id": schema.StringAttribute{
-						MarkdownDescription: "**\"Client ID\"** in the Jamf Security Cloud admin UI — the client ID " +
+						MarkdownDescription: "**\"Client ID\"** in the Jamf Security Cloud admin UI: the client ID " +
 							"of the API integration on the Jamf Pro instance.",
 						Required: true,
 						Validators: []validator.String{
@@ -310,7 +310,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						MarkdownDescription: "Increment after rotating the credential in Jamf Pro to send the new " +
 							"`client_secret`. The secret itself is not stored, so there is nothing to compare " +
 							"against and no other way to trigger a rotation.\n\n" +
-							"Jamf Security Cloud has no endpoint that updates an existing integration's " +
+							"Jamf Security Cloud offers no way to change an existing integration's " +
 							"credentials, so a rotation **replaces** the integration, which briefly interrupts " +
 							"syncing.",
 						Optional: true,
@@ -351,10 +351,10 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"uem_auto_delete_behavior": schema.StringAttribute{
 				MarkdownDescription: "**\"Configure UEM auto-delete behavior\"** in the Jamf Security Cloud admin " +
-					"UI — what happens in Jamf Security Cloud to devices that leave Jamf Pro.\n\n" +
-					"- `keep_deleted_or_retired` — keep deleted or retired devices in Jamf Security Cloud.\n" +
-					"- `remove_deleted_or_retired` — remove deleted or retired devices from Jamf Security Cloud.\n" +
-					"- `remove_deleted_or_unmanaged` — also remove devices Jamf Pro reports as no longer managed.",
+					"UI: what happens in Jamf Security Cloud to devices that leave Jamf Pro.\n\n" +
+					"- `keep_deleted_or_retired`: keep deleted or retired devices in Jamf Security Cloud.\n" +
+					"- `remove_deleted_or_retired`: remove deleted or retired devices from Jamf Security Cloud.\n" +
+					"- `remove_deleted_or_unmanaged`: also remove devices Jamf Pro reports as no longer managed.",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString(defaultUEMAutoDeleteBehaviour),
@@ -366,13 +366,13 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				MarkdownDescription: "Days since a device last checked in before Jamf Security Cloud treats it as " +
 					"unmanaged. Read-only, and reported as `0`: Jamf Security Cloud does not apply this setting to a " +
 					"Jamf Pro connection, taking device status from Jamf Pro directly instead, so there is nothing " +
-					"for this provider to set. Wire-probed 2026-09-01 — every value sent for a `JAMF_PRO` connector " +
+					"for this provider to set. Confirmed on 2026-09-01: every value sent for a `JAMF_PRO` connector " +
 					"is accepted and then discarded.",
 				Computed: true,
 			},
 			"device_risk_uem_signaling_enabled": schema.BoolAttribute{
-				MarkdownDescription: "**\"Enable device risk UEM signaling\"** in the Jamf Security Cloud admin UI " +
-					"— whether a device's risk level is sent back to Jamf Pro.",
+				MarkdownDescription: "**\"Enable device risk UEM signaling\"** in the Jamf Security Cloud admin " +
+					"UI: whether a device's risk level is sent back to Jamf Pro.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
@@ -393,7 +393,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Default:  booldefault.StaticBool(true),
 			},
 			"user_data_field_mapping": schema.SingleNestedAttribute{
-				MarkdownDescription: "**\"User data field mapping\"** in the Jamf Security Cloud admin UI — which " +
+				MarkdownDescription: "**\"User data field mapping\"** in the Jamf Security Cloud admin UI: which " +
 					"Jamf Pro attribute each Jamf Security Cloud device field is populated from. Omit the whole " +
 					"block for the defaults, which is what the admin UI's \"Use default data field mapping\" " +
 					"checkbox selects.",
@@ -451,7 +451,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						},
 					},
 					"email": schema.SingleNestedAttribute{
-						MarkdownDescription: "**\"Email\"** in the Jamf Security Cloud admin UI — how a device's " +
+						MarkdownDescription: "**\"Email\"** in the Jamf Security Cloud admin UI: how a device's " +
 							"email address is derived.",
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
@@ -494,7 +494,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 				},
 			},
 			"group_membership_mapping": schema.SingleNestedAttribute{
-				MarkdownDescription: "**\"Group membership mapping\"** in the Jamf Security Cloud admin UI — links " +
+				MarkdownDescription: "**\"Group membership mapping\"** in the Jamf Security Cloud admin UI. Links " +
 					"Jamf Pro groups to Jamf Security Cloud device groups so membership syncs between the two. " +
 					"Devices matching no mapping join the default group.",
 				Optional: true,
@@ -509,7 +509,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						},
 					},
 					"default_security_cloud_group_id": schema.StringAttribute{
-						MarkdownDescription: "**\"Default mapping\"** in the Jamf Security Cloud admin UI — the " +
+						MarkdownDescription: "**\"Default mapping\"** in the Jamf Security Cloud admin UI: the " +
 							"Jamf Security Cloud device group devices join when no mapping matches. Leave unset " +
 							"for the built-in Default Group.",
 						Optional: true,
@@ -521,12 +521,12 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						MarkdownDescription: "Group assignments, evaluated in order: a device joins the group of " +
 							"the first entry it matches, so put the most specific first. An empty list clears " +
 							"every mapping, and so does omitting this while still declaring " +
-							"`group_membership_mapping` — the block replaces what it does not mention.",
+							"`group_membership_mapping`, because the block replaces what it does not mention.",
 						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"uem_group_id": schema.StringAttribute{
-									MarkdownDescription: "**\"UEM group\"** in the Jamf Security Cloud admin UI — " +
+									MarkdownDescription: "**\"UEM group\"** in the Jamf Security Cloud admin UI: " +
 										"the Jamf Pro group, written as `computer_` or `mobile_` followed by the " +
 										"group's number, for example `computer_12`.\n\n" +
 										"This composes out of a `jamfplatform_device_group`, whose `device_type` " +
@@ -534,7 +534,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 										"number:\n\n" +
 										"    uem_group_id = \"${jamfplatform_device_group.x.device_type}_${jamfplatform_device_group.x.jamf_pro_id}\"\n\n" +
 										"Jamf Security Cloud does not check that the group exists, so a wrong " +
-										"number is accepted and simply never matches.",
+										"number is accepted and never matches.",
 									Required: true,
 									Validators: []validator.String{
 										stringvalidator.RegexMatches(
@@ -545,7 +545,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 								},
 								"security_cloud_group_id": schema.StringAttribute{
 									MarkdownDescription: "**\"Jamf Security Cloud group\"** in the Jamf Security " +
-										"Cloud admin UI — the ID of the device group members of the Jamf Pro group " +
+										"Cloud admin UI: the ID of the device group members of the Jamf Pro group " +
 										"are assigned to. Jamf Security Cloud does not check that the group " +
 										"exists.",
 									Required: true,

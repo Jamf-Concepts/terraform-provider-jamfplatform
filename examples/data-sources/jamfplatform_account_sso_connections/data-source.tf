@@ -11,8 +11,8 @@ output "connection_types_by_id" {
 }
 
 # Which connection signs people in for which domains, and the products each one
-# reaches. Only the product names are reported here — the tenants within each
-# product are never returned, and the provider-specific settings are reported one
+# reaches. Only the product names are reported here; the tenants within each
+# product are never returned. The provider-specific settings are reported one
 # connection at a time by the singular data source.
 output "connection_coverage" {
   value = [

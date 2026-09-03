@@ -1,10 +1,10 @@
-# Jamf Cloud Distribution Service (JCDS) — no credentials required.
+# Jamf Cloud Distribution Service (JCDS). No credentials required.
 resource "jamfplatform_pro_cloud_distribution_point" "this" {
   cdn_type = "JAMF_CLOUD"
   master   = false
 }
 
-# Amazon Web Services (S3 + CloudFront signed URLs) — credentials required.
+# Amazon Web Services (S3 + CloudFront signed URLs). Credentials required.
 # username = Access Key ID, password = Secret access key (WriteOnly).
 # private_key is the CloudFront signing key, required when require_signed_urls = true.
 #
@@ -18,7 +18,7 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 #   expiration_seconds  = 3600
 # }
 
-# Akamai — username/password plus upload, directory, and download endpoints.
+# Akamai: username/password plus upload, directory, and download endpoints.
 #
 # resource "jamfplatform_pro_cloud_distribution_point" "akamai" {
 #   cdn_type     = "AKAMAI"

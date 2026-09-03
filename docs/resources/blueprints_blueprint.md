@@ -3,7 +3,7 @@
 page_title: "jamfplatform_blueprints_blueprint Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Resource schema for creating and managing Jamf Blueprints. Requires Blueprints API access.
+  Manages a Jamf blueprint. Requires Blueprints API access.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_blueprints_blueprint (Resource)
 
-Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.
+Manages a Jamf blueprint. Requires **Blueprints API** access.
 
 **Required Jamf permissions**
 
@@ -26,12 +26,12 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Blueprints are authored with `component_blocks` — an ordered list where each block appears as a
+# Blueprints are authored with `component_blocks`, an ordered list where each block appears as a
 # step in the Jamf Blueprints editor, with its own name, its own optional activation condition, and
 # its own components. Blocks are applied in the order listed, and a block may contain more than one
 # component.
 
-# Single block — Software Update Settings
+# Single block: Software Update Settings
 resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   name        = "Software Update Settings"
   description = "Managed by Terraform"
@@ -69,7 +69,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   ]
 }
 
-# Two components in a single block — a block may carry more than one component.
+# Two components in a single block. A block may carry more than one component.
 resource "jamfplatform_blueprints_blueprint" "baseline_restrictions" {
   name        = "Baseline Restrictions"
   description = "Managed by Terraform"
@@ -93,7 +93,7 @@ resource "jamfplatform_blueprints_blueprint" "baseline_restrictions" {
   ]
 }
 
-# Multiple blocks — each is a separate step, applied in order. The same component type may appear in
+# Multiple blocks. Each is a separate step, applied in order. The same component type may appear in
 # more than one block, and each block can carry its own activation condition.
 resource "jamfplatform_blueprints_blueprint" "multi_step" {
   name        = "Multi-Step Components"
@@ -202,7 +202,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 # https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
 #
 # Device groups in the expression are referenced by their Platform UUID, so a managed device group
-# can be referenced by its `id` with ordinary Terraform interpolation — keeping the condition in
+# can be referenced by its `id` with ordinary Terraform interpolation, keeping the condition in
 # sync with the group it points at.
 resource "jamfplatform_device_group" "shared_ipads" {
   name        = "Shared iPads"
@@ -241,7 +241,7 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 }
 
 # Deliver a managed AI tool configuration. The blueprint pins a published policy
-# version, so interpolating `published_version` keeps the two moving together —
+# version, so interpolating `published_version` keeps the two moving together.
 # Jamf refuses a blueprint that names a version which does not exist.
 data "jamfplatform_ai_governance_tool" "claude_code" {
   id = "com.anthropic.claudecode"
@@ -349,7 +349,7 @@ Optional:
 Optional:
 
 - `activation_conditions` (String) Optional activation condition expression that further restricts which scoped devices this block applies to; when omitted, this block applies to every device in the targeted device groups. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the syntax; the easiest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by Platform UUID, so ordinary interpolation keeps a condition in sync with a managed group, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`.
-- `ai_governance` (Attributes) AI Governance component — delivers published AI policy versions, such as managed Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the [AI Governance policies guide](../guides/ai-governance-policies). (see [below for nested schema](#nestedatt--component_blocks--ai_governance))
+- `ai_governance` (Attributes) AI Governance component. Delivers published AI policy versions, such as managed Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the [AI Governance policies guide](../guides/ai-governance-policies). (see [below for nested schema](#nestedatt--component_blocks--ai_governance))
 - `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--component_blocks--audio_accessory_settings))
 - `custom_declarations` (Attributes) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--component_blocks--custom_declarations))
 - `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--component_blocks--disk_management_settings))
@@ -378,7 +378,7 @@ Required:
 
 Required:
 
-- `policy_id` (String) ID of the AI policy to deliver — the `id` of a `jamfplatform_ai_governance_policy`.
+- `policy_id` (String) ID of the AI policy to deliver: the `id` of a `jamfplatform_ai_governance_policy`.
 - `version` (Number) Which published version of the policy to deliver. A blueprint pins a version rather than tracking the policy, so this is normally the policy's `published_version`. The version must already be published: an unpublished policy cannot be delivered.
 
 
@@ -433,7 +433,7 @@ Required:
 
 Optional:
 
-- `settings` (String) Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. Jamf validates each payload against Apple's payload keys for its `payload_type`, and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, or a missing required key is reported before an apply rather than failing one. Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, `payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. Values Jamf treats as credentials — a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` and `OuterIdentity` — are returned redacted, and the provider keeps what you wrote so the plan still settles; an imported blueprint carries the redaction, because the real value cannot be read back.
+- `settings` (String) Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. Jamf validates each payload against Apple's payload keys for its `payload_type`, and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, or a missing required key is reported before an apply rather than failing one. Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, `payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. Values Jamf treats as credentials (a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` and `OuterIdentity`) are returned redacted, and the provider keeps what you wrote so the plan still settles. an imported blueprint carries the redaction, because the real value cannot be read back.
 
 
 <a id="nestedatt--component_blocks--math_settings"></a>
@@ -511,7 +511,7 @@ Optional:
 
 - `folder` (Attributes Set) Bookmarks within this folder. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks--folder))
 - `type` (String) Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).
-- `url` (String) The URL for direct bookmarks (not used for folders).
+- `url` (String) The URL for a direct bookmark. Folders do not take one.
 
 <a id="nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
 ### Nested Schema for `component_blocks.safari_bookmarks.managed_bookmarks.bookmarks.folder`
@@ -703,10 +703,10 @@ Optional:
 - `automatic_download` (String) Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
-- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedatt--component_blocks--software_update_settings--beta_offer_programs))
+- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1–1000 characters each). (see [below for nested schema](#nestedatt--component_blocks--software_update_settings--beta_offer_programs))
 - `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
-- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
-- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
+- `beta_require_program_description` (String) Required beta program description (1–1000 characters). Must be specified with `beta_require_program_token`.
+- `beta_require_program_token` (String) Required beta program token (1–1000 characters). Must be specified with `beta_require_program_description`.
 - `deferral_combined_period_days` (Number) Number of days to defer combined updates. Range: `1`-`90`.
 - `deferral_major_period_days` (Number) Number of days to defer major updates. Range: `1`-`90`.
 - `deferral_minor_period_days` (Number) Number of days to defer minor updates. Range: `1`-`90`.
@@ -721,8 +721,8 @@ Optional:
 
 Required:
 
-- `description` (String) Beta program description (1-1000 characters).
-- `token` (String) Beta program token (1-1000 characters).
+- `description` (String) Beta program description (1–1000 characters).
+- `token` (String) Beta program token (1–1000 characters).
 
 
 
@@ -830,7 +830,7 @@ Optional:
 
 - `folder` (Attributes Set) Bookmarks within this folder. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks--bookmarks--folder))
 - `type` (String) Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).
-- `url` (String) The URL for direct bookmarks (not used for folders).
+- `url` (String) The URL for a direct bookmark. Folders do not take one.
 
 <a id="nestedatt--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
 ### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks.folder`
@@ -1022,10 +1022,10 @@ Optional:
 - `automatic_download` (String) Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
-- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedatt--software_update_settings--beta_offer_programs))
+- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1–1000 characters each). (see [below for nested schema](#nestedatt--software_update_settings--beta_offer_programs))
 - `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
-- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
-- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
+- `beta_require_program_description` (String) Required beta program description (1–1000 characters). Must be specified with `beta_require_program_token`.
+- `beta_require_program_token` (String) Required beta program token (1–1000 characters). Must be specified with `beta_require_program_description`.
 - `deferral_combined_period_days` (Number) Number of days to defer combined updates. Range: `1`-`90`.
 - `deferral_major_period_days` (Number) Number of days to defer major updates. Range: `1`-`90`.
 - `deferral_minor_period_days` (Number) Number of days to defer minor updates. Range: `1`-`90`.
@@ -1040,8 +1040,8 @@ Optional:
 
 Required:
 
-- `description` (String) Beta program description (1-1000 characters).
-- `token` (String) Beta program token (1-1000 characters).
+- `description` (String) Beta program description (1–1000 characters).
+- `token` (String) Beta program token (1–1000 characters).
 
 
 

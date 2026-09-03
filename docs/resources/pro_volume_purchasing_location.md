@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_volume_purchasing_location Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a .vpptoken file (already base64-encoded by Apple — supply the file contents directly via file("/path/to/vpp.vpptoken")). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates last_sync_time before committing the resource. The default create timeout is 30 minutes — increase via timeouts { create = "60m" } if your tenant has a large catalog.
+  Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a .vpptoken file (already base64-encoded by Apple, so supply the file contents directly via file("/path/to/vpp.vpptoken")). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates last_sync_time before committing the resource. The default create timeout is 30 minutes; raise it with timeouts { create = "60m" } if your tenant has a large catalog.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_volume_purchasing_location (Resource)
 
-Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a `.vpptoken` file (already base64-encoded by Apple — supply the file contents directly via `file("/path/to/vpp.vpptoken")`). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates `last_sync_time` before committing the resource. The default create timeout is 30 minutes — increase via `timeouts { create = "60m" }` if your tenant has a large catalog.
+Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a `.vpptoken` file (already base64-encoded by Apple, so supply the file contents directly via `file("/path/to/vpp.vpptoken")`). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates `last_sync_time` before committing the resource. The default create timeout is 30 minutes; raise it with `timeouts { create = "60m" }` if your tenant has a large catalog.
 
 **Required Jamf permissions**
 
@@ -28,16 +28,17 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # Manages a Jamf Pro Volume Purchasing (VPP) location.
 #
-# `service_token` is `WriteOnly` — the contents of the `.vpptoken` file
+# `service_token` is `WriteOnly`. The contents of the `.vpptoken` file
 # downloaded from Apple Business Manager / Apple School Manager are sent to
 # Jamf Pro on writes but never persisted in Terraform state. The file already
 # contains a base64-encoded payload, so use `file()` (not `filebase64()`).
 # Bump `service_token_wo_version` to rotate the stored token on the next apply.
 #
-# Create + token-rotating Update perform: POST → Reclaim → poll until the
-# Apple-side content sync completes (`last_sync_time != null`) → final GET.
-# On large catalogs the sync can take minutes; override the default 30-minute
-# create timeout with the `timeouts` block if your tenant needs longer.
+# Creating the location, and rotating its token, both wait for the Apple-side
+# content sync to finish (`last_sync_time` becomes non-null) before the apply
+# completes. On large catalogs the sync can take minutes; override the default
+# 30-minute create timeout with the `timeouts` block if your tenant needs
+# longer.
 resource "jamfplatform_pro_volume_purchasing_location" "prod" {
   name                     = "vpp-prod"
   service_token            = file("${path.module}/tokens/vpp-prod.vpptoken")
@@ -82,22 +83,22 @@ output "vpp_prod_purchased_apps" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `name` (String) Display name for the VPP location in the Jamf Pro admin UI. Must not be empty.
-- `service_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.vpptoken` file downloaded from Apple Business Manager / Apple School Manager. The `.vpptoken` file is already a base64 string on disk — supply it directly via `file("/path/to/vpp.vpptoken")`; do NOT base64-encode it again. `WriteOnly` — the value is sent to Jamf Pro on create and on token-rotating updates but **never persisted in Terraform state**. Jamf Pro never returns the token on reads, so the only signal Terraform can use to rotate the stored token is the companion `service_token_wo_version` integer. The provider trims surrounding whitespace from the supplied string before sending (Apple's downloaded `.vpptoken` files often carry a trailing newline that Jamf Pro rejects).
-- `service_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `service_token`. Bump this integer (any change) to force an update that re-sends the current `service_token` to Jamf Pro. Initial create should set `service_token_wo_version = 1`. Required because `service_token` itself is Required — keeping the companion Required keeps the rotation signal explicit in config.
+- `service_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.vpptoken` file downloaded from Apple Business Manager / Apple School Manager. The `.vpptoken` file is already a base64 string on disk, so supply it directly via `file("/path/to/vpp.vpptoken")`. Do not base64-encode it again. `WriteOnly`: the value is sent to Jamf Pro on create and on token-rotating updates, but is **never persisted in Terraform state**. Jamf Pro never returns the token on reads, so the only signal Terraform can use to rotate the stored token is the companion `service_token_wo_version` integer. The provider trims surrounding whitespace from the supplied string before sending (Apple's downloaded `.vpptoken` files often carry a trailing newline that Jamf Pro rejects).
+- `service_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `service_token`. Bump this integer (any change) to force an update that re-sends the current `service_token` to Jamf Pro. Initial create should set `service_token_wo_version = 1`. Required because `service_token` is itself Required: keeping the companion Required keeps the rotation signal explicit in config.
 
 ### Optional
 
 - `auto_register_managed_users` (Boolean) Whether Jamf Pro should auto-register managed users associated with this location. Jamf Pro decides the default on create.
 - `automatically_populate_purchased_content` (Boolean) Whether Jamf Pro should automatically populate purchased content from Apple after every sync. Jamf Pro decides the default on create; leave the attribute unset to let Jamf Pro choose.
 - `send_notification_when_no_longer_assigned` (Boolean) Whether Jamf Pro should send a notification when a previously-assigned content item is no longer assigned to the location. Jamf Pro decides the default on create.
-- `site_id` (String) Optional Jamf Pro site ID to associate with this VPP location. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default — leave the attribute unset to let Jamf Pro decide.
+- `site_id` (String) Optional Jamf Pro site ID to associate with this VPP location. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default. Leave the attribute unset to let Jamf Pro decide.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
 - `apple_id` (String) Apple ID associated with the uploaded service token.
-- `client_context_mismatch` (Boolean) Whether Jamf Pro detected a client-context mismatch for this location. Should be `false` after a successful create — the provider always reclaims licenses immediately after registering the location to clear residual mismatches inherited from a previously shared service token. Returned by Jamf Pro; not user-settable. Jamf Pro recomputes this value on every read so the attribute is shown as `(known after apply)` on update.
-- `content` (Attributes List) Apple-returned purchased-content catalog for this location, one row per `adam_id`. Returned by Jamf Pro; not user-settable — consumers (e.g. mobile-device app / Mac app resources) can look up `license_count_total` / `license_count_in_use` for a given `adam_id` to verify a license is available before assigning. The catalog mirrors the most recent Apple sync, which can update independently of Terraform applies, so the attribute is shown as `(known after apply)` on every update. (see [below for nested schema](#nestedatt--content))
+- `client_context_mismatch` (Boolean) Whether Jamf Pro detected a client-context mismatch for this location. Should be `false` after a successful create, because the provider reclaims licenses immediately after registering the location to clear residual mismatches inherited from a previously shared service token. Returned by Jamf Pro; not user-settable. Jamf Pro recomputes this value on every read so the attribute is shown as `(known after apply)` on update.
+- `content` (Attributes List) Apple-returned purchased-content catalog for this location, one row per `adam_id`. Returned by Jamf Pro; not user-settable. Consumers such as the mobile device app and Mac app resources can look up `license_count_total` / `license_count_in_use` for a given `adam_id` to verify a license is available before assigning. The catalog mirrors the most recent Apple sync, which can update independently of Terraform applies, so the attribute is shown as `(known after apply)` on every update. (see [below for nested schema](#nestedatt--content))
 - `country_code` (String) Apple-returned country code for the location.
 - `email` (String) Apple-returned contact email for the location.
 - `id` (String) Volume Purchasing location ID assigned by Jamf Pro.

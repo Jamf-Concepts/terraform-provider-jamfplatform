@@ -139,7 +139,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, _ resource.SchemaReque
 			"Destroying a group does not fail when something still points at it. Jamf Security Cloud removes the " +
 			"group and quietly drops it from every app assignment and mapping that named it, which can leave those " +
 			"objects assigned to nobody. Check what references a group before removing it.\n\n" +
-			"The built-in group named \"Default Group\" cannot be managed here — Jamf Security Cloud gives it no " +
+			"The built-in group named \"Default Group\" cannot be managed here: Jamf Security Cloud gives it no " +
 			"identifier and reserves its name. Use the `jamfplatform_security_cloud_device_groups` data source to " +
 			"see it." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -152,7 +152,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, _ resource.SchemaReque
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "**\"Group name\"** in the Jamf Security Cloud admin UI. Must be unique on the " +
-					"tenant — Jamf Security Cloud compares names exactly, so two groups may differ only in " +
+					"tenant. Jamf Security Cloud compares names exactly, so two groups may differ only in " +
 					"capitalisation. Leading and trailing whitespace is not accepted, because Jamf Security Cloud " +
 					"would silently remove it. There is no length limit.",
 				Required: true,

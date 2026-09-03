@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_vpp_assignment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
+  Manages a Jamf Pro VPP assignment, a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
   Related: jamfplatform_pro_vpp_invitation registers users with a VPP account; device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -14,7 +14,7 @@ description: |-
 
 # jamfplatform_pro_vpp_assignment (Resource)
 
-Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
+Manages a Jamf Pro VPP assignment, a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
 
 Related: `jamfplatform_pro_vpp_invitation` registers users with a VPP account; device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.
 
@@ -53,8 +53,8 @@ resource "jamfplatform_pro_vpp_assignment" "apps" {
 
 # VPP assignment distributing books to all Jamf users.
 #
-# Note: un-assigning a book removes it from the assignment, but Apple does not
-# return or refund the underlying book license to the account.
+# Un-assigning a book removes it from the assignment, but Apple does not return
+# or refund the underlying book license to the account.
 resource "jamfplatform_pro_vpp_assignment" "books" {
   name                 = "Volume Purchasing — Reading List"
   vpp_admin_account_id = "3"
@@ -75,16 +75,16 @@ resource "jamfplatform_pro_vpp_assignment" "books" {
 ### Required
 
 - `name` (String) Display name for the assignment. Must not be empty.
-- `vpp_admin_account_id` (String) ID of the VPP (Apple Business/School Manager) account ("Location") whose content this assignment distributes. Required. The VPP account itself is not managed by this provider. Changing this updates the assignment in place; the server rejects a change to a different account with a 409.
+- `vpp_admin_account_id` (String) ID of the VPP (Apple Business/School Manager) account ("Location") whose content this assignment distributes. Required. The VPP account itself is not managed by this provider. Changing this updates the assignment in place, but Jamf Pro refuses a move to a different account.
 
 ### Optional
 
-- `ebook_adam_ids` (Set of Number) Apple catalog adam IDs of the books to assign. Omit to leave the server's current books untouched; set to `[]` to clear all books; otherwise the listed books replace the assignment's books. Book names are resolved server-side.
+- `ebook_adam_ids` (Set of Number) Apple catalog adam IDs of the books to assign. Omit to leave the assignment's current books untouched; set to `[]` to clear all books; otherwise the listed books replace the assignment's books. Jamf Pro resolves the book names.
 
-Note: un-assigning a book removes it from the assignment on the wire, but Apple does not return or refund the underlying book license to the account — book licenses are consumed irrevocably.
-- `ios_app_adam_ids` (Set of Number) Apple catalog adam IDs of the iOS apps to assign. Omit to leave the server's current iOS apps untouched; set to `[]` to clear all iOS apps; otherwise the listed apps replace the assignment's iOS apps. App names are resolved server-side.
-- `mac_app_adam_ids` (Set of Number) Apple catalog adam IDs of the Mac apps to assign. Omit to leave the server's current Mac apps untouched; set to `[]` to clear all Mac apps; otherwise the listed apps replace the assignment's Mac apps. App names are resolved server-side.
-- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. (see [below for nested schema](#nestedatt--scope))
+Un-assigning a book removes it from the assignment, but Apple does not return or refund the underlying book license to the account. Book licenses are consumed irrevocably.
+- `ios_app_adam_ids` (Set of Number) Apple catalog adam IDs of the iOS apps to assign. Omit to leave the assignment's current iOS apps untouched; set to `[]` to clear all iOS apps; otherwise the listed apps replace the assignment's iOS apps. Jamf Pro resolves the app names.
+- `mac_app_adam_ids` (Set of Number) Apple catalog adam IDs of the Mac apps to assign. Omit to leave the assignment's current Mac apps untouched; set to `[]` to clear all Mac apps; otherwise the listed apps replace the assignment's Mac apps. Jamf Pro resolves the app names.
+- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and updates preserve whatever is configured outside Terraform. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -99,7 +99,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) The Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`

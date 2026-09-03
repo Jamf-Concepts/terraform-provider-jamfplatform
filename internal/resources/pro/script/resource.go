@@ -80,7 +80,7 @@ func (r *ScriptResource) IdentitySchema(ctx context.Context, req resource.Identi
 // Schema returns the Terraform schema for the script resource.
 func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices through policies or Self Service workflows. Jamf Pro reserves parameter slots 1–3; the labels you control are `parameter_4` through `parameter_11`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Script ID assigned by Jamf Pro.",
@@ -156,7 +156,7 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"parameter_10": optionalParameterAttribute(10),
 			"parameter_11": optionalParameterAttribute(11),
 			"script_contents": schema.StringAttribute{
-				MarkdownDescription: "Script contents as plain text (shell, Python, etc.). Omit to leave the existing contents untouched — Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI; set to `\"\"` to clear. A declared value is owned by Terraform and reverts out-of-band edits.",
+				MarkdownDescription: "Script contents as plain text (shell, Python, and so on). Omit to leave the existing contents untouched: Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI. Set to `\"\"` to clear. A declared value is owned by Terraform and reverts out-of-band edits.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

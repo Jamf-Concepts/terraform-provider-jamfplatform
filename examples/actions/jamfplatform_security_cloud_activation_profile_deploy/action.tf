@@ -5,8 +5,8 @@
 # The activation profile code is issued when the profile is created. A profile
 # Terraform manages exposes it as its id, so the deploy can take it directly. For
 # a profile created in Jamf Security Cloud instead, read the code off the last
-# path segment of the profile's deployment page and pass it in as an input —
-# there is no way to look a code up by profile name.
+# path segment of the profile's deployment page and pass it in as an input.
+# There is no way to look a code up by profile name.
 resource "jamfplatform_security_cloud_activation_profile" "field_staff" {
   name      = "Field Staff"
   platforms = ["ios", "mac"]
@@ -30,9 +30,9 @@ resource "jamfplatform_device_group" "laptops" {
 }
 
 # jamf_pro_group_ids takes bare Jamf Pro group IDs, so jamf_pro_id goes in
-# unadorned. Note the contrast with uem_group_id on the
+# unadorned. Contrast uem_group_id on the
 # jamfplatform_security_cloud_uem_connect resource, which wants the same group
-# written as "mobile_20" — the two are not interchangeable.
+# written as "mobile_20". The two are not interchangeable.
 action "jamfplatform_security_cloud_activation_profile_deploy" "supervised_ios" {
   config {
     activation_profile_code = jamfplatform_security_cloud_activation_profile.field_staff.id

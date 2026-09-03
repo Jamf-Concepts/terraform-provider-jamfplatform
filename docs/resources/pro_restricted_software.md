@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_restricted_software Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro restricted software record — the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.
+  Manages a Jamf Pro restricted software record, the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. It restricts a process by name on the targeted computers, and can also kill the process, delete the application, and notify admins. Scope is computer-only, with targets and exclusions but no limitations.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_restricted_software (Resource)
 
-Manages a Jamf Pro restricted software record — the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.
+Manages a Jamf Pro restricted software record, the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. It restricts a process by name on the targeted computers, and can also kill the process, delete the application, and notify admins. Scope is computer-only, with targets and exclusions but no limitations.
 
 **Required Jamf permissions**
 
@@ -35,8 +35,8 @@ resource "jamfplatform_pro_restricted_software" "minimal" {
   }
 }
 
-# Kill the process on sight, notify admins, and show a message — scoped to every
-# computer with a couple of local users excluded.
+# Kill the process on sight, notify admins, and show a message. Scoped to every
+# computer, with a couple of local users excluded.
 resource "jamfplatform_pro_restricted_software" "block_chess" {
   general = {
     name                                 = "Block Chess"
@@ -54,7 +54,7 @@ resource "jamfplatform_pro_restricted_software" "block_chess" {
     }
 
     exclusions = {
-      # Free-text local usernames — not Jamf Pro object IDs.
+      # Free-text local usernames, not Jamf Pro object IDs.
       directory_service_or_local_user_names = ["labadmin", "kiosk"]
     }
   }
@@ -87,11 +87,11 @@ resource "jamfplatform_pro_restricted_software" "scoped" {
 
 ### Required
 
-- `general` (Attributes) General settings — the admin UI "Options" tab. `name` and `process_name` are required on create. (see [below for nested schema](#nestedatt--general))
+- `general` (Attributes) General settings. Mirrors the admin UI's "Options" tab. `name` and `process_name` are required on create. (see [below for nested schema](#nestedatt--general))
 
 ### Optional
 
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Scope, mirroring the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, with updates preserving it. Targets nest under `targets`, mirroring the Targets sub-tab, as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -127,7 +127,7 @@ Read-Only:
 Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by the targets. `directory_service_or_local_user_names` carries free-text local usernames (the admin UI "Directory Service/Local Users" exclusion), not Jamf Pro object IDs. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `targets` (Attributes) Scope targets — the audience the record applies to. Mirrors the admin UI's Scope > Targets tab: set `all_computers = true` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) Scope targets: the audience the record applies to. Mirrors the admin UI's Scope > Targets tab. Set `all_computers = true` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`

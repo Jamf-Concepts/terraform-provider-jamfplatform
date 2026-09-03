@@ -63,7 +63,7 @@ output "printer_example_by_name" {
 - `notes` (String) Free-text notes.
 - `os_requirements` (String) Operating-system version requirement.
 - `ppd` (String) Short name of the PPD file.
-- `ppd_contents` (String) Inline contents of the PPD file. Trailing whitespace is semantically ignored — the server strips it on every round-trip.
+- `ppd_contents` (String) Inline contents of the PPD file. Trailing whitespace is semantically ignored, because Jamf Pro strips it on every round-trip.
 - `ppd_path` (String) Filesystem path to the PPD file.
 - `shared` (Boolean) Whether the printer is shared.
 - `uri` (String) Device URI of the printer.

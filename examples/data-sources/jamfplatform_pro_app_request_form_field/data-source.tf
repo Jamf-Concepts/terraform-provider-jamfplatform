@@ -1,5 +1,5 @@
 # Look up an App Request form field by ID or by title (exactly one).
-# Titles are not unique — a by-title lookup that matches more than one field errors.
+# Titles are not unique. A by-title lookup matching more than one field errors.
 
 data "jamfplatform_pro_app_request_form_field" "by_id" {
   id = "12"

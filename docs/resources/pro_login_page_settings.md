@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_login_page_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Singleton — one record per tenant. The three disclaimer text fields (disclaimer_heading, disclaimer_main_text, action_text) are required on every write, regardless of include_custom_disclaimer — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only shown to users when include_custom_disclaimer = true, but the text must always be present. Omit = preserve — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. Import with terraform import jamfplatform_pro_login_page_settings.<name> singleton.
+  Manages the Jamf Pro login page disclaimer (Settings > System > Login page). One record per tenant. The three disclaimer text fields (disclaimer_heading, disclaimer_main_text, action_text) are required on every write, regardless of include_custom_disclaimer: Jamf Pro rejects a write that omits any of them or sends an empty string. The custom disclaimer is shown to users only when include_custom_disclaimer = true, but the text must always be present. A field you omit keeps its current Jamf Pro value, including on the first apply: the resource adopts the existing settings and changes only the fields you declare. Import with terraform import jamfplatform_pro_login_page_settings.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_login_page_settings (Resource)
 
-Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Singleton — one record per tenant. **The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are required on every write, regardless of `include_custom_disclaimer`** — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only *shown* to users when `include_custom_disclaimer = true`, but the text must always be present. **Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`.
+Manages the Jamf Pro login page disclaimer (Settings > System > Login page). One record per tenant. The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are **required on every write**, regardless of `include_custom_disclaimer`: Jamf Pro rejects a write that omits any of them or sends an empty string. The custom disclaimer is *shown* to users only when `include_custom_disclaimer = true`, but the text must always be present. A field you omit keeps its current Jamf Pro value, including on the first apply: the resource adopts the existing settings and changes only the fields you declare. Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -44,9 +44,9 @@ resource "jamfplatform_pro_login_page_settings" "this" {
 
 ### Optional
 
-- `action_text` (String) Text used for the button that acknowledges the disclaimer dialog ("Action"). Maximum 20 characters; must not be empty. Omit to leave the current value untouched.
-- `disclaimer_heading` (String) Text used for the title of the disclaimer dialog ("Heading"). Maximum 20 characters; must not be empty. Omit to leave the current value untouched.
-- `disclaimer_main_text` (String) Text used for the body of the disclaimer dialog ("Main"). Maximum 2,500 characters; must not be empty. Omit to leave the current value untouched.
+- `action_text` (String) Label on the button that acknowledges the disclaimer dialog ("Action"). Maximum 20 characters, and must not be empty. Omit to leave the current value untouched.
+- `disclaimer_heading` (String) Title text of the disclaimer dialog ("Heading"). Maximum 20 characters, and must not be empty. Omit to leave the current value untouched.
+- `disclaimer_main_text` (String) Body text of the disclaimer dialog ("Main"). Maximum 2,500 characters, and must not be empty. Omit to leave the current value untouched.
 - `include_custom_disclaimer` (Boolean) Whether the custom disclaimer message is shown on the Jamf Pro login page ("Include a disclaimer message"). The disclaimer text fields must be populated whether or not this is enabled. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

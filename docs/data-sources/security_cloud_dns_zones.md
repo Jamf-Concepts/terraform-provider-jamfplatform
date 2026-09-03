@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_dns_zones Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every Jamf Security Cloud custom DNS zone on the tenant. Jamf Security Cloud exposes no filter parameters for zones, so this data source takes no search arguments — filter the result in Terraform.
+  Lists every Jamf Security Cloud custom DNS zone on the tenant. Jamf Security Cloud exposes no filter parameters for zones, so this data source takes no search arguments. Filter the result in Terraform.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_dns_zones (Data Source)
 
-Lists every Jamf Security Cloud custom DNS zone on the tenant. Jamf Security Cloud exposes no filter parameters for zones, so this data source takes no search arguments — filter the result in Terraform.
+Lists every Jamf Security Cloud custom DNS zone on the tenant. Jamf Security Cloud exposes no filter parameters for zones, so this data source takes no search arguments. Filter the result in Terraform.
 
 **Required Jamf permissions**
 

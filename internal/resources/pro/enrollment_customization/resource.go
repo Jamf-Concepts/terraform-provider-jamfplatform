@@ -80,7 +80,7 @@ func (r *EnrollmentCustomizationResource) IdentitySchema(ctx context.Context, re
 // resource.
 func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. " +
+		MarkdownDescription: "Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. " +
 			"At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. " +
 			"The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -114,7 +114,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"icon_source": schema.StringAttribute{
-				MarkdownDescription: "Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url` — supply one or the other, not both. When neither is set the customization is created without an icon.",
+				MarkdownDescription: "Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -174,7 +174,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"text_panes": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of text panes shown during enrollment. Each pane is identified server-side by `id` after creation; the framework reconciles panes by list position, so reordering elements in the middle of the list will trigger a churn of create + delete operations. Append new panes to the end of the list to avoid churn.",
+				MarkdownDescription: "Ordered list of text panes shown during enrollment. Jamf Pro assigns each pane an `id` after creation, and the framework reconciles panes by list position, so reordering elements in the middle of the list will trigger a churn of create + delete operations. Append new panes to the end of the list to avoid churn.",
 				Optional:            true,
 				// Jamf Pro tolerates duplicate display names server-side, but
 				// duplicates make admin-UI navigation ambiguous.
@@ -282,7 +282,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 							Required:            true,
 						},
 						"directory_service_groups": schema.ListNestedAttribute{
-							MarkdownDescription: "**\"Directory Service Groups\"** in the Jamf Pro admin UI. Optional allow-list restricting enrollment to members of specific directory-service groups. Jamf Pro de-duplicates entries server-side by `(group_name, directory_service_server_id)` and does not validate that the supplied server ID exists.",
+							MarkdownDescription: "**\"Directory Service Groups\"** in the Jamf Pro admin UI. Optional allow-list restricting enrollment to members of specific directory-service groups. Jamf Pro de-duplicates entries by `(group_name, directory_service_server_id)` and does not validate that the supplied server ID exists.",
 							Optional:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
@@ -351,7 +351,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 							},
 						},
 						"pass_user_info_to_jamf_connect": schema.BoolAttribute{
-							MarkdownDescription: "**\"Enable Jamf Pro to pass user information to Jamf Connect\"** in the Jamf Pro admin UI. Toggle controlling whether enrolment user info is forwarded to Jamf Connect.",
+							MarkdownDescription: "**\"Enable Jamf Pro to pass user information to Jamf Connect\"** in the Jamf Pro admin UI. Whether enrolment user info is forwarded to Jamf Connect.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers: []planmodifier.Bool{

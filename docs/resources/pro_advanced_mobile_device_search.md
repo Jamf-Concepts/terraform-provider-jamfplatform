@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_advanced_mobile_device_search Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
+  Manages a Jamf Pro advanced mobile device search, a saved criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are report concerns Jamf Pro computes, and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_advanced_mobile_device_search (Resource)
 
-Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
+Manages a Jamf Pro advanced mobile device search, a saved criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are report concerns Jamf Pro computes, and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
 
 **Required Jamf permissions**
 
@@ -26,7 +26,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ## Example Usage
 
 ```terraform
-# Advanced mobile device search — a saved, criteria-driven inventory query with a
+# Advanced mobile device search: a saved, criteria-driven inventory query with a
 # configurable set of display columns. Criteria order is significant: Jamf
 # evaluates left-to-right using the supplied `and_or` joins and parentheses.
 resource "jamfplatform_pro_advanced_mobile_device_search" "unmanaged_ipads" {
@@ -46,8 +46,8 @@ resource "jamfplatform_pro_advanced_mobile_device_search" "unmanaged_ipads" {
     },
   ]
 
-  # The set of inventory columns shown in the results. Order is not significant
-  # — Jamf Pro returns the columns in its own canonical order.
+  # The set of inventory columns shown in the results. Order is not
+  # significant; Jamf Pro returns the columns in its own canonical order.
   display_fields = ["Display Name", "Serial Number", "Last Inventory Update"]
 }
 
@@ -75,8 +75,8 @@ resource "jamfplatform_pro_advanced_mobile_device_search" "all_in_site" {
 
 ### Optional
 
-- `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria. (see [below for nested schema](#nestedatt--criteria))
-- `display_fields` (Set of String) Set of inventory column names to display in the search results (e.g. `Display Name`, `Serial Number`, `Last Inventory Update`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.
+- `criteria` (Attributes List) Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omitting the attribute leaves any existing criteria untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all criteria. (see [below for nested schema](#nestedatt--criteria))
+- `display_fields` (Set of String) Set of inventory column names shown in the search results, for example `Display Name`, `Serial Number`, `Last Inventory Update`. Order is not significant, because Jamf Pro returns the columns in its own canonical order. Omitting the attribute leaves any existing columns untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all display columns.
 - `site_id` (String) Optional Jamf Pro site ID to scope the search. Omit to leave unscoped (Jamf Pro reports the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

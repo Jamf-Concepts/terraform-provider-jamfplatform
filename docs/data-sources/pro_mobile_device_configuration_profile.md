@@ -56,7 +56,7 @@ output "category_name" {
 - `category_name` (String) Category display name.
 - `description` (String) Profile description.
 - `distribution_method` (String) How the profile reaches devices.
-- `level` (String) Delivery level — `Device Level` or `User Level`.
+- `level` (String) Delivery level. Either `Device Level` or `User Level`.
 - `redeploy_days_before_certificate_expires` (Number) Days before certificate expiry to trigger redeployment.
 - `redeploy_on_update` (String) Re-deploy policy on update.
 - `site_id` (String) Site ID. `-1` means no site.

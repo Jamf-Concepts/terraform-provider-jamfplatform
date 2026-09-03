@@ -4,13 +4,17 @@ page_title: "jamfplatform_pro_self_service_branding_image Resource - terraform-p
 subcategory: ""
 description: |-
   Uploads an image to Jamf Pro for use in Self Service branding. The resulting id is referenced by jamfplatform_pro_self_service_branding_macos (icon_id / banner_image_id) and jamfplatform_pro_self_service_branding_ios (icon_id).
-  The Self Service branding image store is separate from the general Jamf Pro icon store (jamfplatform_pro_icon): the same numeric ID refers to different images in each store, so a branding configuration must reference an ID minted by this resource, not a jamfplatform_pro_icon ID.
-  Source-driven change detection: the provider opens image_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. When the hash changes, Terraform replaces the resource — Jamf Pro has no branding-image update endpoint. When the hash is unchanged the resource is stable.
-  Source types:
-  Local file: image_file_source = "./banner.png". Read on every plan; stable unless file content changes.URL: image_file_source = "https://cdn.example.com/banner.png". Downloaded on every plan; triggers replacement when remote content changes.
-  Recommended dimensions (from the Jamf Pro UI): icon 180×180, Home page banner image 1500×235. PNG or GIF.
-  Destroy behaviour: Jamf Pro has no API to delete a branding image. terraform destroy and replacements both remove the resource from Terraform state only; the image record persists on the tenant.
-  Import (terraform import jamfplatform_pro_self_service_branding_image.example 81): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point image_file_source at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.
+  The Self Service branding image store is separate from the general Jamf Pro icon store (jamfplatform_pro_icon). The same numeric ID refers to a different image in each store, so a branding configuration must reference an ID minted by this resource rather than a jamfplatform_pro_icon ID.
+  Change detection
+  The provider opens image_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. A changed hash replaces the resource, because Jamf Pro cannot update a branding image in place. An unchanged hash leaves the resource stable.
+  Source types
+  A local path (image_file_source = "./banner.png"): read on every plan, and stable unless the file content changes.A URL (image_file_source = "https://cdn.example.com/banner.png"): downloaded on every plan, and replaced when the remote content changes.
+  Dimensions
+  The Jamf Pro admin UI recommends 180×180 for an icon and 1500×235 for a home page banner. PNG or GIF.
+  Destroy behaviour
+  Jamf Pro cannot delete a branding image. terraform destroy and replacements remove the resource from Terraform state only; the image stays on the tenant.
+  Import
+  terraform import jamfplatform_pro_self_service_branding_image.example 81. The provider downloads the image bytes from Jamf Pro and stores their SHA-256. Jamf Pro may re-encode an uploaded image, so point image_file_source at the downloaded copy rather than your original upload; otherwise the next plan shows a replacement that changes nothing.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -22,19 +26,28 @@ description: |-
 
 Uploads an image to Jamf Pro for use in Self Service branding. The resulting `id` is referenced by `jamfplatform_pro_self_service_branding_macos` (`icon_id` / `banner_image_id`) and `jamfplatform_pro_self_service_branding_ios` (`icon_id`).
 
-The Self Service branding image store is **separate** from the general Jamf Pro icon store (`jamfplatform_pro_icon`): the same numeric ID refers to different images in each store, so a branding configuration must reference an ID minted by this resource, not a `jamfplatform_pro_icon` ID.
+The Self Service branding image store is **separate** from the general Jamf Pro icon store (`jamfplatform_pro_icon`). The same numeric ID refers to a different image in each store, so a branding configuration must reference an ID minted by this resource rather than a `jamfplatform_pro_icon` ID.
 
-**Source-driven change detection**: the provider opens `image_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. When the hash changes, Terraform replaces the resource — Jamf Pro has no branding-image update endpoint. When the hash is unchanged the resource is stable.
+### Change detection
 
-**Source types**:
-- **Local file**: `image_file_source = "./banner.png"`. Read on every plan; stable unless file content changes.
-- **URL**: `image_file_source = "https://cdn.example.com/banner.png"`. Downloaded on every plan; triggers replacement when remote content changes.
+The provider opens `image_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. A changed hash replaces the resource, because Jamf Pro cannot update a branding image in place. An unchanged hash leaves the resource stable.
 
-**Recommended dimensions** (from the Jamf Pro UI): icon 180×180, Home page banner image 1500×235. PNG or GIF.
+### Source types
 
-**Destroy behaviour**: Jamf Pro has no API to delete a branding image. `terraform destroy` and replacements both remove the resource from Terraform state only; the image record persists on the tenant.
+- A local path (`image_file_source = "./banner.png"`): read on every plan, and stable unless the file content changes.
+- A URL (`image_file_source = "https://cdn.example.com/banner.png"`): downloaded on every plan, and replaced when the remote content changes.
 
-**Import** (`terraform import jamfplatform_pro_self_service_branding_image.example 81`): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point `image_file_source` at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.
+### Dimensions
+
+The Jamf Pro admin UI recommends 180×180 for an icon and 1500×235 for a home page banner. PNG or GIF.
+
+### Destroy behaviour
+
+Jamf Pro cannot delete a branding image. `terraform destroy` and replacements remove the resource from Terraform state only; the image stays on the tenant.
+
+### Import
+
+`terraform import jamfplatform_pro_self_service_branding_image.example 81`. The provider downloads the image bytes from Jamf Pro and stores their SHA-256. Jamf Pro may re-encode an uploaded image, so point `image_file_source` at the downloaded copy rather than your original upload; otherwise the next plan shows a replacement that changes nothing.
 
 **Required Jamf permissions**
 
@@ -49,7 +62,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # Upload a branding image (icon or banner) for Self Service branding.
 # The resulting id is referenced by the macOS / iOS branding resources.
-# Local file — provider hashes bytes on every plan; replaces on content change.
+# Local file. Provider hashes bytes on every plan; replaces on content change.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png" # recommended 180x180 PNG/GIF
 }
@@ -58,7 +71,7 @@ resource "jamfplatform_pro_self_service_branding_image" "banner" {
   image_file_source = "./self-service-banner.png" # recommended 1500x235 PNG/GIF
 }
 
-# URL source — provider downloads on every plan; replaces on upstream change.
+# URL source. Provider downloads on every plan; replaces on upstream change.
 # resource "jamfplatform_pro_self_service_branding_image" "from_url" {
 #   image_file_source = "https://cdn.example.com/self-service-icon.png"
 # }

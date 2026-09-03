@@ -1,4 +1,4 @@
-# Return to Service configuration — pairs a display name with a Wi-Fi
+# Return to Service configuration. Pairs a display name with a Wi-Fi
 # configuration profile. When a device is erased with Return to Service, the
 # referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol
 # into Jamf Pro without manual setup.

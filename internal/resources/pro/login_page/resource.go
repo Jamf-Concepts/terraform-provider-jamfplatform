@@ -67,7 +67,7 @@ func (r *LoginPageSettingsResource) IdentitySchema(ctx context.Context, req reso
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — login page settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Login page settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -78,9 +78,9 @@ func (r *LoginPageSettingsResource) IdentitySchema(ctx context.Context, req reso
 func (r *LoginPageSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro login page disclaimer (Settings > System > Login page). " +
-			"Singleton — one record per tenant. " +
-			"**The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are required on every write, regardless of `include_custom_disclaimer`** — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only *shown* to users when `include_custom_disclaimer = true`, but the text must always be present. " +
-			"**Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. " +
+			"One record per tenant. " +
+			"The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are **required on every write**, regardless of `include_custom_disclaimer`: Jamf Pro rejects a write that omits any of them or sends an empty string. The custom disclaimer is *shown* to users only when `include_custom_disclaimer = true`, but the text must always be present. " +
+			"A field you omit keeps its current Jamf Pro value, including on the first apply: the resource adopts the existing settings and changes only the fields you declare. " +
 			"Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -101,7 +101,7 @@ func (r *LoginPageSettingsResource) Schema(ctx context.Context, req resource.Sch
 				},
 			},
 			"disclaimer_heading": schema.StringAttribute{
-				MarkdownDescription: "Text used for the title of the disclaimer dialog (\"Heading\"). Maximum 20 characters; must not be empty. " +
+				MarkdownDescription: "Title text of the disclaimer dialog (\"Heading\"). Maximum 20 characters, and must not be empty. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
@@ -113,7 +113,7 @@ func (r *LoginPageSettingsResource) Schema(ctx context.Context, req resource.Sch
 				},
 			},
 			"disclaimer_main_text": schema.StringAttribute{
-				MarkdownDescription: "Text used for the body of the disclaimer dialog (\"Main\"). Maximum 2,500 characters; must not be empty. " +
+				MarkdownDescription: "Body text of the disclaimer dialog (\"Main\"). Maximum 2,500 characters, and must not be empty. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
@@ -125,7 +125,7 @@ func (r *LoginPageSettingsResource) Schema(ctx context.Context, req resource.Sch
 				},
 			},
 			"action_text": schema.StringAttribute{
-				MarkdownDescription: "Text used for the button that acknowledges the disclaimer dialog (\"Action\"). Maximum 20 characters; must not be empty. " +
+				MarkdownDescription: "Label on the button that acknowledges the disclaimer dialog (\"Action\"). Maximum 20 characters, and must not be empty. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,

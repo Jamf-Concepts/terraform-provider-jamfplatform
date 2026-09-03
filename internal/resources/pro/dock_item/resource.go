@@ -116,7 +116,7 @@ func (r *DockItemResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"contents": schema.StringAttribute{
-				MarkdownDescription: "PLIST representation of the dock tile. Read-only — Jamf Pro derives this from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.",
+				MarkdownDescription: "Property-list representation of the dock tile. Jamf Pro derives it from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

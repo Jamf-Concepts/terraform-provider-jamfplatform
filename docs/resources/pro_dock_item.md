@@ -60,7 +60,7 @@ resource "jamfplatform_pro_dock_item" "downloads" {
 
 ### Read-Only
 
-- `contents` (String) PLIST representation of the dock tile. Read-only — Jamf Pro derives this from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.
+- `contents` (String) Property-list representation of the dock tile. Jamf Pro derives it from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.
 - `id` (String) Dock item ID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>

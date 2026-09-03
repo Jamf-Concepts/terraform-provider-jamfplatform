@@ -1,8 +1,8 @@
 # App Request settings (Settings → Self Service → App Request).
 #
-# Singleton — one record per tenant. This resource adopts the existing
-# settings on first apply. Enabling App Requests requires a static user group
-# (the requesters) and a configured SMTP server (so approval emails can be sent).
+# One record per tenant. This resource adopts the existing settings on first
+# apply. Enabling App Requests requires a static user group (the requesters) and
+# a configured SMTP server, so approval emails can be sent.
 
 resource "jamfplatform_pro_user_group" "app_request_requesters" {
   name       = "App Request Requesters"

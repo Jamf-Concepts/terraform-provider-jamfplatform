@@ -65,7 +65,7 @@ func (r *ManagedSoftwareUpdateResource) IdentitySchema(ctx context.Context, req 
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — the Managed Software Updates feature is one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". The Managed Software Updates feature is one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -75,9 +75,9 @@ func (r *ManagedSoftwareUpdateResource) IdentitySchema(ctx context.Context, req 
 // Schema returns the Terraform schema for the Managed Software Updates feature.
 func (r *ManagedSoftwareUpdateResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro Managed Software Updates feature (Computers > Software updates and Mobile devices > Software updates — the \"Use new feature\" toggle). " +
-			"Singleton — one record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans; when disabled, those plans are turned off. " +
-			"**Omit = preserve** — if you omit `enabled`, the resource adopts the current Jamf Pro value rather than changing it. " +
+		MarkdownDescription: "Manages the Jamf Pro Managed Software Updates feature: the \"Use new feature\" toggle under Computers > Software updates and Mobile devices > Software updates. " +
+			"One record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans. When disabled, those plans are turned off. " +
+			"Omit `enabled` and the resource adopts the current Jamf Pro value rather than changing it. " +
 			"Turning the feature on or off happens in the background, so applying this resource waits for the change to take effect before completing. " +
 			"Import with `terraform import jamfplatform_pro_managed_software_update.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{

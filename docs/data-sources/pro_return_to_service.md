@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_return_to_service Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of id or display_name must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error.
+  Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of id or display_name must be supplied. Display names are not guaranteed unique: a name matching more than one configuration returns an error.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_return_to_service (Data Source)
 
-Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error.
+Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not guaranteed unique: a name matching more than one configuration returns an error.
 
 **Required Jamf permissions**
 
@@ -32,7 +32,7 @@ data "jamfplatform_pro_return_to_service" "by_id" {
 }
 
 # Look up a Return to Service configuration by exact display name. Display names
-# are not guaranteed unique — a name matching more than one configuration
+# are not guaranteed unique, so a name matching more than one configuration
 # returns an error.
 data "jamfplatform_pro_return_to_service" "by_name" {
   display_name = "Front Desk iPads"

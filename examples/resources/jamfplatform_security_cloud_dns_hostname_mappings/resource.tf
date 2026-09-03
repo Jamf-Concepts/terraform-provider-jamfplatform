@@ -25,7 +25,7 @@ resource "jamfplatform_security_cloud_dns_hostname_mappings" "internal" {
       connect_to_secure_dns = false
     },
 
-    # IPv6 only. Omit an address list entirely when there is none — an empty
+    # IPv6 only. Omit an address list entirely when there is none. An empty
     # collection is not accepted, and every mapping needs at least one address.
     {
       hostname              = "build.corp.example.com"

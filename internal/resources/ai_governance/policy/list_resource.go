@@ -81,7 +81,7 @@ func (r *PolicyListResource) ListResourceConfigSchema(_ context.Context, _ list.
 		Attributes: map[string]listschema.Attribute{
 			"schema_drift_only": listschema.BoolAttribute{
 				Description: "When true, return only policies whose settings schema version is behind the one Jamf " +
-					"now offers for their tool — the policies worth reviewing after a tool publishes a new schema.",
+					"now offers for their tool. These are the policies worth reviewing after a tool publishes a new schema.",
 				Optional: true,
 			},
 		},

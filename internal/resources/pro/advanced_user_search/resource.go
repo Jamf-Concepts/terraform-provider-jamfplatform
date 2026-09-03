@@ -81,7 +81,7 @@ func (r *AdvancedUserSearchResource) IdentitySchema(ctx context.Context, req res
 // Schema returns the Terraform schema for the advanced user search resource.
 func (r *AdvancedUserSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro advanced user search, a saved criteria-driven user query with a configurable set of display columns. The matched-user result set is report data Jamf Pro computes, and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced user search ID assigned by Jamf Pro.",
@@ -108,14 +108,14 @@ func (r *AdvancedUserSearchResource) Schema(ctx context.Context, req resource.Sc
 				Computed:            true,
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria.",
+				MarkdownDescription: "Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omit the attribute, or supply an empty list, for a search with no criteria.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: criteria.CriterionAttributes(ValidOperators),
 				},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Set of column names to display in the search results (e.g. `Full Name`, `Email Address`, `Username`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit for no display columns.",
+				MarkdownDescription: "Set of column names shown in the search results, for example `Full Name`, `Email Address`, `Username`. Order is not significant, because Jamf Pro returns the columns in its own canonical order. Omit for no display columns.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},

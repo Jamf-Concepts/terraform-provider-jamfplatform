@@ -90,9 +90,9 @@ func (r *ReEnrollmentSettingsResource) IdentitySchema(ctx context.Context, req r
 // Schema returns the resource schema.
 func (r *ReEnrollmentSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro **Re-enrollment** settings page (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.\n\n" +
-			"**Omit = preserve** — each `clear_*` toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set (the dropdown always has a selection).\n\n" +
-			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.\n\n" +
+		MarkdownDescription: "Manages the Jamf Pro Re-enrollment settings page (Settings → Global → Re-enrollment). One record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.\n\n" +
+			"Each `clear_*` toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and is restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no \"unset\": omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set, because the dropdown always has a selection.\n\n" +
+			"`terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.\n\n" +
 			"Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -141,11 +141,11 @@ func (r *ReEnrollmentSettingsResource) Schema(ctx context.Context, req resource.
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_management_history": schema.StringAttribute{
-				MarkdownDescription: "How much of a device's management command history is cleared when it re-enrolls. Matches the \"Clear Management History\" dropdown. Required — the dropdown always has a selection, and this resource overwrites it on every apply, so the value must be set explicitly. One of:\n" +
-					"- `DELETE_NOTHING` — Clear nothing.\n" +
-					"- `DELETE_ERRORS` — Clear failed commands.\n" +
-					"- `DELETE_EVERYTHING_EXCEPT_ACKNOWLEDGED` — Clear pending and failed commands.\n" +
-					"- `DELETE_EVERYTHING` — Clear completed, failed and pending commands.",
+				MarkdownDescription: "How much of a device's management command history is cleared when it re-enrolls. Matches the \"Clear Management History\" dropdown. Required: the dropdown always has a selection, and this resource overwrites it on every apply, so set the value explicitly. One of:\n" +
+					"- `DELETE_NOTHING`: clear nothing.\n" +
+					"- `DELETE_ERRORS`: clear failed commands.\n" +
+					"- `DELETE_EVERYTHING_EXCEPT_ACKNOWLEDGED`: clear pending and failed commands.\n" +
+					"- `DELETE_EVERYTHING`: clear completed, failed and pending commands.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(validClearManagementHistory...),

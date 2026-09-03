@@ -45,7 +45,7 @@ func (d *UserGroupDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema returns the data source schema.
 func (d *UserGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro user group by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces the full Jamf Pro-resolved user list as the Computed `users` block — useful for inspecting smart-group membership." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro user group by ID or by exact name. Exactly one of `id` or `name` must be supplied. The Computed `users` block carries the full Jamf Pro-resolved user list, which is useful for inspecting smart-group membership." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "User group ID. Mutually exclusive with `name`.",

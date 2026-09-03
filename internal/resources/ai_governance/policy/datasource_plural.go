@@ -50,7 +50,7 @@ func (d *PoliciesDataSource) Metadata(_ context.Context, req datasource.Metadata
 func (d *PoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads every Jamf AI Governance policy. Archived policies are not included.\n\n" +
-			"Settings are not part of the listing — read a policy's settings from the " +
+			"Settings are not part of the listing. Read a policy's settings from the " +
 			"`jamfplatform_ai_governance_policy` data source." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"sort": schema.ListAttribute{
@@ -65,8 +65,8 @@ func (d *PoliciesDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"schema_drift_only": schema.BoolAttribute{
 				MarkdownDescription: "When `true`, return only policies whose settings schema version is behind the " +
-					"one Jamf now offers for their tool — the policies worth reviewing after a tool publishes a new " +
-					"schema.",
+					"one Jamf now offers for their tool. These are the policies worth reviewing after a tool publishes " +
+					"a new schema.",
 				Optional: true,
 			},
 			"policies": schema.ListNestedAttribute{

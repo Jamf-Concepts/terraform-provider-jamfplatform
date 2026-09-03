@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_cloud_identity_provider Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set provider_name to choose, and supply the matching nested block (google for Google Secure LDAP, entra_id for Microsoft Entra ID). Changing provider_name forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. Microsoft Entra ID: after the first apply you must complete the manual "refresh consent" step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.
+  Manages a Jamf Pro Cloud Identity Provider: the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set provider_name to choose, and supply the matching nested block (google for Google Secure LDAP, entra_id for Microsoft Entra ID). Changing provider_name forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. For Microsoft Entra ID, complete the manual "refresh consent" step in the Jamf Pro admin UI after the first apply: sign into Entra ID and authorise the Jamf cloud connector. Until that consent exists the connection is unusable, and Entra rejects later updates.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_cloud_identity_provider (Resource)
 
-Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set `provider_name` to choose, and supply the matching nested block (`google` for Google Secure LDAP, `entra_id` for Microsoft Entra ID). Changing `provider_name` forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. **Microsoft Entra ID:** after the first apply you must complete the manual **"refresh consent"** step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.
+Manages a Jamf Pro Cloud Identity Provider: the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set `provider_name` to choose, and supply the matching nested block (`google` for Google Secure LDAP, `entra_id` for Microsoft Entra ID). Changing `provider_name` forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. For Microsoft Entra ID, complete the manual **"refresh consent"** step in the Jamf Pro admin UI after the first apply: sign into Entra ID and authorise the Jamf cloud connector. Until that consent exists the connection is unusable, and Entra rejects later updates.
 
 **Required Jamf permissions**
 
@@ -29,7 +29,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # Google Secure LDAP Cloud Identity Provider.
 #
 # The keystore `file` (base64 of the PKCS#12 client certificate) and
-# `password` are `WriteOnly` — sent to Jamf Pro on writes but never persisted
+# `password` are `WriteOnly`, sent to Jamf Pro on writes but never persisted
 # in Terraform state. Bump `keystore.wo_version` to re-upload (rotate) the
 # certificate on a later apply. Omit `mappings` to let Jamf Pro generate the
 # standard Google defaults.
@@ -57,10 +57,10 @@ resource "jamfplatform_pro_cloud_identity_provider" "google" {
 
 # Microsoft Entra ID (Azure AD) Cloud Identity Provider.
 #
-# IMPORTANT: after the first apply you must complete the manual
-# "refresh consent" step in the Jamf Pro admin UI (sign into Entra ID and
-# authorise the Jamf cloud connector). Until consent exists the connection is
-# inactive and later updates are rejected by Entra.
+# After the first apply you must complete the manual "refresh consent" step in
+# the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud
+# connector). Until consent exists the connection is inactive and later updates
+# are rejected by Entra.
 resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   display_name  = "Entra ID"
   provider_name = "ENTRA_ID"
@@ -103,12 +103,12 @@ variable "google_ldap_keystore_password" {
 
 Required:
 
-- `tenant_id` (String) The Microsoft Entra ID tenant (directory) ID — the GUID identifying your Entra ID tenant, obtained from the Microsoft Entra admin center (not entered in the Jamf Pro UI). Changing it forces replacement — the connection's tenant cannot be updated in place.
+- `tenant_id` (String) The Microsoft Entra ID tenant (directory) ID: the GUID identifying your Entra ID tenant. Take it from the Microsoft Entra admin center; it is not entered in the Jamf Pro UI. Changing it forces replacement, because the connection's tenant cannot be updated in place.
 
 Optional:
 
 - `enabled` (Boolean) Whether the Entra ID connection is enabled. Defaults to `true`.
-- `mappings` (Attributes) Entra ID attribute mappings. Optional — omit to let Jamf Pro generate defaults; supply it to override. (see [below for nested schema](#nestedatt--entra_id--mappings))
+- `mappings` (Attributes) Entra ID attribute mappings. Omit the block to let Jamf Pro generate defaults, or supply it to override them. (see [below for nested schema](#nestedatt--entra_id--mappings))
 - `membership_calculation_optimization_enabled` (Boolean) Whether membership-calculation optimization is enabled. Defaults to `false`.
 - `search_timeout` (Number) Search timeout in seconds. Defaults to `30`.
 - `transitive_directory_membership_enabled` (Boolean) Whether transitive directory membership is enabled. Defaults to `false`.
@@ -149,7 +149,7 @@ Required:
 
 Optional:
 
-- `mappings` (Attributes) Attribute mappings for users and groups. **All-or-nothing:** omit the whole block to let Jamf Pro generate the standard Google defaults, or supply it and specify every field across all three sub-blocks. Supplying a partial block sends empty values for the fields you leave out — it does not merge with the defaults. (see [below for nested schema](#nestedatt--google--mappings))
+- `mappings` (Attributes) Attribute mappings for users and groups. The block is all-or-nothing. Omit it to let Jamf Pro generate the standard Google defaults, or supply it and specify every field across all three sub-blocks. A partial block sends empty values for the fields you leave out; it does not merge with the defaults. (see [below for nested schema](#nestedatt--google--mappings))
 
 <a id="nestedatt--google--server"></a>
 ### Nested Schema for `google.server`
@@ -175,10 +175,10 @@ Optional:
 
 Optional:
 
-- `file` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded PKCS#12 (`.p12`) client certificate. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `file = filebase64("google-ldap.p12")`. Must be supplied together with `password`.
+- `file` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded PKCS#12 (`.p12`) client certificate. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `file = filebase64("google-ldap.p12")`. Must be supplied together with `password`.
 - `file_name` (String) File name recorded for the uploaded keystore. Returned by Jamf Pro when omitted.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password protecting the PKCS#12 keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Must be supplied together with `file`.
-- `wo_version` (Number) Rotation trigger for the `WriteOnly` keystore (`file` + `password`). Bump this integer (any change) to force the next apply to re-upload the keystore. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals "leave the stored keystore alone" — the provider omits the keystore from the next update so Jamf Pro retains the existing certificate.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Password protecting the PKCS#12 keystore. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Must be supplied together with `file`.
+- `wo_version` (Number) Rotation trigger for the `WriteOnly` keystore (`file` and `password`). Bump this integer (any change) to force the next apply to re-upload the keystore. Initial create should set `wo_version = 1`. Leaving it unset or unchanged leaves the stored keystore alone: the provider omits the keystore from the next update, so Jamf Pro retains the existing certificate.
 
 Read-Only:
 

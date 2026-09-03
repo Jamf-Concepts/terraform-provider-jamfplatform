@@ -3,8 +3,8 @@
 page_title: "jamfplatform_account_sso_connections Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every SSO connection your Jamf Account organization holds. Jamf Account exposes no search arguments for connections, so this data source takes none — filter the result in Terraform.
-  Each entry carries only what the organization's connection list reports. The provider-specific settings — the addresses, the domains of an Entra tenant, the group and profile options — are reported one connection at a time, so use the singular jamfplatform_account_sso_connection data source for those rather than paying an extra read per connection here.
+  Lists every SSO connection your Jamf Account organization holds. Jamf Account exposes no search arguments for connections, so this data source takes none. Filter the result in Terraform.
+  Each entry carries only what the organization's connection list reports. The provider-specific settings (the addresses, the domains of an Entra tenant, the group and profile options) are reported one connection at a time, so use the singular jamfplatform_account_sso_connection data source for those rather than paying an extra read per connection here.
   This is the construct for finding the name Jamf actually holds for a connection, which may be a uniquified form of the one it was created with.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -15,9 +15,9 @@ description: |-
 
 # jamfplatform_account_sso_connections (Data Source)
 
-Lists every SSO connection your Jamf Account organization holds. Jamf Account exposes no search arguments for connections, so this data source takes none — filter the result in Terraform.
+Lists every SSO connection your Jamf Account organization holds. Jamf Account exposes no search arguments for connections, so this data source takes none. Filter the result in Terraform.
 
-Each entry carries only what the organization's connection list reports. The provider-specific settings — the addresses, the domains of an Entra tenant, the group and profile options — are reported one connection at a time, so use the singular `jamfplatform_account_sso_connection` data source for those rather than paying an extra read per connection here.
+Each entry carries only what the organization's connection list reports. The provider-specific settings (the addresses, the domains of an Entra tenant, the group and profile options) are reported one connection at a time, so use the singular `jamfplatform_account_sso_connection` data source for those rather than paying an extra read per connection here.
 
 This is the construct for finding the name Jamf actually holds for a connection, which may be a uniquified form of the one it was created with.
 
@@ -45,8 +45,8 @@ output "connection_types_by_id" {
 }
 
 # Which connection signs people in for which domains, and the products each one
-# reaches. Only the product names are reported here — the tenants within each
-# product are never returned, and the provider-specific settings are reported one
+# reaches. Only the product names are reported here; the tenants within each
+# product are never returned. The provider-specific settings are reported one
 # connection at a time by the singular data source.
 output "connection_coverage" {
   value = [

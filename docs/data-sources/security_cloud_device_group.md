@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_device_group Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly — a name that differs only in capitalisation is a different group and will not be found.
+  Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly, so a name that differs only in capitalisation is a different group and will not be found.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_device_group (Data Source)
 
-Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly — a name that differs only in capitalisation is a different group and will not be found.
+Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly, so a name that differs only in capitalisation is a different group and will not be found.
 
 **Required Jamf permissions**
 
@@ -48,7 +48,7 @@ output "executives_group_id" {
 ### Optional
 
 - `id` (String) Device group ID to look up. Exactly one of `id` or `name` must be set.
-- `name` (String) Device group name to look up. Exactly one of `id` or `name` must be set. The built-in "Default Group" cannot be looked up here — it has no ID. Use the `jamfplatform_security_cloud_device_groups` data source to see it.
+- `name` (String) Device group name to look up. Exactly one of `id` or `name` must be set. The built-in "Default Group" cannot be looked up here, because it has no ID. Use the `jamfplatform_security_cloud_device_groups` data source to see it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 <a id="nestedatt--timeouts"></a>

@@ -63,7 +63,7 @@ variable "ldap_bind_password" {
   sensitive = true
 }
 
-# Anonymous (unauthenticated) bind — omit the account block entirely.
+# Anonymous (unauthenticated) bind: omit the account block entirely.
 resource "jamfplatform_pro_ldap_server" "anon" {
   connection_settings = {
     display_name        = "Read-only Directory"

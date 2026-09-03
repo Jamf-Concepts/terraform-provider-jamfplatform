@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_app_request_form_field Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro App Request form field by ID or by title. Exactly one of id or title must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error — use id to disambiguate.
+  Look up a Jamf Pro App Request form field by ID or by title. Exactly one of id or title must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error. Use id to disambiguate.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_app_request_form_field (Data Source)
 
-Look up a Jamf Pro App Request form field by ID or by title. Exactly one of `id` or `title` must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error — use `id` to disambiguate.
+Look up a Jamf Pro App Request form field by ID or by title. Exactly one of `id` or `title` must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error. Use `id` to disambiguate.
 
 **Required Jamf permissions**
 
@@ -27,7 +27,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 ```terraform
 # Look up an App Request form field by ID or by title (exactly one).
-# Titles are not unique — a by-title lookup that matches more than one field errors.
+# Titles are not unique. A by-title lookup matching more than one field errors.
 
 data "jamfplatform_pro_app_request_form_field" "by_id" {
   id = "12"

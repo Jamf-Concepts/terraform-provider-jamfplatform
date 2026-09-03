@@ -79,9 +79,12 @@ func (r *PkiVenafiResource) Schema(ctx context.Context, req resource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro Venafi certificate authority (Settings → Global → PKI certificates → Certificate Authorities).\n\n" +
 			"**Preview feature:** Jamf Pro's Venafi integration is a preview and may change in a future Jamf Pro release.\n\n" +
-			"**Refresh token:** `refresh_token_wo` is `WriteOnly` — it is sent to Jamf Pro on writes but never stored in Terraform state, and Jamf Pro never returns it on read. Pair it with `refresh_token_wo_version` to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. `refresh_token_configured` reports whether Jamf Pro currently holds a token.\n\n" +
-			"**Jamf public key:** `jamf_public_key` is the PEM public key Jamf Pro mints for this CA — read-only, populated on create and every read. Bump `jamf_public_key_rotation` to regenerate it (the old key is invalidated).\n\n" +
-			"**Proxy trust store:** `proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value (not write-only). Set it to upload; set it to `\"\"` to remove it." + resourcePrivileges,
+			"### Refresh token\n\n" +
+			"`refresh_token_wo` is `WriteOnly`: sent to Jamf Pro on writes, never stored in Terraform state, and never returned on read. Pair it with `refresh_token_wo_version` to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. `refresh_token_configured` reports whether Jamf Pro currently holds a token.\n\n" +
+			"### Jamf public key\n\n" +
+			"`jamf_public_key` is the PEM public key Jamf Pro mints for this CA. It is read-only, populated on create and on every read. Bump `jamf_public_key_rotation` to regenerate it; the old key is invalidated.\n\n" +
+			"### Proxy trust store\n\n" +
+			"`proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value rather than a write-only one. Set it to upload; set it to `\"\"` to remove it." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Venafi CA ID assigned by Jamf Pro.",
@@ -98,7 +101,7 @@ func (r *PkiVenafiResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"proxy_address": schema.StringAttribute{
-				MarkdownDescription: "**\"Proxy Server\"** in the Jamf Pro admin UI. The Jamf Pro PKI Proxy Server address as `host:port` with **no scheme** (e.g. `proxy.example.com:8443`; a `https://` prefix is rejected by Jamf Pro). Omit to preserve the stored value. Jamf Pro rejects an empty value (`\"\"`) with \"HTTP Host must not be empty\", so this cannot be cleared once set.",
+				MarkdownDescription: "**\"Proxy Server\"** in the Jamf Pro admin UI. The Jamf Pro PKI Proxy Server address as `host:port`, with no scheme (e.g. `proxy.example.com:8443`). Jamf Pro rejects a `https://` prefix. Omit to preserve the stored value. Jamf Pro also rejects an empty value (`\"\"`) with \"HTTP Host must not be empty\", so this cannot be cleared once set.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -122,13 +125,13 @@ func (r *PkiVenafiResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"refresh_token_wo": schema.StringAttribute{
-				MarkdownDescription: "**\"Refresh Token\"** in the Jamf Pro admin UI. The Venafi refresh token. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro never returns it on read, so rotation is driven by the companion `refresh_token_wo_version` integer (bump it to re-send `refresh_token_wo`).",
+				MarkdownDescription: "**\"Refresh Token\"** in the Jamf Pro admin UI. The Venafi refresh token. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Jamf Pro never returns it on read, so rotation runs through the companion `refresh_token_wo_version` integer. Bump that to re-send `refresh_token_wo`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"refresh_token_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `refresh_token_wo`. Bump this integer (any change) to force a new write that re-sends `refresh_token_wo` to Jamf Pro. Set it on create alongside `refresh_token_wo` (e.g. `1`). Leaving it unset or unchanged signals \"leave the stored token alone\" — the provider omits the token from the next write so Jamf Pro retains the existing value.",
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `refresh_token_wo`. Bump this integer (any change) to force a new write that re-sends `refresh_token_wo` to Jamf Pro. Set it on create alongside `refresh_token_wo` (e.g. `1`). Leaving it unset or unchanged signals \"leave the stored token alone\": the provider omits the token from the next write, so Jamf Pro retains the existing value.",
 				Optional:            true,
 			},
 			"refresh_token_configured": schema.BoolAttribute{
@@ -147,7 +150,7 @@ func (r *PkiVenafiResource) Schema(ctx context.Context, req resource.SchemaReque
 				Optional:            true,
 			},
 			"proxy_trust_store": schema.StringAttribute{
-				MarkdownDescription: "The PKI Proxy Server's **public** PEM certificate chain, used to secure communication between Jamf Pro and the proxy. Not a secret — it round-trips byte-for-byte through Jamf Pro. Set to upload; set to `\"\"` to remove it. Omit to preserve the stored value.",
+				MarkdownDescription: "The PKI Proxy Server's **public** PEM certificate chain, which secures communication between Jamf Pro and the proxy. It is not a secret; it round-trips byte-for-byte through Jamf Pro. Set to upload; set to `\"\"` to remove it. Omit to preserve the stored value.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

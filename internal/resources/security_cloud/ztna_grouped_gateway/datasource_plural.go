@@ -51,7 +51,7 @@ func (d *GroupedGatewaysDataSource) Schema(ctx context.Context, _ datasource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every Jamf Security Cloud ZTNA grouped gateway on the tenant. Jamf Security " +
 			"Cloud exposes no query parameters for grouped gateways, so this data source takes no search " +
-			"arguments — filter the result in Terraform." + pluralDataSourcePrivileges,
+			"arguments. Filter the result in Terraform." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",

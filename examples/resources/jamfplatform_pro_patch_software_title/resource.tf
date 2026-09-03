@@ -19,7 +19,7 @@ locals {
 }
 
 resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
-  # name_id and source_id are derived from the catalog lookup above — no magic
+  # name_id and source_id are derived from the catalog lookup above. No magic
   # numbers. source_id is numeric; the data source id is a string, so convert it.
   name      = local.catalog_entry.app_name
   name_id   = local.catalog_entry.name_id

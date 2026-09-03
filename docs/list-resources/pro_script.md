@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_script List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro scripts. Supply an optional filter block to narrow results — the supported selectors match the scripts data source.
+  Lists Jamf Pro scripts. Supply an optional filter block to narrow results. The supported selectors match the scripts data source.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_script (List Resource)
 
-Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.
+Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results. The supported selectors match the scripts data source.
 
 **Required Jamf permissions**
 

@@ -39,7 +39,7 @@ func (d *SmtpServerDataSource) Metadata(ctx context.Context, req datasource.Meta
 // omitted (write-only, never readable).
 func (d *SmtpServerDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro SMTP Server settings (Settings → System → SMTP Server). Singleton — one record per tenant. WriteOnly secrets are never returned." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro SMTP Server settings (Settings → System → SMTP Server). One record per tenant. `WriteOnly` secrets are never returned." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

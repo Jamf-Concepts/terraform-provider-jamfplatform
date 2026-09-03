@@ -47,7 +47,7 @@ func (d *DNSZoneDataSource) Metadata(_ context.Context, req datasource.MetadataR
 func (d *DNSZoneDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a Jamf Security Cloud custom DNS zone by ID or by name. Zone names are not " +
-			"required to be unique, so a name matching more than one zone is an error — use the ID in that case." +
+			"required to be unique, so a name matching more than one zone is an error. Use the ID in that case." +
 			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

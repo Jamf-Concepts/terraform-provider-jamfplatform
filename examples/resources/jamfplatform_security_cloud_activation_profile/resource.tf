@@ -17,8 +17,8 @@ resource "jamfplatform_security_cloud_activation_profile" "content_filtering" {
 }
 
 # Adding devices to a group as they enrol keeps policy assignment declarative.
-# Note that Jamf Security Cloud does not check the group exists: an identifier
-# that matches nothing leaves enrolling devices in no group at all, silently.
+# Jamf Security Cloud does not check the group exists: an identifier that
+# matches nothing leaves enrolling devices in no group at all, silently.
 resource "jamfplatform_security_cloud_device_group" "field_staff" {
   name = "Field Staff"
 }
@@ -49,7 +49,7 @@ resource "jamfplatform_security_cloud_activation_profile" "seasonal" {
   }
 }
 
-# The activation code is what reaches a device — as a link, or deployed to a UEM.
+# The activation code is what reaches a device, as a link or deployed to a UEM.
 # It is a credential: anyone holding it can enrol a device, so the attribute is
 # sensitive and any output carrying it must be marked sensitive too.
 output "field_staff_activation_code" {

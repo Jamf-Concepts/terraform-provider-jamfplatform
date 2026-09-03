@@ -60,7 +60,7 @@ func (d *TenantIDDataSource) Metadata(_ context.Context, req datasource.Metadata
 func (d *TenantIDDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads the platform tenant identifier of the Jamf Pro tenant this provider is scoped " +
-			"to. Takes no arguments — a provider instance is scoped to one tenant, and this returns that " +
+			"to. Takes no arguments. A provider instance is scoped to one tenant, and this returns that " +
 			"tenant's identifier.\n\n" +
 			"Use it wherever a configuration has to name a Jamf Pro tenant to another Jamf product, rather than " +
 			"copying the identifier between consoles by hand. " +

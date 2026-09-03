@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_tenant_id Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads the platform tenant identifier of the Jamf Pro tenant this provider is scoped to. Takes no arguments — a provider instance is scoped to one tenant, and this returns that tenant's identifier.
+  Reads the platform tenant identifier of the Jamf Pro tenant this provider is scoped to. Takes no arguments. A provider instance is scoped to one tenant, and this returns that tenant's identifier.
   Use it wherever a configuration has to name a Jamf Pro tenant to another Jamf product, rather than copying the identifier between consoles by hand. jamfplatform_security_cloud_uem_connect is the case it was built for.
   A provider scoped to a platform environment resolves the Jamf Pro tenant within that environment. Only an environment holding a single Jamf Pro tenant has been observed, so treat the result as unverified where an environment holds more than one.
   Required Jamf permissions
@@ -12,7 +12,7 @@ description: |-
 
 # jamfplatform_pro_tenant_id (Data Source)
 
-Reads the platform tenant identifier of the Jamf Pro tenant this provider is scoped to. Takes no arguments — a provider instance is scoped to one tenant, and this returns that tenant's identifier.
+Reads the platform tenant identifier of the Jamf Pro tenant this provider is scoped to. Takes no arguments. A provider instance is scoped to one tenant, and this returns that tenant's identifier.
 
 Use it wherever a configuration has to name a Jamf Pro tenant to another Jamf product, rather than copying the identifier between consoles by hand. `jamfplatform_security_cloud_uem_connect` is the case it was built for.
 

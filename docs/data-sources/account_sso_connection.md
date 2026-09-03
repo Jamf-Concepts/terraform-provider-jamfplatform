@@ -4,7 +4,7 @@ page_title: "jamfplatform_account_sso_connection Data Source - terraform-provide
 subcategory: ""
 description: |-
   Look up one SSO connection in your Jamf Account organization, by identifier or by the name Jamf holds for it. Exactly one of id and name is required.
-  This is also the construct for a connection the jamfplatform_account_sso_connection resource refuses to manage — one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client registration of its own and cannot be written back. Reading it here takes no ownership of it.
+  This is also the construct for a connection the jamfplatform_account_sso_connection resource refuses to manage: one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client registration of its own and cannot be written back. Reading it here takes no ownership of it.
   Two things no read returns, so neither appears here: the client secret, which Jamf never gives back, and the tenants each product is enabled for. enabled_product_names reports the products alone, which is the only part of that assignment that can be read.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -17,7 +17,7 @@ description: |-
 
 Look up one SSO connection in your Jamf Account organization, by identifier or by the name Jamf holds for it. Exactly one of `id` and `name` is required.
 
-This is also the construct for a connection the `jamfplatform_account_sso_connection` resource refuses to manage — one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client registration of its own and cannot be written back. Reading it here takes no ownership of it.
+This is also the construct for a connection the `jamfplatform_account_sso_connection` resource refuses to manage: one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client registration of its own and cannot be written back. Reading it here takes no ownership of it.
 
 Two things no read returns, so neither appears here: the client secret, which Jamf never gives back, and the tenants each product is enabled for. `enabled_product_names` reports the products alone, which is the only part of that assignment that can be read.
 
@@ -37,10 +37,10 @@ data "jamfplatform_account_sso_connection" "by_id" {
   id = "con_XXXXXXXXXXXXXXXX"
 }
 
-# Or by the name Jamf holds for it, which may be a uniquified form of the name it
-# was created with — jamfplatform_account_sso_connections reports the stored
-# names. Jamf does not require them to be unique, so this reports an error rather
-# than choosing when more than one matches.
+# Or by the name Jamf holds for it, which may be a uniquified form of the name
+# it was created with. jamfplatform_account_sso_connections reports the stored
+# names. Jamf does not require them to be unique, so this reports an error
+# rather than choosing when more than one matches.
 data "jamfplatform_account_sso_connection" "corp" {
   name = "CorpOIDC"
 }
@@ -50,7 +50,7 @@ output "domains_signed_in_by_this_connection" {
 }
 
 # The products this connection is enabled for. Only the product names are
-# reported — the tenants within each product are not.
+# reported; the tenants within each product are not.
 output "products" {
   value = data.jamfplatform_account_sso_connection.corp.enabled_product_names
 }
@@ -70,7 +70,7 @@ output "console_managed" {
 ### Optional
 
 - `id` (String) Identifier of the connection to look up. Set this or `name`, not both.
-- `name` (String) Name Jamf Account holds for the connection, matched exactly. Set this or `id`, not both. Note that Jamf may store a uniquified form of the name a connection was created with, so the name to match is the one the console lists rather than the one that was asked for — use `jamfplatform_account_sso_connections` to see them.
+- `name` (String) Name Jamf Account holds for the connection, matched exactly. Set this or `id`, not both. Jamf may store a uniquified form of the name a connection was created with, so the name to match is the one the console lists rather than the one that was asked for. Use `jamfplatform_account_sso_connections` to see them.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

@@ -91,9 +91,9 @@ func (r *JamfParentSettingsResource) IdentitySchema(ctx context.Context, req res
 // Schema returns the resource schema.
 func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps → Jamf Parent). Singleton — one record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.\n\n" +
-			"**Omit = preserve** — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. `timezone`, `device_group_id`, and `restricted_times` must always be set — the Jamf Pro API requires them on every write.\n\n" +
-			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.\n\n" +
+		MarkdownDescription: "Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps → Jamf Parent). One record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.\n\n" +
+			"An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. `timezone`, `device_group_id`, and `restricted_times` must always be set, because Jamf Pro requires them on every write.\n\n" +
+			"`terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.\n\n" +
 			"Import with `terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -138,7 +138,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				// carve-out. The server validates the id against existing
 				// MOBILE device groups (a computer-group id gets the same 400),
 				// so no provider preflight is added: the 4xx is the contract.
-				MarkdownDescription: "**\"Student Device Group\"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.",
+				MarkdownDescription: "**\"Student Device Group\"**. ID of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.",
 				Required:            true,
 			},
 			"restricted_times": schema.MapNestedAttribute{
@@ -148,7 +148,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				// restrictions. Map keys are server-enforced strict-UPPERCASE
 				// java.time.DayOfWeek names (lowercase/unknown → 400), pinned
 				// plan-time by the KeysAre validator below.
-				MarkdownDescription: "**\"Jamf Parent App Restrictions\"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored — Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions.",
+				MarkdownDescription: "**\"Jamf Parent App Restrictions\"**. Per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored; Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions.",
 				Required:            true,
 				Validators: []validator.Map{
 					mapvalidator.KeysAre(stringvalidator.OneOf(restrictedTimesDayKeys...)),

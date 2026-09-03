@@ -95,7 +95,7 @@ func (r *EbookResource) IdentitySchema(ctx context.Context, req resource.Identit
 // attribute descriptions.
 func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro ebook (the classic `/ebooks` endpoint — the \"eBooks\" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at `general.url`) or an Apple Books title (an `books.apple.com` URL). For App-Store ebooks the server derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro ebook (the \"eBooks\" entry under the Users sidebar). Distributes either an in-house file (PDF, EPUB or iBook hosted at `general.url`) or an Apple Books title (a `books.apple.com` URL). For App Store ebooks Jamf Pro derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union of computers, mobile devices and users, plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Ebook ID assigned by Jamf Pro.",
@@ -138,9 +138,9 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 					"deploy_as_managed": optComputedBool("Make the ebook managed when possible (UI \"Make eBook managed when possible\")."),
 					"free":              optComputedBool("Whether the ebook is free."),
 					"file_type": optComputedString(
-						"File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`); server-derived for an App-Store ebook (leave unset — the server resolves it from the Apple Books URL). No strict value validation is applied because the server canonicalises the casing.",
+						"File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing.",
 					),
-					"version":     optComputedString("Ebook version. User-set for an in-house ebook; server-derived for an App-Store ebook."),
+					"version":     optComputedString("Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook."),
 					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
 					"category_name": schema.StringAttribute{
 						// No UseStateForUnknown: category_name is derived from
@@ -158,7 +158,7 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Ebook scope — the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets.",
+				MarkdownDescription: "Ebook scope: the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned. Declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, and updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets.",
 				Optional:            true,
 				Attributes:          ebookScopeAttributes(),
 			},
@@ -283,7 +283,7 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 
 	return map[string]schema.Attribute{
 		"targets": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope targets — the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes).",
+			MarkdownDescription: "Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes).",
 			Optional:            true,
 			Attributes:          targets,
 		},

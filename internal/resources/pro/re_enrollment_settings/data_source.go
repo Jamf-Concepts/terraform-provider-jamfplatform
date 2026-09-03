@@ -38,7 +38,7 @@ func (d *ReEnrollmentSettingsDataSource) Metadata(ctx context.Context, req datas
 // Schema returns the data source schema. Every attribute is Computed.
 func (d *ReEnrollmentSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Re-enrollment settings (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro Re-enrollment settings (Settings → Global → Re-enrollment). One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                                 schema.StringAttribute{Computed: true, MarkdownDescription: "Fixed singleton identifier. Always `singleton`."},
 			"clear_policy_logs":                  schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether policy logs on computers are cleared when a device re-enrolls."},

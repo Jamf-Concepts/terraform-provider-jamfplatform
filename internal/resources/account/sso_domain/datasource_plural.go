@@ -49,7 +49,7 @@ func (d *DomainsDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every DNS domain your Jamf Account organization holds, including any shared " +
 			"with it by another organization. Jamf Account exposes no search arguments for domains, so this data " +
-			"source takes none — filter the result in Terraform.\n\n" +
+			"source takes none. Filter the result in Terraform.\n\n" +
 			"Assignment information is not included: the connections a domain is in use by are read one domain at " +
 			"a time, so use the singular `jamfplatform_account_sso_domain` data source for that." +
 			pluralDataSourcePrivileges,

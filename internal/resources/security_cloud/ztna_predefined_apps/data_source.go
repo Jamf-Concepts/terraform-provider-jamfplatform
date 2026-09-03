@@ -75,7 +75,7 @@ func (d *PredefinedAppsDataSource) Metadata(_ context.Context, req datasource.Me
 func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads the predefined Zero Trust Network Access app templates available in Jamf " +
-			"Security Cloud — the built-in definitions of well-known applications such as `Slack` or " +
+			"Security Cloud: the built-in definitions of well-known applications such as `Slack` or " +
 			"`Salesforce`, each bundling the hostnames that application uses. The catalogue is centrally " +
 			"curated, identical for every entitled tenant, and cannot be changed.\n\n" +
 			"Use this to read a template's identifier without hard-coding it, and to review the hostnames the " +
@@ -95,8 +95,8 @@ func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.Sche
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							MarkdownDescription: "Template identifier — the value a Zero Trust Network Access " +
-								"app built from this template refers to.",
+							MarkdownDescription: "Template identifier. This is the value a Zero Trust Network " +
+								"Access app built from this template refers to.",
 							Computed: true,
 						},
 						"name": schema.StringAttribute{

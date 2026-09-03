@@ -120,6 +120,7 @@ Each of these has been paid for late at least once. The right-hand column is wha
 | Enum vocabulary from the SDK's `*Values()` helper | at schema time | a restated list that drifts from the API |
 | `make generate` | after the **last** HCL edit | ships a stale, sometimes invalid, inlined example |
 | Description jargon grep | before the PR | wire vocabulary published to the Terraform Registry |
+| Description prose gate (em dash, bold run-in label, stock clause) | before the PR | generated-sounding docs on the Terraform Registry, and a de-slop sweep across every package later |
 | Plumbing (`GNUmakefile`, `.github/workflows/**`, `go.mod`, `scripts/acctargets/**`) in its own PR | from the start | `acctargets` widens CI to `./...` — the full serial suite on the shared tenant |
 
 ---
@@ -151,6 +152,11 @@ Each of these has been paid for late at least once. The right-hand column is wha
 - **Don't** put wire vocabulary in `MarkdownDescription` — no API/endpoint/SDK/HTTP-verb/status-code
   language ([STYLE_GUIDE §User-facing descriptions are UI-aligned](../../../STYLE_GUIDE.md#user-facing-descriptions-are-ui-aligned-not-wire-aligned)).
   Wire facts belong in Go comments and the `crud.go` annotation block.
+- **Don't** glue a description together with em dashes, open a paragraph with a bolded run-in
+  label (`**Omit = preserve** — …`), or repeat another package's stock clause word for word.
+  One em dash per description at most, and only for a real interruption
+  ([STYLE_GUIDE §Description and example prose](../../../STYLE_GUIDE.md#description-and-example-prose-the-terse-reference-voice)).
+  The same voice governs the `#` comments in `examples/`.
 - **Don't** put comments inside function bodies or type definitions (STYLE_GUIDE:11). A schema
   is built inside a function body — so the wire-name mapping table goes in the **package doc
   comment**, not beside each attribute.

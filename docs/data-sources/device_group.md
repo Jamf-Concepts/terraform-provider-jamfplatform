@@ -3,7 +3,7 @@
 page_title: "jamfplatform_device_group Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lookup a Jamf device group by ID. Requires Device Group Inventory API access.
+  Looks up a Jamf device group by ID. Requires Device Group Inventory API access.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_device_group (Data Source)
 
-Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access.
+Looks up a Jamf device group by ID. Requires **Device Group Inventory API** access.
 
 **Required Jamf permissions**
 
@@ -61,7 +61,7 @@ output "device_group_example_jamf_pro_id" {
 - `description` (String) Device group Description.
 - `device_type` (String) Device type value returned in lowercase.
 - `group_type` (String) Group type value returned in lowercase.
-- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
+- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group: policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
 - `member_count` (Number) Number of members in the group.
 - `members` (List of String) Devices currently assigned to the group (Jamf Pro Management IDs).
 - `name` (String) Device group name.

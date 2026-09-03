@@ -76,12 +76,11 @@ func (d *ContentCategoriesDataSource) Metadata(_ context.Context, req datasource
 // Schema returns the data source schema.
 func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the content categories available in Jamf Security Cloud — the " +
+		MarkdownDescription: "Reads the content categories available in Jamf Security Cloud: the " +
 			"classification of web and app traffic, such as `Social` or `Cloud & File Storage`. The catalogue " +
 			"is centrally curated, identical for every entitled tenant, and cannot be changed.\n\n" +
-			"Use this to reference a category without hard-coding a name that may be revised — in an output, " +
-			"or to pre-stage an identifier. Note that a category has two names: reference `display_name`, " +
-			"not `name`.\n\n" +
+			"Use this to reference a category without hard-coding a name that may be revised, in an output or " +
+			"to pre-stage an identifier. A category has two names: reference `display_name`, not `name`.\n\n" +
 			"A `jamfplatform_security_cloud_ztna_app` is what matches a category, so resolve the category " +
 			"here and wire `display_name` into its `category` rather than writing the name out." +
 			dataSourcePrivileges,
@@ -102,7 +101,7 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 						},
 						"display_name": schema.StringAttribute{
 							MarkdownDescription: "The category name as shown in Jamf Security Cloud, for " +
-								"example `Social`. **This is the name that identifies the category** — a " +
+								"example `Social`. **This is the name that identifies the category.** A " +
 								"Zero Trust Network Access app's category matches on it, and it is the name " +
 								"to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s " +
 								"`category`.",
@@ -110,7 +109,7 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 						},
 						"name": schema.StringAttribute{
 							MarkdownDescription: "Jamf's internal label for the category, for example " +
-								"`Category - Social`. Informational only — reference `display_name` instead.",
+								"`Category - Social`. Informational only; reference `display_name` instead.",
 							Computed: true,
 						},
 					},

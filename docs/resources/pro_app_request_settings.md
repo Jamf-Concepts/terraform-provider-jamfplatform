@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_app_request_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. Singleton — one record per tenant. This resource adopts the existing settings on first apply. Omit = preserve for enabled, app_store_locale, and requester_user_group_id: a field you omit keeps its current Jamf Pro value. approver_emails is required and always reflects exactly the addresses you declare. Import with terraform import jamfplatform_pro_app_request_settings.<name> singleton.
+  Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting enabled, app_store_locale or requester_user_group_id keeps that field at its current Jamf Pro value. approver_emails is required and always reflects exactly the addresses you declare. Import with terraform import jamfplatform_pro_app_request_settings.<name> singleton.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_app_request_settings (Resource)
 
-Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. Singleton — one record per tenant. This resource adopts the existing settings on first apply. **Omit = preserve** for `enabled`, `app_store_locale`, and `requester_user_group_id`: a field you omit keeps its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.
+Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting `enabled`, `app_store_locale` or `requester_user_group_id` keeps that field at its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -28,9 +28,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # App Request settings (Settings → Self Service → App Request).
 #
-# Singleton — one record per tenant. This resource adopts the existing
-# settings on first apply. Enabling App Requests requires a static user group
-# (the requesters) and a configured SMTP server (so approval emails can be sent).
+# One record per tenant. This resource adopts the existing settings on first
+# apply. Enabling App Requests requires a static user group (the requesters) and
+# a configured SMTP server, so approval emails can be sent.
 
 resource "jamfplatform_pro_user_group" "app_request_requesters" {
   name       = "App Request Requesters"
@@ -54,9 +54,9 @@ resource "jamfplatform_pro_app_request_settings" "example" {
 
 ### Optional
 
-- `app_store_locale` (String) App Store country or region used to resolve requested apps. Either the literal `deviceLocale` (follow each device's locale) or an upper-case ISO 3166-1 alpha-2 country code (for example, `US`). Validated at plan time against the tenant's supported list — see the `jamfplatform_pro_app_store_country_codes` data source. Omit to leave the current value untouched.
+- `app_store_locale` (String) App Store country or region used to resolve requested apps. Either the literal `deviceLocale`, which follows each device's own locale, or an upper-case ISO 3166-1 alpha-2 country code such as `US`. Validated at plan time against the tenant's supported list; the `jamfplatform_pro_app_store_country_codes` data source returns that list. Omit to leave the current value untouched.
 - `enabled` (Boolean) Enable App Requests in Self Service on iOS. When `true`, `requester_user_group_id` must reference a valid static user group. Omit to leave the current value untouched.
-- `requester_user_group_id` (Number) ID of the static Jamf Pro user group whose members may request apps (see `jamfplatform_pro_user_group`). Required when `enabled` is `true`, and must be a static (not smart) group — an unknown or smart group is rejected. Only valid while `enabled` is `true`: when App Requests are disabled the group is cleared and may not be set. Omit (while enabled) to leave the current value untouched.
+- `requester_user_group_id` (Number) ID of the static Jamf Pro user group whose members may request apps (see `jamfplatform_pro_user_group`). Required when `enabled` is `true`, and it must reference a static group; Jamf Pro rejects a smart group or an unknown ID. Only valid while `enabled` is `true`: when App Requests are disabled the group is cleared and may not be set. Omit it while enabled to leave the current value untouched.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
