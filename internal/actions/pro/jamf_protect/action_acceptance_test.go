@@ -7,7 +7,6 @@ package jamfprotectactions_test
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -29,11 +28,11 @@ import (
 // config requires lifecycle.action_trigger (Terraform >= 1.14). A successful
 // apply means the sync POST was accepted.
 func TestAccAction_ProJamfProtectPlansSync_Invoke(t *testing.T) {
-	protectURL := strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_URL"))
-	clientID := strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_CLIENT_ID"))
-	password := strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_PASSWORD"))
+	protectURL := strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_URL"))
+	clientID := strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_CLIENT_ID"))
+	password := strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_PASSWORD"))
 	if protectURL == "" || clientID == "" || password == "" {
-		t.Skip("JAMFPLATFORM_PROTECT_{URL,CLIENT_ID,PASSWORD} not all set — Jamf Protect plans sync test needs a Jamf Protect API client")
+		t.Skip("JAMFPLATFORM_ACC_PRO_PROTECT_{URL,CLIENT_ID,PASSWORD} not all set — Jamf Protect plans sync test needs a Jamf Protect API client")
 	}
 	if !strings.HasSuffix(protectURL, "/graphql") {
 		protectURL = strings.TrimRight(protectURL, "/") + "/graphql"
@@ -114,16 +113,16 @@ resource "terraform_data" "trigger" {
 // Protect deployment that has a task for the target computer, so it is skipped
 // unless the operator supplies the deployment UUID and a serial:
 //
-//	JAMFPLATFORM_ACC_PROTECT_DEPLOYMENT_ID — a deployment (plan) UUID
-//	JAMFPLATFORM_ACC_COMPUTER_SERIAL       — an enrolled computer scoped to that plan
+//	JAMFPLATFORM_ACC_PRO_PROTECT_DEPLOYMENT_ID — a deployment (plan) UUID
+//	JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL       — an enrolled computer scoped to that plan
 //
 // A successful apply means the retry POST was accepted (204). Retrying re-queues
 // the Protect install command for that computer — real but low-risk fleet impact.
 func TestAccAction_ProJamfProtectDeploymentRetry_Invoke(t *testing.T) {
-	deploymentID := strings.TrimSpace(os.Getenv("JAMFPLATFORM_ACC_PROTECT_DEPLOYMENT_ID"))
-	serial := strings.TrimSpace(os.Getenv("JAMFPLATFORM_ACC_COMPUTER_SERIAL"))
+	deploymentID := strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_DEPLOYMENT_ID"))
+	serial := strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL"))
 	if deploymentID == "" || serial == "" {
-		t.Skip("JAMFPLATFORM_ACC_PROTECT_DEPLOYMENT_ID and JAMFPLATFORM_ACC_COMPUTER_SERIAL not both set — deployment retry test needs a live Protect deployment and a target computer")
+		t.Skip("JAMFPLATFORM_ACC_PRO_PROTECT_DEPLOYMENT_ID and JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL not both set — deployment retry test needs a live Protect deployment and a target computer")
 	}
 	testhelpers.AccPreCheck(t)
 

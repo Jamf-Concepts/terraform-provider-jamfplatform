@@ -79,7 +79,7 @@ and those that never move (`createdAt`).
 
 Call `testhelpers.AccPreCheckSecurityCloud`, never bare `AccPreCheck`. It requires the operator
 to **declare** that the configured scope is a Security Cloud one —
-`JAMFPLATFORM_SECURITY_CLOUD_{ENVIRONMENT,TENANT}_ID` set **and equal** to the corresponding
+`JAMFPLATFORM_ACC_SECURITYCLOUD_{ENVIRONMENT,TENANT}_ID` set **and equal** to the corresponding
 `JAMFPLATFORM_*` value. Unset, both set, or mismatched → skip. The equality check is what makes
 the declaration load-bearing: a stale value from another tenant skips rather than running
 against the wrong estate.

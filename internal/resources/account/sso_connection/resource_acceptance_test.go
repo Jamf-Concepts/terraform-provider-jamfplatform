@@ -8,7 +8,6 @@ package sso_connection_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -39,7 +38,7 @@ const connectionResourceAddress = "jamfplatform_account_sso_connection.test"
 // sign-in. So the operator declares which domain is safe to attach a throwaway
 // connection to, and these tests skip without it — the same declaration pattern
 // the Security Cloud suites use for a scope only the operator can vouch for.
-const acceptanceDomainVariable = "JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN"
+const acceptanceDomainVariable = "JAMFPLATFORM_ACC_ORGANIZATION_SSO_VERIFIED_DOMAIN"
 
 // probeConnectionID is an identifier no connection has. It is the target of the
 // update-path probe below, which is deliberately aimed at something that does not
@@ -71,7 +70,7 @@ func acceptanceConnectionName(part string) string {
 // verifiedDomain returns the declared verified domain, or skips.
 func verifiedDomain(t *testing.T) string {
 	t.Helper()
-	domain := os.Getenv(acceptanceDomainVariable)
+	domain := testhelpers.AccEnv(acceptanceDomainVariable)
 	if domain == "" {
 		t.Skipf(
 			"%s is not set. A Jamf Account SSO connection requires at least one domain the organization has "+
@@ -180,8 +179,8 @@ func probeConnectionRequest(domain string) *account.ConnectionRequest {
 			OidcConnectionSettings: &account.OidcConnectionSettings{
 				Name:                  "tfAccUpdateProbe",
 				Region:                account.RegionUs,
-				ClientID:              stringPointer("tfAccClient"),
-				ClientSecret:          stringPointer("tfAccClientSecret"),
+				ClientID:              new("tfAccClient"),
+				ClientSecret:          new("tfAccClientSecret"),
 				IssuerURL:             "idp.example",
 				AuthorizationEndpoint: "idp.example/authorize",
 				TokenEndpoint:         "idp.example/token",
@@ -191,12 +190,6 @@ func probeConnectionRequest(domain string) *account.ConnectionRequest {
 			},
 		},
 	}
-}
-
-// stringPointer returns a pointer to a string, for the probe body's optional
-// fields.
-func stringPointer(s string) *string {
-	return &s
 }
 
 // testAccCheckSSOConnectionDestroy verifies the connections made during the test

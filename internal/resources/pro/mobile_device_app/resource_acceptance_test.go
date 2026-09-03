@@ -578,7 +578,7 @@ func TestAccListResource_ProMobileApp(t *testing.T) {
 
 // TestAccResource_ProMobileApp_ScopeLdapGroup exercises a limitation that
 // references a real directory-service user group, which the server validates
-// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_LDAP_GROUP_NAME;
+// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME;
 // also serves as the live check that the plan-time DS-group preflight accepts a real
 // group rather than rejecting it. The directory must exist before plan, so the LDAP
 // server is pre-created via the SDK.

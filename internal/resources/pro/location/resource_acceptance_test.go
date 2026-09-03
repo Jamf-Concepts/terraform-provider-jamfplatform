@@ -8,7 +8,6 @@ package location_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -21,7 +20,7 @@ import (
 
 // vppTokenEnvVar holds the base64-encoded `.vpptoken` contents. Never write
 // tokens to fixtures — supply via env at run time.
-const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
+const vppTokenEnvVar = "JAMFPLATFORM_ACC_PRO_VPP_TOKEN"
 
 // testAccCheckVolumePurchasingLocationDestroy verifies VPP locations created
 // during the test were destroyed.
@@ -49,7 +48,7 @@ func testAccCheckVolumePurchasingLocationDestroy(t *testing.T) resource.TestChec
 
 // TestAccResource_ProVolumePurchasingLocation_Basic exercises Create + Update
 // (with token rotation via wo_version bump) against a real Jamf Pro tenant.
-// The test is skipped unless JAMFPLATFORM_VPP_TOKEN is set with the base64
+// The test is skipped unless JAMFPLATFORM_ACC_PRO_VPP_TOKEN is set with the base64
 // contents of a `.vpptoken` downloaded from Apple Business Manager / Apple
 // School Manager. Tokens MUST come from env — never commit token material to
 // fixtures.
@@ -57,7 +56,7 @@ func testAccCheckVolumePurchasingLocationDestroy(t *testing.T) resource.TestChec
 // ImportState is intentionally omitted: `service_token` is `WriteOnly`, so an
 // ImportStateVerify step would always diff on the missing token value.
 func TestAccResource_ProVolumePurchasingLocation_Basic(t *testing.T) {
-	token := os.Getenv(vppTokenEnvVar)
+	token := testhelpers.AccEnv(vppTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping VPP acceptance test", vppTokenEnvVar)
 	}

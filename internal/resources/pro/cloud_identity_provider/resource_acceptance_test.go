@@ -17,7 +17,6 @@ package cloud_identity_provider_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -69,26 +68,26 @@ func testAccCheckCloudIdentityProviderDestroy(t *testing.T) resource.TestCheckFu
 // --- Google env-gate helpers ------------------------------------------------
 
 const (
-	envGoogleKeystoreBase64 = "JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64"
-	envGooglePassword       = "JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD"
-	envGoogleDomain         = "JAMFPLATFORM_GOOGLE_DOMAIN_NAME"
+	envGoogleKeystoreBase64 = "JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64"
+	envGooglePassword       = "JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD"
+	envGoogleDomain         = "JAMFPLATFORM_ACC_PRO_GOOGLE_DOMAIN_NAME"
 	// Optional: a SECOND, distinct keystore used by the rotation step to prove
 	// that bumping wo_version with a different certificate re-derives the
 	// server echoes (expiration_date/subject) without a "provider produced
 	// inconsistent result" error. When unset, the rotation step re-uploads the
 	// same certificate (still exercises the wo_version path, but does not guard
 	// the echo-recompute regression).
-	envGoogleKeystoreBase64Rotated = "JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64_ROTATED"
-	envGooglePasswordRotated       = "JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD_ROTATED"
+	envGoogleKeystoreBase64Rotated = "JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64_ROTATED"
+	envGooglePasswordRotated       = "JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD_ROTATED"
 )
 
 // requireGoogleEnv skips the test if any of the three Google-specific env vars
 // are unset. Call this at the start of every Google lifecycle test.
 func requireGoogleEnv(t *testing.T) (base64Keystore, password, domain string) {
 	t.Helper()
-	base64Keystore = os.Getenv(envGoogleKeystoreBase64)
-	password = os.Getenv(envGooglePassword)
-	domain = os.Getenv(envGoogleDomain)
+	base64Keystore = testhelpers.AccEnv(envGoogleKeystoreBase64)
+	password = testhelpers.AccEnv(envGooglePassword)
+	domain = testhelpers.AccEnv(envGoogleDomain)
 	if base64Keystore == "" || password == "" || domain == "" {
 		t.Skipf(
 			"skipping Google Cloud Identity Provider test: set %s, %s, and %s to run. "+
@@ -146,8 +145,8 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 	// step 3 uploads it and asserts expiration_date changed — the regression
 	// guard for the keystore-echo plan modifiers. Otherwise it re-uploads the
 	// same certificate.
-	rotKs := os.Getenv(envGoogleKeystoreBase64Rotated)
-	rotPw := os.Getenv(envGooglePasswordRotated)
+	rotKs := testhelpers.AccEnv(envGoogleKeystoreBase64Rotated)
+	rotPw := testhelpers.AccEnv(envGooglePasswordRotated)
 	differentCert := rotKs != "" && rotKs != ks64
 	if rotKs == "" {
 		rotKs = ks64

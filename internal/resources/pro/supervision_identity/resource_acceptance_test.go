@@ -29,8 +29,8 @@ const addr = "jamfplatform_pro_supervision_identity.test"
 // exercise the import path with a real certificate. When unset, the test generates
 // a throwaway self-signed .p12 with openssl; if openssl is also unavailable it skips.
 const (
-	envUploadP12Base64   = "JAMFPLATFORM_ACC_SUPERVISION_P12_BASE64"
-	envUploadP12Password = "JAMFPLATFORM_ACC_SUPERVISION_P12_PASSWORD"
+	envUploadP12Base64   = "JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_BASE64"
+	envUploadP12Password = "JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_PASSWORD"
 )
 
 // testAccCheckSupervisionIdentityDestroy verifies identities created during the
@@ -254,8 +254,8 @@ resource "jamfplatform_pro_supervision_identity" "test" {
 func uploadCertificate(t *testing.T, cn string) (b64, password string) {
 	t.Helper()
 
-	if envB64 := os.Getenv(envUploadP12Base64); envB64 != "" {
-		return envB64, os.Getenv(envUploadP12Password)
+	if envB64 := testhelpers.AccEnv(envUploadP12Base64); envB64 != "" {
+		return envB64, testhelpers.AccEnv(envUploadP12Password)
 	}
 
 	if _, err := exec.LookPath("openssl"); err != nil {

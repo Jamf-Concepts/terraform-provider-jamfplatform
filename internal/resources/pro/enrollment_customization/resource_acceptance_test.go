@@ -8,7 +8,6 @@ package enrollment_customization_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -26,12 +25,12 @@ import (
 // ("[INVALID_STATE] : SAML must be configured for the JSS to use the SSO
 // panel"), so those tests stand up an sso_settings SAML fixture from this URL
 // and depend_on it. Set it to a SAML IdP metadata URL (an Okta trial works).
-const envSsoIdpURL = "JAMFPLATFORM_ACC_SSO_IDP_URL"
+const envSsoIdpURL = "JAMFPLATFORM_ACC_PRO_SSO_IDP_URL"
 
 // requireSsoIdpURL skips an SSO-pane test unless a SAML IdP metadata URL is set.
 func requireSsoIdpURL(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv(envSsoIdpURL)
+	v := testhelpers.AccEnv(envSsoIdpURL)
 	if v == "" {
 		t.Skipf("skipping SSO-pane enrollment-customization test: set %s to a SAML IdP metadata URL so the test can configure an OIDC_WITH_SAML sso_settings fixture (Jamf Pro requires SAML configured before an SSO panel can be created)", envSsoIdpURL)
 	}

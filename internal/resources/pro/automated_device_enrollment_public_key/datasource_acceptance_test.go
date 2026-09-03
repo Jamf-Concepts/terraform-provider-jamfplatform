@@ -15,7 +15,7 @@ import (
 
 // TestAccDataSource_ProAutomatedDeviceEnrollmentPublicKey_Singleton verifies
 // the tenant's ADE public key data source returns a non-empty base64 body.
-// The endpoint is tenant-wide and read-only, so no JAMFPLATFORM_ADE_TOKEN
+// The endpoint is tenant-wide and read-only, so no JAMFPLATFORM_ACC_PRO_DEP_TOKEN
 // gating is required — only the standard AccPreCheck for tenant credentials.
 func TestAccDataSource_ProAutomatedDeviceEnrollmentPublicKey_Singleton(t *testing.T) {
 	testhelpers.AccPreCheck(t)

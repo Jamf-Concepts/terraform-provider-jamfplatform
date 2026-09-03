@@ -8,7 +8,6 @@ package cloud_distribution_point_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -30,14 +29,14 @@ import (
 // JAMF_CLOUD on cleanup. Run ONLY against a tenant with no hosted content you
 // care about:
 //
-//	JAMFPLATFORM_ACC_CDP_DESTRUCTIVE=1 make testacc-run \
+//	JAMFPLATFORM_ACC_PRO_CDP_WRITE_OK=1 make testacc-run \
 //	  RUN=TestAccResource_ProCloudDistributionPoint \
 //	  PKG=./internal/resources/pro/cloud_distribution_point/
-const destructiveEnv = "JAMFPLATFORM_ACC_CDP_DESTRUCTIVE"
+const destructiveEnv = "JAMFPLATFORM_ACC_PRO_CDP_WRITE_OK"
 
 func requireDestructive(t *testing.T) {
 	t.Helper()
-	if os.Getenv(destructiveEnv) == "" {
+	if testhelpers.AccEnv(destructiveEnv) == "" {
 		t.Skipf("skipping destructive cloud distribution point test; set %s=1 to run. WARNING: destroy PERMANENTLY DELETES all packages/apps/eBooks hosted in Jamf Cloud and cannot be undone", destructiveEnv)
 	}
 }

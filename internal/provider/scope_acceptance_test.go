@@ -87,6 +87,15 @@ func TestAccProviderScope_OrganizationScopeRejectedPerConstruct(t *testing.T) {
 // accPreCheckCredentialsOnly gates on the credentials alone, without the scope
 // requirement testhelpers.AccPreCheck adds. Only the organization-scope test
 // wants this: every other acceptance test needs a scope to reach anything.
+//
+// It routes its skip through testhelpers.SkipOrFailUnset under AccPreCheck's
+// require tokens, and must keep doing so. A package-local precheck that skips
+// directly is a hole in the require mechanism: in the pro-tenant lane, with
+// JAMFPLATFORM_ACC_REQUIRE set, a missing credential would skip this test green
+// while every test routed through the shared helper failed loudly.
+// internal/conformance/acc_lanes_test.go allow-lists this helper by name, which
+// documents the exemption rather than closing it, so the routing here is what
+// actually closes it.
 func accPreCheckCredentialsOnly(t *testing.T) {
 	t.Helper()
 
@@ -96,7 +105,7 @@ func accPreCheckCredentialsOnly(t *testing.T) {
 		"JAMFPLATFORM_CLIENT_SECRET",
 	} {
 		if os.Getenv(key) == "" {
-			t.Skipf("%s must be set for acceptance tests", key)
+			testhelpers.SkipOrFailUnset(t, "AccPreCheck", key+" is unset")
 		}
 	}
 

@@ -8,7 +8,6 @@ package pki_adcs_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -39,13 +38,13 @@ const adcsAddr = "jamfplatform_pro_pki_adcs.test"
 // withdrawn at the Platform API GA, so API clients and roles are created in
 // Jamf Account. Unset and the OUTBOUND tests skip rather than infer anything
 // from the absence.
-const envAdcsApiClientID = "JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID"
+const envAdcsApiClientID = "JAMFPLATFORM_ACC_PRO_ADCS_API_CLIENT_ID"
 
 // requireAdcsApiClientID skips the calling test unless envAdcsApiClientID names an
 // API client the tenant already has.
 func requireAdcsApiClientID(t *testing.T) string {
 	t.Helper()
-	id := os.Getenv(envAdcsApiClientID)
+	id := testhelpers.AccEnv(envAdcsApiClientID)
 	if id == "" {
 		t.Skipf("skipping OUTBOUND AD CS test: set %s to the client_id (UUID) of a Jamf Pro API client holding the AD CS certificate-job privileges", envAdcsApiClientID)
 	}

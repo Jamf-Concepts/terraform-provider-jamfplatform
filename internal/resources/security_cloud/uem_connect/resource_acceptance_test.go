@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"testing"
 
@@ -47,10 +46,10 @@ const placeholderDeviceGroupID = "00000000-0000-0000-0000-000000000000"
 // Jamf Security Cloud runs a real connection test on create, so a placeholder fails
 // the apply — there is no way to exercise that form without working credentials.
 const (
-	envPlatformTenantID = "JAMFPLATFORM_ACC_UEM_CONNECT_PLATFORM_TENANT_ID"
-	envServerURL        = "JAMFPLATFORM_ACC_UEM_CONNECT_SERVER_URL"
-	envClientID         = "JAMFPLATFORM_ACC_UEM_CONNECT_CLIENT_ID"
-	envClientSecret     = "JAMFPLATFORM_ACC_UEM_CONNECT_CLIENT_SECRET"
+	envPlatformTenantID = "JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_PRO_TENANT_ID"
+	envServerURL        = "JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_SERVER_URL"
+	envClientID         = "JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_ID"
+	envClientSecret     = "JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_SECRET"
 )
 
 // securityCloudClient returns a Security Cloud client for the out-of-band reads
@@ -83,7 +82,7 @@ func requireNoExistingIntegration(t *testing.T) {
 func platformTenantIDOrSkip(t *testing.T) string {
 	t.Helper()
 
-	tenant := os.Getenv(envPlatformTenantID)
+	tenant := testhelpers.AccEnv(envPlatformTenantID)
 	if tenant == "" {
 		t.Skipf("%s must be set to the platform tenant ID of a Jamf Pro instance for these tests", envPlatformTenantID)
 	}
@@ -95,9 +94,9 @@ func platformTenantIDOrSkip(t *testing.T) string {
 func oauthCredentialsOrSkip(t *testing.T) (serverURL, clientID, clientSecret string) {
 	t.Helper()
 
-	serverURL = os.Getenv(envServerURL)
-	clientID = os.Getenv(envClientID)
-	clientSecret = os.Getenv(envClientSecret)
+	serverURL = testhelpers.AccEnv(envServerURL)
+	clientID = testhelpers.AccEnv(envClientID)
+	clientSecret = testhelpers.AccEnv(envClientSecret)
 
 	if serverURL == "" || clientID == "" || clientSecret == "" {
 		t.Skipf("%s, %s and %s must all be set to exercise the supplied-credentials form; Jamf Security Cloud runs a real connection test on create, so placeholders cannot stand in",

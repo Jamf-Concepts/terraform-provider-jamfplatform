@@ -7,7 +7,6 @@ package maintenanceactions_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -21,10 +20,10 @@ import (
 // redeploy_management_framework targets a real computer, gated on a serial so the
 // operator can supply and swap it:
 //
-//	JAMFPLATFORM_ACC_COMPUTER_SERIAL — a disposable enrolled computer
+//	JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL — a disposable enrolled computer
 //
 // flush_policy_logs self-provisions its target policy, so it needs no env gate.
-const envComputerSerial = "JAMFPLATFORM_ACC_COMPUTER_SERIAL"
+const envComputerSerial = "JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL"
 
 func fireConfig(actionBlock, actionRef string) string {
 	return fmt.Sprintf(`
@@ -42,7 +41,7 @@ resource "terraform_data" "trigger" {
 }
 
 func TestAccAction_ProRedeployManagementFramework_Invoke(t *testing.T) {
-	serial := os.Getenv(envComputerSerial)
+	serial := testhelpers.AccEnv(envComputerSerial)
 	if serial == "" {
 		t.Skipf("%s not set; skipping redeploy management framework acceptance test", envComputerSerial)
 	}

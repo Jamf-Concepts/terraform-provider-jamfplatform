@@ -7,7 +7,6 @@ package location_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -24,10 +23,10 @@ import (
 // jamfplatform_pro_volume_purchasing_location list resource via the
 // `terraform query` workflow. The Pro list endpoint returns the full
 // location shape per row, so include_resource = true does not trigger an
-// N+1 follow-up GET. Gated on JAMFPLATFORM_VPP_TOKEN to keep CI deterministic
+// N+1 follow-up GET. Gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN to keep CI deterministic
 // — provisioning the source resource needs a real Apple-issued service token.
 func TestAccListResource_ProVolumePurchasingLocation_Basic(t *testing.T) {
-	token := os.Getenv(vppTokenEnvVar)
+	token := testhelpers.AccEnv(vppTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping VPP list resource acceptance test", vppTokenEnvVar)
 	}

@@ -8,7 +8,6 @@ package automated_device_enrollment_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -20,7 +19,7 @@ import (
 )
 
 // ade token env var. Never write tokens to fixtures — supply via env at run time.
-const adeTokenEnvVar = "JAMFPLATFORM_ADE_TOKEN"
+const adeTokenEnvVar = "JAMFPLATFORM_ACC_PRO_DEP_TOKEN"
 
 // testAccCheckAutomatedDeviceEnrollmentDestroy verifies ADE instances created
 // during the test were destroyed.
@@ -48,7 +47,7 @@ func testAccCheckAutomatedDeviceEnrollmentDestroy(t *testing.T) resource.TestChe
 
 // TestAccResource_ProAutomatedDeviceEnrollment_Basic exercises Create +
 // Update (with token rotation via wo_version bump) against a real Jamf Pro
-// tenant. The test is skipped unless the JAMFPLATFORM_ADE_TOKEN env var is
+// tenant. The test is skipped unless the JAMFPLATFORM_ACC_PRO_DEP_TOKEN env var is
 // set with a base64-encoded `.p7m` server token downloaded from Apple
 // Business Manager / Apple School Manager. Tokens MUST come from env — never
 // commit token material to fixtures.
@@ -56,7 +55,7 @@ func testAccCheckAutomatedDeviceEnrollmentDestroy(t *testing.T) resource.TestChe
 // ImportState is intentionally omitted: `server_token` is `WriteOnly`, so an
 // ImportStateVerify step would always diff on the missing token value.
 func TestAccResource_ProAutomatedDeviceEnrollment_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping ADE acceptance test", adeTokenEnvVar)
 	}

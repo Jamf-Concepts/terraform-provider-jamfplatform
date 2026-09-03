@@ -7,7 +7,6 @@ package mdmactions_test
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -27,12 +26,12 @@ import (
 // when its variable is unset. Invoking an action from config requires
 // lifecycle.action_trigger (Terraform >= 1.14).
 //
-//	JAMFPLATFORM_ACC_COMPUTER_SERIAL   — a disposable enrolled computer
-//	JAMFPLATFORM_ACC_COMPUTER_SERIAL_2 — a SECOND disposable enrolled computer,
+//	JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL   — a disposable enrolled computer
+//	JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL_2 — a SECOND disposable enrolled computer,
 //	                                     needed only by the mixed-selector test
 const (
-	envComputerSerial  = "JAMFPLATFORM_ACC_COMPUTER_SERIAL"
-	envComputerSerial2 = "JAMFPLATFORM_ACC_COMPUTER_SERIAL_2"
+	envComputerSerial  = "JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL"
+	envComputerSerial2 = "JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL_2"
 )
 
 // fireConfig wraps an action block with a terraform_data trigger that invokes it
@@ -56,7 +55,7 @@ resource "terraform_data" "trigger" {
 // TestAccAction_ProSendBlankPush_Invoke is the benign smoke test: a blank push
 // has no device-side effect beyond prompting a check-in.
 func TestAccAction_ProSendBlankPush_Invoke(t *testing.T) {
-	serial := os.Getenv(envComputerSerial)
+	serial := testhelpers.AccEnv(envComputerSerial)
 	if serial == "" {
 		t.Skipf("%s not set; skipping blank push acceptance test", envComputerSerial)
 	}
@@ -79,7 +78,7 @@ action "jamfplatform_pro_send_blank_push" "push" {
 // management id and a serial number in one invocation must both be targeted,
 // rather than one selector silently winning.
 func TestAccAction_ProSendBlankPush_MixedSelectors(t *testing.T) {
-	first, second := os.Getenv(envComputerSerial), os.Getenv(envComputerSerial2)
+	first, second := testhelpers.AccEnv(envComputerSerial), testhelpers.AccEnv(envComputerSerial2)
 	if first == "" || second == "" {
 		t.Skipf("set %s and %s to run the mixed-selector acceptance test", envComputerSerial, envComputerSerial2)
 	}

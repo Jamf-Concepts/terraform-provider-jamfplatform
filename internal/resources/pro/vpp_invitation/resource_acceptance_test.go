@@ -15,7 +15,7 @@
 // and out.
 //
 // Apply tests provision their own VPP account via a jamfplatform_pro_volume_-
-// purchasing_location fixture, so they are gated on JAMFPLATFORM_VPP_TOKEN (a real
+// purchasing_location fixture, so they are gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN (a real
 // ABM/ASM .vpptoken — same gate as the location + mac_app VPP tests). The
 // location's id is the VPP account id the invitation references. Token material
 // MUST come from env — never commit it.
@@ -25,7 +25,7 @@
 //
 // Directory-service-group tests stand up the shared Okta LDAP server fixture via
 // the SDK (so the directory exists before the plan-time scope preflight) and use
-// JAMFPLATFORM_ACC_LDAP_GROUP_NAME for the real group name.
+// JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME for the real group name.
 //
 // NOTE on email message: the classic API form-decodes the <message> field (a
 // bare `%` 500s), so the provider form-URL-encodes it; the email test uses a `%@`
@@ -36,7 +36,6 @@ package vpp_invitation_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -52,10 +51,10 @@ const resAddr = "jamfplatform_pro_vpp_invitation.test"
 
 // vppTokenEnvVar holds the base64 `.vpptoken` contents used to stand up a VPP
 // location fixture (which owns the VPP account the invitation references).
-const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
+const vppTokenEnvVar = "JAMFPLATFORM_ACC_PRO_VPP_TOKEN"
 
 func vppToken(t *testing.T) string {
-	v := os.Getenv(vppTokenEnvVar)
+	v := testhelpers.AccEnv(vppTokenEnvVar)
 	if v == "" {
 		t.Skipf("%s not set; skipping VPP invitation acceptance test (needs a VPP location fixture)", vppTokenEnvVar)
 	}

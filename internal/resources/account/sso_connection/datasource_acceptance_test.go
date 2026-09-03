@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
@@ -288,10 +289,8 @@ func TestAccListResource_AccountSSOConnection(t *testing.T) {
 // honest but is a gap, and this is where it would show.
 func checkRenamedConnectionType(address string) resource.TestCheckFunc {
 	return resource.TestCheckResourceAttrWith(address, "connection_type", func(value string) error {
-		for _, accepted := range []string{"generic_oidc", "entra", "okta", "google_workspace"} {
-			if value == accepted {
-				return nil
-			}
+		if slices.Contains([]string{"generic_oidc", "entra", "okta", "google_workspace"}, value) {
+			return nil
 		}
 		return fmt.Errorf(
 			"connection_type = %q, which is not one of this provider's own names — Jamf may have added a "+

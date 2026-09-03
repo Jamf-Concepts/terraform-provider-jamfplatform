@@ -8,7 +8,6 @@ package uemconnectactions_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -21,7 +20,7 @@ import (
 // The action's fixtures are the resource suite's, since the action operates on the
 // integration that suite creates. Kept as literals rather than shared so this
 // package does not depend on another test package's unexported names.
-const envPlatformTenantID = "JAMFPLATFORM_ACC_UEM_CONNECT_PLATFORM_TENANT_ID"
+const envPlatformTenantID = "JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_PRO_TENANT_ID"
 
 func securityCloudClient(t *testing.T) *securitycloud.Client {
 	t.Helper()
@@ -47,7 +46,7 @@ func requireNoExistingIntegration(t *testing.T) {
 func platformTenantIDOrSkip(t *testing.T) string {
 	t.Helper()
 
-	tenant := os.Getenv(envPlatformTenantID)
+	tenant := testhelpers.AccEnv(envPlatformTenantID)
 	if tenant == "" {
 		t.Skipf("%s must be set to the platform tenant ID of a Jamf Pro instance for this test", envPlatformTenantID)
 	}
@@ -209,14 +208,14 @@ resource "terraform_data" "trigger" {
 // instance is a different tenant from the Jamf Security Cloud one the provider is
 // configured for, so this provider cannot create a group there.
 const (
-	envActivationProfileCode = "JAMFPLATFORM_ACC_ACTIVATION_PROFILE_CODE"
-	envMobileDeviceGroupID   = "JAMFPLATFORM_ACC_ACTIVATION_PROFILE_MOBILE_GROUP_ID"
+	envActivationProfileCode = "JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_CODE"
+	envMobileDeviceGroupID   = "JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_MOBILE_GROUP_ID"
 )
 
 func activationProfileCodeOrSkip(t *testing.T) string {
 	t.Helper()
 
-	code := os.Getenv(envActivationProfileCode)
+	code := testhelpers.AccEnv(envActivationProfileCode)
 	if code == "" {
 		t.Skipf("%s must be set to an activation profile code from the Jamf Security Cloud console — "+
 			"nothing can create or list one", envActivationProfileCode)
@@ -227,7 +226,7 @@ func activationProfileCodeOrSkip(t *testing.T) string {
 func mobileDeviceGroupIDOrSkip(t *testing.T) string {
 	t.Helper()
 
-	group := os.Getenv(envMobileDeviceGroupID)
+	group := testhelpers.AccEnv(envMobileDeviceGroupID)
 	if group == "" {
 		t.Skipf("%s must be set to a mobile device group ID in the integration's Jamf Pro instance",
 			envMobileDeviceGroupID)

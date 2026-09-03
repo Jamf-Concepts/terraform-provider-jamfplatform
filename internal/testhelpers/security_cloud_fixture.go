@@ -7,7 +7,6 @@ package testhelpers
 
 import (
 	"context"
-	"os"
 	"sync"
 	"testing"
 
@@ -136,9 +135,9 @@ func RequireSecurityCloudSharedGatewayIDs(t *testing.T, count int) []string {
 // nothing to assert.
 func RequireSecurityCloudTenantID(t *testing.T) string {
 	t.Helper()
-	tenantID := os.Getenv("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID")
+	tenantID := AccEnv("JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_ID")
 	if tenantID == "" {
-		t.Skip("Skipping: JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID must name the tenant a ZTNA gateway grants access to; an environment-scoped run has no single tenant ID to use")
+		t.Skip("Skipping: JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_ID must name the tenant a ZTNA gateway grants access to; an environment-scoped run has no single tenant ID to use")
 	}
 	return tenantID
 }

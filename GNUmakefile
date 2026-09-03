@@ -74,9 +74,11 @@ testacc-run:
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 -run '$(RUN)' $(TESTARGS) $(PKG)
 
 # test-scripts runs the unit tests for the build-tagged tooling under scripts/,
-# which `go test ./...` cannot see.
+# which `go test ./...` cannot see. Each tool needs its own -tags invocation:
+# the tag that makes one visible does not make the other's files build.
 test-scripts:
 	go test -count=1 -tags acctargets ./scripts/acctargets/
+	go test -count=1 -tags acclanes ./scripts/acclanes/
 
 # testacc-changed runs acceptance tests only for the packages affected by the
 # current change set: the changed packages plus everything that transitively
@@ -94,4 +96,24 @@ testacc-changed:
 	echo "Acceptance scope: $$pkgs"; \
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 $$pkgs
 
-.PHONY: fmt fix lint apple-profiles test test-scripts testacc testacc-run testacc-changed build install generate
+# acclanes-preview prints the GitHub Actions matrix the acceptance workflow would
+# build for the current change set, so an edit to .github/acceptance-lanes.json
+# can be checked here rather than by pushing and reading a plan job. Companion to
+# testacc-changed: that target says WHICH packages run, this one says which LANE
+# each lands in and on whose credentials. Override BASE the same way, or pass
+# SCOPE=./... to preview the full suite:
+#   make acclanes-preview
+#   make acclanes-preview SCOPE=./...
+SCOPE ?=
+acclanes-preview:
+	@scope="$(SCOPE)"; \
+	if [ -z "$$scope" ]; then \
+		scope="$$(go run -tags acctargets ./scripts/acctargets $(BASE))"; \
+	fi; \
+	if [ -z "$$scope" ]; then \
+		echo "No acceptance packages affected by the current changes; the matrix would be []."; \
+		exit 0; \
+	fi; \
+	go run -tags acclanes ./scripts/acclanes -scope "$$scope"
+
+.PHONY: fmt fix lint apple-profiles test test-scripts testacc testacc-run testacc-changed acclanes-preview build install generate

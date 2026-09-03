@@ -163,7 +163,7 @@ indistinguishable from a real privilege gap** (a bogus path returns the same bod
 code is deliberately never translated into a diagnostic and a spec-advertised endpoint the
 gateway 403s on is presumed unrouted rather than unprivileged. Acceptance tests gate on
 `testhelpers.AccPreCheckSecurityCloud`, which requires the operator to *declare* that the
-configured scope is a Security Cloud one (`JAMFPLATFORM_SECURITY_CLOUD_{ENVIRONMENT,TENANT}_ID`,
+configured scope is a Security Cloud one (`JAMFPLATFORM_ACC_SECURITYCLOUD_{ENVIRONMENT,TENANT}_ID`,
 matching the scope in use) and skips otherwise — a Pro-only acceptance tenant is a
 legitimate environment, not a failure. Full rules:
 [STYLE_GUIDE.md §Jamf Security Cloud Resource Naming](STYLE_GUIDE.md#jamf-security-cloud-resource-naming).
@@ -174,9 +174,10 @@ Terraform construct name format: `jamfplatform_account_<x>`; Go package
 `internal/resources/account/<x>/`, flat single tier like `security_cloud/`. This is the provider's
 **organization-level** family — what a practitioner manages at *account.jamf.com → Organization*,
 above and across individual tenants. Today that means **SSO**: a `sso_domain` is a DNS domain the
-organization has claimed and proved ownership of, and a `sso_connection` — surveyed but **not yet
-shipped**, see Fourth below — is an OIDC identity-provider connection that signs users in for one or
-more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud tenants. Family
+organization has claimed and proved ownership of, and a `sso_connection` — shipped as a resource,
+two data sources and a list resource — is an OIDC identity-provider connection that signs users in
+for one or more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud
+tenants. Family
 facts and the naming rationale are in
 [STYLE_GUIDE.md §Jamf Account Resource Naming](STYLE_GUIDE.md#jamf-account-resource-naming); five
 things drive the design and are easy to get wrong. First, **this is the only family reachable under
@@ -194,12 +195,20 @@ import is by domain **name**. Third, **verification is an action, not resource s
 idempotent**: a *failed* verify returns `200` with `domainStatus` unchanged (so the status code says
 nothing), yet still bumps `lastModifiedDate` and pushes `verificationExpirationDate` out 14 days —
 and because the five-minute rate limit is measured from `lastModifiedDate`, which the claim itself
-sets, the first verify after creating a domain is always refused. Fourth, a survey note rather than
-shipped behaviour: **a connection's tenant allow-list is write-only**. Neither read shape echoes
-`enabledProducts` or `enabledEnvironments`, and no endpoint anywhere lists an organization's tenants,
-so the ids can be neither discovered nor drift-checked — which will be documented rather than solved
-when the construct lands. It is not in the provider today: creating a connection is refused
-`500 UPSTREAM_ERROR` server-side, so `sso_domain` and its verify action are all that ship. Fifth,
+sets, the first verify after creating a domain is always refused. Fourth, two things about a connection, and note which
+endpoint each belongs to, because getting that backwards is easy. **Its tenant allow-list is
+write-only**: neither read shape echoes `enabledProducts` or `enabledEnvironments`, and no endpoint
+anywhere lists an organization's tenants, so the ids can be neither discovered nor drift-checked —
+documented rather than solved. And **changing one in place is impossible, though creating one is
+not**: `POST` answers `201` for a valid body, and reading, importing, the data sources, the list
+resource and deleting all work, but `PUT /sso/v1/connections/{id}` answers `500 UPSTREAM_ERROR` for
+*every* request — including the verbatim body a create had just accepted — and wire-verified
+2026-09-03 the refused write applies nothing, a connection read back after a PUT changing three
+fields being byte-identical. So `sso_connection` carries a whole-resource `ModifyPlan` that plans a
+**replacement** on any configured change, in one file rather than fifty `RequiresReplace` modifiers
+so that reverting it is deleting a file; the `Update` method and its acceptance test are already
+written and gated behind `skipUnlessConnectionUpdatesWork`, ready for the day Jamf fixes the
+endpoint. Fifth,
 **the server attributes almost nothing**: `errors[].field` is populated only for top-level required
 fields, an invalid enum returns `MALFORMED_REQUEST_BODY` with `field: null` and never names the
 value, and a `connectionType`-versus-payload mismatch is an unattributed `500` — so every enum is
@@ -280,12 +289,41 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
-- `JAMFPLATFORM_ACCOUNT_ORGANIZATION_ID` — **acceptance tests only**. Declares that the configured credentials are an organization-scoped integration, which is what the `jamfplatform_account_*` family requires. There is nothing to compare it against — an organization-scoped request carries no scope header, so no `JAMFPLATFORM_*` variable holds the organization — and that is exactly why the declaration is needed: without it a Pro-only credential set with both scope variables unset looks identical to a real organization integration. `testhelpers.AccPreCheckAccount` additionally requires **both** `JAMFPLATFORM_ENVIRONMENT_ID` and `JAMFPLATFORM_TENANT_ID` to be *unset*, and skips on a non-US base URL, since `/sso/v1` is served only from the US gateway.
-- `JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN` / `JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN` — **acceptance tests only**, both optional, both naming a *claimed* Jamf Account SSO domain. The first must be a **real, already-verified** domain the operator owns; the second a throwaway `.example` one, which can never verify. They cover the two verification outcomes the suite cannot manufacture: re-checking a verified domain is refused `409 CONFLICT` (which the action reports as success), and checking an unverifiable one returns `200` with the status unchanged. The **first-time** unverified→verified transition is untestable by design — the verification key is reissued on every claim, so a DNS record published for an earlier claim is stale against a new one, and automating it would require the suite to write DNS.
-- `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and one carrying `X-Tenant-Id` with `403 BAD_PERMISSIONS`, which this repo reads as an unrouted namespace.
-- `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` — **acceptance tests only**. Client ID (UUID) of a pre-existing Jamf Pro API client holding the AD CS certificate-job privileges. `jamfplatform_pro_pki_adcs` in `OUTBOUND` mode needs one and the provider can no longer create it: the API-client and API-role endpoints were withdrawn at the Platform API GA, so clients are created in Jamf Account. Unset and the two OUTBOUND tests skip.
-- `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched and every Security Cloud acceptance test skips — which is CI's current state, deliberately. The ZTNA gateway tests additionally require the *tenant* form: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).
+- `JAMFPLATFORM_ACC_ORGANIZATION_DECLARED_ID` — **acceptance tests only**. Declares that the configured credentials are an organization-scoped integration, which is what the `jamfplatform_account_*` family requires. There is nothing to compare it against — an organization-scoped request carries no scope header, so no `JAMFPLATFORM_*` variable holds the organization — and that is exactly why the declaration is needed: without it a Pro-only credential set with both scope variables unset looks identical to a real organization integration. `testhelpers.AccPreCheckAccount` additionally requires **both** `JAMFPLATFORM_ENVIRONMENT_ID` and `JAMFPLATFORM_TENANT_ID` to be *unset*, and skips on a non-US base URL, since `/sso/v1` is served only from the US gateway.
+- `JAMFPLATFORM_ACC_ORGANIZATION_SSO_VERIFIED_DOMAIN` / `JAMFPLATFORM_ACC_ORGANIZATION_SSO_UNVERIFIABLE_DOMAIN` — **acceptance tests only**, both optional, both naming a *claimed* Jamf Account SSO domain. The first must be a **real, already-verified** domain the operator owns; the second a throwaway `.example` one, which can never verify. They cover the two verification outcomes the suite cannot manufacture: re-checking a verified domain is refused `409 CONFLICT` (which the action reports as success), and checking an unverifiable one returns `200` with the status unchanged. The **first-time** unverified→verified transition is untestable by design — the verification key is reissued on every claim, so a DNS record published for an earlier claim is stale against a new one, and automating it would require the suite to write DNS.
+- `JAMFPLATFORM_ACC_AIGOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched, every AI Governance acceptance test skips locally and **fails** in the `aigovernance` lane, which names this variable in its `require` token — it was referenced by no workflow at all before the lane pipeline, so all 18 tests skipped green on every run. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and one carrying `X-Tenant-Id` with `403 BAD_PERMISSIONS`, which this repo reads as an unrouted namespace.
+- `JAMFPLATFORM_ACC_PRO_ADCS_API_CLIENT_ID` — **acceptance tests only**. Client ID (UUID) of a pre-existing Jamf Pro API client holding the AD CS certificate-job privileges. `jamfplatform_pro_pki_adcs` in `OUTBOUND` mode needs one and the provider can no longer create it: the API-client and API-role endpoints were withdrawn at the Platform API GA, so clients are created in Jamf Account. Unset and the two OUTBOUND tests skip.
+- `JAMFPLATFORM_ACC_SECURITYCLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched, every Security Cloud acceptance test skips locally and **fails** in the `securitycloud` lane, which names the environment form in its `require` token. The environment form is wired in CI (wire-verified 2026-09-03); the tenant form is not, and the ZTNA gateway tests require it: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).
+- `JAMFPLATFORM_ACC_REQUIRE` — **acceptance tests only**. A comma-separated list of lane `require` tokens (`platform`, `environment`, `organization`, `securitycloud`, `aigovernance`, `pro-tenant`). It promotes an unset-credential *skip* into a *failure* for the named sets, and `.github/workflows/acceptance.yml` sets it per lane from `matrix.require`. Unset it locally and everything skips as before, which is what lets a contributor with no estate run `make testacc`. See §Acceptance CI lanes.
+- Every other acceptance-only variable is named `JAMFPLATFORM_ACC_<PRODUCT>_<FIELD>`, matching `jamfplatform-go-sdk` — verbatim where that repo already names the same secret, so one value serves both (hence `JAMFPLATFORM_ACC_PRO_DEP_TOKEN` and `JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_PRO_TENANT_ID`, neither of which is what this repo would have chosen alone). The full rename map, and the dual-read shim that keeps a stale local `.env` working, are in `internal/testhelpers/accrequire/env.go`. The variables listed *above* this line are the exception and must never be renamed: the provider schema reads them at Configure and they are documented for users, so the SDK alignment happens at the **secret** layer, with `acceptance.yml` mapping the aligned secret onto the provider's own variable.
 - Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`), and one of the two scope variables.
+
+## Acceptance CI lanes — one-paragraph orientation
+
+`.github/workflows/acceptance.yml` runs acceptance as **product lanes**, not one serial suite.
+`.github/acceptance-lanes.json` is the single source of truth, read by `scripts/acclanes` (which
+builds the GitHub matrix) and by `internal/conformance/acc_lanes_test.go` (which proves the
+partition is honest, untagged, in `make test`, with no credentials). A lane is a product space and
+membership is a **package path prefix** — the divergence from the SDK, whose suite is one package
+and so splits on a test-name regex and hands `go test -run` a 34 KB alternation; here the package
+list goes straight to `go test`, 4.9 KB for the pro lane's 110 packages. Six lanes are active —
+`account`, `securitycloud`, `aigovernance`, `platform-env`, `pro-tenant`, and `pro` as the default
+that owns everything unclaimed — plus `protect`, `school` and `android` reserved with
+`planned: true`, which must match zero packages and fail loudly the moment one arrives. Three
+things drive the design. First, **only `pro` holds the estate lock**: the others authenticate with
+a different credential set or a different entitlement declaration and share no fixtures with it, so
+a 38-test Jamf Account run no longer queues behind a ~2.5 h Pro suite the way it did under the old
+single `acceptance-tenant` group. Second, **a running suite is never cancelled** — there is
+deliberately no workflow-level `concurrency`, because cancelling SIGKILLs `go test` and no
+`CheckDestroy` or `t.Cleanup` handler runs, orphaning objects on a shared estate whose duplicate
+names later collide; superseded runs queue, and a `Skip if superseded` step lets a stale one exit in
+seconds. Third, **absence of a credential is fatal in a pipeline and a skip locally**, via
+`JAMFPLATFORM_ACC_REQUIRE` — the failure this whole shape exists to close is the invisible one,
+where a missing secret makes a suite self-skip and the package still prints `ok`. That was not
+hypothetical: `acceptance.yml` referenced 48 secrets of which 13 existed, and the AI Governance
+declaration was read by 18 tests and referenced nowhere. A lane that plans packages and executes
+zero tests now fails with a warning banner, and one `acceptance-gate` job is the required check so
+branch protection never has to name a lane. Full rules: [TESTING.md §CI scaling](TESTING.md#ci-scaling).
 
 ## Copyright headers
 
