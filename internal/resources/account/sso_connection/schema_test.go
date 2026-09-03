@@ -22,7 +22,7 @@ import (
 var resourceAttributeNames = []string{
 	"id",
 	"name",
-	"display_name",
+	"internal_name",
 	"connection_type",
 	"hosting_region",
 	"auth_method",
@@ -169,7 +169,7 @@ func TestConnectionResource_SettingsBlocksAreOptionalOnly(t *testing.T) {
 func TestConnectionResource_ReadOnlyAttributes(t *testing.T) {
 	s := resourceSchema(t)
 
-	for _, name := range []string{"id", "display_name", "enabled_product_names", "ticket_url", "consent_flow", "easy_config"} {
+	for _, name := range []string{"id", "internal_name", "enabled_product_names", "ticket_url", "consent_flow", "easy_config"} {
 		attribute, ok := s.Attributes[name]
 		if !ok {
 			t.Fatalf("missing attribute %q", name)
@@ -500,7 +500,7 @@ func TestConnectionDataSource_Schema(t *testing.T) {
 func TestConnectionDataSource_CarriesNoSecret(t *testing.T) {
 	s := dataSourceSchema(t)
 
-	for _, name := range []string{"client_secret", "client_secret_wo_version", "enabled_products", "enabled_environments", "display_name"} {
+	for _, name := range []string{"client_secret", "client_secret_wo_version", "enabled_products", "enabled_environments", "internal_name"} {
 		if _, ok := s.Attributes[name]; ok {
 			t.Errorf("the data source declares %q, which no read can supply", name)
 		}

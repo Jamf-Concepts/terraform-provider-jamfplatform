@@ -113,7 +113,7 @@ func TestOmitLoginHintRoundTrips(t *testing.T) {
 }
 
 // TestAssignConnectionResourceModel_KeepsTheConfiguredName pins the reason `name`
-// and `display_name` are two attributes. Eighteen of the twenty-two connections
+// and `internal_name` are two attributes. Eighteen of the twenty-two connections
 // read carry a suffix Jamf added, and overwriting the configured value with the
 // stored one would give every such connection a difference on every plan.
 func TestAssignConnectionResourceModel_KeepsTheConfiguredName(t *testing.T) {
@@ -128,8 +128,8 @@ func TestAssignConnectionResourceModel_KeepsTheConfiguredName(t *testing.T) {
 	if got := state.Name.ValueString(); got != unitConnectionName {
 		t.Errorf("name = %q, want the configured value untouched", got)
 	}
-	if got := state.DisplayName.ValueString(); got != unitConnectionName+"-uniquified" {
-		t.Errorf("display_name = %q, want the stored value", got)
+	if got := state.InternalName.ValueString(); got != unitConnectionName+"-uniquified" {
+		t.Errorf("internal_name = %q, want the stored value", got)
 	}
 }
 

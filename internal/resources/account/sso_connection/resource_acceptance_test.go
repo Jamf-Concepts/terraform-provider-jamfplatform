@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
@@ -52,8 +53,15 @@ const upstreamErrorCode = "UPSTREAM_ERROR"
 
 // acceptanceConnectionName builds a name unlikely to collide with a live
 // connection, or with a leftover from an interrupted run.
+//
+// It cannot use the repository's usual hyphenated tf-acc- prefix: Jamf accepts
+// only letters and digits in a connection name and refuses anything else with an
+// unattributed 500, so a hyphenated fixture would be rejected at plan time by the
+// provider's own validator. The run suffix is an epoch timestamp, so it is safe
+// here. Domain fixtures keep the hyphenated form — the constraint is on
+// connection names alone.
 func acceptanceConnectionName(part string) string {
-	return "tf-acc-" + part + "-" + testhelpers.RunSuffix()
+	return "tfAcc" + strings.ToUpper(part[:1]) + part[1:] + testhelpers.RunSuffix()
 }
 
 // verifiedDomain returns the declared verified domain, or skips.
@@ -142,7 +150,7 @@ func skipUnlessConnectionWritesWork(t *testing.T) {
 // were both observed to be refused identically, so a full body rules out the
 // reading that the probe merely omitted something Jamf needs.
 func probeConnectionRequest() *account.ConnectionRequest {
-	name := "tf-acc-write-probe"
+	name := "tfAccWriteProbe"
 	scopes := "openid email profile"
 	return &account.ConnectionRequest{
 		ConnectionType: account.ConnectionTypeOidc,
@@ -221,8 +229,8 @@ func oidcConnectionConfig(name, domain string) string {
 			connection_type = "generic_oidc"
 			hosting_region  = "US"
 
-			client_id     = "tf-acc-client"
-			client_secret = "tf-acc-client-secret"
+			client_id     = "tfAccClient"
+			client_secret = "tfAccClientSecret"
 			scopes        = "openid email profile"
 
 			domains = [%q]
@@ -242,7 +250,7 @@ func oidcConnectionConfig(name, domain string) string {
 //
 // Three of the assertions are worth stating the reasoning for.
 //
-// `display_name` is asserted set rather than equal to `name`, because whether
+// `internal_name` is asserted set rather than equal to `name`, because whether
 // Jamf appends a uniquifying suffix on this path is the one question no read
 // could answer: eighteen of the twenty-two connections read carry one, and the
 // write path is refused for every request. This is the highest-value thing to
@@ -280,7 +288,7 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr(connectionResourceAddress, "domains.*", domain),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "generic_oidc.issuer_url", "idp.example"),
 					resource.TestCheckResourceAttrSet(connectionResourceAddress, "id"),
-					resource.TestCheckResourceAttrSet(connectionResourceAddress, "display_name"),
+					resource.TestCheckResourceAttrSet(connectionResourceAddress, "internal_name"),
 					resource.TestCheckResourceAttrSet(connectionResourceAddress, "enabled_product_names.#"),
 					resource.TestCheckNoResourceAttr(connectionResourceAddress, "client_secret"),
 				),
@@ -330,7 +338,7 @@ func TestAccResource_AccountSSOConnection_Update(t *testing.T) {
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
 
-						client_id = "tf-acc-client"
+						client_id = "tfAccClient"
 						scopes    = "openid email profile groups"
 
 						send_nonce               = true
@@ -401,8 +409,8 @@ func TestAccResource_AccountSSOConnection_EmptyGroupFilterRoundTrips(t *testing.
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
 
-						client_id     = "tf-acc-client"
-						client_secret = "tf-acc-client-secret"
+						client_id     = "tfAccClient"
+						client_secret = "tfAccClientSecret"
 						scopes        = "openid email profile"
 
 						group_name_filter = {
@@ -462,8 +470,8 @@ func TestAccResource_AccountSSOConnection_ImmutableAttributesReplace(t *testing.
 						connection_type = "okta"
 						hosting_region  = "US"
 
-						client_id     = "tf-acc-client"
-						client_secret = "tf-acc-client-secret"
+						client_id     = "tfAccClient"
+						client_secret = "tfAccClientSecret"
 						scopes        = "openid email profile"
 
 						domains = [%q]
@@ -592,10 +600,10 @@ func TestAccResource_AccountSSOConnection_MismatchedSettingsBlockRefusedAtPlan(t
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-mismatch"
+						name            = "tfAccMismatch"
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = ["tf-acc.example"]
 
@@ -622,10 +630,10 @@ func TestAccResource_AccountSSOConnection_MissingSettingsBlockRefusedAtPlan(t *t
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-missing-block"
+						name            = "tfAccMissingBlock"
 						connection_type = "okta"
 						hosting_region  = "US"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = ["tf-acc.example"]
 					}
@@ -649,10 +657,10 @@ func TestAccResource_AccountSSOConnection_ScopesRefusedForEntraAtPlan(t *testing
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-entra-scopes"
+						name            = "tfAccEntraScopes"
 						connection_type = "entra"
 						hosting_region  = "US"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = ["tf-acc.example"]
 
@@ -679,12 +687,12 @@ func TestAccResource_AccountSSOConnection_SecretRefusedWithSignedAssertionAtPlan
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-jwt-secret"
+						name            = "tfAccJwtSecret"
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
 						auth_method     = "private_key_jwt"
-						client_id       = "tf-acc-client"
-						client_secret   = "tf-acc-client-secret"
+						client_id       = "tfAccClient"
+						client_secret   = "tfAccClientSecret"
 						scopes          = "openid"
 						domains         = ["tf-acc.example"]
 
@@ -715,10 +723,10 @@ func TestAccResource_AccountSSOConnection_MixedCaseDomainRefusedAtPlan(t *testin
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-mixed-case"
+						name            = "tfAccMixedCase"
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = ["TF-Acc.Example"]
 
@@ -748,10 +756,10 @@ func TestAccResource_AccountSSOConnection_EmptyDomainsRefusedAtPlan(t *testing.T
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-no-domains"
+						name            = "tfAccNoDomains"
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = []
 
@@ -782,10 +790,10 @@ func TestAccResource_AccountSSOConnection_UnknownRegionRefusedAtPlan(t *testing.
 			{
 				Config: `
 					resource "jamfplatform_account_sso_connection" "test" {
-						name            = "tf-acc-bad-region"
+						name            = "tfAccBadRegion"
 						connection_type = "generic_oidc"
 						hosting_region  = "MARS"
-						client_id       = "tf-acc-client"
+						client_id       = "tfAccClient"
 						scopes          = "openid"
 						domains         = ["tf-acc.example"]
 

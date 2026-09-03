@@ -21,7 +21,7 @@ import (
 type ConnectionResourceModel struct {
 	ID                       types.String                  `tfsdk:"id"`
 	Name                     types.String                  `tfsdk:"name"`
-	DisplayName              types.String                  `tfsdk:"display_name"`
+	InternalName             types.String                  `tfsdk:"internal_name"`
 	ConnectionType           types.String                  `tfsdk:"connection_type"`
 	HostingRegion            types.String                  `tfsdk:"hosting_region"`
 	AuthMethod               types.String                  `tfsdk:"auth_method"`

@@ -70,6 +70,10 @@ func (r *ConnectionResource) Create(ctx context.Context, req resource.CreateRequ
 
 	created, err := r.client.CreateConnection(createCtx, request)
 	if err != nil {
+		if orphans := r.connectionsCreatedDespite(createCtx, plan.Name.ValueString()); len(orphans) > 0 {
+			appendOrphanedCreateDiagnostics(&resp.Diagnostics, plan.Name.ValueString(), orphans, err)
+			return
+		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, "create", err) {
 			resp.Diagnostics.AddError("Error creating Jamf Account SSO connection", err.Error())
 		}
@@ -229,7 +233,7 @@ func (r *ConnectionResource) Update(ctx context.Context, req resource.UpdateRequ
 	defer cancel()
 
 	if state.ConsentFlow.ValueBool() {
-		appendConsentFlowUpdateDiagnostics(&resp.Diagnostics, state.DisplayName.ValueString())
+		appendConsentFlowUpdateDiagnostics(&resp.Diagnostics, state.InternalName.ValueString())
 		return
 	}
 
@@ -252,6 +256,10 @@ func (r *ConnectionResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	updated, err := r.client.UpdateConnection(updateCtx, id, request)
 	if err != nil {
+		if r.connectionStillExists(updateCtx, id) {
+			appendUnconfirmedUpdateDiagnostics(&resp.Diagnostics, id, err)
+			return
+		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, "change", err) {
 			resp.Diagnostics.AddError("Error updating Jamf Account SSO connection", err.Error())
 		}
@@ -389,4 +397,56 @@ func configuredClientSecret(ctx context.Context, config tfsdk.Config) (types.Str
 	var secret types.String
 	diags := config.GetAttribute(ctx, path.Root("client_secret"), &secret)
 	return secret, diags
+}
+
+// connectionsCreatedDespite lists connections matching the configured name after a
+// create reported an error, so a connection Jamf made anyway is not left
+// unmanaged.
+//
+// Wire-observed 2026-09-02: a POST answering 500 UPSTREAM_ERROR had created the
+// connection regardless, and because Jamf appends a random suffix to the stored
+// name there is no identifier in the error to look it up by — only the name the
+// caller chose. Hence a collection scan.
+//
+// A read that itself fails returns nothing: the create error is then reported as
+// it stands, which is the honest outcome when neither the write nor the check
+// could be completed. Since Jamf allows duplicate names, every match is returned
+// and the caller decides — a pre-existing connection of the same name is
+// indistinguishable from one this create made, and saying so beats guessing.
+func (r *ConnectionResource) connectionsCreatedDespite(ctx context.Context, name string) []account.ConnectionSummary {
+	if name == "" {
+		return nil
+	}
+	all, err := r.client.ListConnections(ctx)
+	if err != nil {
+		return nil
+	}
+	return connectionsMatchingName(all, name)
+}
+
+// connectionStillExists reports whether a connection is present after a change
+// reported an error.
+//
+// It separates the two outcomes a failed update can have: the connection is gone
+// (deleted elsewhere, so the error is really a not-found and the resource should
+// say so) or it is still there and Jamf simply will not say whether the change
+// landed. A read that fails answers false, so the original write error is
+// reported rather than replaced by a weaker one.
+func (r *ConnectionResource) connectionStillExists(ctx context.Context, id string) bool {
+	if id == "" {
+		return false
+	}
+	if _, err := r.client.GetConnection(ctx, id); err == nil {
+		return true
+	}
+	all, err := r.client.ListConnections(ctx)
+	if err != nil {
+		return false
+	}
+	for _, candidate := range all {
+		if candidate.ID == id {
+			return true
+		}
+	}
+	return false
 }

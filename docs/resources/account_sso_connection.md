@@ -133,7 +133,9 @@ variable "idp_client_secret" {
 
 Destroying a `jamfplatform_account_sso_domain` also withdraws that domain from every connection naming it, quietly narrowing this set — the `jamfplatform_account_sso_domain` data source reports which connections a domain is assigned to.
 - `hosting_region` (String) **"Hosting region"** in the Jamf Account console — the region your provider details are held in and your sign-in traffic is routed through. One of `AU`, `EU`, `JP`, `RAMP`, `US`. The console says this cannot be changed after the connection is created, so changing it replaces the connection. Note this is unrelated to the region of the `base_url` you configure the provider with.
-- `name` (String) **"Connection name"** in the Jamf Account console — the name to give the connection. Jamf may store a uniquified form of it, adding a suffix of its own; `display_name` is what it actually stored, and this attribute always holds what you asked for.
+- `name` (String) **"Connection name"** in the Jamf Account console — the name to give the connection, and the name the console displays. Letters and digits only: Jamf rejects anything else without saying which field was at fault, so this is checked before the plan is applied.
+
+Jamf does not require connection names to be unique, and appends a suffix of its own to whichever name you choose. So two connections created with the same name both exist, and the console shows both under that one name — only `internal_name` and `id` tell them apart. Give each connection a distinct name unless you mean to have duplicates.
 
 ### Optional
 
@@ -175,10 +177,10 @@ No live Google Workspace connection was available anywhere while this was built,
 ### Read-Only
 
 - `consent_flow` (Boolean) Whether the connection authenticates through Microsoft's admin-consent flow rather than through a client you registered. Managed by Jamf and only ever set up in the Jamf Account console: such a connection has no client of its own and cannot be written back, so this resource refuses to manage one. Read-only.
-- `display_name` (String) Name Jamf Account stores for the connection, which is what the console lists and may carry a uniquifying suffix Jamf added to `name`. Read-only.
 - `easy_config` (Boolean) Whether the connection was built by Jamf's guided setup rather than configured directly. Managed by Jamf. Read-only.
 - `enabled_product_names` (Set of String) The Jamf products Jamf Account reports this connection as enabled for. This is the only part of `enabled_products` that can be read back — never the tenants — so it is a partial signal rather than a full picture. Read-only.
 - `id` (String) Identifier Jamf Account assigned to the connection. Read-only.
+- `internal_name` (String) Internal name Jamf Account stores for the connection. Jamf appends a suffix of its own to the name you choose, and this is the result. The console does not show it — it lists `name` — so this is the only place two connections sharing a name can be told apart. Read-only.
 - `ticket_url` (String) Address of the Google Workspace administrator consent request for this connection, where one is outstanding. Null for every other family and for a Google connection needing no consent. Read-only.
 
 <a id="nestedatt--enabled_environments"></a>

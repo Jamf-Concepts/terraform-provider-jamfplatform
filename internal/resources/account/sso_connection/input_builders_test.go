@@ -6,6 +6,7 @@ package sso_connection
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
@@ -493,5 +494,24 @@ func TestBuildConnectionRequest_RefusesAMissingSettingsBlock(t *testing.T) {
 
 	if _, diags := buildConnectionRequest(context.Background(), plan, types.StringNull()); !diags.HasError() {
 		t.Fatal("a missing settings block must be reported rather than sent as nothing")
+	}
+}
+
+// TestAliasLoginHintIsAlwaysSerialised pins the reason the provider cannot hit the
+// undocumented requirement that sank a day of raw-curl probing: the SDK types
+// aliasLoginHintToIdp as a value bool with no omitempty, so it is on the wire even
+// when the operator sets nothing.
+func TestAliasLoginHintIsAlwaysSerialised(t *testing.T) {
+	body, err := json.Marshal(&account.ConnectionRequest{
+		ConnectionType:  account.ConnectionTypeOidc,
+		Connection:      account.ConnectionRequestConnection{OidcConnectionSettings: &account.OidcConnectionSettings{Name: "probeName"}},
+		Domains:         []string{"probe.example"},
+		EnabledProducts: []account.EnabledProduct{},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(body), `"aliasLoginHintToIdp"`) {
+		t.Fatalf("aliasLoginHintToIdp absent from a zero-valued request; the provider could then hit the 500:\n%s", body)
 	}
 }

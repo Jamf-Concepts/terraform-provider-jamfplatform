@@ -43,11 +43,11 @@
 //     never observed.
 //   - Whether Jamf appends a uniquifying suffix to a configured name is unknown
 //     — spec-derived, not wire-verified, and not even the specification says.
-//     That is why `name` and `display_name` are two attributes rather than one.
+//     That is why `name` and `internal_name` are two attributes rather than one.
 //     Eighteen of the twenty-two connections read carry such a suffix, and a
 //     single Optional attribute echoing the stored value back would give every
 //     one of them a difference on every plan. So `name` holds what was
-//     configured and is never overwritten from a read, and `display_name` holds
+//     configured and is never overwritten from a read, and `internal_name` holds
 //     what Jamf stores. Whichever answer the fix yields, neither attribute
 //     changes shape.
 //
@@ -95,7 +95,7 @@
 //	Terraform attribute            Payload field
 //	----------------------------   ------------------------------------------
 //	name                           connection.name          (configured value)
-//	display_name                   name                     (stored value)
+//	internal_name                   name                     (stored value)
 //	hosting_region                 region
 //	auth_method                    tokenEndpointAuthMethod
 //	pkce                           pkceAuthType
@@ -157,6 +157,7 @@ package sso_connection
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
@@ -190,6 +191,19 @@ const maxSessionMinutes = 1440
 // impossible value is refused at plan time rather than producing an
 // unattributable refusal mid-apply. Jamf publishes no limit.
 const nameMaxLength = 255
+
+// nameAllowedPattern is the character set Jamf Account accepts in a connection
+// name: letters and digits, nothing else.
+//
+// Wire-established 2026-09-02, and it is not in the specification or the SDK. A
+// name carrying a hyphen is refused with an unattributed 500 UPSTREAM_ERROR
+// naming no field, indistinguishable from the several other faults that share
+// that response — so validating it here is the difference between a plan-time
+// message and an opaque failure mid-apply.
+//
+// Note the suffix Jamf appends to the stored name contains a hyphen itself, so
+// the constraint applies to what is sent, not to what comes back.
+var nameAllowedPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 
 // ConnectionResource implements the Terraform resource for Jamf Account SSO
 // connections.
@@ -273,17 +287,25 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "**\"Connection name\"** in the Jamf Account console — the name to give the " +
-					"connection. Jamf may store a uniquified form of it, adding a suffix of its own; " +
-					"`display_name` is what it actually stored, and this attribute always holds what you asked " +
-					"for.",
+					"connection, and the name the console displays. Letters and digits only: Jamf rejects " +
+					"anything else without saying which field was at fault, so this is checked before the " +
+					"plan is applied.\n\nJamf does not require connection names to be unique, and appends a " +
+					"suffix of its own to whichever name you choose. So two connections created with the same " +
+					"name both exist, and the console shows both under that one name — only `internal_name` " +
+					"and `id` tell them apart. Give each connection a distinct name unless you mean to have " +
+					"duplicates.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, nameMaxLength),
+					stringvalidator.RegexMatches(nameAllowedPattern,
+						"must contain only letters and digits — Jamf rejects a connection name with any other character"),
 				},
 			},
-			"display_name": schema.StringAttribute{
-				MarkdownDescription: "Name Jamf Account stores for the connection, which is what the console lists " +
-					"and may carry a uniquifying suffix Jamf added to `name`. Read-only.",
+			"internal_name": schema.StringAttribute{
+				MarkdownDescription: "Internal name Jamf Account stores for the connection. Jamf appends a " +
+					"suffix of its own to the name you choose, and this is the result. The console does not " +
+					"show it — it lists `name` — so this is the only place two connections sharing a name can " +
+					"be told apart. Read-only.",
 				Computed: true,
 			},
 			"connection_type": schema.StringAttribute{

@@ -267,7 +267,7 @@ func withConsentFlow() connectionSetter {
 	return func(ctx context.Context, t *testing.T, state *tfsdk.State) {
 		t.Helper()
 		setAttribute(ctx, t, state, path.Root("consent_flow"), true)
-		setAttribute(ctx, t, state, path.Root("display_name"), "tf-unit-consent")
+		setAttribute(ctx, t, state, path.Root("internal_name"), "tf-unit-consent")
 	}
 }
 
@@ -437,8 +437,8 @@ func TestRead_TakesBothCalls(t *testing.T) {
 	if diags := resp.State.Get(ctx, &state); diags.HasError() {
 		t.Fatalf("reading back the state: %v", diags)
 	}
-	if state.DisplayName.ValueString() != unitConnectionName {
-		t.Errorf("display_name = %q, want the stored name", state.DisplayName.ValueString())
+	if state.InternalName.ValueString() != unitConnectionName {
+		t.Errorf("internal_name = %q, want the stored name", state.InternalName.ValueString())
 	}
 	if state.Name.ValueString() != unitConnectionName {
 		t.Errorf("name = %q, want the configured name left alone", state.Name.ValueString())
@@ -524,8 +524,8 @@ func TestRead_ConfiguredNameSurvivesAUniquifiedStoredName(t *testing.T) {
 	if state.Name.ValueString() != unitConnectionName {
 		t.Errorf("name = %q, want the configured name untouched", state.Name.ValueString())
 	}
-	if state.DisplayName.ValueString() != unitConnectionName+"-uniquified" {
-		t.Errorf("display_name = %q, want the stored name", state.DisplayName.ValueString())
+	if state.InternalName.ValueString() != unitConnectionName+"-uniquified" {
+		t.Errorf("internal_name = %q, want the stored name", state.InternalName.ValueString())
 	}
 }
 
@@ -847,5 +847,86 @@ func TestDelete_WithoutAnIdentifierSaysWhatToDo(t *testing.T) {
 	}
 	if detail := resp.Diagnostics.Errors()[0].Detail(); !strings.Contains(detail, "-refresh-only") {
 		t.Errorf("detail %q does not name the remedy", detail)
+	}
+}
+
+// TestCreate_ReportsAConnectionCreatedDespiteTheError covers the wire behaviour
+// that makes a bare error report unsafe: a POST answering 500 UPSTREAM_ERROR had
+// created the connection anyway (observed 2026-09-02).
+//
+// Without the re-read Terraform would report a failure and record nothing, leaving
+// a connection nobody manages and a second one on the next apply. The diagnostic
+// has to name the identifier, because Jamf appends a random suffix to the stored
+// name so there is nothing in the error to look it up by.
+func TestCreate_ReportsAConnectionCreatedDespiteTheError(t *testing.T) {
+	ctx := context.Background()
+	var calls []string
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		calls = append(calls, req.Method+" "+req.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		if req.Method == http.MethodPost {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+			return
+		}
+		// The connection Jamf made despite the error, stored under the sent name
+		// plus a suffix of its own.
+		_, _ = w.Write([]byte(`{"totalCount":1,"results":[{"id":"con_orphan0001","name":"` +
+			unitConnectionName + `-jqxld7tl4m454ed7s35647nmje5bmq","type":"OIDC","region":"US",` +
+			`"domains":[],"enabledApplications":[],"easyConfig":false,` +
+			`"syncUserProfileAttributesAtLogin":true,"ticketUrl":null,` +
+			`"tokenEndpointAuthMethod":"CLIENT_SECRET_POST"}]}`))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withClientSecret("probe-client-secret"))
+	resp := resource.CreateResponse{State: tfsdk.State{Schema: s}, Identity: identity}
+	r.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a create that left a connection behind must report an error, not succeed silently")
+	}
+	if len(calls) < 2 || calls[1] != "GET /sso/v1/connections" {
+		t.Fatalf("create issued %v; the collection must be read after the failure", calls)
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	if !strings.Contains(detail, "con_orphan0001") {
+		t.Errorf("the diagnostic must name the identifier so it can be imported or removed:\n%s", detail)
+	}
+	if !strings.Contains(detail, "terraform import") {
+		t.Errorf("the diagnostic must say how to recover:\n%s", detail)
+	}
+}
+
+// TestCreate_UpstreamFailureWithNothingCreatedReportsPlainly is the other half: a
+// failure that left nothing behind must not claim a connection exists.
+func TestCreate_UpstreamFailureWithNothingCreatedReportsPlainly(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if req.Method == http.MethodPost {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+			return
+		}
+		_, _ = w.Write([]byte(emptyConnectionListBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withClientSecret("probe-client-secret"))
+	resp := resource.CreateResponse{State: tfsdk.State{Schema: s}, Identity: identity}
+	r.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed create must report an error")
+	}
+	if detail := resp.Diagnostics.Errors()[0].Detail(); strings.Contains(detail, "was created despite") {
+		t.Errorf("nothing was created, so the diagnostic must not say otherwise:\n%s", detail)
 	}
 }

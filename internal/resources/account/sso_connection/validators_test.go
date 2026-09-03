@@ -510,3 +510,33 @@ func TestValidatorDescriptionsAreStated(t *testing.T) {
 		}
 	}
 }
+
+// TestNameAllowedPattern covers the character set Jamf accepts in a connection
+// name. It is the one rule from the 2026-09-02 probing that needed new code: the
+// SDK's value-typed aliasLoginHintToIdp already made the other undocumented
+// requirement unreachable through this provider.
+func TestNameAllowedPattern(t *testing.T) {
+	for _, accepted := range []string{"tfProbeOidc", "Corp", "OIDC2", "a", "A1b2C3"} {
+		if !nameAllowedPattern.MatchString(accepted) {
+			t.Errorf("%q must be accepted; letters and digits are what Jamf takes", accepted)
+		}
+	}
+	// A hyphen is the case that cost a day of probing: Jamf refuses it with an
+	// unattributed 500. A space and an underscore are the same class. The empty
+	// string is covered by LengthBetween, but must not match either.
+	for _, refused := range []string{"tf-probe-oidc", "Corp OIDC", "corp_oidc", "corp.oidc", "", "tfProbe!"} {
+		if nameAllowedPattern.MatchString(refused) {
+			t.Errorf("%q must be refused before the plan is applied", refused)
+		}
+	}
+}
+
+// TestNameAllowedPatternRejectsTheStoredForm is the subtle half: the suffix Jamf
+// appends to the stored name contains a hyphen, so the stored form fails the very
+// rule the sent form must satisfy. Anything that validates a value read back from
+// Jamf against this pattern would reject Jamf's own data.
+func TestNameAllowedPatternRejectsTheStoredForm(t *testing.T) {
+	if nameAllowedPattern.MatchString("tfProbeOidc-jqxld7tl4m454ed7s35647nmje5bmq") {
+		t.Fatal("the stored suffixed form is expected to fail this pattern; it constrains what is sent, not what is read")
+	}
+}

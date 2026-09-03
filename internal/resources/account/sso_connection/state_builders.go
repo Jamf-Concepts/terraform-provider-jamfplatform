@@ -53,7 +53,7 @@ func assignConnectionResourceModel(
 	manageFilter := state.GroupNameFilter != nil || adopt
 
 	state.ID = types.StringValue(c.ID)
-	state.DisplayName = types.StringValue(c.Name)
+	state.InternalName = types.StringValue(c.Name)
 	if adopt {
 		state.Name = types.StringValue(c.Name)
 	}

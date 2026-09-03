@@ -382,3 +382,74 @@ func stringsToSet(values []string) (types.Set, diag.Diagnostics) {
 	}
 	return types.SetValue(types.StringType, elements)
 }
+
+// connectionsMatchingName returns every connection whose stored name is the
+// configured name or the configured name with Jamf's own suffix appended.
+//
+// Jamf stores a connection under the name it was sent plus a suffix of its own —
+// `tfProbeOidc` becomes `tfProbeOidc-jqxld7tl4m454ed7s35647nmje5bmq` — and the
+// suffix is random per connection, so a caller cannot predict the stored value.
+// Matching both forms covers the four connections in a probed organization that
+// carry no suffix at all alongside the eighteen that do.
+//
+// It is only ever used to answer "did a write that reported an error take effect
+// anyway", never to resolve a name to a single connection: Jamf does not require
+// names to be unique, so more than one match is expected and the caller decides
+// what to do about it.
+func connectionsMatchingName(all []account.ConnectionSummary, configuredName string) []account.ConnectionSummary {
+	var matched []account.ConnectionSummary
+	for _, candidate := range all {
+		if candidate.Name == configuredName || strings.HasPrefix(candidate.Name, configuredName+"-") {
+			matched = append(matched, candidate)
+		}
+	}
+	return matched
+}
+
+// appendOrphanedCreateDiagnostics reports a create that failed but left a
+// connection behind.
+//
+// Wire-observed on 2026-09-02: a POST answering 500 UPSTREAM_ERROR had created the
+// connection regardless. So a create error does not mean nothing happened, and
+// Terraform cannot simply report the failure — the connection exists, Terraform
+// has no record of it, and the next apply creates a second one.
+//
+// The diagnostic names the identifier so the operator can either import it or
+// remove it, because those are the only two ways out and neither can be chosen
+// here: adopting it silently would commit state for an object whose contents were
+// never confirmed, and deleting it would destroy something that may be in use.
+func appendOrphanedCreateDiagnostics(diags *diag.Diagnostics, name string, orphans []account.ConnectionSummary, cause error) {
+	identifiers := make([]string, 0, len(orphans))
+	for _, orphan := range orphans {
+		identifiers = append(identifiers, orphan.ID+" ("+orphan.Name+")")
+	}
+
+	diags.AddError(
+		"Jamf Account SSO connection was created despite the error",
+		"Creating the connection \""+name+"\" reported a failure, but Jamf Account holds a connection of that "+
+			"name, so the create took effect and Terraform has no record of it. Applying again would create a "+
+			"second one.\n\nConnection(s) found: "+strings.Join(identifiers, ", ")+"\n\nEither import it:\n\n"+
+			"    terraform import <this resource address> "+orphans[0].ID+"\n\nor remove it in the Jamf Account "+
+			"console and apply again. Terraform cannot choose for you: adopting it would record state for a "+
+			"connection whose contents were never confirmed, and deleting it might destroy one already in "+
+			"use.\n\nReported by Jamf Account: "+cause.Error(),
+	)
+}
+
+// appendUnconfirmedUpdateDiagnostics reports a change that failed against a
+// connection that still exists.
+//
+// The same asymmetry as a create applies, with the outcome inverted: the object is
+// already in state, so nothing leaks, but whether the change landed is unknown —
+// Jamf reports the same opaque error whether it applied the change or rejected it.
+// Recording the planned values would be a lie if it did not, and leaving the prior
+// state is a lie if it did, so it reports and refreshes rather than guessing.
+func appendUnconfirmedUpdateDiagnostics(diags *diag.Diagnostics, id string, cause error) {
+	diags.AddError(
+		"Jamf Account SSO connection change could not be confirmed",
+		"Changing connection "+id+" reported a failure, and Jamf Account does not say whether the change was "+
+			"applied or refused. Terraform has left the previous values in state rather than record values it "+
+			"cannot confirm.\n\nRun `terraform plan -refresh-only` to see what Jamf Account currently holds, "+
+			"then apply again.\n\nReported by Jamf Account: "+cause.Error(),
+	)
+}

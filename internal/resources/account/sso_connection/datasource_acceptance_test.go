@@ -162,7 +162,7 @@ func TestAccDataSource_AccountSSOConnection_BothKeysRefused(t *testing.T) {
 				Config: `
 					data "jamfplatform_account_sso_connection" "test" {
 						id   = "con_tfaccbothkeys001"
-						name = "tf-acc-both-keys"
+						name = "tfAccBothKeys"
 					}
 				`,
 				ExpectError: regexpInvalidCombination,
