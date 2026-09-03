@@ -150,7 +150,7 @@ func baseURLPathWarning(baseURL string) (summary, detail string) {
 	if !isJamf {
 		return "", ""
 	}
-	return "Base URL Carries a Path Prefix", "`base_url` is set to " + baseURL + ", which includes a path. Jamf's " +
+	return "Base URL Carries a Path Prefix", "`base_url` is set to " + baseURL + ", which includes a path. The Jamf Platform " +
 		"gateways serve the token endpoint and every API namespace at the host root, so authentication will be " +
 		"attempted against " + strings.TrimRight(baseURL, "/") + "/auth/token and fail with a 404.\n\n" +
 		"Set `base_url` to the host alone, for example https://eu.api.jamfcloud.com. The `/api` segment older " +

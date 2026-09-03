@@ -31,7 +31,7 @@ import (
 type hashAlgorithmAuthResetPlanModifier struct{}
 
 func (hashAlgorithmAuthResetPlanModifier) Description(context.Context) string {
-	return "reuses prior state for hash_algorithm unless authentication_type changes, in which case the server-assigned value is accepted"
+	return "reuses prior state for hash_algorithm unless authentication_type changes, in which case the value Jamf Pro assigns is accepted"
 }
 
 func (m hashAlgorithmAuthResetPlanModifier) MarkdownDescription(ctx context.Context) string {

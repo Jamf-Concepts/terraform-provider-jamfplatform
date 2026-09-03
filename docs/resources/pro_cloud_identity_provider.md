@@ -224,7 +224,7 @@ Optional:
 
 Optional:
 
-- `additional_search_base` (String) Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); the server rejects an empty value.
+- `additional_search_base` (String) Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); Jamf Pro rejects an empty value.
 - `building` (String) Attribute mapped to building.
 - `department` (String) Attribute mapped to department.
 - `email_address` (String) Attribute mapped to email address.

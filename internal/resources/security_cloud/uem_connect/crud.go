@@ -371,7 +371,7 @@ func (r *UEMConnectResource) applySettings(ctx context.Context, diags *diag.Diag
 			diags.AddError(
 				"Error writing Jamf Security Cloud UEM Connect settings",
 				"The integration was "+phase+" but its settings could not be written, so it may be running with "+
-					"Jamf's defaults. Re-run to converge. Reported: "+err.Error(),
+					"Jamf Security Cloud's defaults. Re-run to converge. Reported: "+err.Error(),
 			)
 		}
 		return false

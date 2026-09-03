@@ -177,7 +177,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 									"object_classes":          nestedOptString("Object classes (e.g. `inetOrgPerson`)."),
 									"search_base":             nestedOptString("User search base (e.g. `ou=Users`)."),
 									"search_scope":            nestedOptString("User search scope (e.g. `ALL_SUBTREES`)."),
-									"additional_search_base":  nestedOptString("Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); the server rejects an empty value."),
+									"additional_search_base":  nestedOptString("Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); Jamf Pro rejects an empty value."),
 									"user_id":                 nestedOptString("Attribute mapped to user ID."),
 									"username":                nestedOptString("Attribute mapped to username."),
 									"real_name":               nestedOptString("Attribute mapped to real name."),

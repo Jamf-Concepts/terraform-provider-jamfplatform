@@ -60,7 +60,7 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 			diags.AddAttributeError(
 				path.Root("tool_id"),
 				"Unknown AI tool",
-				"Jamf does not offer an AI tool with this identifier. Read the available identifiers from the "+
+				"The platform offers no AI tool with this identifier. Read the available identifiers from the "+
 					"jamfplatform_ai_governance_tools data source — they are reverse-domain names such as "+
 					"com.anthropic.claudecode, and the match is exact. Reported by Jamf: "+detail.Description,
 			)

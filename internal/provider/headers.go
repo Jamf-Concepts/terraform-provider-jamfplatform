@@ -259,7 +259,7 @@ func resolveAuthorizationHeaderName(attr types.String, headers http.Header) (str
 			"Invalid Authorization Header Name",
 			fmt.Sprintf("The Jamf credential cannot be moved into %s: that header carries the media type of the "+
 				"request body or the response the provider expects, and replacing it with a bearer token leaves "+
-				"a request Jamf cannot parse. Choose the header name the proxy expects the credential under.",
+				"a request the gateway cannot parse. Choose the header name the proxy expects the credential under.",
 				canonical),
 		)
 		return "", diags

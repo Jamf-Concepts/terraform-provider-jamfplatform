@@ -175,7 +175,7 @@ func (r *PolicyResource) checkCatalogue(ctx context.Context, diags *diag.Diagnos
 	if !found {
 		addCatalogueFinding(diags, path.Root("tool_id"), changed.toolID,
 			"Unknown AI tool",
-			fmt.Sprintf("Jamf does not offer an AI tool with the identifier %q. %s", toolID, r.knownTools(ctx)),
+			fmt.Sprintf("The platform offers no AI tool with the identifier %q. %s", toolID, r.knownTools(ctx)),
 		)
 		return false
 	}
@@ -259,7 +259,7 @@ func (r *PolicyResource) noteValidationUnavailable(diags *diag.Diagnostics, caus
 	diags.AddWarning(
 		"Settings validation unavailable",
 		fmt.Sprintf("%s, so settings_json was not checked against the tool's published schema during this plan: %s\n\n"+
-			"The check is advisory, so the plan is unaffected — Jamf validates the settings when they are written. "+
+			"The check is advisory, so the plan is unaffected; the platform validates the settings when they are written. "+
 			"No further notices will be shown for this plan.", cause, err),
 	)
 }

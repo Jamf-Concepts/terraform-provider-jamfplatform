@@ -473,7 +473,7 @@ func (r *ConnectionResource) reportMissingConnection(readCtx, ctx context.Contex
 			"Unable to confirm whether the Jamf Account SSO connection still exists",
 			"Reading the connection on its identifier reported it missing, and the organization's connection "+
 				"list could not be read to confirm that. Terraform has left it in state rather than assuming it "+
-				"is gone, because Jamf is known to list a connection it cannot read on its own identifier. "+
+				"is gone, because Jamf Account is known to list a connection it cannot read on its own identifier. "+
 				"Underlying error: "+err.Error(),
 		)
 		return

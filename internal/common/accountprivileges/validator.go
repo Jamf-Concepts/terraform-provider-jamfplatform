@@ -42,7 +42,7 @@ func Validate(ctx context.Context, catalog *Catalog, m *Model, attrPath path.Pat
 				continue
 			}
 			detail := fmt.Sprintf(
-				"The privilege %q is not grantable on this Jamf Pro tenant, so the server would silently ignore it (leaving a perpetual diff). It is not present in the tenant's Administrator privilege set.",
+				"The privilege %q is not grantable on this Jamf Pro tenant, so Jamf Pro would silently ignore it (leaving a perpetual diff). It is not present in the tenant's Administrator privilege set.",
 				v,
 			)
 			if sug := closestMatch(v, catalog.All()); sug != "" {

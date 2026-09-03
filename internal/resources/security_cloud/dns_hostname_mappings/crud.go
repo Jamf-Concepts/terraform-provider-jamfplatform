@@ -300,7 +300,7 @@ func (r *HostnameMappingsResource) write(callCtx, logCtx context.Context, plan *
 			"Error reading the Jamf Security Cloud hostname mappings just written",
 			"The mapping set was written to the tenant but could not be read back, so Terraform has recorded the "+
 				"configured mappings under the ID \""+helpers.SingletonID+"\" without confirming what was "+
-				"stored — the server dedupes addresses and returns its own order. The next plan will refresh "+
+				"stored: Jamf Security Cloud dedupes addresses and returns its own order. The next plan will refresh "+
 				"them: there is no need to import them, and nothing has to be re-created. Underlying error: "+
 				err.Error(),
 		)

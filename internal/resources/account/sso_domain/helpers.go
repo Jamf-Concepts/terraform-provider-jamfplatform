@@ -72,7 +72,7 @@ func appendClaimDiagnostics(diags *diag.Diagnostics, domain string, err error) b
 // sharedDomainExplanation is the one fact both shared-domain diagnostics rest
 // on, stated once so the two cannot drift apart.
 const sharedDomainExplanation = "A shared domain is owned by whichever Jamf Account organization claimed it: " +
-	"yours may assign it to an SSO connection, but Jamf refuses to change or withdraw it."
+	"yours may assign it to an SSO connection, but Jamf Account refuses to change or withdraw it."
 
 // appendSharedDomainDiagnostics refuses a domain another organization owns, and
 // reports whether it did.

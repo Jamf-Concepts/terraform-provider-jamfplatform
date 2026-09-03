@@ -427,7 +427,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 		if putHitServerBug {
 			resp.Diagnostics.AddError(
 				"Jamf Pro mobile device prestage update did not commit",
-				fmt.Sprintf("The Jamf Pro PUT endpoint returned HTTP 500 (known upstream bug) and the verifying GET shows the write was silently rolled back. %s — most often this is a server-side validation failure on `anchor_certificates` (Jamf Pro validates PEM content) or a `names.prestage_device_names` element missing its server-assigned id. Fix the offending input and re-run `terraform apply`.", fmtUnchangedFields(unchanged)),
+				fmt.Sprintf("The Jamf Pro PUT endpoint returned HTTP 500 (a known Jamf Pro defect) and the verifying GET shows the write was silently rolled back. %s — most often this is a server-side validation failure on `anchor_certificates` (Jamf Pro validates PEM content) or a `names.prestage_device_names` element missing its server-assigned id. Fix the offending input and re-run `terraform apply`.", fmtUnchangedFields(unchanged)),
 			)
 			return
 		}
@@ -552,7 +552,7 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 		switch {
 		case strings.Contains(detail, "ALREADY_SCOPED"):
 			summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
-			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in two separate applies, via `depends_on` ordering, or via the Jamf Pro admin UI) and re-run."
+			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf Pro does not move serials between PreStages transparently: remove the serial from the holding PreStage first (in two separate applies, via `depends_on` ordering, or via the Jamf Pro admin UI) and re-run."
 		case strings.Contains(detail, "DEVICE_DOES_NOT_EXIST_ON_TOKEN"):
 			summary = "Jamf Pro PreStage scope error (serial not on ADE token)"
 			detail += "\n\nAt least one serial in `scope_serial_numbers` does not exist on the Automated Device Enrollment token backing this PreStage (`device_enrollment_program_instance_id`). Confirm the device is assigned to this ADE/MDM server in Apple Business/School Manager and that the token has synced."

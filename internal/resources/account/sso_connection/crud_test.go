@@ -405,14 +405,14 @@ func TestCreate_UpstreamFailurePointsAtTheConfiguration(t *testing.T) {
 	for _, want := range []string{
 		"`domains`",
 		"letters and digits only",
-		"as many connections as Jamf allows",
+		"as many connections as Jamf Account allows",
 		"unit-trace-0001",
 	} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("detail %q does not mention %q", detail, want)
 		}
 	}
-	if strings.Contains(detail, "known fault on Jamf's side") {
+	if strings.Contains(detail, "known fault in Jamf Account") {
 		t.Errorf("a refused create must not be attributed to Jamf, but the detail says so: %q", detail)
 	}
 }

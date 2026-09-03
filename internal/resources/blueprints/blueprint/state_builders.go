@@ -710,7 +710,7 @@ func appendLegacyPayloadDiscardWarnings(diags *diag.Diagnostics, authoredByType 
 			"Legacy payload settings were not stored",
 			fmt.Sprintf(
 				"Jamf did not store %d setting(s) written for the %s payload in %s: %s. "+
-					"Jamf validates each legacy payload against Apple's payload keys for that payload type and silently drops any key it does not define, "+
+					"The platform validates each legacy payload against Apple's payload keys for that payload type and silently drops any key it does not define, "+
 					"so these settings will not reach any device and Terraform will report a difference on every plan. "+
 					"Check each key against Apple's documentation for this payload type, including its exact capitalisation.",
 				len(discarded), payloadType, location, strings.Join(discarded, ", "),

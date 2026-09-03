@@ -261,8 +261,8 @@ func Section(reg Registry, methods ...string) string {
 	}
 	if unknown {
 		b.WriteString("\n`—` marks a row this provider release has no Jamf Account name recorded for: " +
-			"either the capability postdates its copy of Jamf's permissions map, or the permission was " +
-			"not in the expected `{capability}:{action}` form. Look the capability up in Jamf's " +
+			"either the capability postdates its copy of the Jamf permissions map, or the permission was " +
+			"not in the expected `{capability}:{action}` form. Look the capability up in the " +
 			"[Jamf Pro permissions map](" + permissionsMapURL + ") and open an issue so the row is added.\n")
 	}
 	return strings.TrimRight(b.String(), "\n")

@@ -319,7 +319,7 @@ func resolveSummary(
 		diags.AddAttributeError(
 			path.Root("name"),
 			"Unable to find Jamf Account SSO connection",
-			"Your Jamf Account organization has no connection named \""+name.ValueString()+"\". Jamf may hold a "+
+			"Your Jamf Account organization has no connection named \""+name.ValueString()+"\". Jamf Account may hold a "+
 				"uniquified form of the name a connection was created with, so the name to match is the one the "+
 				"Jamf Account console lists — use the `jamfplatform_account_sso_connections` data source to see "+
 				"them.",

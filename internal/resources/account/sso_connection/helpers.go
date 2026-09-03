@@ -61,15 +61,15 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, action string, err error) b
 			if action == actionCreate {
 				diags.AddError(
 					"Jamf Account refused to create the SSO connection",
-					"Jamf refused the connection with an internal failure that names no field. Jamf answers that "+
-						"same failure for several different problems, so work through the ones it is known to "+
+					"Jamf Account refused the connection with an internal failure that names no field, and answers "+
+						"that same failure for several different problems, so work through the ones it is known to "+
 						"cover:\n\n"+
 						"  - every name in `domains` has to be claimed and verified by your organization;\n"+
 						"  - `name` has to be letters and digits only;\n"+
 						"  - the settings block has to be the one `connection_type` names, and has to carry every "+
 						"value that family requires;\n"+
-						"  - your organization may already hold as many connections as Jamf allows, which is "+
-						"refused this same way — remove one you no longer need, or ask Jamf for more.\n\n"+
+						"  - your organization may already hold as many connections as Jamf Account allows, which is "+
+						"refused this same way: remove one you no longer need, or ask Jamf Support for more.\n\n"+
 						"If none of those fit, raise it with Jamf Support and quote the trace identifier: "+
 						traceIDOrUnknown(apiErr)+". Reported by Jamf Account: "+detail.Description,
 				)
@@ -77,11 +77,12 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, action string, err error) b
 			}
 			diags.AddError(
 				"Jamf Account cannot "+action+" an SSO connection",
-				"Jamf refused to "+action+" the connection with an internal failure that carries no detail. This "+
-					"is a known fault on Jamf's side, not a problem with this configuration: every attempt to "+
+				"Jamf Account refused to "+action+" the connection with an internal failure that carries no "+
+					"detail. This is a known fault in Jamf Account, not a problem with this configuration: every "+
+					"attempt to "+
 					"change a connection is refused the same way, in every region, and nothing you send alters "+
 					"that — the same refusal comes back for the exact values a create accepts.\n\n"+
-					"Creating, reading, listing and destroying connections all work. Until Jamf fixes this, edit "+
+					"Creating, reading, listing and destroying connections all work. Until it is fixed, edit "+
 					"connections in the Jamf Account console and use this provider to read them. If you raise it "+
 					"with Jamf Support, quote the trace identifier: "+traceIDOrUnknown(apiErr)+". Reported by "+
 					"Jamf Account: "+detail.Description,
@@ -89,13 +90,14 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, action string, err error) b
 		case codeBadRequest:
 			diags.AddError(
 				"Jamf Account refused a value on the connection",
-				"Jamf refused one of the values on this connection and does not say which attribute it was on — "+
+				"Jamf Account refused one of the values on this connection and does not say which attribute it "+
+					"was on: "+
 					"it names only the value. Reported by Jamf Account: "+detail.Description,
 			)
 		case codeFieldValidation:
 			diags.AddError(
 				"A required part of the connection did not reach Jamf Account",
-				"Jamf reports a required part of the connection as missing or empty. This usually means a "+
+				"Jamf Account reports a required part of the connection as missing or empty. This usually means a "+
 					"variable or a reference resolved to nothing — `domains` in particular has to hold at least "+
 					"one verified domain name. Reported by Jamf Account: "+detail.Description,
 			)
@@ -542,8 +544,8 @@ func appendOrphanedCreateDiagnostics(diags *diag.Diagnostics, name string, orpha
 	diags.AddError(
 		"Jamf Account SSO connection may have been created despite the error",
 		"Creating the connection \""+name+"\" reported a failure, and your organization holds more than one "+
-			"connection matching it. Nothing Jamf reports says when a connection was made, so Terraform cannot "+
-			"tell which of these — if any — this apply created, and will not name one for you to import.\n\n"+
+			"connection matching it. Nothing Jamf Account reports says when a connection was made, so Terraform "+
+			"cannot tell which of these, if any, this apply created, and will not name one for you to import.\n\n"+
 			"Connections found: "+strings.Join(identifiers, ", ")+"\n\nFind out in the Jamf Account console "+
 			"which of them is new. Then either import that one:\n\n"+
 			"    terraform import <this resource address> <its identifier>\n\nor remove it there and apply "+

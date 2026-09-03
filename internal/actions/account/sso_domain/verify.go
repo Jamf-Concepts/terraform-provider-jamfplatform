@@ -227,7 +227,7 @@ func reportOutcome(resp *action.InvokeResponse, domain *account.Domain, target s
 			fmt.Sprintf("Jamf Account checked the DNS records for %s and ownership is still not proven. The "+
 				"domain's verification status is %s.\n\n"+
 				"Publish a TXT record on %s whose value is the domain's `verification_txt_record`, wait for it "+
-				"to become visible to Jamf, then invoke this action again. Jamf allows one verification every "+
+				"to become visible to Jamf Account, then invoke this action again. It allows one verification every "+
 				"five minutes per domain, so an immediate retry is refused.\n\n"+
 				"This attempt has already moved the domain's `last_modified_at` and `verification_expires_at` "+
 				"forward: a verification that proves nothing counts against the five-minute limit exactly as a "+

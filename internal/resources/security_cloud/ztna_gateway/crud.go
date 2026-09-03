@@ -99,7 +99,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 		resp.Diagnostics.AddError(
 			"Error reading created Jamf Security Cloud ZTNA gateway",
 			"The gateway was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
-				"recorded its ID and the configured values without the server-assigned status or dedicated egress "+
+				"recorded its ID and the configured values without the status or dedicated egress "+
 				"addresses. The next plan will refresh those — do not re-create it: nothing prevents a second "+
 				"gateway being provisioned alongside this one, which would consume another dedicated IP address "+
 				"from the account's allotment and leave this one running unmanaged. Underlying error: "+err.Error(),

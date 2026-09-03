@@ -293,7 +293,7 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 		if putHitServerBug {
 			resp.Diagnostics.AddError(
 				"Jamf Pro computer prestage update did not commit",
-				fmt.Sprintf("The Jamf Pro PUT endpoint returned HTTP 500 (known upstream bug) and the verifying GET shows the write was silently rolled back. %s — most often this is a server-side validation failure on `anchor_certificates` (Jamf Pro validates PEM content). Fix the offending input and re-run `terraform apply`.", fmtUnchangedFields(unchanged)),
+				fmt.Sprintf("The Jamf Pro PUT endpoint returned HTTP 500 (a known Jamf Pro defect) and the verifying GET shows the write was silently rolled back. %s — most often this is a server-side validation failure on `anchor_certificates` (Jamf Pro validates PEM content). Fix the offending input and re-run `terraform apply`.", fmtUnchangedFields(unchanged)),
 			)
 			return
 		}
@@ -480,7 +480,7 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 		detail := err.Error()
 		if strings.Contains(detail, "ALREADY_SCOPED") {
 			summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
-			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
+			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf Pro does not move serials between PreStages transparently: remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
 		}
 		diags.AddError(summary, detail)
 	}

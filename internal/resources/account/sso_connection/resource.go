@@ -337,7 +337,7 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, nameMaxLength),
 					stringvalidator.RegexMatches(nameAllowedPattern,
-						"must contain only letters and digits — Jamf rejects a connection name with any other character"),
+						"must contain only letters and digits; Jamf Account rejects a name with any other character"),
 				},
 			},
 			"internal_name": schema.StringAttribute{

@@ -111,7 +111,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if detail.Status == aigovernance.PolicyDetailStatusArchived {
 		resp.Diagnostics.AddWarning(
 			"AI policy has been archived",
-			"Jamf reports the policy with ID "+state.ID.ValueString()+" as archived, which is how it records a "+
+			"The platform reports the policy with ID "+state.ID.ValueString()+" as archived, which is how it records a "+
 				"policy deleted outside Terraform. An archived policy is delivered to no device and its published "+
 				"versions are no longer served, so it has been removed from state and the next plan will propose "+
 				"creating it again.",

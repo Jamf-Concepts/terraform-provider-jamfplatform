@@ -269,7 +269,7 @@ func validateSettingsBlocks(ctx context.Context, req validator.StringRequest, re
 				path.Root(pairing.block),
 				"Settings block required for this connection type",
 				"`connection_type` is \""+connectionType+"\", so the `"+pairing.block+"` block has to be set. "+
-					"It carries the settings only that kind of provider takes. Jamf refuses a connection whose "+
+					"It carries the settings only that kind of provider takes. Jamf Account refuses a connection whose "+
 					"settings do not match its type without saying which part was wrong, which is why this is "+
 					"reported here.",
 			)
@@ -309,7 +309,7 @@ func validateScopes(ctx context.Context, req validator.StringRequest, resp *vali
 				path.Root("scopes"),
 				"Scopes are not accepted for an Entra connection",
 				"An Entra connection takes no scopes — no Entra connection read carried any, and the settings "+
-					"Jamf accepts for one have no place to put them. Remove `scopes`, and control what is read "+
+					"Jamf Account accepts for one have no place to put them. Remove `scopes`, and control what is read "+
 					"from the directory with the `entra` block's profile and group options instead.",
 			)
 		}
@@ -492,7 +492,7 @@ func (v attributeMapValidator) ValidateString(_ context.Context, req validator.S
 			req.Path,
 			"Claim mapping is not a JSON object",
 			"`attribute_map` has to be a JSON object of mapping settings. Author it with `jsonencode({ ... })`. "+
-				"Jamf stores whatever it is given here without checking it and then ignores what it cannot "+
+				"Jamf Account stores whatever it is given here without checking it and then ignores what it cannot "+
 				"read, so a malformed value would take effect as no mapping at all. Reported while parsing: "+
 				err.Error(),
 		)
@@ -505,8 +505,8 @@ func (v attributeMapValidator) ValidateString(_ context.Context, req validator.S
 			req.Path,
 			"Claim mapping names no mode",
 			"Every connection read carried a `"+mappingModeKey+"` in its claim mapping, one of "+
-				markdownValueList(mappingModeValues())+". This value names none, which Jamf will store and "+
-				"then ignore. Jamf publishes no schema for this, so it is possible a mapping without a mode is "+
+				markdownValueList(mappingModeValues())+". This value names none, which Jamf Account will store and "+
+				"then ignore. There is no published schema for this, so it is possible a mapping without a mode is "+
 				"meaningful and this warning is wrong — hence a warning rather than a refusal.",
 		)
 		return
@@ -518,7 +518,8 @@ func (v attributeMapValidator) ValidateString(_ context.Context, req validator.S
 			req.Path,
 			"Claim mapping names an unrecognised mode",
 			"`"+mappingModeKey+"` is not one of "+markdownValueList(mappingModeValues())+", which are the modes "+
-				"observed across every readable connection. Jamf publishes no schema for this and validates "+
+				"observed across every readable connection. There is no published schema for this, and Jamf Account "+
+				"validates "+
 				"nothing inside it, so a mode it does not recognise is stored and then ignored rather than "+
 				"refused. This is a warning rather than an error because the known modes are an observation "+
 				"and not a declared set.",

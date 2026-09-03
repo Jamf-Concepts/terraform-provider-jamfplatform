@@ -50,7 +50,7 @@ func TestAppendWriteDiagnostics_UpstreamFailureOnCreatePointsAtTheConfiguration(
 		"`domains`",
 		"letters and digits only",
 		"`connection_type`",
-		"as many connections as Jamf allows",
+		"as many connections as Jamf Account allows",
 		"unit-trace-0001",
 	} {
 		if !strings.Contains(detail, want) {
@@ -58,7 +58,7 @@ func TestAppendWriteDiagnostics_UpstreamFailureOnCreatePointsAtTheConfiguration(
 		}
 	}
 	for _, unwanted := range []string{
-		"known fault on Jamf's side",
+		"known fault in Jamf Account",
 		"before the request is examined",
 	} {
 		if strings.Contains(detail, unwanted) {
@@ -79,7 +79,7 @@ func TestAppendWriteDiagnostics_UpstreamFailureOnChangeBlamesJamf(t *testing.T) 
 
 	detail := diags.Errors()[0].Detail()
 	for _, want := range []string{
-		"known fault on Jamf's side",
+		"known fault in Jamf Account",
 		"Jamf Account console",
 		"unit-trace-0001",
 	} {

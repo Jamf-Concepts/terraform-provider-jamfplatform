@@ -242,7 +242,7 @@ func validateDictionary(declared *Schema, value map[string]any, path string, pro
 					Kind: UnknownKey,
 					Path: child,
 					Detail: fmt.Sprintf(
-						"Apple does not define %q here; Jamf discards a key it does not recognise, so it would never appear in state.",
+						"Apple does not define %q here; the platform discards a key it does not recognise, so it would never appear in state.",
 						name,
 					),
 				})
@@ -253,7 +253,7 @@ func validateDictionary(declared *Schema, value map[string]any, path string, pro
 				Path:      child,
 				Canonical: canonical,
 				Detail: fmt.Sprintf(
-					"key %q is not spelled the way Apple defines it; Jamf stores it as %q, which can never match the configuration. Use %q.",
+					"key %q is not spelled the way Apple defines it; the platform stores it as %q, which can never match the configuration. Use %q.",
 					name, canonical, canonical,
 				),
 			})
@@ -281,7 +281,7 @@ func validateDictionary(declared *Schema, value map[string]any, path string, pro
 			Kind: MissingRequiredKey,
 			Path: joinPath(path, name),
 			Detail: fmt.Sprintf(
-				"Apple marks %q required for this payload, and Jamf rejects a write that leaves it out.",
+				"Apple marks %q required for this payload, and the platform rejects a write that leaves it out.",
 				name,
 			),
 		})
@@ -300,7 +300,7 @@ func validateValue(declared *Schema, value any, path string, problems *[]Problem
 			Kind: WrongType,
 			Path: path,
 			Detail: fmt.Sprintf(
-				"Apple declares %s here, but the value is %s; Jamf rejects a write whose value has the wrong type.",
+				"Apple declares %s here, but the value is %s; the platform rejects a write whose value has the wrong type.",
 				jsonvalue.Article(string(declared.Type)), jsonvalue.Describe(value),
 			),
 		})
@@ -313,7 +313,7 @@ func validateValue(declared *Schema, value any, path string, problems *[]Problem
 				Kind: IntegerOutOfRange,
 				Path: path,
 				Detail: fmt.Sprintf(
-					"Apple leaves this integer unbounded, but Jamf stores it in a 32-bit signed field and rejects a write outside %d to %d; the value is %s.",
+					"Apple leaves this integer unbounded, but the platform stores it in a 32-bit signed field and rejects a write outside %d to %d; the value is %s.",
 					minJamfInteger, maxJamfInteger, jsonvalue.FormatNumber(number),
 				),
 			})
