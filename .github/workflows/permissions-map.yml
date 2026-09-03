@@ -1,0 +1,138 @@
+name: Jamf Permissions Map
+
+# Keeps internal/common/permissions/permissions-map.md current with Jamf's "Jamf Pro permissions
+# map" article. catalogue.go transcribes that article — the Jamf Account section and permission name
+# for every GA capability — and TestCatalogueMatchesThePublishedMap asserts every row against the
+# snapshot, so a stale snapshot means a permission Jamf has renamed or moved still ships in the
+# provider's rendered "Required Jamf permissions" tables, sending an operator to a checkbox that no
+# longer exists.
+#
+# This job replaced a quarterly reminder that opened an issue for a human to re-read the article by
+# hand. That reminder existed because "there is nothing machine-readable to regenerate from here",
+# which stopped being true: the article is published as markdown at the same URL with `.md`
+# appended, jamfplatform-go-sdk v0.21.0 established that its tables parse, and the check is now a
+# test rather than a person's attention.
+#
+# Deliberately a scheduled job that opens a pull request, NOT a check on every pull request: the
+# article is revised occasionally and unpredictably, and a freshness check on the critical path
+# would block unrelated work the day Jamf publishes. Same reasoning, and same shape, as the Apple
+# Profile Schemas workflow.
+#
+# Unlike that workflow, a failing test does NOT suppress the pull request. A drifted permission name
+# is precisely the case where the refresh must reach a human, so the tests run for their output and
+# the pull request is opened either way, red, with the failures in its body.
+
+on:
+  schedule:
+    # 05:00 UTC on the 1st of each month, an hour after Apple Profile Schemas so the two refreshes
+    # do not open pull requests in the same minute.
+    - cron: "0 5 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# A refresh must never race itself; a queued run picks up whatever the previous one committed.
+concurrency:
+  group: permissions-map
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh Permissions Map
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Refresh the snapshot
+        run: make permissions-map
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- internal/common/permissions/permissions-map.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The published article is unchanged since the committed snapshot."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "updated=$(sed -n 's/^updatedAt: //p' internal/common/permissions/permissions-map.md | head -1)" >> "$GITHUB_OUTPUT"
+
+      # Runs for its output, not as a gate: a failure here means the article now disagrees with
+      # catalogue.go, which is the finding the pull request has to carry rather than swallow.
+      - name: Check the catalogue against the new snapshot
+        id: verify
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          set +e
+          go test ./internal/common/permissions/ 2>&1 | tee /tmp/test-output
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "agrees=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "agrees=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A fixed branch is force-pushed, so an unreviewed month does not accumulate branches and an
+      # already-open pull request picks up the newer snapshot instead of a second one being opened.
+      - name: Open or update the refresh pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATED_AT: ${{ steps.diff.outputs.updated }}
+          AGREES: ${{ steps.verify.outputs.agrees }}
+        run: |
+          set -euo pipefail
+          branch="chore/permissions-map-refresh"
+
+          cat > /tmp/commit-message <<EOF
+          chore(permissions): refresh the Jamf permissions map snapshot
+
+          Refetched internal/common/permissions/permissions-map.md from
+          https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map.md
+          (article updatedAt ${UPDATED_AT}).
+          EOF
+
+          {
+            echo "Jamf revised the permissions map article. This refreshes the committed markdown snapshot that \`TestCatalogueMatchesThePublishedMap\` asserts every \`catalogue.go\` row against."
+            echo
+            echo "- **Article:** https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map"
+            echo "- **updatedAt:** \`${UPDATED_AT}\`"
+            echo
+            if [ "$AGREES" = "true" ]; then
+              echo "**\`catalogue.go\` still agrees with the article.** Nothing else to do — read the snapshot diff to see what moved upstream, and merge."
+            else
+              echo "**\`catalogue.go\` no longer agrees with the article, so this pull request is red.** The article is the source of truth: correct each row below to what it now says, then \`go test ./internal/common/permissions/ -update-golden\` and \`make generate\` to re-render the affected schema descriptions into \`docs/\`."
+              echo
+              echo '```'
+              cat /tmp/test-output
+              echo '```'
+            fi
+            echo
+            echo "**Review focus.** A renamed permission or one that moved between sections changes what an operator is told to tick in Jamf Account; a capability appearing or disappearing changes coverage. Note that no test can check the article against Jamf Account's picker itself, so a row the article gets wrong is still wrong here."
+            echo
+            echo "Opened by the Jamf Permissions Map workflow."
+          } > /tmp/pr-body
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add internal/common/permissions/permissions-map.md
+          git commit --file=/tmp/commit-message
+          git push --force origin "$branch"
+
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            echo "An open refresh pull request already exists; it now carries the newer snapshot."
+            exit 0
+          fi
+          gh pr create \
+            --head "$branch" \
+            --title "chore(permissions): refresh the Jamf permissions map snapshot" \
+            --body-file /tmp/pr-body

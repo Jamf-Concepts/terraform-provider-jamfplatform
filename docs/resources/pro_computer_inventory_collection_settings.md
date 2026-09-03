@@ -8,8 +8,8 @@ description: |-
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
-  | Global settings | Device inventory collection custom file paths | Create, Delete | `custom-paths` |
   | Global settings | Device inventory collection settings | Read, Update | `computer-inventory-collection-settings` |
+  | Global settings | Inventory collection custom file paths | Create, Delete | `custom-paths` |
 ---
 
 # jamfplatform_pro_computer_inventory_collection_settings (Resource)
@@ -22,8 +22,8 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
-| Global settings | Device inventory collection custom file paths | Create, Delete | `custom-paths` |
 | Global settings | Device inventory collection settings | Read, Update | `computer-inventory-collection-settings` |
+| Global settings | Inventory collection custom file paths | Create, Delete | `custom-paths` |
 
 ## Example Usage
 

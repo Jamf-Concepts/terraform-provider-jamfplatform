@@ -1,0 +1,171 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package permissions
+
+import (
+	"os"
+	"regexp"
+	"sort"
+	"strings"
+	"testing"
+)
+
+// catalogue.go used to say of itself: "No test asserts what an entry SAYS.
+// TestCatalogueCoversEverySDKCapability checks only that a required capability
+// HAS a row, so a wrong section or a wrong permission name is invisible to it."
+// This is that test, and the header no longer says it.
+//
+// It became possible because jamfplatform-go-sdk v0.21.0 committed a snapshot
+// of the published permissions map and parses it as a privilege oracle, which
+// established that the article's markdown rendering is machine-readable. The
+// SDK reads only the Capability column — its parser discards both the
+// Permission name and the "###" headings — so the two dimensions this file
+// needs are the two nobody upstream consumes. jamfpro-cli reached the same
+// conclusion independently and carries the sibling of this test; the two should
+// move together.
+//
+// What this proves and what it does not: it removes drift between the
+// transcription and the article, and it does NOT verify that the article
+// matches what Jamf Account's picker actually prints. Nothing reachable from
+// here can do the latter, which is why permissionsMapURL still appears in a
+// rendered table with no recorded row.
+//
+// permissions-map.md beside this file is a verbatim copy fetched from
+// permissionsMapURL. Refresh it with `make permissions-map` and read the diff:
+// a name or a section moving is a real change to what an operator is told to
+// look for, not housekeeping.
+//
+// The article is the source of truth, so its spelling is taken verbatim and
+// there is deliberately no exception mechanism. A future divergence that is
+// genuinely wanted gets a self-expiring exception map — an entry that stops
+// disagreeing must fail — rather than a silent edit to catalogue.go.
+
+// mapCapabilityRow matches a row of the article's capability tables:
+// | Permission name | `slug:{actions}` | Endpoints |
+var mapCapabilityRow = regexp.MustCompile("^\\|\\s*(.+?)\\s*\\|\\s*`([a-z0-9-]+):\\{([a-z,]+)\\}`\\s*\\|")
+
+// The section of the article this file reads, bounded at both ends. The page
+// also carries narrative tables — the privilege-collapse tables, the
+// two-capability table — whose first column is an old privilege name rather
+// than a permission name, and an "Endpoints with no permission" list. Reading
+// either would attribute the wrong name to a slug.
+const (
+	mapSectionStart = "## Find the capability for an endpoint you already call"
+	mapSectionEnd   = "## Endpoints with no permission"
+)
+
+// minDeclaredCapabilities guards against a snapshot that parsed to nothing — a
+// redirect, a login page, or an upstream restructure that moved the tables. A
+// parser that silently finds nothing reports perfect agreement, which is the
+// one failure mode this test must not have. The article declared 125
+// capabilities on 2026-09-03.
+const minDeclaredCapabilities = 100
+
+// publishedRow is one parsed article row.
+type publishedRow struct {
+	section string
+	name    string
+}
+
+func parsePublishedMap(t *testing.T) map[string]publishedRow {
+	t.Helper()
+
+	raw, err := os.ReadFile("permissions-map.md")
+	if err != nil {
+		t.Fatalf("reading permissions-map.md: %v\n"+
+			"This is the committed copy of %s. Refresh it with "+
+			"`make permissions-map`; do not delete this guard.", err, permissionsMapURL)
+	}
+	body := string(raw)
+
+	_, after, found := strings.Cut(body, mapSectionStart)
+	if !found {
+		t.Fatalf("permissions-map.md has no %q heading — the published article has been "+
+			"restructured, so this parse cannot be trusted. Re-read it before adjusting "+
+			"the bounds.", mapSectionStart)
+	}
+	before, _, found := strings.Cut(after, mapSectionEnd)
+	if !found {
+		t.Fatalf("permissions-map.md has no %q heading — see above.", mapSectionEnd)
+	}
+
+	rows := map[string]publishedRow{}
+	var section string
+	for line := range strings.SplitSeq(before, "\n") {
+		if after0, ok := strings.CutPrefix(line, "### "); ok {
+			section = strings.TrimSpace(after0)
+			continue
+		}
+		m := mapCapabilityRow.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
+			continue // heading row, alignment row, or prose
+		}
+		if section == "" {
+			t.Errorf("row %q appears before any ### heading, so it has no section", m[2])
+			continue
+		}
+		// A capability is declared across as many rows as its resources need:
+		// compliance-benchmarks has two, "Compliance Benchmarks" over
+		// /benchmarks and "Compliance Benchmarks baseline rules" over
+		// /baselines. The first wins, which is the row carrying the wider
+		// action set and the one the catalogue transcribed.
+		if _, seen := rows[m[2]]; !seen {
+			rows[m[2]] = publishedRow{section: section, name: m[1]}
+		}
+	}
+
+	if len(rows) < minDeclaredCapabilities {
+		t.Fatalf("parsed only %d capabilities from permissions-map.md — the row shape has "+
+			"changed and this test would otherwise pass vacuously", len(rows))
+	}
+	return rows
+}
+
+// TestCatalogueMatchesThePublishedMap asserts every catalogue row's section and
+// permission name against the committed copy of the article it transcribes.
+func TestCatalogueMatchesThePublishedMap(t *testing.T) {
+	published := parsePublishedMap(t)
+
+	var onlyHere, onlyThere []string
+	for slug := range catalogue {
+		if _, ok := published[slug]; !ok {
+			onlyHere = append(onlyHere, slug)
+		}
+	}
+	for slug := range published {
+		if _, ok := catalogue[slug]; !ok {
+			onlyThere = append(onlyThere, slug)
+		}
+	}
+	sort.Strings(onlyHere)
+	sort.Strings(onlyThere)
+	if len(onlyHere) > 0 {
+		t.Errorf("catalogue.go carries %d capabilities the article does not declare: %v\n"+
+			"Either the article dropped them — in which case a rendered table now names a "+
+			"permission Jamf Account no longer has — or the slug is misspelled here.",
+			len(onlyHere), onlyHere)
+	}
+	if len(onlyThere) > 0 {
+		t.Errorf("the article declares %d capabilities catalogue.go has no row for: %v\n"+
+			"Add them; the file is deliberately a complete copy of the article, so that a "+
+			"future revision stays diffable against it.", len(onlyThere), onlyThere)
+	}
+
+	for slug, want := range published {
+		got, ok := catalogue[slug]
+		if !ok {
+			continue // already reported above
+		}
+		if got.category != want.section {
+			t.Errorf("%s section = %q, article says %q\n"+
+				"Jamf Account's picker groups by section, so a wrong one sends an operator "+
+				"to the wrong part of the page.", slug, got.category, want.section)
+		}
+		if got.name != want.name {
+			t.Errorf("%s name = %q, article says %q\n"+
+				"The picker is searched BY NAME, so a name expanded or abbreviated here is a "+
+				"name that finds nothing in the box.", slug, got.name, want.name)
+		}
+	}
+}

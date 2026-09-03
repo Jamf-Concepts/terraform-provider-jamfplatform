@@ -15,7 +15,7 @@ description: |-
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
-  | Organization management | SSO connections | Create, Read, Update, Delete | `sso-connections` |
+  | Organization management scope | SSO connections | Create, Read, Update, Delete | `sso-connections` |
 ---
 
 # jamfplatform_account_sso_connection (Resource)
@@ -42,7 +42,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
-| Organization management | SSO connections | Create, Read, Update, Delete | `sso-connections` |
+| Organization management scope | SSO connections | Create, Read, Update, Delete | `sso-connections` |
 
 ## Example Usage
 

@@ -6,22 +6,23 @@ package permissions
 // This file transcribes Jamf's "Jamf Pro permissions map" documentation
 // article: the permission name and grouping Jamf Account shows for every GA
 // capability. It is the only artefact that carries the mapping — the OpenAPI
-// specs publish the capability slug and nothing else — so it is maintained by
-// hand and guarded by TestCatalogueCoversEverySDKCapability, which fails when
-// the SDK starts requiring a capability this file has never heard of.
+// specs publish the capability slug and nothing else.
 //
-// Source: the permissionsMapURL below.
-// Transcribed 2026-08-31 from the revised version of that article which the
-// Platform API spec references. The published page lagged that revision at the
-// time of transcription and is expected to catch up, so a row here may lead the
-// page rather than follow it — check the spec's reference before concluding a
-// row is wrong. The URL itself is stable.
+// Source: the permissionsMapURL below, whose markdown rendering is committed
+// verbatim beside this file as permissions-map.md and refreshed with
+// `make permissions-map`. The article is the source of truth: where this file
+// and that snapshot disagree, the article wins.
 //
-// No test asserts what an entry SAYS. TestCatalogueCoversEverySDKCapability
-// checks only that a required capability HAS a row, so a wrong section or a
-// wrong permission name is invisible to it; catalogue.golden pins the rendered
-// triples so an edited row shows up as a reviewable diff, but nothing can
-// compare a name against Jamf's article. Re-verify by reading the article.
+// Three tests guard it, and between them they cover both dimensions.
+// TestCatalogueCoversEverySDKCapability fails when the SDK starts requiring a
+// capability this file has never heard of. TestCatalogueMatchesThePublishedMap
+// asserts every row's section and permission name against the snapshot, so a
+// permission Jamf renames or moves between sections now fails a build rather
+// than silently shipping an operator to a checkbox that no longer exists.
+// catalogue.golden pins the rendered triples so any edit is a reviewable diff.
+//
+// What none of them can prove is that the article itself matches what Jamf
+// Account's picker prints; nothing reachable from here can.
 //
 // The transcription is deliberately complete rather than trimmed to what this
 // provider calls: an entry costs one line, and keeping the file a faithful copy
@@ -44,7 +45,7 @@ const permissionsMapURL = "https://developer.jamf.com/platform-api/reference/jam
 // Jamf Account's row order is a weaker contract than its names — the picker can
 // be reordered without anything being renamed, and no test here could tell.
 const (
-	catOrganizationManagement = "Organization management"
+	catOrganizationManagement = "Organization management scope"
 	catInventory              = "Inventory"
 	catOrganizationalContext  = "Organizational context"
 	catDeviceActions          = "Device actions"
@@ -134,7 +135,7 @@ var catalogue = map[string]entry{
 	"jamf-packages-action":             {catAppLifecycle, "App package information"},
 	"volume-purchasing-locations":      {catAppLifecycle, "Volume purchasing"},
 	"ebooks":                           {catAppLifecycle, "eBooks"},
-	"provisioning-profiles":            {catAppLifecycle, "Provisioning profiles for in-house apps"},
+	"provisioning-profiles":            {catAppLifecycle, "Provisioning profiles"},
 	"licensed-software":                {catAppLifecycle, "Licensed software"},
 	"restricted-software":              {catAppLifecycle, "Restricted software"},
 	"patch-policies":                   {catAppLifecycle, "Patch policies"},
@@ -179,7 +180,7 @@ var catalogue = map[string]entry{
 
 	// Global settings.
 	"uem-connect":                            {catGlobalSettings, "UEM Connect configuration"},
-	"conditional-access":                     {catGlobalSettings, "Microsoft Intune conditional access configuration"},
+	"conditional-access":                     {catGlobalSettings, "Intune conditional access configuration"},
 	"self-service":                           {catGlobalSettings, "Self Service configuration"},
 	"app-request":                            {catGlobalSettings, "App request settings"},
 	"onboarding":                             {catGlobalSettings, "Onboarding configuration"},
@@ -194,7 +195,7 @@ var catalogue = map[string]entry{
 	"remote-administration":                  {catGlobalSettings, "TeamViewer configuration"},
 	"computer-check-in":                      {catGlobalSettings, "Device check-in configuration"},
 	"computer-inventory-collection-settings": {catGlobalSettings, "Device inventory collection settings"},
-	"custom-paths":                           {catGlobalSettings, "Device inventory collection custom file paths"},
+	"custom-paths":                           {catGlobalSettings, "Inventory collection custom file paths"},
 	"removable-mac-address":                  {catGlobalSettings, "Removable MAC addresses"},
 	"inventory-preload-records":              {catGlobalSettings, "Inventory preload"},
 	"mdm-profile-renewal-settings":           {catGlobalSettings, "MDM profile renewal settings"},
@@ -207,7 +208,7 @@ var catalogue = map[string]entry{
 	// Infrastructure.
 	"device-enrollment-program-instances":   {catInfrastructure, "Automated Device Enrollment connection"},
 	"pki":                                   {catInfrastructure, "PKI certificates"},
-	"ad-cs-settings":                        {catInfrastructure, "Active Directory Certificate Services connector"},
+	"ad-cs-settings":                        {catInfrastructure, "AD Certificate Services connector"},
 	"digicert-settings":                     {catInfrastructure, "DigiCert Trust Lifecycle Manager"},
 	"push-certificates":                     {catInfrastructure, "APNS certificate"},
 	"gsx-connection":                        {catInfrastructure, "Apple GSX connection"},

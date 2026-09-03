@@ -13,7 +13,7 @@ description: |-
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
-  | Infrastructure | Active Directory Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
+  | Infrastructure | AD Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -37,7 +37,7 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
-| Infrastructure | Active Directory Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
+| Infrastructure | AD Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 
 ## Example Usage
 
