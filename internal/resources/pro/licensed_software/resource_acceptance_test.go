@@ -250,9 +250,9 @@ func posListsConfig(name string, defNames, licSerials []string) string {
 			fmt.Fprintf(&defs, "\t\t\t\t{ name = %q, version = \"1.0\", compare_type = \"is\" },\n", d)
 		}
 	}
-	lics := ""
+	var lics strings.Builder
 	for i, s := range licSerials {
-		lics += fmt.Sprintf("\t\t\t\t{ serial_number_1 = %q, license_type = \"Standard\", license_count = %d },\n", s, i+1)
+		lics.WriteString(fmt.Sprintf("\t\t\t\t{ serial_number_1 = %q, license_type = \"Standard\", license_count = %d },\n", s, i+1))
 	}
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_licensed_software" "test" {
@@ -262,7 +262,7 @@ func posListsConfig(name string, defNames, licSerials []string) string {
 			licenses = [
 %s			]
 		}
-	`, name, defs.String(), lics)
+	`, name, defs.String(), lics.String())
 }
 
 // TestAccResource_ProLicensedSoftware_PositionalLists targets the defining risk

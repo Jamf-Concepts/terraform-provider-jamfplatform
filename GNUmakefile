@@ -62,8 +62,25 @@ permissions-map:
 	@mv internal/common/permissions/permissions-map.md.tmp internal/common/permissions/permissions-map.md
 	@echo "refreshed internal/common/permissions/permissions-map.md — review the diff, then: make test"
 
+# fix rewrites deprecated API usages. It runs each of the three build contexts
+# .github/workflows/integration-tests.yml gates on, because a rewrite that lands
+# only in a file behind a build tag is invisible to the untagged pass and used to
+# reach CI as a drift failure. Repeat until clean: go fix is not idempotent in one
+# pass, since a pass that stamps `//go:fix inline` on a helper only enables the
+# NEXT pass to inline its call sites.
+#
+# Which rewrites it proposes depends on the toolchain, so run it under the version
+# `go.mod` names — a newer local Go can drop a modernizer CI still applies, and
+# then agree that a tree CI rejects is already at a fixpoint.
+# A `toolchain` directive wins over the `go` line, matching how the go command
+# itself resolves the version.
+GO_MOD_TOOLCHAIN := $(shell awk '/^toolchain /{print $$2; found=1} /^go /{if (!found) v="go" $$2} END{if (!found) print v}' go.mod)
+
+fix: export GOTOOLCHAIN = $(GO_MOD_TOOLCHAIN)
 fix:
 	go fix ./...
+	go fix -tags acceptance ./...
+	go fix -tags acctargets,acclanes ./scripts/...
 
 test:
 	go test -v -cover -count=1 -timeout=120s -p=10 ./...

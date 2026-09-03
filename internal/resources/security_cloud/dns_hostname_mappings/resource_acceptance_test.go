@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -389,9 +390,9 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_RejectsInvalidConfig(t *te
 func TestAccResource_SecurityCloudDNSHostnameMappings_RejectsElevenAddresses(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 
-	addresses := ""
+	var addresses strings.Builder
 	for i := 1; i <= 11; i++ {
-		addresses += fmt.Sprintf("%q,", fmt.Sprintf("10.0.0.%d", i))
+		addresses.WriteString(fmt.Sprintf("%q,", fmt.Sprintf("10.0.0.%d", i)))
 	}
 
 	resource.Test(t, resource.TestCase{
@@ -403,7 +404,7 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_RejectsElevenAddresses(t *
 						mappings = [
 							{
 								hostname              = "a.example.com"
-								ipv4_addresses        = [` + addresses + `]
+								ipv4_addresses        = [` + addresses.String() + `]
 								connect_to_ztna       = false
 								connect_to_secure_dns = false
 							},

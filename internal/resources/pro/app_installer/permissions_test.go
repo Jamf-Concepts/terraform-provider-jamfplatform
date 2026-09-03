@@ -110,7 +110,7 @@ func TestHelperSDKMethods_HelpersExist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading package directory: %v", err)
 	}
-	var pkg string
+	var pkg strings.Builder
 	for _, e := range entries {
 		name := e.Name()
 		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
@@ -120,10 +120,10 @@ func TestHelperSDKMethods_HelpersExist(t *testing.T) {
 		if err != nil {
 			t.Fatalf("reading %s: %v", name, err)
 		}
-		pkg += string(src)
+		pkg.WriteString(string(src))
 	}
 	for helper := range helperSDKMethods {
-		if !strings.Contains(pkg, "func "+helper+"(") {
+		if !strings.Contains(pkg.String(), "func "+helper+"(") {
 			t.Errorf("helperSDKMethods names %q, which the package does not declare", helper)
 		}
 	}
