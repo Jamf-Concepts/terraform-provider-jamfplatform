@@ -40,7 +40,7 @@ terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.6"
+      version = "0.29.0-rc.7"
     }
   }
 }
@@ -474,15 +474,19 @@ orphans. Further detail: [Jamf Security Cloud](security-cloud).
 
 ### Jamf Account
 
-New in this pre-release. `jamfplatform_account_sso_domain` claims a DNS domain for your Jamf
-Account organization's single sign-on, with singular and plural data sources, a list resource, and
-the `jamfplatform_account_sso_domain_verify` action that re-checks the domain's DNS ownership
-record. This is the provider's first *organization-scoped* family and the only one that scope
-reaches: configure it by setting neither `environment_id` nor `tenant_id`, as described under
-[Scope](#scope). It is served only from the US gateway.
+The provider's first *organization-scoped* family, and the only one that scope reaches: configure
+it by setting neither `environment_id` nor `tenant_id`, as described under [Scope](#scope). It is
+served only from the US gateway.
 
-Two behaviours here come from the API, not from any design choice, and both will surprise you.
-Jamf Account exposes no read, update or patch for a single domain, so every attribute is
+`jamfplatform_account_sso_domain` claims a DNS domain for your Jamf Account organization's single
+sign-on, with singular and plural data sources, a list resource, and the
+`jamfplatform_account_sso_domain_verify` action that re-checks the domain's DNS ownership record.
+New in this pre-release, `jamfplatform_account_sso_connection` manages the identity provider that
+signs people in for those domains: Entra, Okta, Google Workspace, or any generic OpenID Connect
+provider. It ships with singular and plural data sources and a list resource.
+
+Two domain behaviours come from Jamf Account rather than from any design choice, and both will
+surprise you. Jamf Account exposes no read, update or patch for a single domain, so every attribute is
 `RequiresReplace` and `terraform import` takes the domain **name** in place of an ID. The ID would
 not serve anyway: reclaiming a domain mints a new one.
 
@@ -491,6 +495,18 @@ with the status unchanged, so the status code tells you nothing. It still pushes
 deadline out. And the five-minute rate limit runs from the moment the domain was claimed, so the
 first check straight after a create is always refused. Publish the `verification_txt_record` value
 (exported whole, prefix included, as the console shows it), wait five minutes, then run the action.
+
+Three connection behaviours are worth knowing before writing one. Jamf Account cannot currently
+apply a change to an existing connection: every in-place write is refused, whatever it carries,
+including the body a create accepts. So the provider plans a replacement for any change, rotating
+`client_secret` included, and a connection carrying real sign-in traffic wants
+`create_before_destroy` set on it. A connection name takes letters and digits only, and Jamf
+Account appends a suffix the console hides, so two connections created under the same name are told
+apart only by `internal_name` and `id`. And while the products a connection is enabled for are
+returned, the tenants within them never are, which makes `enabled_products`
+configuration-authoritative: a change made in the console is invisible to `terraform plan`.
+Further detail:
+[Jamf Account single sign-on](account-sso).
 
 ### Jamf AI Governance
 
@@ -524,6 +540,8 @@ environment scope, described under [Scope](#scope). Further detail:
 - The required-permission tables throughout this documentation are regenerated against the GA
   capability model, and now name each permission as Jamf Account's permission picker does rather
   than by its retired Jamf Pro privilege name.
+- Every schema description and example comment has been rewritten in a plainer, more consistent
+  voice. No attribute, value, default or behaviour changed with it.
 
 ## Troubleshooting
 
