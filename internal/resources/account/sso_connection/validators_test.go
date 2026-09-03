@@ -103,6 +103,21 @@ func withGoogleConfiguration() connectionSetter {
 	}
 }
 
+// withOktaConfiguration sets the attributes a minimal Okta connection is
+// configured with.
+func withOktaConfiguration() connectionSetter {
+	return func(ctx context.Context, t *testing.T, state *tfsdk.State) {
+		t.Helper()
+		setAttribute(ctx, t, state, path.Root("name"), "tf-unit-okta")
+		setAttribute(ctx, t, state, path.Root("connection_type"), connectionTypeOkta)
+		setAttribute(ctx, t, state, path.Root("hosting_region"), "US")
+		setAttribute(ctx, t, state, path.Root("client_id"), "probe-client-id")
+		setAttribute(ctx, t, state, path.Root("scopes"), "openid email profile")
+		setAttribute(ctx, t, state, path.Root("domains"), []string{"tf-unit.example"})
+		setAttribute(ctx, t, state, path.Root("okta"), &OktaSettingsModel{Domain: types.StringValue("example.okta.example")})
+	}
+}
+
 // TestConnectionSettings_ValidConfigurationsPass pins the negative side of every
 // rule at once: a correct configuration of each family reports nothing. Without
 // this, a rule that fires unconditionally would still pass every test that only
@@ -115,15 +130,7 @@ func TestConnectionSettings_ValidConfigurationsPass(t *testing.T) {
 			withGoogleConfiguration(),
 			setAttributeValue(path.Root("scopes"), "openid email profile"),
 		},
-		"okta": {
-			setAttributeValue(path.Root("name"), "tf-unit-okta"),
-			setAttributeValue(path.Root("connection_type"), connectionTypeOkta),
-			setAttributeValue(path.Root("hosting_region"), "US"),
-			setAttributeValue(path.Root("client_id"), "probe-client-id"),
-			setAttributeValue(path.Root("scopes"), "openid email profile"),
-			setAttributeValue(path.Root("domains"), []string{"tf-unit.example"}),
-			setAttributeValue(path.Root("okta"), &OktaSettingsModel{Domain: types.StringValue("example.okta.example")}),
-		},
+		"okta": {withOktaConfiguration()},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if resp := validateConnection(t, setters...); resp.Diagnostics.HasError() {
@@ -180,6 +187,12 @@ func TestConnectionSettings_RefusesTheWrongBlock(t *testing.T) {
 // that is a survey finding rather than a documented constraint: no Entra
 // connection read carried any scopes, and the settings Jamf accepts for one have
 // nowhere to put them.
+//
+// It also pins both halves of how an unknown value is read. A required-if rule
+// must fire on an absent value and stay quiet on an unknown one, or a scopes list
+// coming from an unapplied resource could never be applied at all. The refusal
+// side stays quiet on an unknown value too, because it can still resolve to
+// nothing and a refusal would turn away a configuration that applies cleanly.
 func TestConnectionSettings_ScopesRules(t *testing.T) {
 	t.Run("required for generic_oidc", func(t *testing.T) {
 		resp := validateConnection(t,
@@ -188,6 +201,32 @@ func TestConnectionSettings_ScopesRules(t *testing.T) {
 		)
 		if !strings.Contains(errorSummaries(resp), "Scopes are required") {
 			t.Errorf("omitted scopes were not refused:\n%s", errorSummaries(resp))
+		}
+	})
+
+	t.Run("required for okta", func(t *testing.T) {
+		resp := validateConnection(t,
+			withOktaConfiguration(),
+			setAttributeValue(path.Root("scopes"), types.StringNull()),
+		)
+		if !strings.Contains(errorSummaries(resp), "Scopes are required") {
+			t.Errorf("omitted scopes were not refused:\n%s", errorSummaries(resp))
+		}
+	})
+
+	t.Run("unknown scopes are not treated as omitted", func(t *testing.T) {
+		for name, setters := range map[string][]connectionSetter{
+			"generic_oidc": {withOIDCConfiguration()},
+			"okta":         {withOktaConfiguration()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				resp := validateConnection(t, append(setters,
+					setAttributeValue(path.Root("scopes"), types.StringUnknown()),
+				)...)
+				if resp.Diagnostics.HasError() {
+					t.Errorf("scopes coming from an unapplied resource must not be refused:\n%s", errorSummaries(resp))
+				}
+			})
 		}
 	})
 
@@ -200,10 +239,26 @@ func TestConnectionSettings_ScopesRules(t *testing.T) {
 			t.Errorf("scopes on an Entra connection were not refused:\n%s", errorSummaries(resp))
 		}
 	})
+
+	t.Run("unknown scopes on an entra connection are left to Jamf", func(t *testing.T) {
+		resp := validateConnection(t,
+			withEntraConfiguration(),
+			setAttributeValue(path.Root("scopes"), types.StringUnknown()),
+		)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("an unknown value may yet resolve to nothing:\n%s", errorSummaries(resp))
+		}
+	})
 }
 
 // TestConnectionSettings_ClientIDRules covers rules 6 to 9, including the one
 // exception: a multi-tenant Entra application needs no client of its own.
+//
+// A client identifier is the value most likely to come from an application
+// registration created in the same apply, so two of these cases are about an
+// unknown value rather than an absent one: neither the identifier itself nor the
+// `entra.use_common_endpoint` the rule takes as its exception may be refused
+// while it is still unknown.
 func TestConnectionSettings_ClientIDRules(t *testing.T) {
 	t.Run("required for generic_oidc", func(t *testing.T) {
 		resp := validateConnection(t,
@@ -222,6 +277,55 @@ func TestConnectionSettings_ClientIDRules(t *testing.T) {
 		)
 		if !strings.Contains(errorSummaries(resp), "use_common_endpoint") {
 			t.Errorf("the refusal does not name the alternative:\n%s", errorSummaries(resp))
+		}
+	})
+
+	t.Run("required for okta and google_workspace", func(t *testing.T) {
+		for name, setters := range map[string][]connectionSetter{
+			"okta":             {withOktaConfiguration()},
+			"google_workspace": {withGoogleConfiguration()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				resp := validateConnection(t, append(setters,
+					setAttributeValue(path.Root("client_id"), types.StringNull()),
+				)...)
+				if !strings.Contains(errorSummaries(resp), "Client identifier is required") {
+					t.Errorf("an omitted client identifier was not refused:\n%s", errorSummaries(resp))
+				}
+			})
+		}
+	})
+
+	t.Run("an unknown client identifier is not treated as omitted", func(t *testing.T) {
+		for name, setters := range map[string][]connectionSetter{
+			"generic_oidc":     {withOIDCConfiguration()},
+			"okta":             {withOktaConfiguration()},
+			"google_workspace": {withGoogleConfiguration()},
+			"entra":            {withEntraConfiguration()},
+		} {
+			t.Run(name, func(t *testing.T) {
+				resp := validateConnection(t, append(setters,
+					setAttributeValue(path.Root("client_id"), types.StringUnknown()),
+				)...)
+				if resp.Diagnostics.HasError() {
+					t.Errorf("a client identifier coming from an unapplied application registration must not be refused:\n%s", errorSummaries(resp))
+				}
+			})
+		}
+	})
+
+	t.Run("an unknown use_common_endpoint does not demand a client identifier", func(t *testing.T) {
+		resp := validateConnection(t,
+			withEntraConfiguration(),
+			setAttributeValue(path.Root("client_id"), types.StringNull()),
+			setAttributeValue(path.Root("entra"), &EntraSettingsModel{
+				Domain:            types.StringValue("contoso.example"),
+				TenantDomain:      types.StringValue("contoso.example"),
+				UseCommonEndpoint: types.BoolUnknown(),
+			}),
+		)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("an unknown use_common_endpoint may yet be true:\n%s", errorSummaries(resp))
 		}
 	})
 

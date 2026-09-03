@@ -48,6 +48,10 @@ func NewConnectionListResource() list.ListResource {
 // two classes are dropped with a warning naming them, and the cost is one extra
 // read per connection in the organization.
 //
+// A per-connection read that fails for any other reason is dropped the same way
+// rather than failing the whole query: one connection answering a rate limit
+// must not cost the operator every connection already read.
+//
 // req.Limit caps the results rather than the scan: it is clamped against the
 // number of connections returned, which is an upper bound on the number kept, and
 // the loop counts kept entries — so a limit of 5 against ten connections of which
@@ -82,7 +86,9 @@ func (r *ConnectionListResource) ListResourceConfigSchema(_ context.Context, _ l
 			"admin-consent flow, which cannot be written back and so cannot be managed as a " +
 			"`jamfplatform_account_sso_connection`; and one your organization's list reports but which cannot be " +
 			"read on its own identifier, which is a fault inside Jamf. Importing either would leave an entry no " +
-			"apply could reconcile. Use the `jamfplatform_account_sso_connections` data source to see every " +
+			"apply could reconcile. A connection whose individual read fails for any other reason is left " +
+			"out the same way, with a warning carrying the error, so one unreadable connection does not " +
+			"cost you the rest. Use the `jamfplatform_account_sso_connections` data source to see every " +
 			"connection including those.\n\n" +
 			"Neither kind can be told apart from the list alone, so this reads each connection individually: " +
 			"expect one extra read per connection in your organization.\n\n" +
@@ -95,6 +101,19 @@ func (r *ConnectionListResource) ListResourceConfigSchema(_ context.Context, _ l
 
 // List executes the query and streams SSO connection identities back to
 // Terraform.
+//
+// Every connection left out — whichever of the three reasons left it out — is
+// reported through one trailing diagnostics-only result, a bare list.ListResult
+// carrying only Diagnostics. That shape is deliberate:
+// list.ListResultsStreamDiagnostics replaces the whole stream, so assigning it
+// mid-loop would throw away every connection already read, and the framework
+// offers no stream-level diagnostics channel to report a partial failure on. The
+// trailing result must not be built with req.NewListResult, which sets a non-nil
+// identity and resource and so turns the warning into a hard error. It trails the
+// results rather than riding on the first one so that a connection skipped last
+// is still reported. The three genuinely fatal cases below — an unconfigured
+// client, a configuration read failure, and the collection read itself — all
+// happen before any result exists, so replacing the stream is right for them.
 func (r *ConnectionListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
 	if r.client == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
@@ -147,14 +166,14 @@ func (r *ConnectionListResource) List(ctx context.Context, req list.ListRequest,
 				)
 				continue
 			}
-			stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-				diag.NewErrorDiagnostic(
-					"Unable to read a Jamf Account SSO connection",
-					"The connection \""+summary.Name+"\" (identifier "+summary.ID+") is in your organization's "+
-						"list but could not be read. Underlying error: "+readErr.Error(),
-				),
-			})
-			return
+			skipped.AddWarning(
+				"A Jamf Account SSO connection could not be read",
+				"The connection \""+summary.Name+"\" (identifier "+summary.ID+") is in your organization's "+
+					"list but could not be read, so it has been left out of the results. Check that the "+
+					"integration holds the SSO read permission, then re-run the command — a transient refusal "+
+					"such as a rate limit reports the same way. Underlying error: "+readErr.Error(),
+			)
+			continue
 		}
 
 		if found.ConsentFlow {
@@ -201,24 +220,22 @@ func (r *ConnectionListResource) List(ctx context.Context, req list.ListRequest,
 		"limit":    req.Limit,
 		"scanned":  len(summaries),
 		"returned": len(results),
+		"skipped":  len(skipped),
 	})
 
-	if len(results) == 0 {
-		if len(skipped) > 0 {
-			stream.Results = list.ListResultsStreamDiagnostics(skipped)
-			return
-		}
+	if len(results) == 0 && len(skipped) == 0 {
 		stream.Results = list.NoListResults
 		return
 	}
-
-	results[0].Diagnostics.Append(skipped...)
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, result := range results {
 			if !push(result) {
 				return
 			}
+		}
+		if len(skipped) > 0 {
+			push(list.ListResult{Diagnostics: skipped})
 		}
 	}
 }

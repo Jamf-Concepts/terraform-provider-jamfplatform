@@ -21,12 +21,14 @@ import (
 //
 // adopt says whether the model is being filled from nothing — an import, or the
 // identity-only refresh Terraform performs when it holds an identity and no
-// state. It decides two things a read alone cannot. First, whether `name` is
-// taken from Jamf: ordinarily it is not, because Jamf may store a uniquified form
+// state. It decides two things a read alone cannot. First, where `name` comes
+// from: ordinarily not from Jamf at all, because Jamf may store a uniquified form
 // of whatever was configured and overwriting the configured value with it would
 // give every such connection a difference on every plan; on an import there is no
-// configured value to protect. Second, whether a settings block absent from the
-// target is populated: STYLE_GUIDE §`SingleNestedAttribute` blocks requires the
+// configured value to protect, so the configured form is recovered from the
+// stored one by configuredNameFromStored rather than taken as Jamf holds it.
+// Second, whether a settings block absent from the target is populated:
+// STYLE_GUIDE §`SingleNestedAttribute` blocks requires the
 // repopulation of a block to be gated on the model being written rather than on
 // what Jamf returned, since populating one the plan said was empty breaks the
 // framework's consistency contract. An import is the one case where the plan said
@@ -55,7 +57,7 @@ func assignConnectionResourceModel(
 	state.ID = types.StringValue(c.ID)
 	state.InternalName = types.StringValue(c.Name)
 	if adopt {
-		state.Name = types.StringValue(c.Name)
+		state.Name = types.StringValue(configuredNameFromStored(c.Name))
 	}
 	state.ConnectionType = renameFromWire(c.Type, connectionTypeFromWire)
 	state.HostingRegion = stringOrNull(c.Region)
@@ -104,6 +106,37 @@ func assignConnectionResourceModel(
 	state.TicketURL = ticket
 
 	return diags
+}
+
+// configuredNameFromStored recovers the name that was configured from the name
+// Jamf Account stores.
+//
+// Jamf appends a suffix of its own to whichever name it was given — a create
+// sending `tfReviewMin` was stored as
+// `tfReviewMin-jqxld7tl4m454ed7s35647nmjssypo` — and eighteen of the twenty-two
+// connections read carry one. The split is unambiguous, because a configured name
+// may hold only letters and digits (nameAllowedPattern, wire-established): the
+// first hyphen in a stored value can only begin Jamf's suffix, so everything
+// before it can only be what was configured, however many further hyphens the
+// suffix itself carries.
+//
+// Recovering it matters because `name` is validated against that same pattern and
+// sits in connectionComparisons, so it forces a replacement when it differs from
+// state. Adopting the stored value would put a name in state that no
+// configuration can hold — the hyphen is refused at plan time — and the first
+// apply after an import would then destroy a live connection, with no
+// configuration value that avoids it. `internal_name` is where the stored value
+// belongs, and keeps it whole.
+//
+// A stored value carrying no hyphen is returned as it is: four of the connections
+// read carry no suffix. So is one that begins with a hyphen, which no name Jamf
+// accepted could produce, and reporting nothing for it would be worse than
+// reporting what Jamf holds.
+func configuredNameFromStored(stored string) string {
+	if base, _, found := strings.Cut(stored, "-"); found && base != "" {
+		return base
+	}
+	return stored
 }
 
 // assignConnectionDataSourceModel populates the singular data source model.

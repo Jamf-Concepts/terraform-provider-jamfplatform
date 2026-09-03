@@ -17,23 +17,37 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// appendWriteDiagnostics turns a create or update failure into the most specific
+// actionCreate and actionChange are the operation names the two writes pass
+// appendWriteDiagnostics. They are named because the create branch has to be told
+// apart: the same internal failure means an operator-fixable problem on a create
+// and a fault at Jamf on a change, so the two cannot share one diagnostic. The
+// word is also what a diagnostic says out loud, so the call sites and the switch
+// have to agree on it.
+const (
+	actionCreate = "create"
+	actionChange = "change"
+)
+
+// appendWriteDiagnostics turns a create or change failure into the most specific
 // diagnostic the error body supports, and reports whether it recognised one.
 //
-// The first case is the one every write currently takes. An internal failure from
-// this operation is not a hint to change the configuration: it was proven to
-// happen before Jamf inspects the request at all, since the same failure comes
-// back for an update aimed at an identifier that does not exist while a read and
-// a withdrawal of that identifier both resolve it and answer not-found. So the
-// diagnostic says the fault is Jamf's, says what still works, and names the
-// identifier to quote, rather than sending an operator round a configuration they
-// cannot fix.
+// The first case reads one internal failure two ways, because the same code means
+// two different things depending on which operation asked. On a create it is an
+// overloaded catch-all standing in for several problems an operator can put right
+// — an unclaimed or unverified domain, a name carrying more than letters and
+// digits, settings that disagree with the declared family, a value that family
+// requires and the settings do not carry, and an organization already holding as
+// many connections as Jamf allows — so the diagnostic lists them rather than
+// telling an operator the fault is Jamf's at the moment their own configuration is
+// the problem. On a change it really is Jamf's: every change is refused the same
+// way, including one carrying the exact values a create accepts, so nothing an
+// operator sends will help and the diagnostic says so and points at the console.
 //
 // The remaining cases are the two Jamf does attribute. An unrecognised
 // vocabulary value is refused with the offending value named in the message but
 // no field named at all, so the message is passed through verbatim — it is the
 // only thing that localises the problem. A missing top-level field is one of the
-// three Jamf names, and reaches an operator only through a configuration that
+// four Jamf names, and reaches an operator only through a configuration that
 // resolved to nothing.
 func appendWriteDiagnostics(diags *diag.Diagnostics, action string, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
@@ -44,15 +58,30 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, action string, err error) b
 	for _, detail := range apiErr.Details() {
 		switch detail.Code {
 		case codeUpstreamError:
+			if action == actionCreate {
+				diags.AddError(
+					"Jamf Account refused to create the SSO connection",
+					"Jamf refused the connection with an internal failure that names no field. Jamf answers that "+
+						"same failure for several different problems, so work through the ones it is known to "+
+						"cover:\n\n"+
+						"  - every name in `domains` has to be claimed and verified by your organization;\n"+
+						"  - `name` has to be letters and digits only;\n"+
+						"  - the settings block has to be the one `connection_type` names, and has to carry every "+
+						"value that family requires;\n"+
+						"  - your organization may already hold as many connections as Jamf allows, which is "+
+						"refused this same way — remove one you no longer need, or ask Jamf for more.\n\n"+
+						"If none of those fit, raise it with Jamf Support and quote the trace identifier: "+
+						traceIDOrUnknown(apiErr)+". Reported by Jamf Account: "+detail.Description,
+				)
+				break
+			}
 			diags.AddError(
 				"Jamf Account cannot "+action+" an SSO connection",
 				"Jamf refused to "+action+" the connection with an internal failure that carries no detail. This "+
 					"is a known fault on Jamf's side, not a problem with this configuration: every attempt to "+
-					"create or change a connection is refused the same way, in every region, and the refusal "+
-					"happens before the request is examined — an update aimed at an identifier that does not "+
-					"exist is refused identically, while reading or destroying that same identifier reports it "+
-					"missing as it should.\n\n"+
-					"Reading, listing and destroying connections all work. Until Jamf fixes this, make and edit "+
+					"change a connection is refused the same way, in every region, and nothing you send alters "+
+					"that — the same refusal comes back for the exact values a create accepts.\n\n"+
+					"Creating, reading, listing and destroying connections all work. Until Jamf fixes this, edit "+
 					"connections in the Jamf Account console and use this provider to read them. If you raise it "+
 					"with Jamf Support, quote the trace identifier: "+traceIDOrUnknown(apiErr)+". Reported by "+
 					"Jamf Account: "+detail.Description,
@@ -129,12 +158,12 @@ func appendConsentFlowDiagnostics(diags *diag.Diagnostics, c *account.Connection
 //
 // Keyed on the value already in state rather than on a refusal from Jamf, which
 // makes it deterministic and needs no guess about how such a write would be
-// answered. That guess would be a particularly bad one at the moment: every write
-// is refused identically whatever the reason, so a wire-keyed check could not
-// tell this apart from the fault affecting every connection. Read refuses such a
-// connection before it can reach state at all, so this covers the state an
-// earlier provider version could have written, and it runs before the request so
-// no doomed write is ever issued.
+// answered. That guess would be a particularly bad one at the moment: every
+// change is refused identically whatever the reason, so a wire-keyed check could
+// not tell this apart from the fault affecting every connection. Read refuses
+// such a connection before it can reach state at all, so this covers the state
+// an earlier provider version could have written, and it runs before the request
+// so no doomed write is ever issued.
 func appendConsentFlowUpdateDiagnostics(diags *diag.Diagnostics, name string) {
 	diags.AddError(
 		"Connection using Microsoft admin consent cannot be changed",
@@ -156,6 +185,11 @@ func appendConsentFlowUpdateDiagnostics(diags *diag.Diagnostics, name string) {
 // Jamf's own record of it — so removing it from state would plan a fresh create
 // of a connection that is already there, and the create would collide or, worse,
 // leave two.
+//
+// Because it is an error and a refresh runs ahead of every operation by default,
+// it also blocks its own destroy, which leaves an unattended pipeline with nothing
+// to do but stop. So the diagnostic names both ways past it: dropping the resource
+// from state, and destroying without a refresh.
 func appendGhostConnectionDiagnostics(diags *diag.Diagnostics, id, name string) {
 	diags.AddError(
 		"Jamf Account cannot read this SSO connection on its own identifier",
@@ -165,7 +199,10 @@ func appendGhostConnectionDiagnostics(diags *diag.Diagnostics, id, name string) 
 			"Terraform has deliberately left it in state rather than planning to create it again, which would "+
 			"risk a duplicate.\n\n"+
 			"Nothing in this configuration can fix it. Raise it with Jamf Support, quoting the identifier above. "+
-			"Meanwhile `terraform state rm` on this address will stop Terraform trying to refresh it.",
+			"Meanwhile every plan, apply and destroy against this address reports this, because each one "+
+			"refreshes first: `terraform state rm` on the address stops Terraform trying to read it and leaves "+
+			"the connection with Jamf, while `terraform destroy -refresh=false` takes the connection away "+
+			"without reading it first, which is the way to tear it down without editing state by hand.",
 	)
 }
 
@@ -350,9 +387,9 @@ func omitLoginHintFromWire(aliasToIdp bool) types.Bool {
 
 // omitLoginHintToWire inverts the console's question back into Jamf's flag.
 //
-// An unset value yields false, meaning the hint is forwarded: that is Jamf's own
-// default and the console's unticked box, so an operator who says nothing gets
-// the smoother sign-in.
+// An unset value yields true, which is the Jamf field's own sense of "forward the
+// hint" and matches the console's unticked box, so an operator who says nothing
+// gets the smoother sign-in.
 func omitLoginHintToWire(omit types.Bool) bool {
 	if omit.IsNull() || omit.IsUnknown() {
 		return true
@@ -383,8 +420,38 @@ func stringsToSet(values []string) (types.Set, diag.Diagnostics) {
 	return types.SetValue(types.StringType, elements)
 }
 
-// connectionsMatchingName returns every connection whose stored name is the
-// configured name or the configured name with Jamf's own suffix appended.
+// connectionIdentity is what a collection entry has to agree with before it can
+// be called the connection a failed create left behind: the configured name, the
+// provider family and the domains.
+//
+// The name alone will not do. Jamf does not require names to be unique, a
+// collection entry carries no time it was made, and Jamf appends a suffix of its
+// own to the stored name, so a connection someone made by hand months ago is
+// indistinguishable from one this apply just made if the name is all that is
+// compared. The family and the domains do not make the answer certain either, but
+// they rule out the case that costs most — offering an operator a live production
+// connection to adopt because it happened to share a name.
+type connectionIdentity struct {
+	name           string
+	connectionType string
+	domains        []string
+}
+
+// connectionIdentityFromPlan reduces a plan to the three values a collection
+// entry can be compared on, translating the provider family back to Jamf's own
+// spelling because that is what an entry carries.
+func connectionIdentityFromPlan(ctx context.Context, plan ConnectionResourceModel) (connectionIdentity, diag.Diagnostics) {
+	domains, diags := setToStrings(ctx, plan.Domains)
+	return connectionIdentity{
+		name:           plan.Name.ValueString(),
+		connectionType: connectionTypeToWire[plan.ConnectionType.ValueString()],
+		domains:        domains,
+	}, diags
+}
+
+// connectionsMatchingPlan returns every connection that could be the one a failed
+// create left behind: the configured name, or that name with Jamf's own suffix
+// appended, carrying the same provider family and the same domains.
 //
 // Jamf stores a connection under the name it was sent plus a suffix of its own —
 // `tfProbeOidc` becomes `tfProbeOidc-jqxld7tl4m454ed7s35647nmje5bmq` — and the
@@ -392,47 +459,96 @@ func stringsToSet(values []string) (types.Set, diag.Diagnostics) {
 // Matching both forms covers the four connections in a probed organization that
 // carry no suffix at all alongside the eighteen that do.
 //
+// An entry with no family recorded is not a match: it cannot be shown to be this
+// apply's, and a bare create failure is a better answer than one naming somebody
+// else's connection.
+//
 // It is only ever used to answer "did a write that reported an error take effect
-// anyway", never to resolve a name to a single connection: Jamf does not require
-// names to be unique, so more than one match is expected and the caller decides
-// what to do about it.
-func connectionsMatchingName(all []account.ConnectionSummary, configuredName string) []account.ConnectionSummary {
+// anyway", never to resolve a name to a single connection: two connections can
+// still agree on all three values, so more than one match is possible and the
+// caller decides what to do about it.
+func connectionsMatchingPlan(all []account.ConnectionSummary, want connectionIdentity) []account.ConnectionSummary {
 	var matched []account.ConnectionSummary
 	for _, candidate := range all {
-		if candidate.Name == configuredName || strings.HasPrefix(candidate.Name, configuredName+"-") {
-			matched = append(matched, candidate)
+		if candidate.Name != want.name && !strings.HasPrefix(candidate.Name, want.name+"-") {
+			continue
 		}
+		if candidate.Type == nil || *candidate.Type != want.connectionType {
+			continue
+		}
+		if !sameStrings(candidate.Domains, want.domains) {
+			continue
+		}
+		matched = append(matched, candidate)
 	}
 	return matched
 }
 
-// appendOrphanedCreateDiagnostics reports a create that failed but left a
+// sameStrings reports whether two collections hold the same members, ignoring
+// order and repeats, which is how a domain set and Jamf's own copy of one have to
+// be compared: the attribute is a set and Jamf returns a list.
+func sameStrings(left, right []string) bool {
+	outstanding := make(map[string]struct{}, len(left))
+	for _, v := range left {
+		outstanding[v] = struct{}{}
+	}
+	for _, v := range right {
+		if _, ok := outstanding[v]; !ok {
+			return false
+		}
+		delete(outstanding, v)
+	}
+	return len(outstanding) == 0
+}
+
+// appendOrphanedCreateDiagnostics reports a create that failed but may have left a
 // connection behind.
 //
-// Wire-observed on 2026-09-02: a POST answering 500 UPSTREAM_ERROR had created the
-// connection regardless. So a create error does not mean nothing happened, and
-// Terraform cannot simply report the failure — the connection exists, Terraform
-// has no record of it, and the next apply creates a second one.
+// The premise is one unreproduced observation rather than settled behaviour: on
+// 2026-09-02 a create answering 500 UPSTREAM_ERROR had made the connection
+// regardless, and a later probe of roughly twenty refused creates left the
+// organization's count unchanged every time. The safety net is kept anyway,
+// because the cost of it is one collection read on a path that has already
+// failed, and the cost of being wrong the other way is a connection nobody
+// manages and a second one on the next apply.
 //
-// The diagnostic names the identifier so the operator can either import it or
-// remove it, because those are the only two ways out and neither can be chosen
-// here: adopting it silently would commit state for an object whose contents were
-// never confirmed, and deleting it would destroy something that may be in use.
+// A ready-to-run import is offered only when one candidate survives the match. A
+// collection entry carries no time it was made, so several candidates cannot be
+// told apart, and naming the first would invite an operator to adopt a connection
+// this apply never made. Neither way out can be chosen here even when the
+// candidate is unambiguous: adopting it silently would commit state for an object
+// whose contents were never confirmed, and taking it away would destroy something
+// that may be in use.
 func appendOrphanedCreateDiagnostics(diags *diag.Diagnostics, name string, orphans []account.ConnectionSummary, cause error) {
 	identifiers := make([]string, 0, len(orphans))
 	for _, orphan := range orphans {
 		identifiers = append(identifiers, orphan.ID+" ("+orphan.Name+")")
 	}
 
+	if len(orphans) == 1 {
+		diags.AddError(
+			"Jamf Account SSO connection was created despite the error",
+			"Creating the connection \""+name+"\" reported a failure, but Jamf Account holds a connection "+
+				"matching it, so the create took effect and Terraform has no record of it. Applying again would "+
+				"create a second one.\n\nConnection found: "+identifiers[0]+"\n\nEither import it:\n\n"+
+				"    terraform import <this resource address> "+orphans[0].ID+"\n\nor remove it in the Jamf "+
+				"Account console and apply again. Terraform cannot choose for you: adopting it would record state "+
+				"for a connection whose contents were never confirmed, and removing it might destroy one already "+
+				"in use.\n\nReported by Jamf Account: "+cause.Error(),
+		)
+		return
+	}
+
 	diags.AddError(
-		"Jamf Account SSO connection was created despite the error",
-		"Creating the connection \""+name+"\" reported a failure, but Jamf Account holds a connection of that "+
-			"name, so the create took effect and Terraform has no record of it. Applying again would create a "+
-			"second one.\n\nConnection(s) found: "+strings.Join(identifiers, ", ")+"\n\nEither import it:\n\n"+
-			"    terraform import <this resource address> "+orphans[0].ID+"\n\nor remove it in the Jamf Account "+
-			"console and apply again. Terraform cannot choose for you: adopting it would record state for a "+
-			"connection whose contents were never confirmed, and deleting it might destroy one already in "+
-			"use.\n\nReported by Jamf Account: "+cause.Error(),
+		"Jamf Account SSO connection may have been created despite the error",
+		"Creating the connection \""+name+"\" reported a failure, and your organization holds more than one "+
+			"connection matching it. Nothing Jamf reports says when a connection was made, so Terraform cannot "+
+			"tell which of these — if any — this apply created, and will not name one for you to import.\n\n"+
+			"Connections found: "+strings.Join(identifiers, ", ")+"\n\nFind out in the Jamf Account console "+
+			"which of them is new. Then either import that one:\n\n"+
+			"    terraform import <this resource address> <its identifier>\n\nor remove it there and apply "+
+			"again. Do not import one you did not just create: Terraform would adopt a connection someone else "+
+			"manages and replace it on the next apply.\n\nReported by Jamf Account: "+cause.Error(),
 	)
 }
 

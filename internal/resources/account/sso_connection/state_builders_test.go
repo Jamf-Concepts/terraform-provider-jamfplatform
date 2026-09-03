@@ -133,20 +133,43 @@ func TestAssignConnectionResourceModel_KeepsTheConfiguredName(t *testing.T) {
 	}
 }
 
-// TestAssignConnectionResourceModel_AdoptionTakesTheStoredName covers the one
-// case where the stored name is the right thing to take: an import has no
-// configured value to protect.
-func TestAssignConnectionResourceModel_AdoptionTakesTheStoredName(t *testing.T) {
-	read := oidcConnectionRead()
-	read.Name = unitConnectionName + "-uniquified"
+// TestAssignConnectionResourceModel_AdoptionRecoversTheConfiguredName covers the
+// one case where `name` comes from Jamf at all: an import has no configured value
+// to protect. What is adopted is the configured form recovered from the stored
+// name, never the stored name itself — `name` is validated against
+// nameAllowedPattern and forces a replacement when it differs from state, so
+// adopting the stored value would put a name in state that no configuration can
+// hold and let the first apply after an import destroy a live connection.
+// `internal_name` is what keeps the stored value whole.
+//
+// The names here are alphanumeric, unlike the package's own fixture, because that
+// is the only shape Jamf accepts on a create — and the whole reason the split at
+// the first hyphen is unambiguous.
+func TestAssignConnectionResourceModel_AdoptionRecoversTheConfiguredName(t *testing.T) {
+	for name, tc := range map[string]struct {
+		stored string
+		want   string
+	}{
+		"a suffix Jamf appended":    {"tfUnitOidc-jqxld7tl4m454ed7s35647nmjssypo", "tfUnitOidc"},
+		"no suffix at all":          {"tfUnitOidc", "tfUnitOidc"},
+		"a suffix carrying hyphens": {"tfUnitOidc-jqxld7-tl4m454-ed7s35647nmjssypo", "tfUnitOidc"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			read := oidcConnectionRead()
+			read.Name = tc.stored
 
-	var state ConnectionResourceModel
-	if diags := assignConnectionResourceModel(&state, read, oidcSummaryRead(), true); diags.HasError() {
-		t.Fatalf("assigning state: %v", diags)
-	}
+			var state ConnectionResourceModel
+			if diags := assignConnectionResourceModel(&state, read, oidcSummaryRead(), true); diags.HasError() {
+				t.Fatalf("assigning state: %v", diags)
+			}
 
-	if got := state.Name.ValueString(); got != unitConnectionName+"-uniquified" {
-		t.Errorf("name = %q, want the stored value adopted on an import", got)
+			if got := state.Name.ValueString(); got != tc.want {
+				t.Errorf("name = %q, want the configured form %q — the stored value is a name no configuration can hold", got, tc.want)
+			}
+			if got := state.InternalName.ValueString(); got != tc.stored {
+				t.Errorf("internal_name = %q, want the stored value whole", got)
+			}
+		})
 	}
 }
 

@@ -33,25 +33,39 @@
 // providerdata.ConfigureAccount, which gates on ScopeOrganization alone. The
 // namespace is served only from the US gateway.
 //
-// # The write path is broken upstream, and this package is written for the fix
+// # The update endpoint is broken upstream, and this package is written for the fix
 //
-// Every create and every update answers 500 UPSTREAM_ERROR for every payload, on
-// every region, for both organizations probed. That is proven server-side rather
-// than inferred: an update aimed at an identifier that does not exist answers 500
-// where a read and a withdrawal of the same identifier both resolve it and answer
-// 404, so the failure happens before the request body is ever inspected. Reads
-// and withdrawals are healthy, and so are the sibling domain writes on the same
-// namespace, which localises the fault to the connection write path. Raised with
-// Jamf; the identifier to quote is in the spike.
+// PUT /sso/v1/connections/{id} answers 500 UPSTREAM_ERROR for every request, on
+// every region, for both organizations probed — including the verbatim body a
+// create accepts, and including an identifier that does not exist. The body is
+// still inspected: a PUT carrying `{}` is refused 400 FIELD_VALIDATION naming
+// connectionType, enabledProducts, domains and connection, so the fault is in
+// applying the change rather than in reaching the endpoint. Creates, reads,
+// withdrawals and the sibling domain writes on the same namespace are all
+// healthy, which localises the fault to the update path. Raised with Jamf; the
+// identifier to quote is in the spike.
+//
+// A create's own 500 UPSTREAM_ERROR is a different animal and must not be read as
+// the same fault: it is an overloaded catch-all standing in for several problems
+// an operator can put right. Observed causes are a domain that is not claimed, a
+// domain claimed but not verified, a required settings value missing, a
+// connectionType disagreeing with the settings sent, a name carrying anything but
+// letters and digits, and the organization sitting at the number of connections
+// Jamf allows it — that last one pinned by repetition, since an identical body
+// answered 201 at twenty-four connections, 500 at twenty-five, and 201 again after
+// one withdrawal. helpers.go's create diagnostic lists them rather than blaming
+// Jamf.
 //
 // Four consequences run through this package. Each behaviour that could only be
-// settled by a successful write is marked "spec-derived, not wire-verified" at
+// settled by a successful update is marked "spec-derived, not wire-verified" at
 // the point it is relied on, so the set is greppable when the fault clears:
 //
 //   - An update sends the complete settings, because the specification says an
-//     omitted field is cleared rather than left alone.
+//     omitted field is cleared rather than left alone — spec-derived, not
+//     wire-verified.
 //   - An omitted client secret is understood to leave the stored secret in
-//     place, which is the one documented exception to that replacement.
+//     place, which is the one documented exception to that replacement —
+//     spec-derived, not wire-verified.
 //   - The provider family and the hosting region force a replacement, because
 //     the specification says an update cannot move a connection to another of
 //     either — spec-derived, not wire-verified.
@@ -61,15 +75,15 @@
 //     of it was probed, where Jamf refuses an empty `domains` and accepts an
 //     empty `enabled_products`; what either does to an existing connection was
 //     never observed.
-//   - Whether Jamf appends a uniquifying suffix to a configured name is unknown
-//     — spec-derived, not wire-verified, and not even the specification says.
-//     That is why `name` and `internal_name` are two attributes rather than one.
-//     Eighteen of the twenty-two connections read carry such a suffix, and a
-//     single Optional attribute echoing the stored value back would give every
-//     one of them a difference on every plan. So `name` holds what was
-//     configured and is never overwritten from a read, and `internal_name` holds
-//     what Jamf stores. Whichever answer the fix yields, neither attribute
-//     changes shape.
+//
+// One thing the probe did settle: Jamf appends a uniquifying suffix to the name it
+// is sent. `tfReviewMin` came back stored as
+// `tfReviewMin-jqxld7tl4m454ed7s35647nmjssypo`, and eighteen of the twenty-two
+// connections read carry such a suffix. That is why `name` and `internal_name` are
+// two attributes rather than one: a single Optional attribute echoing the stored
+// value back would give every suffixed connection a difference on every plan. So
+// `name` holds what was configured and an ordinary refresh never overwrites it,
+// while `internal_name` holds what Jamf stores whole.
 //
 // # Two connections that cannot be managed
 //
@@ -200,11 +214,10 @@ import (
 )
 
 // maxSessionMinutes is the ceiling the Jamf Account console states for both
-// session limits, a day in minutes. Whether Jamf enforces it is unprobed — the
-// connection write path refuses every request — so this is a console-derived
-// bound rather than a wire-verified one. It only ever refuses a configuration:
-// both attributes are Optional rather than read-only, so a stored value above the
-// ceiling is still adopted by a refresh.
+// session limits, a day in minutes. Whether Jamf enforces it was never probed, so
+// this is a console-derived bound rather than a wire-verified one. It only ever
+// refuses a configuration: both attributes are Optional rather than read-only, so
+// a stored value above the ceiling is still adopted by a refresh.
 const maxSessionMinutes = 1440
 
 // nameMaxLength bounds the connection name generously, so that an obviously
@@ -282,12 +295,14 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"cannot be created without at least one. Use `jamfplatform_account_sso_domain` to claim a domain and the " +
 			"`jamfplatform_account_sso_domain_verify` action to prove it, and depend on the verification so the " +
 			"ordering is explicit.\n\n" +
-			"**Jamf is currently unable to create or change a connection.** Every attempt is refused with an " +
-			"internal failure, for every configuration, in every region — proven to happen before the request is " +
-			"even examined, so it is not something a configuration change can work around. Reading, listing and " +
-			"destroying connections all work normally. The fault is with Jamf and has been reported; until it " +
-			"clears, use this resource to read and to destroy, and make new connections in the Jamf Account " +
-			"console.\n\n" +
+			"**Jamf cannot currently apply a change to an existing connection.** Every attempt is refused with " +
+			"an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the " +
+			"connection was created — so it is not something a configuration change can work around. That is why " +
+			"this resource replaces a connection rather than editing one: any change you make destroys it and " +
+			"creates a new one, which interrupts sign-in, so give a connection carrying real traffic a " +
+			"`create_before_destroy` lifecycle block. Creating, reading, listing and destroying all work " +
+			"normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the " +
+			"Jamf Account console.\n\n" +
 			"Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow " +
 			"in the console has no client of its own and cannot be written back, so importing one is refused. And a " +
 			"connection your organization's collection lists but which cannot be read on its own identifier is " +
@@ -512,15 +527,19 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 				Attributes: map[string]schema.Attribute{
 					"operator": schema.StringAttribute{
 						MarkdownDescription: "The console's AND/OR toggle beside the group list: `or` passes a " +
-							"group matching any entry, `and` requires every entry.",
+							"group matching any entry, `and` requires every entry. A group matches an entry when " +
+							"its own name contains it.",
 						Required: true,
 						Validators: []validator.String{
 							stringvalidator.OneOf(filterOperatorValues()...),
 						},
 					},
 					"groups": schema.SetAttribute{
-						MarkdownDescription: "Group names to filter on. An empty set is meaningful and means no " +
-							"filtering; a name may not contain a comma, which is how Jamf separates them.",
+						MarkdownDescription: "Group names to filter on. A group is passed through when its own " +
+							"name **contains** one of these, so `Engineering` also passes " +
+							"`Non-Engineering-Contractors` — give the whole name if you mean an exact list. An " +
+							"empty set is meaningful and means no filtering; a name may not contain a comma, which " +
+							"is how Jamf separates them.",
 						Required:    true,
 						ElementType: types.StringType,
 						Validators: []validator.Set{

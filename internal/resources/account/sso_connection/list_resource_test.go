@@ -71,7 +71,6 @@ const twoManageableListBody = `{"totalCount":2,"results":[` + oidcSummaryBody + 
 // only its (empty) configuration.
 func listConnections(t *testing.T, body string, limit int64, includeResource bool) ([]list.ListResult, diag.Diagnostics) {
 	t.Helper()
-	ctx := context.Background()
 
 	singles := map[string]string{
 		unitConnectionID:   oidcConnectionBody,
@@ -79,7 +78,7 @@ func listConnections(t *testing.T, body string, limit int64, includeResource boo
 		"con_unittest0005": secondOIDCConnectionBody,
 	}
 
-	r := &ConnectionListResource{client: newStubClient(t, func(w http.ResponseWriter, req *http.Request) {
+	return listConnectionsWith(t, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.HasSuffix(req.URL.Path, "/connections") {
 			_, _ = w.Write([]byte(body))
@@ -93,7 +92,17 @@ func listConnections(t *testing.T, body string, limit int64, includeResource boo
 			return
 		}
 		_, _ = w.Write([]byte(single))
-	})}
+	}, limit, includeResource)
+}
+
+// listConnectionsWith is the same run against a caller-supplied stub, for the
+// cases listConnections cannot express: it dispatches every unknown identifier
+// as not-found, and a read Jamf refuses some other way is a separate branch.
+func listConnectionsWith(t *testing.T, handle stubHandler, limit int64, includeResource bool) ([]list.ListResult, diag.Diagnostics) {
+	t.Helper()
+	ctx := context.Background()
+
+	r := &ConnectionListResource{client: newStubClient(t, handle)}
 
 	managed := &ConnectionResource{}
 	var schemaResp resource.SchemaResponse
@@ -263,6 +272,72 @@ func TestList_OnlyUnmanageableConnectionsStillReportsWhy(t *testing.T) {
 	}
 	if len(diags.Warnings()) != 1 {
 		t.Fatalf("carried %d warnings, want the one explaining the omission: %v", len(diags.Warnings()), diags)
+	}
+	if !strings.Contains(diags.Warnings()[0].Detail(), "con_unittest0003") {
+		t.Errorf("warning %q does not name the connection left out", diags.Warnings()[0].Detail())
+	}
+}
+
+// TestList_TransientReadFailureKeepsTheOtherConnections is the finding this
+// stream shape exists for. A per-connection read refused for any reason other
+// than not-found used to replace the whole stream, so one connection answering a
+// 500 — or a rate limit — cost the operator every connection already read. The
+// readable connections have to survive, and the one left out has to be named.
+func TestList_TransientReadFailureKeepsTheOtherConnections(t *testing.T) {
+	body := `{"totalCount":3,"results":[` + oidcSummaryBody + `,` + ghostSummaryBody + `,` + secondOIDCSummaryBody + `]}`
+
+	singles := map[string]string{
+		unitConnectionID:   oidcConnectionBody,
+		"con_unittest0005": secondOIDCConnectionBody,
+	}
+
+	results, diags := listConnectionsWith(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(req.URL.Path, "/connections") {
+			_, _ = w.Write([]byte(body))
+			return
+		}
+		id := req.URL.Path[strings.LastIndex(req.URL.Path, "/")+1:]
+		single, known := singles[id]
+		if !known {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+			return
+		}
+		_, _ = w.Write([]byte(single))
+	}, 0, true)
+
+	got := displayNames(results)
+	if len(got) != 2 || got[0] != unitConnectionName || got[1] != "tf-unit-oidc-two" {
+		t.Fatalf("streamed %v, want both readable connections despite the failure between them", got)
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("carried %d warnings, want the one naming the connection left out: %v", len(warnings), diags)
+	}
+	detail := warnings[0].Summary() + warnings[0].Detail()
+	for _, want := range []string{"con_unittest0003", "tf-unit-ghost"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("warning does not mention %q:\n%s", want, detail)
+		}
+	}
+}
+
+// TestList_SkippingTheLastConnectionStillWarns pins why the diagnostics-only
+// result trails the stream rather than riding on the first result. Attaching the
+// skips to results[0] reports nothing when the connection left out is the last
+// one read, because the framework has already consumed that result.
+func TestList_SkippingTheLastConnectionStillWarns(t *testing.T) {
+	body := `{"totalCount":2,"results":[` + oidcSummaryBody + `,` + ghostSummaryBody + `]}`
+
+	results, diags := listConnections(t, body, 0, false)
+
+	if got := displayNames(results); len(got) != 1 || got[0] != unitConnectionName {
+		t.Fatalf("streamed %v, want the one readable connection", got)
+	}
+	if len(diags.Warnings()) != 1 {
+		t.Fatalf("carried %d warnings, want the one for the connection skipped last: %v", len(diags.Warnings()), diags)
 	}
 	if !strings.Contains(diags.Warnings()[0].Detail(), "con_unittest0003") {
 		t.Errorf("warning %q does not name the connection left out", diags.Warnings()[0].Detail())

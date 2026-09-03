@@ -42,13 +42,17 @@ const connectionResourceAddress = "jamfplatform_account_sso_connection.test"
 const acceptanceDomainVariable = "JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN"
 
 // probeConnectionID is an identifier no connection has. It is the target of the
-// write-path probe below, which is deliberately aimed at something that does not
+// update-path probe below, which is deliberately aimed at something that does not
 // exist.
 const probeConnectionID = "con_tfaccprobe000001"
 
-// upstreamErrorCode is the code Jamf answers every connection write with today.
-// Restated because the Jamf Account SDK generates no error-code vocabulary; see
-// mappings.go, which records the same exemption for the non-test code.
+// upstreamErrorCode is the code Jamf answers every connection update with, and
+// one of the several things it answers a refused create with — an unclaimed or
+// unverified domain, a missing required field, a settings payload disagreeing
+// with the connection type, a name carrying anything but letters and digits, and
+// the organization being at its connection limit all share it. Restated because
+// the Jamf Account SDK generates no error-code vocabulary; see mappings.go, which
+// records the same exemption for the non-test code.
 const upstreamErrorCode = "UPSTREAM_ERROR"
 
 // acceptanceConnectionName builds a name unlikely to collide with a live
@@ -80,38 +84,50 @@ func verifiedDomain(t *testing.T) string {
 	return domain
 }
 
-// skipUnlessConnectionWritesWork is the gate every create-dependent test in this
+// skipUnlessConnectionUpdatesWork is the gate the update-dependent work in this
 // file opens with, and it exists because of a fault on Jamf's side rather than
 // anything about this provider.
 //
-// Jamf refuses every connection create and every connection update with an
-// internal failure carrying no detail, for every payload and in every region.
-// Without this gate, these tests would fail rather than report — and a red suite
-// that is red for a reason nobody can fix is worse than a skipped one, because it
-// hides every genuine failure beside it.
+// Only changing an existing connection is impossible. Re-probed live on
+// 2026-09-03: a create answers 201 for a valid body, and reading, importing, the
+// data sources, the list resource and removing a connection all work — so every
+// test here that creates, reads, imports, queries or destroys runs whatever the
+// update path is doing, and only a step that edits an existing connection is
+// gated. The update is refused with an internal failure carrying no detail for
+// every request, including the verbatim body a create had just accepted, so a
+// gated step would fail rather than report — and a red suite that is red for a
+// reason nobody can fix is worse than a skipped one, because it hides every
+// genuine failure beside it.
 //
-// The probe is the single call that localises the fault: an update aimed at an
-// identifier that does not exist. Reading or removing that identifier reports it
-// missing, as it should; an update refuses it with the internal failure *before*
-// Jamf looks the identifier up, which is a failure that cannot be about the
-// request body. So the probe tells the two states apart with no verified domain,
-// no throwaway connection, and nothing created even if it succeeds:
+// The probe is an update aimed at an identifier that does not exist, carrying the
+// body oidcConnectionConfig renders — the operator's verified domain included, so
+// a working endpoint has nothing in it to object to. Reading or removing that
+// identifier reports it missing, as it should; the update refuses it with the
+// internal failure instead. So the probe tells the two states apart with no
+// throwaway connection, and nothing created even if it succeeds:
 //
 //   - the internal failure means the fault is still there, and the suite skips;
-//   - a not-found means the write path has been fixed, and the suite runs;
+//   - a not-found means the update path has been fixed, and the suite runs;
 //   - anything else is a third state nobody has seen, so the suite skips saying
 //     what it saw rather than failing on an unexamined difference.
 //
-// Delete this function, and the calls to it, when Jamf fixes the write path. The
-// tests below it are written to run unchanged when that happens.
-func skipUnlessConnectionWritesWork(t *testing.T) {
+// One residual ambiguity is worth knowing about, because the internal failure is
+// an overloaded catch-all rather than one fault: an endpoint that had been fixed
+// but validated the body before looking the identifier up would answer it too,
+// for any body Jamf disliked. That is why the probe body mirrors a create Jamf is
+// known to accept rather than being an obviously invalid one. If Jamf ever
+// reports the endpoint fixed and this gate still skips, compare the probe body
+// against oidcConnectionConfig before believing the gate.
+//
+// Delete this function, and the call to it, when Jamf fixes the update path.
+func skipUnlessConnectionUpdatesWork(t *testing.T, domain string) {
 	t.Helper()
 	c := account.New(testhelpers.NewAcceptanceClient(t))
 
-	_, err := c.UpdateConnection(context.Background(), probeConnectionID, probeConnectionRequest())
+	_, err := c.UpdateConnection(context.Background(), probeConnectionID, probeConnectionRequest(domain))
 	if err == nil {
 		t.Fatalf(
-			"the write-path probe updated %s, an identifier no connection has. That should be impossible; "+
+			"the update-path probe updated %s, an identifier no connection has. That should be impossible; "+
 				"check whether a real connection is using this identifier before running the suite again.",
 			probeConnectionID,
 		)
@@ -119,16 +135,16 @@ func skipUnlessConnectionWritesWork(t *testing.T) {
 
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
-		t.Skipf("the write-path probe could not reach Jamf Account, so nothing here can be verified: %v", err)
+		t.Skipf("the update-path probe could not reach Jamf Account, so an update cannot be verified: %v", err)
 	}
 	for _, detail := range apiErr.Details() {
 		if detail.Code == upstreamErrorCode {
 			t.Skipf(
-				"Jamf Account cannot create or change an SSO connection: the write path answers an internal "+
+				"Jamf Account cannot change an existing SSO connection: the update path answers an internal "+
 					"failure for every request, including this probe aimed at %s, an identifier no connection "+
-					"has — while reading or removing that same identifier reports it missing as it should. The "+
-					"fault is on Jamf's side and has been reported; these tests are correct and will run "+
-					"unchanged once it clears. Trace identifier: %s. Reported by Jamf Account: %s",
+					"has — while creating, reading, listing and removing connections all work, and reading or "+
+					"removing that same identifier reports it missing as it should. The fault is on Jamf's side "+
+					"and has been reported. Trace identifier: %s. Reported by Jamf Account: %s",
 				probeConnectionID, apiErr.TraceID, detail.Description,
 			)
 		}
@@ -137,39 +153,40 @@ func skipUnlessConnectionWritesWork(t *testing.T) {
 		return
 	}
 	t.Skipf(
-		"the write-path probe answered %d rather than the expected not-found or internal failure, which is a "+
+		"the update-path probe answered %d rather than the expected not-found or internal failure, which is a "+
 			"state this suite has not seen. Skipping rather than failing on an unexamined difference. Body: %s",
 		apiErr.StatusCode, apiErr.Body,
 	)
 }
 
-// probeConnectionRequest is a complete, semantically valid generic OpenID
-// Connect body for the write-path probe.
+// probeConnectionRequest is a complete, semantically valid generic OpenID Connect
+// body for the update-path probe, aimed at the operator's verified domain.
 //
-// It is maximal rather than minimal on purpose: a minimal body and a maximal one
-// were both observed to be refused identically, so a full body rules out the
-// reading that the probe merely omitted something Jamf needs.
-func probeConnectionRequest() *account.ConnectionRequest {
-	name := "tfAccWriteProbe"
-	scopes := "openid email profile"
+// It mirrors what oidcConnectionConfig renders, which a create is known to accept
+// with a 201, so that an internal failure from the probe cannot be read as Jamf
+// disliking the body. That matters more than it used to: the same failure now
+// covers an unclaimed domain, a missing field, a mismatched settings payload, an
+// illegal name and a full organization, so a deliberately invalid probe body
+// would make a fixed endpoint indistinguishable from a broken one.
+func probeConnectionRequest(domain string) *account.ConnectionRequest {
 	return &account.ConnectionRequest{
 		ConnectionType: account.ConnectionTypeOidc,
-		Domains:        []string{"tf-acc-write-probe.example"},
+		Domains:        []string{domain},
 		EnabledProducts: []account.EnabledProduct{{
 			Product:        account.ProductAccount,
 			EnabledTenants: []string{},
 		}},
 		Connection: account.ConnectionRequestConnection{
 			OidcConnectionSettings: &account.OidcConnectionSettings{
-				Name:                  name,
+				Name:                  "tfAccUpdateProbe",
 				Region:                account.RegionUs,
-				ClientID:              stringPointer("tf-acc-write-probe-client"),
-				ClientSecret:          stringPointer("tf-acc-write-probe-secret"),
+				ClientID:              stringPointer("tfAccClient"),
+				ClientSecret:          stringPointer("tfAccClientSecret"),
 				IssuerURL:             "idp.example",
 				AuthorizationEndpoint: "idp.example/authorize",
 				TokenEndpoint:         "idp.example/token",
 				JwksUri:               "idp.example/keys",
-				Scopes:                scopes,
+				Scopes:                "openid email profile",
 				AliasLoginHintToIdp:   true,
 			},
 		},
@@ -246,17 +263,20 @@ func oidcConnectionConfig(name, domain string) string {
 }
 
 // TestAccResource_AccountSSOConnection_Basic covers the create and the import
-// round trip.
+// round trip. It is ungated: a create answers 201, so the round trip runs against
+// any organization the operator has declared a verified domain for.
 //
-// Three of the assertions are worth stating the reasoning for.
+// Four of the assertions are worth stating the reasoning for.
 //
-// `internal_name` is asserted set rather than equal to `name`, because whether
-// Jamf appends a uniquifying suffix on this path is the one question no read
-// could answer: eighteen of the twenty-two connections read carry one, and the
-// write path is refused for every request. This is the highest-value thing to
-// tighten the moment the fault clears — if the stored name equals the configured
-// one, this becomes an equality check; if it does not, the two-attribute split is
-// vindicated and the suffix pattern can be pinned here.
+// `name` is asserted equal to the configured name on both the create and the
+// import, which is a claim about the provider rather than about Jamf: Jamf stores
+// the name with a uniquifying suffix appended, and the provider reports the
+// configured base name so that a plan does not perpetually differ from state.
+//
+// `internal_name` is asserted to be the configured name plus a suffix, which is
+// what Jamf was observed to store — `tfReviewMin` came back as
+// `tfReviewMin-jqxld7tl4m454ed7s35647nmjssypo`. Pinning the shape rather than an
+// exact value is as tight as this can be: the suffix is Jamf's and unpredictable.
 //
 // `enabled_product_names` is asserted present rather than equal to anything,
 // because it reports the products Jamf holds and the tenants of them are never
@@ -265,9 +285,15 @@ func oidcConnectionConfig(name, domain string) string {
 // The import step ignores `enabled_products` and the write-only secret. Neither
 // can be recovered by any read: the tenants are never echoed and the secret is
 // never returned, which is exactly the drift blindness the resource documents.
+//
+// One failure this test cannot tell apart from a defect: a create is refused with
+// the same internal failure when the organization is at its connection limit — an
+// identical body answered 201 at twenty-four connections, the internal failure at
+// twenty-five, and 201 again after one was removed. A create failing here is
+// worth checking against the organization's connection count before it is read as
+// a provider fault.
 func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
 	name := acceptanceConnectionName("basic")
 
@@ -288,7 +314,8 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr(connectionResourceAddress, "domains.*", domain),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "generic_oidc.issuer_url", "idp.example"),
 					resource.TestCheckResourceAttrSet(connectionResourceAddress, "id"),
-					resource.TestCheckResourceAttrSet(connectionResourceAddress, "internal_name"),
+					resource.TestMatchResourceAttr(connectionResourceAddress, "internal_name",
+						regexp.MustCompile(`^`+regexp.QuoteMeta(name)+`-[A-Za-z0-9]+$`)),
 					resource.TestCheckResourceAttrSet(connectionResourceAddress, "enabled_product_names.#"),
 					resource.TestCheckNoResourceAttr(connectionResourceAddress, "client_secret"),
 				),
@@ -309,20 +336,38 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 	})
 }
 
-// TestAccResource_AccountSSOConnection_Update covers the change path, and with it
-// the two behaviours the specification describes and no probe could confirm: that
-// an update replaces the settings rather than patching them, and that omitting the
-// client secret keeps the stored one.
+// TestAccResource_AccountSSOConnection_Update covers the change path: the second
+// step changes the name, adds a group filter and adds an optional endpoint. It is
+// the one test here still gated on the update probe, because it is the only one
+// that edits an existing connection — every other test creates, reads, imports,
+// queries or destroys, all of which work.
 //
-// The second step changes the name and adds an optional value while leaving the
-// secret out. If an update really replaces, the value left out of the first step
-// has to survive; if it really keeps the secret, the apply has to succeed at all,
-// since a connection whose secret was cleared could not be written back.
+// Two of its expectations are pinned to plan_modifiers.go being present, and
+// whoever deletes that file has to restore both.
+//
+// The plan check expects a replacement rather than an in-place update, because
+// `name` is one of the attributes plan_modifiers.go compares and any change to it
+// forces replacement while that file exists. Expecting an update would fail even
+// on the day Jamf fixes the endpoint, which is the opposite of what a gated test
+// is for. Restore plancheck.ResourceActionUpdate when plan_modifiers.go goes.
+//
+// The second step supplies the client secret for the same reason. The behaviour
+// worth proving is that omitting it keeps the stored one, but while every change
+// is a replacement the step is a create, and a create with no secret is a
+// different test with an unattributable failure. Remove `client_secret` from the
+// second step, along with the replacement expectation, to recover the original
+// assertion.
+//
+// The changed name is `name` plus a suffix of letters, not a hyphenated one:
+// Jamf accepts only letters and digits in a connection name and the provider's
+// own validator refuses anything else at plan time, so a hyphen here would fail
+// before the update was ever attempted. See acceptanceConnectionName.
 func TestAccResource_AccountSSOConnection_Update(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
+	skipUnlessConnectionUpdatesWork(t, domain)
 	name := acceptanceConnectionName("update")
+	changedName := name + "Changed"
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -338,8 +383,9 @@ func TestAccResource_AccountSSOConnection_Update(t *testing.T) {
 						connection_type = "generic_oidc"
 						hosting_region  = "US"
 
-						client_id = "tfAccClient"
-						scopes    = "openid email profile groups"
+						client_id     = "tfAccClient"
+						client_secret = "tfAccClientSecret"
+						scopes        = "openid email profile groups"
 
 						send_nonce               = true
 						sync_attributes_at_login = false
@@ -364,14 +410,14 @@ func TestAccResource_AccountSSOConnection_Update(t *testing.T) {
 							user_info_endpoint     = "idp.example/userinfo"
 						}
 					}
-				`, name+"-changed", domain),
+				`, changedName, domain),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						plancheck.ExpectResourceAction(connectionResourceAddress, plancheck.ResourceActionUpdate),
+						plancheck.ExpectResourceAction(connectionResourceAddress, plancheck.ResourceActionDestroyBeforeCreate),
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(connectionResourceAddress, "name", name+"-changed"),
+					resource.TestCheckResourceAttr(connectionResourceAddress, "name", changedName),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "send_nonce", "true"),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "sync_attributes_at_login", "false"),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "omit_login_hint", "true"),
@@ -394,7 +440,6 @@ func TestAccResource_AccountSSOConnection_Update(t *testing.T) {
 // former, so getting this wrong would rewrite live configuration.
 func TestAccResource_AccountSSOConnection_EmptyGroupFilterRoundTrips(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
 	name := acceptanceConnectionName("filter")
 
@@ -445,14 +490,22 @@ func TestAccResource_AccountSSOConnection_EmptyGroupFilterRoundTrips(t *testing.
 // TestAccResource_AccountSSOConnection_ImmutableAttributesReplace stands in for
 // the two changes an update cannot make. Both are specification-derived: Jamf says
 // an update can move a connection to neither another family nor another region,
-// and the refusal was never observed because every write is refused.
+// and the refusal was never observed because the update path is refused for every
+// request.
 //
 // So this asserts what the provider plans rather than what Jamf answers, which is
 // the honest thing to assert either way — a replacement is correct whether Jamf
-// would have refused the in-place change or silently ignored it.
+// would have refused the in-place change or silently ignored it. It is ungated,
+// because a replacement is a destroy and a create and both work.
+//
+// While plan_modifiers.go is present the replacement is over-determined: that
+// file replaces the connection on any change at all, so this step would plan a
+// replacement even if `connection_type` were not immutable. What makes the test
+// meaningful either way is the RequiresReplace plan modifier the attribute itself
+// carries in resource.go, which is what this test still exercises once
+// plan_modifiers.go is deleted.
 func TestAccResource_AccountSSOConnection_ImmutableAttributesReplace(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
 	name := acceptanceConnectionName("replace")
 
@@ -507,7 +560,6 @@ func TestAccResource_AccountSSOConnection_ImmutableAttributesReplace(t *testing.
 // collection agrees the connection is gone.
 func TestAccResource_AccountSSOConnection_Disappears(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
 	name := acceptanceConnectionName("gone")
 
@@ -543,7 +595,6 @@ func TestAccResource_AccountSSOConnection_Disappears(t *testing.T) {
 // not this suite's to depend on.
 func TestAccResource_AccountSSOConnection_Query(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
-	skipUnlessConnectionWritesWork(t)
 	domain := verifiedDomain(t)
 	name := acceptanceConnectionName("query")
 

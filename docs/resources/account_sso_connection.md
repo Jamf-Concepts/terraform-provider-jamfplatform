@@ -6,7 +6,7 @@ description: |-
   Manages an SSO connection for your Jamf Account organization — one identity provider the people in your organization sign in through, and the Jamf products they reach with it.
   Pick the provider family with connection_type and supply the matching settings block: exactly one of generic_oidc, entra, okta or google_workspace, and it has to be the one the family names. Neither the family nor hosting_region can be changed afterwards — both replace the connection.
   Every domain in domains must already be claimed and verified by your organization; a connection cannot be created without at least one. Use jamfplatform_account_sso_domain to claim a domain and the jamfplatform_account_sso_domain_verify action to prove it, and depend on the verification so the ordering is explicit.
-  Jamf is currently unable to create or change a connection. Every attempt is refused with an internal failure, for every configuration, in every region — proven to happen before the request is even examined, so it is not something a configuration change can work around. Reading, listing and destroying connections all work normally. The fault is with Jamf and has been reported; until it clears, use this resource to read and to destroy, and make new connections in the Jamf Account console.
+  Jamf cannot currently apply a change to an existing connection. Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created — so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a create_before_destroy lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
   Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone — it exists, and Terraform must not drop it from state.
   enabled_products and enabled_environments are configuration-authoritative. Nothing Jamf returns echoes the tenants back, so Terraform cannot notice a change made outside it and cannot recover them on import. enabled_product_names reports the products alone, which is the only part that comes back.
   The connection's callback address is not exposed: the console shows one, Jamf's data does not carry it, and deriving it here would mean publishing a value that could silently go wrong. Copy it from the console.
@@ -26,7 +26,7 @@ Pick the provider family with `connection_type` and supply the matching settings
 
 Every domain in `domains` must already be claimed *and* verified by your organization; a connection cannot be created without at least one. Use `jamfplatform_account_sso_domain` to claim a domain and the `jamfplatform_account_sso_domain_verify` action to prove it, and depend on the verification so the ordering is explicit.
 
-**Jamf is currently unable to create or change a connection.** Every attempt is refused with an internal failure, for every configuration, in every region — proven to happen before the request is even examined, so it is not something a configuration change can work around. Reading, listing and destroying connections all work normally. The fault is with Jamf and has been reported; until it clears, use this resource to read and to destroy, and make new connections in the Jamf Account console.
+**Jamf cannot currently apply a change to an existing connection.** Every attempt is refused with an internal failure, in every region, even when what is sent is exactly what Jamf accepted when the connection was created — so it is not something a configuration change can work around. That is why this resource replaces a connection rather than editing one: any change you make destroys it and creates a new one, which interrupts sign-in, so give a connection carrying real traffic a `create_before_destroy` lifecycle block. Creating, reading, listing and destroying all work normally. The fault is with Jamf and has been reported; until it clears, edit a connection in the Jamf Account console.
 
 Two kinds of connection cannot be managed here at all. One built with Microsoft's admin-consent flow in the console has no client of its own and cannot be written back, so importing one is refused. And a connection your organization's collection lists but which cannot be read on its own identifier is reported rather than treated as gone — it exists, and Terraform must not drop it from state.
 
@@ -74,7 +74,10 @@ resource "jamfplatform_account_sso_domain" "corp" {
 # Jamf allows two connections on the same domain, so the replacement can exist
 # before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
-  name            = "Corp OIDC"
+  # Letters and digits only — Jamf refuses a name with any other character, and
+  # says nothing about which field was at fault when it does. Jamf also appends a
+  # suffix of its own to whatever you choose; internal_name reports the result.
+  name            = "CorpOIDC"
   connection_type = "generic_oidc"
   hosting_region  = "US"
 
@@ -104,7 +107,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
     groups   = ["jamf-admins", "jamf-users"]
   }
 
-  # Blank inherits the organization default. Maximum is 1440 minutes.
+  # Leave either out to use the Jamf default. Maximum is 1440 minutes.
   session_duration_minutes   = 480
   inactivity_timeout_minutes = 60
 
@@ -124,6 +127,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
     create_before_destroy = true
   }
 }
+
 variable "idp_client_id" {
   type        = string
   description = "Client ID of the application registered with your identity provider."
@@ -282,8 +286,8 @@ Optional:
 
 Required:
 
-- `groups` (Set of String) Group names to filter on. An empty set is meaningful and means no filtering; a name may not contain a comma, which is how Jamf separates them.
-- `operator` (String) The console's AND/OR toggle beside the group list: `or` passes a group matching any entry, `and` requires every entry.
+- `groups` (Set of String) Group names to filter on. A group is passed through when its own name **contains** one of these, so `Engineering` also passes `Non-Engineering-Contractors` — give the whole name if you mean an exact list. An empty set is meaningful and means no filtering; a name may not contain a comma, which is how Jamf separates them.
+- `operator` (String) The console's AND/OR toggle beside the group list: `or` passes a group matching any entry, `and` requires every entry. A group matches an entry when its own name contains it.
 
 
 <a id="nestedatt--okta"></a>
@@ -324,10 +328,16 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Connections are imported by the identifier Jamf assigns them.
 terraform import jamfplatform_account_sso_connection.corp con_XXXXXXXXXXXXXXXX
 
-# Two attributes cannot be recovered by an import, because Jamf returns neither.
-# After importing, set them to match the connection or the next plan will show a
-# change:
+# Three attributes cannot be recovered by an import, because Jamf returns none of
+# them. After importing, set them to match the connection or the next plan will
+# show a change:
 #
-#   client_secret     — never returned by design
-#   enabled_products  — the product names come back, the tenant lists do not
+#   client_secret         — never returned by design
+#   enabled_products      — the product names come back, the tenant lists do not
+#   enabled_environments  — never returned at all
+#
+# A connection built with Microsoft's admin-consent flow in the Jamf Account
+# console cannot be imported: it has no client registration of its own, so
+# Terraform could never write it back. Read it with the
+# jamfplatform_account_sso_connection data source instead.
 ```

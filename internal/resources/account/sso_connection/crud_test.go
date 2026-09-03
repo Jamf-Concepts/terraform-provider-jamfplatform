@@ -13,6 +13,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -59,7 +60,7 @@ func newStubClient(t *testing.T, handle stubHandler) *account.Client {
 // commit and breaks on the next rebase.
 const (
 	unitConnectionID   = "con_unittest0001"
-	unitConnectionName = "tf-unit-oidc"
+	unitConnectionName = "tfUnitOidc"
 )
 
 // oidcConnectionBody is the single-connection read for a generic OpenID Connect
@@ -370,11 +371,15 @@ func TestCreate_SendsTheSettingsAndReadsBackTheProducts(t *testing.T) {
 	}
 }
 
-// TestCreate_UpstreamFailureBlamesJamf pins the diagnostic for the refusal every
-// write currently takes. It is proven to happen before Jamf inspects the request,
-// so a diagnostic that sent an operator back to their configuration would send
-// them somewhere the fix cannot be.
-func TestCreate_UpstreamFailureBlamesJamf(t *testing.T) {
+// TestCreate_UpstreamFailurePointsAtTheConfiguration pins the diagnostic for a
+// refused create.
+//
+// Jamf answers a create with this same unattributed failure for an unclaimed or
+// unverified domain, a missing required value, a settings block disagreeing with
+// the declared family, an illegal name, and an organization already holding as
+// many connections as Jamf allows. Creates otherwise work, so a diagnostic
+// blaming Jamf would send an operator away from the one thing they can fix.
+func TestCreate_UpstreamFailurePointsAtTheConfiguration(t *testing.T) {
 	ctx := context.Background()
 
 	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -397,11 +402,18 @@ func TestCreate_UpstreamFailureBlamesJamf(t *testing.T) {
 		t.Error("a refused create must write no state")
 	}
 	detail := resp.Diagnostics.Errors()[0].Detail()
-	if !strings.Contains(detail, "known fault on Jamf's side") {
-		t.Errorf("detail %q does not say the fault is Jamf's", detail)
+	for _, want := range []string{
+		"`domains`",
+		"letters and digits only",
+		"as many connections as Jamf allows",
+		"unit-trace-0001",
+	} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail %q does not mention %q", detail, want)
+		}
 	}
-	if !strings.Contains(detail, "unit-trace-0001") {
-		t.Errorf("detail %q does not name the trace identifier to quote", detail)
+	if strings.Contains(detail, "known fault on Jamf's side") {
+		t.Errorf("a refused create must not be attributed to Jamf, but the detail says so: %q", detail)
 	}
 }
 
@@ -858,6 +870,11 @@ func TestDelete_WithoutAnIdentifierSaysWhatToDo(t *testing.T) {
 // a connection nobody manages and a second one on the next apply. The diagnostic
 // has to name the identifier, because Jamf appends a random suffix to the stored
 // name so there is nothing in the error to look it up by.
+//
+// The collection entry mirrors the plan's family and domains as well as its name.
+// That is what makes it a candidate: a name alone cannot tell a connection this
+// apply made from an unrelated one that happens to share it, so an entry
+// disagreeing on either is deliberately not matched.
 func TestCreate_ReportsAConnectionCreatedDespiteTheError(t *testing.T) {
 	ctx := context.Background()
 	var calls []string
@@ -874,7 +891,7 @@ func TestCreate_ReportsAConnectionCreatedDespiteTheError(t *testing.T) {
 		// plus a suffix of its own.
 		_, _ = w.Write([]byte(`{"totalCount":1,"results":[{"id":"con_orphan0001","name":"` +
 			unitConnectionName + `-jqxld7tl4m454ed7s35647nmje5bmq","type":"OIDC","region":"US",` +
-			`"domains":[],"enabledApplications":[],"easyConfig":false,` +
+			`"domains":["tf-unit.example"],"enabledApplications":[],"easyConfig":false,` +
 			`"syncUserProfileAttributesAtLogin":true,"ticketUrl":null,` +
 			`"tokenEndpointAuthMethod":"CLIENT_SECRET_POST"}]}`))
 	})
@@ -928,5 +945,316 @@ func TestCreate_UpstreamFailureWithNothingCreatedReportsPlainly(t *testing.T) {
 	}
 	if detail := resp.Diagnostics.Errors()[0].Detail(); strings.Contains(detail, "was created despite") {
 		t.Errorf("nothing was created, so the diagnostic must not say otherwise:\n%s", detail)
+	}
+}
+
+// diagnosticsContain reports whether any diagnostic in the list carries text in
+// its summary or its detail, so a test can state what an operator has to be told
+// without pinning which of the two says it.
+func diagnosticsContain(diags diag.Diagnostics, text string) bool {
+	for _, d := range diags {
+		if strings.Contains(d.Summary(), text) || strings.Contains(d.Detail(), text) {
+			return true
+		}
+	}
+	return false
+}
+
+// TestCreate_ReadBackFailureStillRecordsTheIdentifier covers the failure that
+// otherwise loses a connection outright: the create succeeds and the collection
+// read that follows it — a second request, so a rate limit or an expired token is
+// enough — does not.
+//
+// Returning without state would leave a connection nobody manages, and because
+// Jamf does not require connection names to be unique the next apply would add a
+// second one rather than colliding with the first. So the identifier goes into
+// state, the diagnostic says it did, and the state has to be wholly known for the
+// framework to accept it.
+func TestCreate_ReadBackFailureStillRecordsTheIdentifier(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if req.Method == http.MethodPost {
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(oidcConnectionBody))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(upstreamErrorBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withClientSecret("probe-client-secret"))
+	resp := resource.CreateResponse{State: tfsdk.State{Schema: s}, Identity: identity}
+	r.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a create whose read-back failed must report the error")
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("a create that succeeded must leave state behind, whatever the read-back did")
+	}
+	if !resp.State.Raw.IsFullyKnown() {
+		t.Errorf("state committed on the read-back failure must be wholly known, got %s", resp.State.Raw)
+	}
+
+	var state ConnectionResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the state: %v", diags)
+	}
+	if state.ID.ValueString() != unitConnectionID {
+		t.Errorf("id = %q, want the identifier the create returned", state.ID.ValueString())
+	}
+	if !diagnosticsContain(resp.Diagnostics, unitConnectionID) {
+		t.Errorf("the diagnostics must name the identifier recorded:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, "Do not create it again") {
+		t.Errorf("the diagnostics must say not to create it again:\n%v", resp.Diagnostics)
+	}
+}
+
+// TestCreate_FailedOrphanCheckSaysTheCheckCouldNotBeMade is the third outcome of
+// a failed create, and the one a caller must not read as the second: the check
+// for a connection Jamf made anyway could not be completed, which is not the same
+// as having checked and found none.
+//
+// Told the latter, an operator applies again and duplicates a connection that
+// already exists.
+func TestCreate_FailedOrphanCheckSaysTheCheckCouldNotBeMade(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(upstreamErrorBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withClientSecret("probe-client-secret"))
+	resp := resource.CreateResponse{State: tfsdk.State{Schema: s}, Identity: identity}
+	r.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed create must report an error")
+	}
+	if !resp.State.Raw.IsNull() {
+		t.Error("a create that never succeeded must write no state")
+	}
+	if len(resp.Diagnostics.Warnings()) == 0 {
+		t.Fatalf("a check that could not be completed must be reported:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, "could not be checked") {
+		t.Errorf("the diagnostics must say the check itself failed:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, unitConnectionName) {
+		t.Errorf("the diagnostics must name the connection to look for:\n%v", resp.Diagnostics)
+	}
+}
+
+// TestRead_CollectionWithoutTheConnectionIsReportedAsPartial pins the quieter
+// half of the disagreement inside Jamf this package already reports loudly in the
+// other direction.
+//
+// A connection read on its own identifier that the collection does not carry
+// leaves the products empty, which in state is indistinguishable from a
+// connection that genuinely has none — so the refresh has to say the read was
+// partial rather than record the emptiness as fact.
+func TestRead_CollectionWithoutTheConnectionIsReportedAsPartial(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(req.URL.Path, "/connections") {
+			_, _ = w.Write([]byte(emptyConnectionListBody))
+			return
+		}
+		_, _ = w.Write([]byte(oidcConnectionBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withID(unitConnectionID))
+	resp := resource.ReadResponse{State: tfsdk.State{Schema: s, Raw: raw}, Identity: identity}
+	r.Read(ctx, resource.ReadRequest{State: tfsdk.State{Schema: s, Raw: raw}}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("the connection itself was read, so the refresh must not fail: %v", resp.Diagnostics)
+	}
+	if len(resp.Diagnostics.Warnings()) == 0 {
+		t.Fatal("a collection that omits the connection must be reported, not recorded as no products")
+	}
+	if !diagnosticsContain(resp.Diagnostics, unitConnectionID) {
+		t.Errorf("the warning must name the identifier to raise:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, "disagreement inside Jamf") {
+		t.Errorf("the warning must say the fault is not in this configuration:\n%v", resp.Diagnostics)
+	}
+
+	var state ConnectionResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the state: %v", diags)
+	}
+	if len(state.EnabledProductNames.Elements()) != 0 {
+		t.Errorf("enabled_product_names = %s, want the empty set the partial read leaves", state.EnabledProductNames)
+	}
+}
+
+// TestUpdate_FailedChangeAgainstAReadableConnectionIsUnconfirmed covers the
+// first outcome of the existence check: the connection answers its own
+// identifier, so it is still there and the change is simply unconfirmed.
+func TestUpdate_FailedChangeAgainstAReadableConnectionIsUnconfirmed(t *testing.T) {
+	ctx := context.Background()
+	var calls []string
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		calls = append(calls, req.Method+" "+req.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		if req.Method == http.MethodPut {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+			return
+		}
+		_, _ = w.Write([]byte(oidcConnectionBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withID(unitConnectionID))
+	resp := resource.UpdateResponse{State: tfsdk.State{Schema: s, Raw: raw}, Identity: identity}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		State:  tfsdk.State{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed change must be reported")
+	}
+	want := []string{"PUT /sso/v1/connections/" + unitConnectionID, "GET /sso/v1/connections/" + unitConnectionID}
+	if len(calls) != len(want) || calls[0] != want[0] || calls[1] != want[1] {
+		t.Errorf("update issued %v, want %v — a connection its own read answers needs no collection scan", calls, want)
+	}
+	if !diagnosticsContain(resp.Diagnostics, "could not be confirmed") {
+		t.Errorf("a connection still there must be reported as unconfirmed:\n%v", resp.Diagnostics)
+	}
+	if diagnosticsContain(resp.Diagnostics, "could not be checked") {
+		t.Errorf("the check succeeded, so nothing must claim otherwise:\n%v", resp.Diagnostics)
+	}
+}
+
+// TestUpdate_FailedChangeAgainstAListedConnectionIsUnconfirmed covers the second
+// outcome: the single read reports it missing and Jamf's own collection still
+// lists it, which is the disagreement this package refuses to read as a
+// withdrawal.
+func TestUpdate_FailedChangeAgainstAListedConnectionIsUnconfirmed(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodPut:
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+		case strings.HasSuffix(req.URL.Path, "/connections"):
+			_, _ = w.Write([]byte(oneConnectionListBody))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(notFoundBody))
+		}
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withID(unitConnectionID))
+	resp := resource.UpdateResponse{State: tfsdk.State{Schema: s, Raw: raw}, Identity: identity}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		State:  tfsdk.State{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed change must be reported")
+	}
+	if !diagnosticsContain(resp.Diagnostics, "could not be confirmed") {
+		t.Errorf("a connection the collection still lists must be reported as unconfirmed:\n%v", resp.Diagnostics)
+	}
+}
+
+// TestUpdate_FailedChangeAgainstAGoneConnectionReportsPlainly covers the third
+// outcome: both reads agree the connection has gone, so the write error stands on
+// its own and nothing may suggest the check was inconclusive.
+func TestUpdate_FailedChangeAgainstAGoneConnectionReportsPlainly(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodPut:
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(upstreamErrorBody))
+		case strings.HasSuffix(req.URL.Path, "/connections"):
+			_, _ = w.Write([]byte(emptyConnectionListBody))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(notFoundBody))
+		}
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withID(unitConnectionID))
+	resp := resource.UpdateResponse{State: tfsdk.State{Schema: s, Raw: raw}, Identity: identity}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		State:  tfsdk.State{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed change must be reported")
+	}
+	if diagnosticsContain(resp.Diagnostics, "could not be confirmed") {
+		t.Errorf("a connection both reads agree has gone must not be reported as still there:\n%v", resp.Diagnostics)
+	}
+	if diagnosticsContain(resp.Diagnostics, "could not be checked") {
+		t.Errorf("the check completed, so nothing must claim otherwise:\n%v", resp.Diagnostics)
+	}
+}
+
+// TestUpdate_FailedExistenceCheckSaysTheCheckCouldNotBeMade is the outcome the
+// check used to hide: neither read would answer, which is not a negative.
+//
+// The write diagnostic asserts that reading and listing work, and that is false
+// for exactly the requests just made — so an operator reading the refusal as the
+// connection having gone has to be told otherwise.
+func TestUpdate_FailedExistenceCheckSaysTheCheckCouldNotBeMade(t *testing.T) {
+	ctx := context.Background()
+
+	r, s, identity := resourceUnderTest(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(upstreamErrorBody))
+	})
+
+	raw := connectionValue(ctx, t, s, withOIDCConfiguration(), withID(unitConnectionID))
+	resp := resource.UpdateResponse{State: tfsdk.State{Schema: s, Raw: raw}, Identity: identity}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: s, Raw: raw},
+		State:  tfsdk.State{Schema: s, Raw: raw},
+		Config: tfsdk.Config{Schema: s, Raw: raw},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a failed change must be reported")
+	}
+	if len(resp.Diagnostics.Warnings()) == 0 {
+		t.Fatalf("a check that could not be completed must be reported:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, "could not be checked") {
+		t.Errorf("the diagnostics must say the check itself failed:\n%v", resp.Diagnostics)
+	}
+	if !diagnosticsContain(resp.Diagnostics, unitConnectionID) {
+		t.Errorf("the diagnostics must name the connection whose fate is unknown:\n%v", resp.Diagnostics)
+	}
+	if resp.State.Raw.IsNull() {
+		t.Error("a change that could not be checked must leave the previous state alone")
 	}
 }

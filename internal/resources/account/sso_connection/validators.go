@@ -171,6 +171,23 @@ func appendBareHostDiagnostics(diags *diag.Diagnostics, at path.Path, value stri
 // whole configuration, because decoding fails outright when any nested value is
 // unknown and would take every rule down with it.
 //
+// No rule below refuses an unknown value — one derived from another resource in
+// the same apply — and each has its own reason. A rule that requires a value
+// fires only on a genuinely absent one: an unknown value is about to resolve to
+// something, and refusing it would rule out the ordinary composition of
+// registering an application with the provider and the Jamf connection that uses
+// it in one apply. That covers a value such a rule takes as its exception too —
+// an unknown `entra.use_common_endpoint` may yet be `true`, so rule 9 stays
+// silent rather than demanding a `client_id` the connection may not need. A rule
+// that refuses a value stays quiet as well, which is what `IsConfiguredValue`
+// gives it: an unknown value can still resolve to nothing at all — a value set
+// from a conditional is unknown at plan time and absent by the end of it — so a
+// refusal here would turn away a configuration that applies cleanly, and one that
+// does resolve to something is left to Jamf. And a rule whose condition is
+// unknown reports nothing either way: an unknown `connection_type`, `auth_method`
+// or `entra.get_user_groups` leaves every rule hanging off it unable to tell
+// whether it applies.
+//
 // The fourteen rules:
 //
 //  1. exactly one settings block is set;
@@ -274,11 +291,10 @@ func validateScopes(ctx context.Context, req validator.StringRequest, resp *vali
 	if !ok {
 		return
 	}
-	configured := helpers.IsConfiguredValue(scopes)
 
 	switch connectionType {
 	case connectionTypeGenericOIDC, connectionTypeOkta:
-		if !configured {
+		if scopes.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("scopes"),
 				"Scopes are required for this connection type",
@@ -288,7 +304,7 @@ func validateScopes(ctx context.Context, req validator.StringRequest, resp *vali
 			)
 		}
 	case connectionTypeEntra:
-		if configured {
+		if helpers.IsConfiguredValue(scopes) {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("scopes"),
 				"Scopes are not accepted for an Entra connection",
@@ -303,7 +319,7 @@ func validateScopes(ctx context.Context, req validator.StringRequest, resp *vali
 // validateClientCredentials applies rules 6 to 10.
 func validateClientCredentials(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse, connectionType string) {
 	clientID, ok := configString(ctx, req, resp, path.Root("client_id"))
-	if ok && !helpers.IsConfiguredValue(clientID) {
+	if ok && clientID.IsNull() {
 		switch connectionType {
 		case connectionTypeGenericOIDC, connectionTypeOkta, connectionTypeGoogle:
 			resp.Diagnostics.AddAttributeError(
@@ -314,7 +330,7 @@ func validateClientCredentials(ctx context.Context, req validator.StringRequest,
 			)
 		case connectionTypeEntra:
 			common, commonOK := configBool(ctx, req, resp, path.Root("entra").AtName("use_common_endpoint"))
-			if commonOK && !common.ValueBool() {
+			if commonOK && !common.IsUnknown() && !common.ValueBool() {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("client_id"),
 					"Client identifier is required for this connection type",

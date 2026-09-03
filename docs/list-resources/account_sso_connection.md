@@ -4,7 +4,7 @@ page_title: "jamfplatform_account_sso_connection List Resource - terraform-provi
 subcategory: ""
 description: |-
   Lists the SSO connections your Jamf Account organization holds, for terraform query and for importing existing connections in bulk. Jamf Account exposes no search arguments for connections, so this list resource takes no filter configuration.
-  Two kinds of connection are left out, each with a warning naming it: one built with Microsoft's admin-consent flow, which cannot be written back and so cannot be managed as a jamfplatform_account_sso_connection; and one your organization's list reports but which cannot be read on its own identifier, which is a fault inside Jamf. Importing either would leave an entry no apply could reconcile. Use the jamfplatform_account_sso_connections data source to see every connection including those.
+  Two kinds of connection are left out, each with a warning naming it: one built with Microsoft's admin-consent flow, which cannot be written back and so cannot be managed as a jamfplatform_account_sso_connection; and one your organization's list reports but which cannot be read on its own identifier, which is a fault inside Jamf. Importing either would leave an entry no apply could reconcile. A connection whose individual read fails for any other reason is left out the same way, with a warning carrying the error, so one unreadable connection does not cost you the rest. Use the jamfplatform_account_sso_connections data source to see every connection including those.
   Neither kind can be told apart from the list alone, so this reads each connection individually: expect one extra read per connection in your organization.
   An imported connection cannot recover enabled_products or enabled_environments — nothing Jamf returns echoes the tenants back — so add those to the configuration by hand after importing.
   Required Jamf permissions
@@ -18,7 +18,7 @@ description: |-
 
 Lists the SSO connections your Jamf Account organization holds, for `terraform query` and for importing existing connections in bulk. Jamf Account exposes no search arguments for connections, so this list resource takes no filter configuration.
 
-Two kinds of connection are left out, each with a warning naming it: one built with Microsoft's admin-consent flow, which cannot be written back and so cannot be managed as a `jamfplatform_account_sso_connection`; and one your organization's list reports but which cannot be read on its own identifier, which is a fault inside Jamf. Importing either would leave an entry no apply could reconcile. Use the `jamfplatform_account_sso_connections` data source to see every connection including those.
+Two kinds of connection are left out, each with a warning naming it: one built with Microsoft's admin-consent flow, which cannot be written back and so cannot be managed as a `jamfplatform_account_sso_connection`; and one your organization's list reports but which cannot be read on its own identifier, which is a fault inside Jamf. Importing either would leave an entry no apply could reconcile. A connection whose individual read fails for any other reason is left out the same way, with a warning carrying the error, so one unreadable connection does not cost you the rest. Use the `jamfplatform_account_sso_connections` data source to see every connection including those.
 
 Neither kind can be told apart from the list alone, so this reads each connection individually: expect one extra read per connection in your organization.
 

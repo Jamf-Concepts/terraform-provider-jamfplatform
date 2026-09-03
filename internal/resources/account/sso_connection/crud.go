@@ -41,6 +41,18 @@ import (
 // every payload, in every region — see the package doc. The path is written for
 // the fix rather than around the fault, and the diagnostic says whose fault it
 // is.
+//
+// A collection read that fails after the create has succeeded still commits
+// state, the same choice dns_zone makes and for a sharper reason here: the
+// collection read is a second request, so a rate limit or an expired token is
+// enough to lose it, and returning without state would leave a connection nobody
+// manages. Jamf does not require connection names to be unique — the same name
+// sent twice answers 201 twice — so the next apply would add a second connection
+// rather than colliding with the first. What is committed is the plan carrying
+// the new identifier and the create response, which settles every Computed
+// attribute except the two only the collection carries; those are recorded empty
+// and reconciled by the next refresh, and an errored apply does not run
+// Terraform's plan-consistency check.
 func (r *ConnectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan ConnectionResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -70,20 +82,51 @@ func (r *ConnectionResource) Create(ctx context.Context, req resource.CreateRequ
 
 	created, err := r.client.CreateConnection(createCtx, request)
 	if err != nil {
-		if orphans := r.connectionsCreatedDespite(createCtx, plan.Name.ValueString()); len(orphans) > 0 {
+		want, identityDiags := connectionIdentityFromPlan(createCtx, plan)
+		resp.Diagnostics.Append(identityDiags...)
+		orphans, checkErr := r.connectionsCreatedDespite(createCtx, want)
+		if len(orphans) > 0 {
 			appendOrphanedCreateDiagnostics(&resp.Diagnostics, plan.Name.ValueString(), orphans, err)
 			return
 		}
-		if !appendWriteDiagnostics(&resp.Diagnostics, "create", err) {
+		if !appendWriteDiagnostics(&resp.Diagnostics, actionCreate, err) {
 			resp.Diagnostics.AddError("Error creating Jamf Account SSO connection", err.Error())
+		}
+		if checkErr != nil {
+			resp.Diagnostics.AddWarning(
+				"Whether a connection was created anyway could not be checked",
+				"Jamf Account is known to create a connection even when it reports the create as failed, so "+
+					"Terraform read the organization's connection list to look for one — and that read failed "+
+					"too. So the failure above is not evidence that nothing was created, and nothing has been "+
+					"recorded in state. Check in the Jamf Account console whether a connection named \""+
+					plan.Name.ValueString()+"\" exists before applying again: names are not required to be "+
+					"unique, so a second apply would add another rather than being refused. Underlying error: "+
+					checkErr.Error(),
+			)
 		}
 		return
 	}
 
-	summary, summaryDiags := r.readSummary(createCtx, created.ID)
-	resp.Diagnostics.Append(summaryDiags...)
-	if resp.Diagnostics.HasError() {
+	plan.ID = types.StringValue(created.ID)
+
+	summary, listErr := r.listSummary(createCtx, created.ID)
+	if listErr != nil {
+		resp.Diagnostics.Append(assignConnectionResourceModel(&plan, created, nil, false)...)
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, connectionIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading back the created Jamf Account SSO connection",
+			"The connection was created with identifier "+created.ID+", but the organization's connection "+
+				"list — the only place the enabled products and the consent ticket appear — could not be "+
+				"read. Terraform has recorded that identifier and the configured values without confirming "+
+				"what Jamf Account stored, and the next plan will refresh it. Do not create it again: Jamf "+
+				"does not require connection names to be unique, so a second create would leave two "+
+				"connections rather than being refused. Underlying error: "+listErr.Error(),
+		)
 		return
+	}
+	if summary == nil {
+		appendPartialCollectionDiagnostics(&resp.Diagnostics, created.ID)
 	}
 
 	resp.Diagnostics.Append(assignConnectionResourceModel(&plan, created, summary, false)...)
@@ -206,6 +249,14 @@ func (r *ConnectionResource) Read(ctx context.Context, req resource.ReadRequest,
 // no guess about how Jamf would answer such a write — a guess that would be
 // especially poor here, since every write is currently refused identically
 // whatever the reason.
+//
+// A write that fails is followed by a check for whether the connection is still
+// there, and that check has three answers rather than two. Still there means the
+// change is merely unconfirmed; gone means the refusal was really a not-found;
+// and a check that could not be completed is neither, so it is reported
+// alongside the write error rather than passed off as the second — the write
+// diagnostic asserts that reading and listing work, which is exactly what a
+// failed check disproves.
 func (r *ConnectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan ConnectionResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -256,12 +307,23 @@ func (r *ConnectionResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	updated, err := r.client.UpdateConnection(updateCtx, id, request)
 	if err != nil {
-		if r.connectionStillExists(updateCtx, id) {
+		stillExists, checkErr := r.connectionStillExists(updateCtx, id)
+		if stillExists {
 			appendUnconfirmedUpdateDiagnostics(&resp.Diagnostics, id, err)
 			return
 		}
-		if !appendWriteDiagnostics(&resp.Diagnostics, "change", err) {
+		if !appendWriteDiagnostics(&resp.Diagnostics, actionChange, err) {
 			resp.Diagnostics.AddError("Error updating Jamf Account SSO connection", err.Error())
+		}
+		if checkErr != nil {
+			resp.Diagnostics.AddWarning(
+				"Whether the connection still exists could not be checked",
+				"Changing connection "+id+" reported a failure, and reading it back to establish whether it is "+
+					"still there failed as well — so the refusal above is not evidence that the connection has "+
+					"gone, and reading and listing are evidently not working at the moment either. Terraform has "+
+					"left the previous values in state. Run `terraform plan -refresh-only` once Jamf Account "+
+					"answers again to see what it holds. Underlying error: "+checkErr.Error(),
+			)
 		}
 		return
 	}
@@ -331,17 +393,21 @@ func (r *ConnectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 }
 
-// readSummary returns the collection entry for one connection.
+// readSummary returns the collection entry for one connection, and says so when
+// there is not one.
 //
 // Absence is not an error: a connection readable on its own identifier but
 // missing from the collection is the mirror image of the disagreement inside
-// Jamf that this package guards against, and the only cost is that the two
-// attributes the collection supplies come back empty. The read that matters has
-// already succeeded, so failing the refresh over the lesser half would be worse
-// than reporting it partial.
+// Jamf that this package guards against, and the read that matters has already
+// succeeded, so failing the refresh over the lesser half would be worse. It is
+// not silent either. The cost of that absence is that the attributes only the
+// collection carries are recorded empty, which in state is indistinguishable
+// from a connection that genuinely has none — so the partial read is reported,
+// as a warning here in the same way appendGhostConnectionDiagnostics reports the
+// disagreement in the other direction as an error.
 func (r *ConnectionResource) readSummary(ctx context.Context, id string) (*account.ConnectionSummary, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	summaries, err := r.client.ListConnections(ctx)
+	summary, err := r.listSummary(ctx, id)
 	if err != nil {
 		diags.AddError(
 			"Unable to list Jamf Account SSO connections",
@@ -351,7 +417,44 @@ func (r *ConnectionResource) readSummary(ctx context.Context, id string) (*accou
 		)
 		return nil, diags
 	}
-	return findSummary(summaries, id), diags
+	if summary == nil {
+		appendPartialCollectionDiagnostics(&diags, id)
+	}
+	return summary, diags
+}
+
+// listSummary reads the organization's connections and picks out one, handing
+// back the read's own error.
+//
+// It exists so a caller can tell a collection read that failed from a collection
+// that simply does not carry the connection: the two are the same value to
+// findSummary and mean opposite things to Create, which commits state on the
+// first and warns on the second.
+func (r *ConnectionResource) listSummary(ctx context.Context, id string) (*account.ConnectionSummary, error) {
+	summaries, err := r.client.ListConnections(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return findSummary(summaries, id), nil
+}
+
+// appendPartialCollectionDiagnostics reports a connection that was read on its
+// own identifier and that the organization's collection does not carry.
+//
+// A warning rather than an error, because the connection is there and its
+// settings were read: refusing the refresh would strand a resource over the
+// lesser half of the read. What it must not do is stay quiet, which would record
+// a connection with no products as if Jamf had said it has none.
+func appendPartialCollectionDiagnostics(diags *diag.Diagnostics, id string) {
+	diags.AddWarning(
+		"Jamf Account listed the organization's SSO connections without this one",
+		"Connection "+id+" was read on its own identifier, but the organization's connection list does not "+
+			"carry it — so the enabled products, which only that list reports, are recorded empty rather than "+
+			"as Jamf Account holds them, and the consent ticket is left to whatever the connection's own "+
+			"settings carry. That is a disagreement inside Jamf between its own list and the record behind a "+
+			"single connection, not a problem with this configuration, and nothing here can fix it. Raise it "+
+			"with Jamf Support, quoting the identifier above.",
+	)
 }
 
 // reportMissingConnection decides what a not-found means.
@@ -408,45 +511,71 @@ func configuredClientSecret(ctx context.Context, config tfsdk.Config) (types.Str
 // name there is no identifier in the error to look it up by — only the name the
 // caller chose. Hence a collection scan.
 //
-// A read that itself fails returns nothing: the create error is then reported as
-// it stands, which is the honest outcome when neither the write nor the check
-// could be completed. Since Jamf allows duplicate names, every match is returned
-// and the caller decides — a pre-existing connection of the same name is
+// A read that itself fails hands back its error rather than an empty result, and
+// logs it. "Checked, nothing found" and "could not check" mean opposite things to
+// an operator deciding whether to apply again, and a caller that could not tell
+// them apart would report the second as the first — which is the reading that
+// duplicates a connection. Since Jamf allows duplicate names, every match is
+// returned and the caller decides — a pre-existing connection of the same name is
 // indistinguishable from one this create made, and saying so beats guessing.
-func (r *ConnectionResource) connectionsCreatedDespite(ctx context.Context, name string) []account.ConnectionSummary {
-	if name == "" {
-		return nil
+func (r *ConnectionResource) connectionsCreatedDespite(ctx context.Context, want connectionIdentity) ([]account.ConnectionSummary, error) {
+	if want.name == "" {
+		return nil, nil
 	}
 	all, err := r.client.ListConnections(ctx)
 	if err != nil {
-		return nil
+		tflog.Warn(ctx, "could not list Jamf Account SSO connections to check whether a failed create took effect anyway", map[string]any{
+			"name":  want.name,
+			"error": err.Error(),
+		})
+		return nil, err
 	}
-	return connectionsMatchingName(all, name)
+	return connectionsMatchingPlan(all, want), nil
 }
 
 // connectionStillExists reports whether a connection is present after a change
-// reported an error.
+// reported an error, and whether the question could be answered at all.
 //
-// It separates the two outcomes a failed update can have: the connection is gone
-// (deleted elsewhere, so the error is really a not-found and the resource should
-// say so) or it is still there and Jamf simply will not say whether the change
-// landed. A read that fails answers false, so the original write error is
-// reported rather than replaced by a weaker one.
-func (r *ConnectionResource) connectionStillExists(ctx context.Context, id string) bool {
+// A failed update has three outcomes, not two. The connection is gone (deleted
+// elsewhere, so the error is really a not-found and the resource should say so);
+// or it is still there and Jamf simply will not say whether the change landed; or
+// neither read would answer, which is a third thing rather than a negative — the
+// change diagnostic asserts that reading and listing work, and an operator told a
+// connection was not found when the check itself failed would draw the wrong
+// conclusion. So a failed check hands back its error for the caller to report
+// alongside the original write error rather than in place of it.
+//
+// Both reads are logged when they fail, with the exception of a not-found from
+// the single read: that is the expected shape of a genuine withdrawal, not
+// something gone wrong, so it is recorded at trace level.
+func (r *ConnectionResource) connectionStillExists(ctx context.Context, id string) (bool, error) {
 	if id == "" {
-		return false
+		return false, nil
 	}
-	if _, err := r.client.GetConnection(ctx, id); err == nil {
-		return true
+	_, getErr := r.client.GetConnection(ctx, id)
+	if getErr == nil {
+		return true, nil
+	}
+	if helpers.IsNotFoundError(getErr) {
+		tflog.Trace(ctx, "Jamf Account SSO connection reported missing on its own identifier after a failed change", map[string]any{"id": id})
+	} else {
+		tflog.Warn(ctx, "could not read a Jamf Account SSO connection to check whether a failed change left it in place", map[string]any{
+			"id":    id,
+			"error": getErr.Error(),
+		})
 	}
 	all, err := r.client.ListConnections(ctx)
 	if err != nil {
-		return false
+		tflog.Warn(ctx, "could not list Jamf Account SSO connections to check whether a failed change left one in place", map[string]any{
+			"id":    id,
+			"error": err.Error(),
+		})
+		return false, err
 	}
 	for _, candidate := range all {
 		if candidate.ID == id {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }

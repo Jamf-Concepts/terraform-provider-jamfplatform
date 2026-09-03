@@ -10,25 +10,28 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // ModifyPlan replaces the connection whenever any configured value changes,
-// because Jamf Account currently has no working update endpoint.
+// because Jamf Account has no working endpoint for changing one.
 //
 // PUT /sso/v1/connections/{id} answers 500 UPSTREAM_ERROR for every request —
 // with the exact body a create accepts, with the stored name, with a fresh name,
-// and at an identifier that does not exist, while POST and DELETE both work. It is
-// a server-side fault raised with Jamf, not a payload defect. Wire-verified on
-// 2026-09-03 that the refused write applies nothing: a connection read back after
-// a PUT changing three fields was byte-identical.
+// and at an identifier that does not exist. Creating, reading, listing and
+// destroying a connection all work, so the fault is specific to applying a
+// change rather than to writing at all. Wire-verified on 2026-09-03 that the
+// refused write applies nothing: a connection read back after a PUT changing
+// three fields was byte-identical.
 //
 // So an in-place change cannot succeed, and the only honest plan is a replacement.
 // Without this, every edit would plan as an update and fail during apply.
 //
 // **This whole file is temporary.** When Jamf fixes the endpoint, delete it and
 // the `var _ resource.ResourceWithModifyPlan` assertion, and the resource updates
-// in place again — the Update method is already written and its acceptance tests
-// already exist, gated behind skipUnlessConnectionWritesWork.
+// in place again — the Update method is already written and its acceptance test
+// already exists, gated behind skipUnlessConnectionUpdatesWork. That test's own
+// doc comment lists the two expectations to restore alongside this deletion.
 //
 // It lives in one place rather than as a RequiresReplace plan modifier on each of
 // the fifty-odd configurable attributes, so that reverting it is deleting a file
@@ -51,8 +54,45 @@ func (r *ConnectionResource) ModifyPlan(ctx context.Context, req resource.Modify
 	}
 
 	for _, changed := range changedConfigurablePaths(plan, state) {
+		if !plannedAttributeIsFullyKnown(req.Plan.Raw, changed.String()) {
+			continue
+		}
 		resp.RequiresReplace.Append(changed)
 	}
+}
+
+// plannedAttributeIsFullyKnown reports whether the plan holds a settled value for
+// one top-level attribute.
+//
+// planValueDiffers can only exempt an unknown value it recognises as one, and it
+// recognises a value that implements attr.Value. Six of the compared attributes
+// do not: the four settings blocks and the group filter are pointers to structs,
+// and the two product collections are plain Go slices, so an unresolved reference
+// *inside* any of them decodes into a populated model that simply differs from
+// what is in state. That is half the settings surface, and reading it as a change
+// would destroy and recreate a live connection on every plan holding a pending
+// reference — the outcome the exemption exists to prevent.
+//
+// The raw plan is what settles it, because it carries unknown-ness at every
+// depth rather than only where a Go type can express it. Every compared path is a
+// single top-level attribute name, so indexing the plan object is enough and no
+// path walk is needed. An object that cannot be read as one, or a name the plan
+// does not carry, is treated as known: this guard exists to suppress a
+// replacement, and suppressing one that should happen would leave an operator
+// with a plan that fails during apply instead.
+func plannedAttributeIsFullyKnown(raw tftypes.Value, name string) bool {
+	if raw.IsNull() || !raw.IsKnown() {
+		return false
+	}
+	var object map[string]tftypes.Value
+	if err := raw.As(&object); err != nil {
+		return true
+	}
+	planned, present := object[name]
+	if !present {
+		return true
+	}
+	return planned.IsFullyKnown()
 }
 
 // changedConfigurablePaths reports which operator-settable attributes differ

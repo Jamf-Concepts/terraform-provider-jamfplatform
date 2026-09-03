@@ -25,7 +25,10 @@ resource "jamfplatform_account_sso_domain" "corp" {
 # Jamf allows two connections on the same domain, so the replacement can exist
 # before the original is removed.
 resource "jamfplatform_account_sso_connection" "corp" {
-  name            = "Corp OIDC"
+  # Letters and digits only — Jamf refuses a name with any other character, and
+  # says nothing about which field was at fault when it does. Jamf also appends a
+  # suffix of its own to whatever you choose; internal_name reports the result.
+  name            = "CorpOIDC"
   connection_type = "generic_oidc"
   hosting_region  = "US"
 
@@ -55,7 +58,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
     groups   = ["jamf-admins", "jamf-users"]
   }
 
-  # Blank inherits the organization default. Maximum is 1440 minutes.
+  # Leave either out to use the Jamf default. Maximum is 1440 minutes.
   session_duration_minutes   = 480
   inactivity_timeout_minutes = 60
 
@@ -75,6 +78,7 @@ resource "jamfplatform_account_sso_connection" "corp" {
     create_before_destroy = true
   }
 }
+
 variable "idp_client_id" {
   type        = string
   description = "Client ID of the application registered with your identity provider."

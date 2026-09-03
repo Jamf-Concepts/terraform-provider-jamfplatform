@@ -30,26 +30,65 @@ func writeError(t *testing.T, status int, body string) error {
 	return err
 }
 
-// TestAppendWriteDiagnostics_UpstreamFailureBlamesJamf pins the diagnostic for
-// the refusal every connection write currently takes. It happens before Jamf
-// inspects the request, so a diagnostic pointing at the configuration would point
-// somewhere the fix cannot be.
-func TestAppendWriteDiagnostics_UpstreamFailureBlamesJamf(t *testing.T) {
+// TestAppendWriteDiagnostics_UpstreamFailureOnCreatePointsAtTheConfiguration
+// pins the create half of the internal-failure diagnostic.
+//
+// Wire-probed: a create is refused this way for an unclaimed or unverified
+// domain, a missing required value, a settings block disagreeing with the
+// declared family, an illegal name, and an organization already holding as many
+// connections as Jamf allows. So the create diagnostic must work through those
+// rather than blame Jamf, which is what an operator can act on. It must also not
+// tell them to use the console, because creating works.
+func TestAppendWriteDiagnostics_UpstreamFailureOnCreatePointsAtTheConfiguration(t *testing.T) {
 	var diags diag.Diagnostics
-	if !appendWriteDiagnostics(&diags, "create", writeError(t, http.StatusInternalServerError, upstreamErrorBody)) {
+	if !appendWriteDiagnostics(&diags, actionCreate, writeError(t, http.StatusInternalServerError, upstreamErrorBody)) {
+		t.Fatal("an internal failure must be recognised and translated")
+	}
+
+	detail := diags.Errors()[0].Detail()
+	for _, want := range []string{
+		"`domains`",
+		"letters and digits only",
+		"`connection_type`",
+		"as many connections as Jamf allows",
+		"unit-trace-0001",
+	} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail does not mention %q:\n%s", want, detail)
+		}
+	}
+	for _, unwanted := range []string{
+		"known fault on Jamf's side",
+		"before the request is examined",
+	} {
+		if strings.Contains(detail, unwanted) {
+			t.Errorf("a refused create must not be attributed to Jamf, but the detail says %q:\n%s", unwanted, detail)
+		}
+	}
+}
+
+// TestAppendWriteDiagnostics_UpstreamFailureOnChangeBlamesJamf pins the change
+// half, which is the one that genuinely is Jamf's fault: every update is refused
+// this way, including one carrying the exact values a create accepts, so the
+// diagnostic points at the console rather than at the configuration.
+func TestAppendWriteDiagnostics_UpstreamFailureOnChangeBlamesJamf(t *testing.T) {
+	var diags diag.Diagnostics
+	if !appendWriteDiagnostics(&diags, actionChange, writeError(t, http.StatusInternalServerError, upstreamErrorBody)) {
 		t.Fatal("an internal failure must be recognised and translated")
 	}
 
 	detail := diags.Errors()[0].Detail()
 	for _, want := range []string{
 		"known fault on Jamf's side",
-		"before the request is examined",
 		"Jamf Account console",
 		"unit-trace-0001",
 	} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("detail does not mention %q:\n%s", want, detail)
 		}
+	}
+	if strings.Contains(detail, "every attempt to create") {
+		t.Errorf("the change diagnostic must not claim creates are refused too:\n%s", detail)
 	}
 }
 

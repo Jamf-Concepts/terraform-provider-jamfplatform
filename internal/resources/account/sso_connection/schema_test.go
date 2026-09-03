@@ -370,20 +370,26 @@ func TestConnectionResource_DescriptionsQuoteTheConsoleLabels(t *testing.T) {
 	}
 }
 
-// TestConnectionResource_DescriptionStatesTheWriteFault pins that the resource
-// says plainly what an operator will otherwise discover by failing an apply. Drop
-// this assertion when Jamf fixes the write path — and the description with it.
-func TestConnectionResource_DescriptionStatesTheWriteFault(t *testing.T) {
+// TestConnectionResource_DescriptionStatesTheUpdateFault pins that the resource
+// says plainly what an operator will otherwise discover by failing an apply, and
+// that it scopes the fault to what is actually broken. Creating works, so a
+// description claiming otherwise would talk practitioners out of using the
+// resource for the one write it can do. Drop this assertion when Jamf fixes the
+// endpoint — and the description with it.
+func TestConnectionResource_DescriptionStatesTheUpdateFault(t *testing.T) {
 	s := resourceSchema(t)
 
 	description := s.MarkdownDescription
 	for _, want := range []string{
-		"unable to create or change a connection",
-		"Reading, listing and destroying connections all work",
+		"cannot currently apply a change to an existing connection",
+		"Creating, reading, listing and destroying all work",
 	} {
 		if !strings.Contains(description, want) {
 			t.Errorf("the resource description does not mention %q", want)
 		}
+	}
+	if strings.Contains(description, "unable to create") {
+		t.Error("the resource description still claims creates are refused, which they are not")
 	}
 }
 
