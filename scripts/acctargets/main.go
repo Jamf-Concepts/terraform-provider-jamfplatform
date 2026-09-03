@@ -742,7 +742,7 @@ func changedFiles(root, baseRef string) (files []string, diffBase string, err er
 }
 
 func addLines(set map[string]bool, out string) {
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		if l = strings.TrimSpace(l); l != "" {
 			set[l] = true
 		}
