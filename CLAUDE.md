@@ -174,9 +174,10 @@ Terraform construct name format: `jamfplatform_account_<x>`; Go package
 `internal/resources/account/<x>/`, flat single tier like `security_cloud/`. This is the provider's
 **organization-level** family — what a practitioner manages at *account.jamf.com → Organization*,
 above and across individual tenants. Today that means **SSO**: a `sso_domain` is a DNS domain the
-organization has claimed and proved ownership of, and a `sso_connection` — surveyed but **not yet
-shipped**, see Fourth below — is an OIDC identity-provider connection that signs users in for one or
-more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud tenants. Family
+organization has claimed and proved ownership of, and a `sso_connection` — shipped as a resource,
+two data sources and a list resource — is an OIDC identity-provider connection that signs users in
+for one or more of those domains, scoped to chosen Jamf Pro, School, Protect and Security Cloud
+tenants. Family
 facts and the naming rationale are in
 [STYLE_GUIDE.md §Jamf Account Resource Naming](STYLE_GUIDE.md#jamf-account-resource-naming); five
 things drive the design and are easy to get wrong. First, **this is the only family reachable under
@@ -194,12 +195,20 @@ import is by domain **name**. Third, **verification is an action, not resource s
 idempotent**: a *failed* verify returns `200` with `domainStatus` unchanged (so the status code says
 nothing), yet still bumps `lastModifiedDate` and pushes `verificationExpirationDate` out 14 days —
 and because the five-minute rate limit is measured from `lastModifiedDate`, which the claim itself
-sets, the first verify after creating a domain is always refused. Fourth, a survey note rather than
-shipped behaviour: **a connection's tenant allow-list is write-only**. Neither read shape echoes
-`enabledProducts` or `enabledEnvironments`, and no endpoint anywhere lists an organization's tenants,
-so the ids can be neither discovered nor drift-checked — which will be documented rather than solved
-when the construct lands. It is not in the provider today: creating a connection is refused
-`500 UPSTREAM_ERROR` server-side, so `sso_domain` and its verify action are all that ship. Fifth,
+sets, the first verify after creating a domain is always refused. Fourth, two things about a connection, and note which
+endpoint each belongs to, because getting that backwards is easy. **Its tenant allow-list is
+write-only**: neither read shape echoes `enabledProducts` or `enabledEnvironments`, and no endpoint
+anywhere lists an organization's tenants, so the ids can be neither discovered nor drift-checked —
+documented rather than solved. And **changing one in place is impossible, though creating one is
+not**: `POST` answers `201` for a valid body, and reading, importing, the data sources, the list
+resource and deleting all work, but `PUT /sso/v1/connections/{id}` answers `500 UPSTREAM_ERROR` for
+*every* request — including the verbatim body a create had just accepted — and wire-verified
+2026-09-03 the refused write applies nothing, a connection read back after a PUT changing three
+fields being byte-identical. So `sso_connection` carries a whole-resource `ModifyPlan` that plans a
+**replacement** on any configured change, in one file rather than fifty `RequiresReplace` modifiers
+so that reverting it is deleting a file; the `Update` method and its acceptance test are already
+written and gated behind `skipUnlessConnectionUpdatesWork`, ready for the day Jamf fixes the
+endpoint. Fifth,
 **the server attributes almost nothing**: `errors[].field` is populated only for top-level required
 fields, an invalid enum returns `MALFORMED_REQUEST_BODY` with `field: null` and never names the
 value, and a `connectionType`-versus-payload mismatch is an unattributed `500` — so every enum is
