@@ -109,8 +109,8 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 	// computer_group_ids uses a self-minted smart computer group via
 	// jamfplatform_device_group (whose jamf_pro_id is the classic group ID the
 	// scope wants). The title fixture sets no site, so a siteless Full-JSS smart
-	// group is accepted and the policy can run enabled=true. The building is a
-	// real fixture.
+	// group is accepted and the policy can run enabled=true — mirrors the
+	// app_installer acceptance pattern. The building is a real fixture.
 
 	// Step 1: create as Self Service with a minimal user_interaction block.
 	stepCreate := fixtureTitle(suffix) + fmt.Sprintf(`
