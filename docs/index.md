@@ -9,7 +9,12 @@ description: |-
   | Product | Resource namespace | Built against API as of |
   |---------|--------------------|--------------------------|
   | Jamf Pro | `jamfplatform_pro_*` | 11.31.0 |
-  Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
+  | Jamf Platform Services (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) | no product prefix, such as `jamfplatform_blueprints_blueprint` | continuously deployed |
+  | Jamf Security Cloud (Custom DNS, ZTNA, UEM Connect, device groups, activation profiles) | `jamfplatform_security_cloud_*` | continuously deployed |
+  | Jamf AI Governance | `jamfplatform_ai_governance_*` | continuously deployed |
+  | Jamf Account (single sign-on) | `jamfplatform_account_*` | continuously deployed |
+  Jamf Pro is the only product versioned at the tenant. A tenant below the listed version raises an advisory warning at apply time, and a resource that needs a newer endpoint declares its own floor and fails when it is configured rather than mid-apply. The rest target continuously-deployed platform services, and no version is fetched for a configuration that uses only those.
+  Which namespaces an API integration reaches depends on the scope it was created with: Jamf AI Governance needs a platform environment, and jamfplatform_account_* needs organization management and is the only family that scope reaches. Every resource and data source reports the scope it needs when it is configured. See environment_id below.
   This provider builds on the work of Deployment Theory https://github.com/deploymenttheory's terraform-provider-jamfpro https://github.com/deploymenttheory/terraform-provider-jamfpro — first released in early 2024, the most widely adopted community Terraform provider for Jamf.
 ---
 
@@ -26,8 +31,14 @@ Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-ap
 | Product | Resource namespace | Built against API as of |
 |---------|--------------------|--------------------------|
 | Jamf Pro | `jamfplatform_pro_*` | 11.31.0 |
+| Jamf Platform Services (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) | no product prefix, such as `jamfplatform_blueprints_blueprint` | continuously deployed |
+| Jamf Security Cloud (Custom DNS, ZTNA, UEM Connect, device groups, activation profiles) | `jamfplatform_security_cloud_*` | continuously deployed |
+| Jamf AI Governance | `jamfplatform_ai_governance_*` | continuously deployed |
+| Jamf Account (single sign-on) | `jamfplatform_account_*` | continuously deployed |
 
-Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
+Jamf Pro is the only product versioned at the tenant. A tenant below the listed version raises an advisory warning at apply time, and a resource that needs a newer endpoint declares its own floor and fails when it is configured rather than mid-apply. The rest target continuously-deployed platform services, and no version is fetched for a configuration that uses only those.
+
+Which namespaces an API integration reaches depends on the scope it was created with: Jamf AI Governance needs a platform environment, and `jamfplatform_account_*` needs organization management and is the only family that scope reaches. Every resource and data source reports the scope it needs when it is configured. See `environment_id` below.
 
 This provider builds on the work of [Deployment Theory](https://github.com/deploymenttheory)'s [terraform-provider-jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, the most widely adopted community Terraform provider for Jamf.
 

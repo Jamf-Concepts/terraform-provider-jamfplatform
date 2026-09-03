@@ -6,8 +6,9 @@ description: |-
 
 # Upgrading to the Platform API GA
 
-The Jamf Platform API has reached general availability, and `v0.29.0` of this provider is built
-against it. This guide covers upgrading a configuration written against the public beta.
+The Jamf Platform API reached general availability on 3 September 2026, and `v0.29.0` of this
+provider is built against it. This guide covers upgrading a configuration written against the
+public beta.
 
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
