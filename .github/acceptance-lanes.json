@@ -1,0 +1,235 @@
+{
+  "_comment": [
+    "Single source of truth for acceptance-suite lanes, read by BOTH",
+    "scripts/acclanes (a Go command, which builds the CI matrix) and",
+    "internal/conformance/acc_lanes_test.go (which proves the partition is honest).",
+    "A plain data file rather than Go because the two consumers must not drift, and",
+    "because .github/workflows/integration-tests.yml reads it too, to assert that",
+    "every var an active lane needs is actually set on the step that runs `go test`.",
+    "",
+    "A lane is a PRODUCT SPACE. Membership is a PACKAGE PATH PREFIX, which is where",
+    "this diverges from jamfplatform-go-sdk: that suite is one package, so it splits",
+    "on a test-name regex and hands ~30 KB of `-run` alternation to `go test`. This",
+    "repo is already split into per-family packages, so the lane table names package",
+    "prefixes and `go test` takes the package list directly. Same table shape",
+    "otherwise (lane / require / lock / planned / why), and the same guarantees.",
+    "",
+    "`credentials` names the credential set the lane authenticates with, keyed into",
+    "credential_sets below. Three exist, and which namespaces each reaches was",
+    "wire-probed on 2026-09-03 through the SDK against this repo's acceptance",
+    "estate (see credential_sets[].evidence).",
+    "",
+    "`require` is the JAMFPLATFORM_ACC_REQUIRE token for the lane, so a lane fails",
+    "for its own missing credential and never for another lane's. Absence of a",
+    "credential is a SKIP locally (a contributor with no tenant must be able to run",
+    "`make testacc`) and FATAL in a pipeline that wired the secret, because a skip",
+    "there is invisible: the package prints `ok` and the check goes green having",
+    "asserted nothing. Two incidents in the SDK motivated it \u2014 a WAF block on",
+    "2026-08-04 made all 146 scoped tests skip while the run reported success, and",
+    "the organization credential set was wired in zero places from the day its",
+    "client was written, so all ten Jamf Account tests skipped on every run for the",
+    "life of the file with no red build. This repo had the same defect and worse:",
+    "acceptance.yml referenced 48 secrets of which 13 existed.",
+    "",
+    "`declares` are the entitlement DECLARATIONS a lane cannot run without, over",
+    "and above its credential set. They are not credentials: a valid acceptance",
+    "estate can hold Jamf Pro and not hold Security Cloud or AI Governance, so the",
+    "suite requires the operator to declare the entitlement rather than infer it",
+    "from a read (an empty policy list is indistinguishable from an unentitled",
+    "tenant). They belong to `require` because a missing declaration skips exactly",
+    "as invisibly as a missing secret \u2014 which is why aigovernance is its own lane",
+    "rather than sharing platform-env's `environment` token: all 18 AI Governance",
+    "tests skipped green on every run before this table existed, and folding the",
+    "declaration into `environment` would instead force an operator whose",
+    "environment lacks AI Governance to lie in order to run blueprints.",
+    "",
+    "`lock` marks the lanes that mutate the shared Jamf Pro tenant and so must",
+    "serialise against each other. Only pro does. Before this table one",
+    "`acceptance-tenant` concurrency group serialised everything, so a 38-test",
+    "Jamf Account run queued behind a ~2.5 h Pro suite it shared no fixture with.",
+    "",
+    "`timeout_minutes` is the lane's OWN job ceiling, and it exists because",
+    "`go test -timeout` cannot be one: that flag is per TEST BINARY and `go test`",
+    "builds one per package, so at the pro lane's 110 packages a wedged package",
+    "panics at its own limit and `go test` moves on to the next \u2014 bounding one",
+    "package, never the lane. Without a job ceiling the only real bound is",
+    "GitHub's 6h default, and a wedged lane holds its concurrency group for all",
+    "six of them; with `fail-fast: false` the other five lanes keep running, so",
+    "the worst case was six jobs \u00d7 6h. Sized from package count and the pro",
+    "lane's measured ~2.5h, with headroom, and deliberately well under 6h.",
+    "",
+    "A lane may be PLANNED: the name and package prefixes are reserved, but no",
+    "package uses them yet. A planned lane must match zero packages. The moment one",
+    "matches, both the conformance test and the plan step fail and name the wiring",
+    "to finish \u2014 a precheck helper, a lane row, a require token and the secrets.",
+    "That is deliberate: the alternative is a new product's tests silently joining",
+    "the pro lane and running against Pro credentials, where the 403s read as",
+    "broken endpoints rather than as a misfiled lane. Do NOT wire a credential set",
+    "for a planned lane ahead of the product; the stale-row check rejects it.",
+    "",
+    "pro is the DEFAULT lane and must never be given explicit prefixes. In the SDK",
+    "that is because `^TestAcceptance_Pro` would swallow TestAcceptance_Protect*.",
+    "Package prefixes are safer than a name regex, but pro stays \"everything",
+    "unclaimed\" anyway so a new family cannot silently join it: an unclaimed",
+    "package lands in pro and its precheck then disagrees with pro's credential",
+    "set, which is a conformance failure rather than a green run."
+  ],
+  "credential_sets": {
+    "ENVIRONMENT": {
+      "secret_prefix": "JAMFPLATFORM_ACC_ENVIRONMENT",
+      "provides": [
+        "JAMFPLATFORM_BASE_URL",
+        "JAMFPLATFORM_CLIENT_ID",
+        "JAMFPLATFORM_CLIENT_SECRET",
+        "JAMFPLATFORM_ENVIRONMENT_ID"
+      ],
+      "evidence": "Wire-probed 2026-09-03 through the SDK: reaches pro (csa/tenant-id 200), blueprints, compliance-benchmarks, ai/governance AND securitycloud (categories + dns/zones), all 200. The workhorse, and the scope Jamf now prefers.",
+      "why": "Platform-environment scope, sent as X-Environment-Id."
+    },
+    "PRO_TENANT": {
+      "secret_prefix": "JAMFPLATFORM_ACC_PRO_TENANT",
+      "provides": [
+        "JAMFPLATFORM_BASE_URL",
+        "JAMFPLATFORM_CLIENT_ID",
+        "JAMFPLATFORM_CLIENT_SECRET",
+        "JAMFPLATFORM_TENANT_ID"
+      ],
+      "evidence": "Wire-probed 2026-09-03: reaches pro only. blueprints, compliance-benchmarks, ai/governance and securitycloud all answer 403 BAD_PERMISSIONS on the same gateway in the same region, which is this repo's evidence for a tenant integration created after the Platform API GA being ungrantable those capabilities. It also names a DIFFERENT Jamf Pro tenant from the environment credential's, confirmed both by the probe and by the operator.",
+      "why": "Tenant scope, sent as X-Tenant-Id. Jamf calls it the legacy method for targeting integrations without a platform environment. Kept for COVERAGE rather than data: it authenticates the pro-tenant lane alone, because WithTenantID is a public supported option this provider exposes as tenant_id and a regression in the ScopeTenant path would otherwise ship unnoticed once everything else moved to environment scope."
+    },
+    "ORGANIZATION": {
+      "secret_prefix": "JAMFPLATFORM_ACC_ORGANIZATION",
+      "provides": [
+        "JAMFPLATFORM_BASE_URL",
+        "JAMFPLATFORM_CLIENT_ID",
+        "JAMFPLATFORM_CLIENT_SECRET"
+      ],
+      "evidence": "Wire-probed 2026-09-03: carries no scope header at all, so every scoped namespace answers 400 REQUEST_CONTEXT_NOT_PROVIDED \u2014 pro, blueprints, compliance-benchmarks, ai/governance and securitycloud alike. That is the point: it is the only scope /sso/v1 accepts.",
+      "why": "Organization-management scope. There is no ID to send \u2014 the gateway resolves the organization from the access token \u2014 which is why this set has three members and not four, and why the account lane needs a separate DECLARED_ID declaration."
+    }
+  },
+  "lanes": [
+    {
+      "lane": "account",
+      "packages": [
+        "internal/resources/account/",
+        "internal/actions/account/"
+      ],
+      "credentials": "ORGANIZATION",
+      "require": "organization",
+      "declares": [
+        "JAMFPLATFORM_ACC_ORGANIZATION_DECLARED_ID"
+      ],
+      "lock": false,
+      "timeout_minutes": 45,
+      "why": "Jamf Account SSO: the organization-level family, managed at account.jamf.com above and across individual tenants. This lane exists because AccPreCheckAccount's precondition is the INVERSE of every other family's: it requires BOTH scope variables unset (an organization request carries no scope header), while AccPreCheck requires at least one set. One env block cannot satisfy both, which is what the deleted `organization_scope` workflow input was working around. The lane matrix makes that input redundant \u2014 the account lane IS the organization-scope run. Also US-gateway only: /sso/v1 is absent from the EU gateway, where even a bogus route under it returns the gateway's own bare 404, so ORGANIZATION_BASE_URL must be the US gateway. DECLARED_ID is the operator's declaration that these credentials really are organization-scoped; nothing can be compared against it, because an organization request sends no scope header, and that is exactly why it is required \u2014 without it a Pro-only credential set with both scope variables blank looks identical to a real organization integration."
+    },
+    {
+      "lane": "securitycloud",
+      "packages": [
+        "internal/resources/security_cloud/",
+        "internal/actions/security_cloud/"
+      ],
+      "credentials": "ENVIRONMENT",
+      "require": "securitycloud",
+      "declares": [
+        "JAMFPLATFORM_ACC_SECURITYCLOUD_ENVIRONMENT_ID"
+      ],
+      "lock": false,
+      "timeout_minutes": 90,
+      "why": "Jamf Security Cloud is its own product with its own tenant, reached here by the environment credential (wire-probed 2026-09-03: categories and dns/zones both 200). It gets its own require token rather than sharing platform-env's because entitlement is separate from authentication \u2014 a valid environment can hold Jamf Pro and not hold Security Cloud \u2014 so AccPreCheckSecurityCloud demands a declaration that must EQUAL the configured scope. A stale declaration from another estate skips rather than green-lighting a run against the wrong one. The declaration is a separate secret rather than a copy of JAMFPLATFORM_ACC_ENVIRONMENT_ID on purpose: writing the scope value inline would satisfy the equality check by construction and thereby assert an entitlement nobody verified. The ZTNA gateway tests need the TENANT form instead (tenantIds is mandatory on a gateway and no API exposes an environment's tenants), so they skip under this lane; that is an honest skip, visible in the lane summary."
+    },
+    {
+      "lane": "aigovernance",
+      "packages": [
+        "internal/resources/ai_governance/"
+      ],
+      "credentials": "ENVIRONMENT",
+      "require": "aigovernance",
+      "declares": [
+        "JAMFPLATFORM_ACC_AIGOVERNANCE_ENVIRONMENT_ID"
+      ],
+      "lock": false,
+      "timeout_minutes": 45,
+      "why": "Jamf AI Governance, environment scope only and probed rather than assumed: a request carrying no scope header is refused 400 REQUEST_CONTEXT_NOT_PROVIDED and one carrying X-Tenant-Id is refused 403 BAD_PERMISSIONS, while a Jamf Pro request presenting that same header succeeds \u2014 so the header is accepted and the refusal belongs to the namespace, which by this repo's law means unrouted. Split out of platform-env rather than folded into it because AccPreCheckAIGovernance needs an entitlement declaration that blueprints and compliance benchmarks do not, and that declaration was referenced by no workflow at all: all 18 AI Governance tests skipped green on every run. A shared `environment` token would have left them skipping green; folding the declaration into `environment` would instead force an operator whose environment lacks AI Governance to declare an entitlement they do not have in order to run blueprints."
+    },
+    {
+      "lane": "platform-env",
+      "packages": [
+        "internal/resources/blueprints/",
+        "internal/resources/cbengine/"
+      ],
+      "credentials": "ENVIRONMENT",
+      "require": "environment",
+      "declares": [],
+      "lock": false,
+      "timeout_minutes": 60,
+      "why": "Blueprints and Compliance Benchmarks \u2014 Platform Services, environment scope. Their specs say tenant and a legacy pre-GA tenant credential does read them, but a tenant integration created after the GA cannot be granted the capabilities they need: wire-probed 2026-09-03, this repo's tenant credential is refused 403 BAD_PERMISSIONS on both namespaces while the environment credential answers 200. So environment is the only scope that works going forward. Device groups deliberately did NOT move \u2014 they are reachable under both scopes \u2014 which is why internal/resources/device_group stays in the pro lane. internal/resources/blueprints/blueprint is the one package that mixes prechecks, calling AccPreCheck and AccPreCheckAIGovernance: it resolves here because this lane sets JAMFPLATFORM_ENVIRONMENT_ID, which satisfies AccPreCheck, and its handful of AI-Governance component tests then skip honestly unless the AI Governance declaration is also present on the step. It is allow-listed by name in the conformance test rather than silently tolerated."
+    },
+    {
+      "lane": "pro-tenant",
+      "packages": [
+        "internal/provider/",
+        "internal/resources/pro/tenant_id/"
+      ],
+      "credentials": "PRO_TENANT",
+      "require": "pro-tenant",
+      "declares": [],
+      "lock": false,
+      "timeout_minutes": 30,
+      "why": "Tenant-scope coverage, not data coverage. Environment is the scope Jamf now prefers and the one the pro lane runs on, so without this lane NOTHING in the suite would send X-Tenant-Id \u2014 and WithTenantID is a public, supported option of this provider on the LEGACY scope, which is exactly how a live consumer surface breaks unnoticed. Two packages earn the split. internal/provider holds the scope-resolution tests (conflicting scopes rejected in provider Configure; an organization-scoped integration refused per construct) which never reach the wire, so they prove the resolution logic under any credential. internal/resources/pro/tenant_id is the wire half: its data source reads the server-reported tenant and TestAccDataSource_ProTenantID_MatchesConfiguredScope compares it against JAMFPLATFORM_TENANT_ID, so it ASSERTS here and would skip in the environment-scoped pro lane, where there is no locally known tenant to compare against. lock is false: the lane is read-only and points at a different Jamf Pro tenant from the pro lane's, so it neither mutates nor contends for it."
+    },
+    {
+      "lane": "protect",
+      "packages": [
+        "internal/resources/protect/",
+        "internal/actions/protect/"
+      ],
+      "credentials": "",
+      "require": "protect",
+      "declares": [],
+      "lock": false,
+      "timeout_minutes": 45,
+      "planned": true,
+      "why": "Jamf Protect as its own Platform product, when it lands. NOT the same as the JAMFPLATFORM_ACC_PRO_PROTECT_* variables, which are a Protect API credential used BY Jamf Pro tests (Protect deployment via Pro) and stay in the pro lane. This lane would be Protect's own namespace with its own tenant, unless an environment credential reaches it the way it reaches Security Cloud."
+    },
+    {
+      "lane": "school",
+      "packages": [
+        "internal/resources/school/",
+        "internal/actions/school/"
+      ],
+      "credentials": "",
+      "require": "school",
+      "declares": [],
+      "lock": false,
+      "timeout_minutes": 45,
+      "planned": true,
+      "why": "Jamf School, if and when it gets a Platform namespace. Reserved on naming grounds only: no published spec exists today, and Jamf School reaches this provider solely as a UEM Connect vendor variant, which is a Security Cloud surface and belongs to the securitycloud lane."
+    },
+    {
+      "lane": "android",
+      "packages": [
+        "internal/resources/android/",
+        "internal/actions/android/"
+      ],
+      "credentials": "",
+      "require": "android",
+      "declares": [],
+      "lock": false,
+      "timeout_minutes": 45,
+      "planned": true,
+      "why": "Jamf's Android management surface, if and when it gets a Platform namespace of its own. Reserved on naming grounds only. Android reaches this provider today through Jamf Pro's Google Play / Android Enterprise integration, which is a pro-lane concern, and through UEM Connect's GOOGLE vendor variant, which is a Security Cloud surface. The JAMFPLATFORM_ACC_PRO_GOOGLE_* variables are Jamf Pro's Google Secure LDAP cloud identity provider and are not this lane's credentials."
+    }
+  ],
+  "default_lane": {
+    "lane": "pro",
+    "packages": [],
+    "credentials": "ENVIRONMENT",
+    "require": "platform",
+    "declares": [],
+    "lock": true,
+    "timeout_minutes": 240,
+    "why": "Everything unclaimed: Jamf Pro, ProClassic, devices, device groups, Pro actions and the offline provider-defined functions, all reaching one shared Jamf Pro tenant, so this lane holds the tenant lock and stays serial (-p=1). It runs on the ENVIRONMENT credential, matching the SDK: environment is the scope Jamf prefers and the only one that reaches every Platform Services namespace, and the tenant path is covered deliberately by the pro-tenant lane instead of incidentally by 691 tests here. Its require token is `platform` rather than `environment` so the token still names the LANE's credential requirement and not another lane's, exactly as in the SDK; both tokens resolve to the same JAMFPLATFORM_ACC_ENVIRONMENT_* set. The consequence to expect on the first full run: these 691 tests have never used this credential, and the environment credential's Jamf Pro tenant is a DIFFERENT tenant from the one the old JAMFPLATFORM_TENANT_ID secret named (wire-probed 2026-09-03, and confirmed by the operator), so every fixture-dependent test \u2014 the ADE and VPP tokens, the LDAP directory, the Protect deployment, the computer and mobile serials, the GSX keystore \u2014 needs its fixture provisioned on the new estate or will fail rather than skip. That is the churn the SDK took on its own 681 tests, taken here for the same reason."
+  }
+}

@@ -58,70 +58,21 @@ jobs:
       - run: go mod download
       - run: go test -v -race -cover -count=1 ./...
 
-  # Compute the minimal acceptance scope for this PR: the changed packages plus
-  # everything that transitively depends on them (scripts/acctargets). Changed Go
-  # files are attributed at declaration granularity, so purely ADDING to a hub
-  # package (providerdata, testhelpers, internal/common/*) reaches only that
-  # package, and a registration-only edit to the provider hub reaches only the
-  # constructs whose constructors moved. A change to a global file (go.mod,
-  # GNUmakefile, this workflow) still resolves to "./..." — the full suite.
-  plan-acc:
-    name: Plan Acceptance Scope
-    needs: unit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      packages: ${{ steps.scope.outputs.packages }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Full history so merge-base against the PR base branch resolves.
-          fetch-depth: 0
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: "go.mod"
-          cache: true
-      - id: scope
-        run: |
-          base="origin/${{ github.base_ref }}"
-          git fetch --no-tags origin "${{ github.base_ref }}" || true
-          pkgs="$(go run -tags acctargets ./scripts/acctargets "$base")"
-          echo "Acceptance scope: ${pkgs:-<none — no acceptance packages affected>}"
-          echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
-
-  # Run the (surgical) acceptance subset. Skipped entirely when the change set
-  # affects no acceptance package.
-  acceptance:
-    name: Acceptance
-    needs: plan-acc
-    if: needs.plan-acc.outputs.packages != ''
-    uses: ./.github/workflows/acceptance.yml
-    with:
-      packages: ${{ needs.plan-acc.outputs.packages }}
-    secrets: inherit
-
-  # The Jamf Account family runs in a job of its own because its precondition is
-  # the inverse of every other family's: AccPreCheckAccount requires BOTH scope
-  # variables unset (an organization-scoped integration sends no scope header),
-  # while AccPreCheck requires at least one of them set. One env block cannot
-  # satisfy both, so routing these packages through the job above skips every one
-  # of them silently — and a suite that always skips still reports green.
-  #
-  # Shares the acceptance-tenant concurrency group declared in the reusable
-  # workflow, so this job and the one above queue against each other rather than
-  # hitting the estate at the same time.
-  #
-  # The packages are fixed rather than taken from plan-acc: the scope this job
-  # runs under reaches only this family, so anything else in the computed set
-  # would skip here and is already covered by the job above. plan-acc is still
-  # what decides whether to run at all — either it named an account package, or
-  # it fell back to the whole suite, which includes this family.
-  acceptance-account:
-    name: Acceptance (Jamf Account)
-    needs: plan-acc
-    if: needs.plan-acc.outputs.packages == './...' || contains(needs.plan-acc.outputs.packages, 'internal/resources/account/') || contains(needs.plan-acc.outputs.packages, 'internal/actions/account/')
-    uses: ./.github/workflows/acceptance.yml
-    with:
-      packages: "./internal/resources/account/... ./internal/actions/account/..."
-      organization_scope: true
-    secrets: inherit
+# The acceptance jobs that used to live here — plan-acc, acceptance and
+# acceptance-account — are gone, and so is the reusable workflow they called.
+# .github/workflows/acceptance.yml is now a standalone product-lane pipeline with
+# its own pull_request, schedule and workflow_dispatch triggers, so it plans its
+# own scope and needs no caller. Two things went with them:
+#
+#   - `acceptance-account`, the duplicate caller that existed only because
+#     AccPreCheckAccount requires BOTH scope variables unset while AccPreCheck
+#     requires at least one set, and one env block cannot satisfy both. The lane
+#     matrix expresses that instead: the account lane IS the organization-scope
+#     run, so the `organization_scope` input and both `*-account` jobs are
+#     deleted.
+#
+#   - the `needs: unit` edge, which meant a PR that did not compile never
+#     reached the estate. acceptance.yml carries its own
+#     `go vet -tags acceptance ./...` guard in the plan job for the same effect,
+#     because a cross-workflow dependency cannot exist for a workflow that also
+#     runs on a schedule.
