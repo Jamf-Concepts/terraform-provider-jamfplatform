@@ -55,11 +55,20 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 release:
-  # Tags carrying a pre-release suffix (v0.29.0-rc.6) are published as GitHub
-  # pre-releases; a bare version tag (v0.29.0) is published as a full release and
-  # becomes "Latest". Without this, GoReleaser defaults to prerelease: false and
-  # every release candidate ships labelled as production-ready.
-  prerelease: auto
+  # The Terraform Registry ingests on GitHub's `released` webhook action, which
+  # GitHub sends only for a full release (or when a pre-release is converted to
+  # one). A release published with the pre-release flag set fires `created`,
+  # `prereleased` and `published`, never `released`, so the registry receives the
+  # event, answers 200 and ingests nothing: v0.29.0-rc.6 and rc.7 both shipped
+  # complete artifacts and neither reached the registry. `prerelease: auto` set
+  # that flag from the tag suffix, so it must stay false for a release candidate
+  # to be installable at all.
+  prerelease: false
+  # What `prerelease: auto` was really for: keeping a release candidate from
+  # taking the "Latest" badge from the newest stable release. That is a separate
+  # GitHub field, so a bare version tag becomes Latest and any tag carrying a
+  # pre-release suffix does not.
+  make_latest: '{{ if .Prerelease }}false{{ else }}true{{ end }}'
   extra_files:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
