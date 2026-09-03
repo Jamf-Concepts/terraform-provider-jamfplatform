@@ -24,6 +24,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	ssodomainactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/account/sso_domain"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	appinstalleractions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/app_installers"
 	jamfprotectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/jamf_protect"
 	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
@@ -59,6 +60,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/allowed_file_extension"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_form_field"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_store_country_codes"
@@ -209,8 +213,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
 				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
 				"**📘 New here? Start with the getting-started guide:** [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/) on Jamf Concepts walks through installing Terraform, creating API credentials, configuring the provider, writing your first device groups, compliance benchmarks and blueprints, applying a configuration, and bringing an existing tenant under management.\n\n"+
-				"> **Note:** The Jamf Platform API is currently in public beta. Provider stability, functionality, and schemas are subject to change without notice.\n\n"+
-				"> **⚠️ Action needed — the Jamf Platform API is leaving public beta.** This release targets the GA gateway: set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade, as earlier versions support the beta host only and this version the GA host only. Beta API integration credentials are revoked at GA and cannot be migrated, and several constructs were removed along with the endpoints they called. Upgrade promptly once GA is announced, as the beta gateway is retired at that point. See [Preparing for the Platform API GA](guides/platform-api-ga).\n\n"+
+				"> **⚠️ Upgrading from any pre-GA version — `v0.28.1` or earlier, or a `v0.29.0` release candidate?** The Jamf Platform API has reached general availability, and this release targets the GA gateway. Beta API integration credentials are revoked whichever pre-GA version you are coming from, so register a replacement integration in Jamf Account and replace `tenant_id` with `environment_id`. On `v0.28.1` or earlier, set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade; a release candidate already points there. Earlier versions reach only the retired beta host, and several constructs were removed along with the endpoints they called. See [Upgrading to the Platform API GA](guides/platform-api-ga).\n\n"+
 				"**Supported Jamf products and tenant version targets**\n\n"+
 				"| Product | Resource namespace | Built against API as of |\n"+
 				"|---------|--------------------|--------------------------|\n"+
@@ -485,6 +488,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		icon.NewIconResource,
 		inventory_preload_record.NewInventoryPreloadRecordResource,
 		licensed_software.NewLicensedSoftwareResource,
+		app_installer.NewAppInstallerResource,
 		app_request_form_field.NewAppRequestFormFieldResource,
 		app_request_settings.NewAppRequestSettingsResource,
 		ebook.NewEbookResource,
@@ -511,6 +515,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		advanced_user_search.NewAdvancedUserSearchResource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
+		app_installer_settings.NewAppInstallerSettingsResource,
 		activation_code.NewActivationCodeResource,
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsResource,
@@ -633,6 +638,10 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
+		app_installer.NewAppInstallerDataSource,
+		app_installer.NewAppInstallersDataSource,
+		app_installer_title.NewAppInstallerTitleDataSource,
+		app_installer_title.NewAppInstallerTitlesDataSource,
 		app_request_form_field.NewAppRequestFormFieldDataSource,
 		app_store_country_codes.NewAppStoreCountryCodesDataSource,
 		ebook.NewEbookDataSource,
@@ -654,6 +663,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		script.NewScriptDataSource,
 		script.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
+		app_installer_settings.NewAppInstallerSettingsDataSource,
 		activation_code.NewActivationCodeDataSource,
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsDataSource,
@@ -745,6 +755,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		inventory_preload_record.NewInventoryPreloadRecordListResource,
 		pki_json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
 		licensed_software.NewLicensedSoftwareListResource,
+		app_installer.NewAppInstallerListResource,
 		app_request_form_field.NewAppRequestFormFieldListResource,
 		ebook.NewEbookListResource,
 		mac_app_store_app.NewMacAppListResource,
@@ -793,6 +804,9 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		uemconnectactions.NewDeployActivationProfileAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
+		appinstalleractions.NewRetryInstallationsAction,
+		appinstalleractions.NewRetryAllInstallationsAction,
+		appinstalleractions.NewUpdateVersionAction,
 		jamfprotectactions.NewSyncPlansAction,
 		jamfprotectactions.NewRetryDeploymentAction,
 		ssodomainactions.NewVerifySSODomainAction,

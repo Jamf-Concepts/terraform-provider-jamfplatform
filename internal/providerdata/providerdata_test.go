@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
@@ -499,5 +500,134 @@ func TestConfigurePatchSources_StableIdentity(t *testing.T) {
 	}
 	if gotClient == nil {
 		t.Error("the cache must hand its own classic client to the read")
+	}
+}
+
+// The App Catalog title cache is the third provider-instance cache in this file
+// and keeps the same two rules as the patch source cache: a success is read once
+// and shared, an error is not cached. The catalog read is injected, so none of
+// these tests needs a client or a mock server.
+
+// TestAppTitleCatalogCache_ReadsOnce verifies the snapshot is read once per cache
+// and shared. Without it every App Installer in a configuration resolved its own
+// title name and reverse-resolved its own title id, so a 50-resource workspace
+// paid 100 catalog requests on top of its 50 deployment reads on every plan.
+func TestAppTitleCatalogCache_ReadsOnce(t *testing.T) {
+	calls := 0
+	cache := &AppTitleCatalogCache{
+		read: func(_ context.Context, _ *pro.Client) ([]pro.AppTitle, error) {
+			calls++
+			return []pro.AppTitle{{ID: "Composer", TitleName: "Jamf Composer"}}, nil
+		},
+	}
+
+	for i := range 3 {
+		got, err := cache.Titles(context.Background())
+		if err != nil {
+			t.Fatalf("call %d: unexpected error %v", i, err)
+		}
+		if len(got) != 1 || got[0].TitleName != "Jamf Composer" {
+			t.Fatalf("call %d: expected the cached snapshot, got %+v", i, got)
+		}
+	}
+	if calls != 1 {
+		t.Errorf("expected exactly 1 catalog read for a cached success, got %d", calls)
+	}
+}
+
+// TestAppTitleCatalogCache_ErrorIsNotCached verifies a failed read is retried by
+// the next caller. A transient blip or a momentary privilege problem on the first
+// deployment must not blank every later deployment's app_title_name for the rest
+// of the run.
+func TestAppTitleCatalogCache_ErrorIsNotCached(t *testing.T) {
+	calls := 0
+	cache := &AppTitleCatalogCache{
+		read: func(_ context.Context, _ *pro.Client) ([]pro.AppTitle, error) {
+			calls++
+			if calls == 1 {
+				return nil, errors.New("transient 503")
+			}
+			return []pro.AppTitle{{ID: "7F0", TitleName: "Jamf Sync"}}, nil
+		},
+	}
+
+	if _, err := cache.Titles(context.Background()); err == nil {
+		t.Fatal("expected the first read's error to surface")
+	}
+
+	got, err := cache.Titles(context.Background())
+	if err != nil {
+		t.Fatalf("expected the second read to retry and succeed, got %v", err)
+	}
+	if len(got) != 1 {
+		t.Errorf("expected the retried snapshot, got %+v", got)
+	}
+	if calls != 2 {
+		t.Errorf("expected the failed read to be retried (2 reads), got %d", calls)
+	}
+}
+
+// TestAppTitleCatalogCache_NilReceiver verifies a construct that never received a
+// cache reports the failure rather than panicking mid-plan. Resolving a title name
+// is a plan-time preflight and a best-effort refresh everywhere except import.
+func TestAppTitleCatalogCache_NilReceiver(t *testing.T) {
+	got, err := (*AppTitleCatalogCache)(nil).Titles(context.Background())
+	if err == nil {
+		t.Fatal("expected an error from a nil cache")
+	}
+	if len(got) != 0 {
+		t.Errorf("expected an empty snapshot from a nil cache, got %+v", got)
+	}
+	if !strings.Contains(err.Error(), "not configured") {
+		t.Errorf("expected the error to say the provider is not configured, got %q", err)
+	}
+}
+
+// TestConfigureAppTitleCatalog_NilProviderData verifies the nil ProviderData the
+// framework passes during early lifecycle yields a nil cache rather than a
+// diagnostic — the same contract ConfigurePatchSources keeps.
+func TestConfigureAppTitleCatalog_NilProviderData(t *testing.T) {
+	noRead := func(context.Context, *pro.Client) ([]pro.AppTitle, error) {
+		t.Fatal("the read must not be invoked while configuring")
+		return nil, nil
+	}
+	if got := ConfigureAppTitleCatalog(nil, noRead); got != nil {
+		t.Errorf("expected a nil cache for nil providerData, got %v", got)
+	}
+	if got := ConfigureAppTitleCatalog("not a Data value", noRead); got != nil {
+		t.Errorf("expected a nil cache for a wrong providerData type, got %v", got)
+	}
+}
+
+// TestConfigureAppTitleCatalog_StableIdentity verifies every construct configured
+// from one provider instance shares one cache — the whole point of hanging it off
+// Data — and that distinct Data values do not share one. The read is also asserted
+// to receive a client, since Data builds the Pro client itself rather than taking
+// one from the caller.
+func TestConfigureAppTitleCatalog_StableIdentity(t *testing.T) {
+	var gotClient *pro.Client
+	read := func(_ context.Context, c *pro.Client) ([]pro.AppTitle, error) {
+		gotClient = c
+		return nil, nil
+	}
+
+	pd := New(newFakeClient())
+	a := ConfigureAppTitleCatalog(pd, read)
+	b := ConfigureAppTitleCatalog(pd, read)
+	if a == nil {
+		t.Fatal("expected a cache for a *Data providerData")
+	}
+	if a != b {
+		t.Errorf("expected one shared cache per provider instance, got %p and %p", a, b)
+	}
+	if other := ConfigureAppTitleCatalog(New(newFakeClient()), read); other == a {
+		t.Error("distinct Data values unexpectedly share one App Catalog title cache")
+	}
+
+	if _, err := a.Titles(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotClient == nil {
+		t.Error("the cache must hand its own Pro client to the read")
 	}
 }

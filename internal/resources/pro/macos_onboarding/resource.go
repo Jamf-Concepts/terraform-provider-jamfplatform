@@ -119,7 +119,8 @@ func (r *OnboardingResource) Schema(ctx context.Context, req resource.SchemaRequ
 						"entity_id": schema.StringAttribute{
 							MarkdownDescription: "ID of the Jamf Pro object to present, paired with `self_service_entity_type`. " +
 								"Source per type: `OS_X_POLICY` → `jamfplatform_pro_policy`; `OS_X_CONFIG_PROFILE` → `jamfplatform_pro_macos_configuration_profile`; " +
-								"`OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`. An `OS_X_APP_INSTALLER` item has no provider construct: take its ID from the `jamfplatform_pro_macos_onboarding_eligible_items` data source, which also lists the eligible IDs for the other types. " +
+								"`OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`; `OS_X_APP_INSTALLER` → `jamfplatform_pro_app_installer`. " +
+								"The `jamfplatform_pro_macos_onboarding_eligible_items` data source lists the eligible IDs for every type. " +
 								"The referenced object must be enabled and available in Self Service. Jamf Pro rejects an ineligible item with a clear error.",
 							Required: true,
 						},
