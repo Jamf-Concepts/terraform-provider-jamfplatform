@@ -35,7 +35,7 @@ import (
 //   - TestAccResource_..._AccessGroupLdap pre-creates the shared Okta LDAP server
 //     fixture via the live API (testhelpers.EnsureLdapServerFixture), waits for its
 //     bind to come up (testhelpers.WaitForLdapGroupResolvable), then references its
-//     id for ldap_server_id and resolves JAMFPLATFORM_ACC_LDAP_GROUP_NAME against
+//     id for ldap_server_id and resolves JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME against
 //     it at apply time. Gated on the Okta LDAP env vars (RequireOktaLdapEnv +
 //     RequireLdapGroupName); unset → t.Skipf.
 

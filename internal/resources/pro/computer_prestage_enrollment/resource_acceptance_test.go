@@ -8,7 +8,6 @@ package computer_prestage_enrollment_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -73,7 +72,7 @@ const (
 	adeFixtureRef = "jamfplatform_pro_automated_device_enrollment.fixture.id"
 )
 
-// requireADETokenBlob skips the test when JAMFPLATFORM_ADE_TOKEN is not set.
+// requireADETokenBlob skips the test when JAMFPLATFORM_ACC_PRO_DEP_TOKEN is not set.
 // The env var must hold the base64-encoded `.p7m` server token downloaded
 // from Apple Business Manager / Apple School Manager — the same token blob
 // the sibling jamfplatform_pro_automated_device_enrollment acc tests
@@ -81,34 +80,34 @@ const (
 // prestage that depends on it, and lets TF destroy both at the end.
 func requireADETokenBlob(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv("JAMFPLATFORM_ADE_TOKEN")
+	v := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_TOKEN")
 	if v == "" {
-		t.Skip("JAMFPLATFORM_ADE_TOKEN not set — acc tests upload a real ADE server token (.p7m base64) and create an ADE fixture before exercising the prestage.")
+		t.Skip("JAMFPLATFORM_ACC_PRO_DEP_TOKEN not set — acc tests upload a real ADE server token (.p7m base64) and create an ADE fixture before exercising the prestage.")
 	}
 	return v
 }
 
-// requireADESerialFixture skips the test when JAMFPLATFORM_ADE_SERIAL is
+// requireADESerialFixture skips the test when JAMFPLATFORM_ACC_PRO_DEP_SERIAL is
 // not set. Holds a real device serial number bound to the uploaded ADE
 // token; without it scope writes return DEVICE_DOES_NOT_EXIST_ON_TOKEN.
 func requireADESerialFixture(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv("JAMFPLATFORM_ADE_SERIAL")
+	v := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_SERIAL")
 	if v == "" {
-		t.Skip("JAMFPLATFORM_ADE_SERIAL not set — scope acc test requires a real ADE-bound device serial.")
+		t.Skip("JAMFPLATFORM_ACC_PRO_DEP_SERIAL not set — scope acc test requires a real ADE-bound device serial.")
 	}
 	return v
 }
 
-// requireADESerial2Fixture skips when JAMFPLATFORM_ADE_SERIAL2 is unset.
+// requireADESerial2Fixture skips when JAMFPLATFORM_ACC_PRO_DEP_SERIAL2 is unset.
 // A second real ADE-bound serial used by the multi-serial diff test
 // (exercises the add+remove paths that drive scope_serial_numbers
 // changes between non-empty sets).
 func requireADESerial2Fixture(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv("JAMFPLATFORM_ADE_SERIAL2")
+	v := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_SERIAL2")
 	if v == "" {
-		t.Skip("JAMFPLATFORM_ADE_SERIAL2 not set — multi-serial diff acc test requires a second real ADE-bound device serial.")
+		t.Skip("JAMFPLATFORM_ACC_PRO_DEP_SERIAL2 not set — multi-serial diff acc test requires a second real ADE-bound device serial.")
 	}
 	return v
 }
@@ -410,8 +409,8 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAssignments(t *testing.T
 //	Step 4: [s2] → [s1]                (combined add + remove in one apply)
 //	Step 5: [s1] → []                  (pure remove of last serial)
 //
-// Gated on `JAMFPLATFORM_ADE_TOKEN`, `JAMFPLATFORM_ADE_SERIAL`, and
-// `JAMFPLATFORM_ADE_SERIAL2` — all three must be set, both serials must
+// Gated on `JAMFPLATFORM_ACC_PRO_DEP_TOKEN`, `JAMFPLATFORM_ACC_PRO_DEP_SERIAL`, and
+// `JAMFPLATFORM_ACC_PRO_DEP_SERIAL2` — all three must be set, both serials must
 // be present on the uploaded ADE token, and neither serial may be
 // scoped to any other PreStage at the time the test starts.
 func TestAccResource_ProComputerPrestageEnrollment_ScopeMultiSerialDiff(t *testing.T) {

@@ -8,7 +8,6 @@ package mobile_device_prestage_enrollment_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -73,7 +72,7 @@ func accCleanupOrphans(t *testing.T, suffix string) {
 	})
 }
 
-// requireADETokenBlob skips the test when JAMFPLATFORM_ADE_TOKEN is not set.
+// requireADETokenBlob skips the test when JAMFPLATFORM_ACC_PRO_DEP_TOKEN is not set.
 // The env var must hold the base64-encoded `.p7m` server token downloaded from
 // Apple Business Manager / Apple School Manager — the same token blob the
 // sibling jamfplatform_pro_automated_device_enrollment acc tests consume. Each
@@ -81,36 +80,36 @@ func accCleanupOrphans(t *testing.T, suffix string) {
 // it, and lets TF destroy both at the end.
 func requireADETokenBlob(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv("JAMFPLATFORM_ADE_TOKEN")
+	v := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_TOKEN")
 	if v == "" {
-		t.Skip("JAMFPLATFORM_ADE_TOKEN not set — acc tests upload a real ADE server token (.p7m base64) and create an ADE fixture before exercising the prestage.")
+		t.Skip("JAMFPLATFORM_ACC_PRO_DEP_TOKEN not set — acc tests upload a real ADE server token (.p7m base64) and create an ADE fixture before exercising the prestage.")
 	}
 	return v
 }
 
-// requireADESerialFixture skips the test when JAMFPLATFORM_ADE_MOBILE_SERIAL is
+// requireADESerialFixture skips the test when JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIAL is
 // not set. Holds a real mobile-device serial number bound to the uploaded ADE
 // token; without it scope writes return DEVICE_DOES_NOT_EXIST_ON_TOKEN. Mobile
 // uses its own env var (distinct from the computer prestage's
-// JAMFPLATFORM_ADE_SERIAL) because mobile-device serials differ from computer
+// JAMFPLATFORM_ACC_PRO_DEP_SERIAL) because mobile-device serials differ from computer
 // serials on the same token.
 func requireADESerialFixture(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv("JAMFPLATFORM_ADE_MOBILE_SERIAL")
+	v := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIAL")
 	if v == "" {
-		t.Skip("JAMFPLATFORM_ADE_MOBILE_SERIAL not set — scope acc test requires a real ADE-bound mobile-device serial.")
+		t.Skip("JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIAL not set — scope acc test requires a real ADE-bound mobile-device serial.")
 	}
 	return v
 }
 
-// requireADEMultiSerialsFixture skips unless JAMFPLATFORM_ADE_MOBILE_SERIALS
+// requireADEMultiSerialsFixture skips unless JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS
 // holds at least `min` comma-separated mobile-device serials bound to the ADE
 // token. Used by the multi-serial scope round-trip test.
 func requireADEMultiSerialsFixture(t *testing.T, min int) []string {
 	t.Helper()
-	raw := os.Getenv("JAMFPLATFORM_ADE_MOBILE_SERIALS")
+	raw := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS")
 	if raw == "" {
-		t.Skipf("JAMFPLATFORM_ADE_MOBILE_SERIALS not set — multi-serial scope acc test requires %d comma-separated ADE-bound mobile-device serials.", min)
+		t.Skipf("JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS not set — multi-serial scope acc test requires %d comma-separated ADE-bound mobile-device serials.", min)
 	}
 	var serials []string
 	for s := range strings.SplitSeq(raw, ",") {
@@ -119,7 +118,7 @@ func requireADEMultiSerialsFixture(t *testing.T, min int) []string {
 		}
 	}
 	if len(serials) < min {
-		t.Skipf("JAMFPLATFORM_ADE_MOBILE_SERIALS has %d serials; multi-serial scope acc test needs at least %d.", len(serials), min)
+		t.Skipf("JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS has %d serials; multi-serial scope acc test needs at least %d.", len(serials), min)
 	}
 	return serials
 }

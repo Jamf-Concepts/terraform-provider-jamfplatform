@@ -13,7 +13,7 @@
 // reference tenant objects and are gated:
 //   - location_ids needs real Volume Purchasing location IDs → a
 //     jamfplatform_pro_volume_purchasing_location fixture gated on
-//     JAMFPLATFORM_VPP_TOKEN (a real ABM/ASM .vpptoken; same gate as the location
+//     JAMFPLATFORM_ACC_PRO_VPP_TOKEN (a real ABM/ASM .vpptoken; same gate as the location
 //     + assignment VPP tests). Token material MUST come from env — never commit it.
 //   - internal_recipients references a Jamf Pro account id; the test stands up
 //     its own jamfplatform_pro_account fixture and references its id — no env
@@ -24,7 +24,6 @@ package volume_purchasing_notification_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -39,7 +38,7 @@ import (
 const resAddr = "jamfplatform_pro_volume_purchasing_notification.test"
 
 // vppTokenEnvVar holds the base64 `.vpptoken` used to stand up a location fixture.
-const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
+const vppTokenEnvVar = "JAMFPLATFORM_ACC_PRO_VPP_TOKEN"
 
 func testAccCheckNotificationDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -175,7 +174,7 @@ resource "jamfplatform_pro_volume_purchasing_notification" "test" {
 // TestAccResource_ProVolumePurchasingNotification_Locations exercises the
 // location_ids full-replace path (add then clear). Gated on a real VPP token.
 func TestAccResource_ProVolumePurchasingNotification_Locations(t *testing.T) {
-	token := os.Getenv(vppTokenEnvVar)
+	token := testhelpers.AccEnv(vppTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping location_ids test (needs a VPP location fixture)", vppTokenEnvVar)
 	}

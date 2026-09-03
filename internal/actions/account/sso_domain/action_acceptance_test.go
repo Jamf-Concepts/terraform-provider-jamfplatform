@@ -8,7 +8,6 @@ package ssodomainaction_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -50,7 +49,7 @@ import (
 // Every run of this test moves the named domain's last_modified_at and
 // verification_expires_at forward, which is exactly the non-idempotence being
 // documented. Point it at a throwaway .example domain, never a real one.
-const envUnverifiableDomain = "JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN"
+const envUnverifiableDomain = "JAMFPLATFORM_ACC_ORGANIZATION_SSO_UNVERIFIABLE_DOMAIN"
 
 // envVerifiedDomain names a claimed domain that is already verified. It is the only
 // way to exercise the idempotence path, and it cannot be a fixture this suite
@@ -71,7 +70,7 @@ const envUnverifiableDomain = "JAMFPLATFORM_ACC_SSO_UNVERIFIABLE_DOMAIN"
 // The five-minute limit does not apply to this one: the already-verified refusal is
 // returned before the limit is evaluated (wire-probed), so the test is
 // deterministic and needs no timing guard.
-const envVerifiedDomain = "JAMFPLATFORM_ACC_SSO_VERIFIED_DOMAIN"
+const envVerifiedDomain = "JAMFPLATFORM_ACC_ORGANIZATION_SSO_VERIFIED_DOMAIN"
 
 func accountClient(t *testing.T) *account.Client {
 	t.Helper()
@@ -191,7 +190,7 @@ func TestAccAction_AccountVerifySSODomain_RateLimitedByID(t *testing.T) {
 func TestAccAction_AccountVerifySSODomain_Unverifiable(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
 
-	name := os.Getenv(envUnverifiableDomain)
+	name := testhelpers.AccEnv(envUnverifiableDomain)
 	if name == "" {
 		t.Skipf("%s must name a claimed throwaway .example domain, claimed more than five minutes before the "+
 			"run, for this test — the five-minute limit is measured from the claim, so a domain this run "+
@@ -327,7 +326,7 @@ func TestAccAction_AccountVerifySSODomain_PlanTimeValidation(t *testing.T) {
 func TestAccAction_AccountVerifySSODomain_AlreadyVerifiedIsNotAnError(t *testing.T) {
 	testhelpers.AccPreCheckAccount(t)
 
-	name := strings.ToLower(strings.TrimSpace(os.Getenv(envVerifiedDomain)))
+	name := strings.ToLower(strings.TrimSpace(testhelpers.AccEnv(envVerifiedDomain)))
 	if name == "" {
 		t.Skipf("%s must name a claimed, already-verified domain for this test", envVerifiedDomain)
 	}

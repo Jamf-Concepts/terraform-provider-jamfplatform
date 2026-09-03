@@ -7,7 +7,6 @@ package self_service_macos_settings_test
 
 import (
 	"context"
-	"os"
 	"regexp"
 	"testing"
 
@@ -20,7 +19,7 @@ import (
 // samlEnvVar gates the Saml acceptance test: authentication_type = "Saml" requires
 // "Single Sign-On for Self Service for macOS" to be enabled in the tenant's SSO settings
 // (rejected with PREREQUISITE_NOT_MET otherwise). Set to any non-empty value to opt in.
-const samlEnvVar = "JAMFPLATFORM_ACC_SELF_SERVICE_SAML"
+const samlEnvVar = "JAMFPLATFORM_ACC_PRO_SELF_SERVICE_SAML"
 
 // requireSsoForMacosSelfService skips the test unless the tenant currently has
 // ssoForMacOsSelfServiceEnabled = true. The toggle cannot be enabled programmatically here:
@@ -184,7 +183,7 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 // before each gated run.
 func TestAccResource_ProSelfServiceMacosSettings_Saml(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	if os.Getenv(samlEnvVar) == "" {
+	if testhelpers.AccEnv(samlEnvVar) == "" {
 		t.Skipf("%s not set; skipping Saml acceptance test (requires SSO for Self Service enabled on the tenant)", samlEnvVar)
 	}
 	requireSsoForMacosSelfService(t)

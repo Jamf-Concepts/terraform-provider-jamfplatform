@@ -8,7 +8,6 @@ package service_discovery_enrollment_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"testing"
@@ -29,7 +28,7 @@ const adeAddr = "jamfplatform_pro_automated_device_enrollment.ade"
 // org's Server UUID, so the test creates a jamfplatform_pro_automated_device_enrollment
 // instance from this token and manages its server_uuid. Without the token the test skips.
 // Never commit token material to fixtures.
-const adeTokenEnvVar = "JAMFPLATFORM_ADE_TOKEN"
+const adeTokenEnvVar = "JAMFPLATFORM_ACC_PRO_DEP_TOKEN"
 
 // adeFixture returns an ADE resource block created from the env-supplied token. Its
 // server_uuid (the Apple-recorded MDM Server UUID) is the key the well-known setting rows
@@ -87,7 +86,7 @@ func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
 // state before destroy is "none"; re-apply your real values afterward if the tenant is in
 // use.
 func TestAccResource_ProServiceDiscoveryEnrollment_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping service discovery enrollment acceptance test", adeTokenEnvVar)
 	}
@@ -188,7 +187,7 @@ func TestAccResource_ProServiceDiscoveryEnrollment_RejectsInvalidEnrollmentType(
 // TestAccResource_ProServiceDiscoveryEnrollment_RejectsNonSingletonImport verifies the
 // ImportState guard rejects any id other than "singleton".
 func TestAccResource_ProServiceDiscoveryEnrollment_RejectsNonSingletonImport(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping service discovery enrollment acceptance test", adeTokenEnvVar)
 	}
@@ -216,7 +215,7 @@ func TestAccResource_ProServiceDiscoveryEnrollment_RejectsNonSingletonImport(t *
 // TestAccDataSource_ProServiceDiscoveryEnrollment_Basic verifies the data source surfaces
 // the managed org row, including the Computed org_name echo.
 func TestAccDataSource_ProServiceDiscoveryEnrollment_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping service discovery enrollment acceptance test", adeTokenEnvVar)
 	}

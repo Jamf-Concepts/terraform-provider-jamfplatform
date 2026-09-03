@@ -143,10 +143,10 @@ func TestAccDataSource_ProMobileDeviceProvisioningProfile_BySelectors(t *testing
 	// The by-uuid selector depends on the classic /uuid/{uuid} lookup, which is
 	// broken in Jamf Pro 11.29: it returns an empty collection rather than the
 	// record, so the data source resolves a null id (tracked in PI-1399). Gate the
-	// by_uuid assertion behind JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP so by_id/by_name
+	// by_uuid assertion behind JAMFPLATFORM_ACC_PRO_MDPP_UUID_LOOKUP so by_id/by_name
 	// coverage stays green by default; set the var to re-enable the uuid check once
 	// the server-side bug is fixed.
-	uuidLookup := os.Getenv("JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP") != ""
+	uuidLookup := testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_MDPP_UUID_LOOKUP") != ""
 
 	dsConfig := `
 		data "jamfplatform_pro_mobile_device_provisioning_profile" "by_id" {

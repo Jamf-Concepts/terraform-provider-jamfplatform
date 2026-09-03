@@ -7,7 +7,6 @@ package smtp_server_test
 
 import (
 	"context"
-	"os"
 	"regexp"
 	"testing"
 
@@ -200,10 +199,10 @@ func TestAccResource_ProSmtpServer_GraphApi(t *testing.T) {
 // a Google sender account requires an interactive Google OAuth grant performed in
 // the Jamf Pro admin UI, which Terraform cannot drive; the apply may also require
 // at least one granted account on some tenants. Opt in with
-// JAMFPLATFORM_ACC_SMTP_GOOGLE=1 once the tenant has Google Auth configured.
+// JAMFPLATFORM_ACC_PRO_SMTP_GOOGLE=1 once the tenant has Google Auth configured.
 func TestAccResource_ProSmtpServer_GoogleMail(t *testing.T) {
-	if os.Getenv("JAMFPLATFORM_ACC_SMTP_GOOGLE") == "" {
-		t.Skip("set JAMFPLATFORM_ACC_SMTP_GOOGLE=1 to run GOOGLE_MAIL acceptance (requires out-of-band Google OAuth grant on the tenant)")
+	if testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_SMTP_GOOGLE") == "" {
+		t.Skip("set JAMFPLATFORM_ACC_PRO_SMTP_GOOGLE=1 to run GOOGLE_MAIL acceptance (requires out-of-band Google OAuth grant on the tenant)")
 	}
 	testhelpers.AccPreCheck(t)
 

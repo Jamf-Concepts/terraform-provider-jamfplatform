@@ -16,7 +16,7 @@
 // conflicting target categories).
 //
 // Apply tests provision their own VPP account via a jamfplatform_pro_volume_-
-// purchasing_location fixture, so they are gated on JAMFPLATFORM_VPP_TOKEN (a real
+// purchasing_location fixture, so they are gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN (a real
 // ABM/ASM .vpptoken — same gate as the location + invitation VPP tests). The
 // location's id is the VPP account id the assignment references. Token material
 // MUST come from env — never commit it.
@@ -31,14 +31,13 @@
 //
 // Directory-service-group tests stand up the shared Okta LDAP server fixture via
 // the SDK (so the directory exists before the plan-time scope preflight) and use
-// JAMFPLATFORM_ACC_LDAP_GROUP_NAME for the real group name.
+// JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME for the real group name.
 
 package vpp_assignment_test
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -54,10 +53,10 @@ const resAddr = "jamfplatform_pro_vpp_assignment.test"
 
 // vppTokenEnvVar holds the base64 `.vpptoken` contents used to stand up a VPP
 // location fixture (which owns the VPP account the assignment references).
-const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
+const vppTokenEnvVar = "JAMFPLATFORM_ACC_PRO_VPP_TOKEN"
 
 func vppToken(t *testing.T) string {
-	v := os.Getenv(vppTokenEnvVar)
+	v := testhelpers.AccEnv(vppTokenEnvVar)
 	if v == "" {
 		t.Skipf("%s not set; skipping VPP assignment acceptance test (needs a VPP location fixture)", vppTokenEnvVar)
 	}
@@ -242,7 +241,7 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
 
 // TestAccResource_ProVPPAssignment_Content exercises the content opt-out path
 // (assign then clear an iOS app). The adam_id is read live from the location
-// fixture's owned content, so the only gate is JAMFPLATFORM_VPP_TOKEN (a token
+// fixture's owned content, so the only gate is JAMFPLATFORM_ACC_PRO_VPP_TOKEN (a token
 // whose account owns at least one iOS app).
 func TestAccResource_ProVPPAssignment_Content(t *testing.T) {
 	token := vppToken(t)

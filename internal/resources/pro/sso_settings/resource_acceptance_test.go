@@ -8,7 +8,6 @@ package sso_settings_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -28,19 +27,19 @@ import (
 //
 // Tests that need a SAML IdP URL or metadata file are gated behind env
 // vars:
-//   - JAMFPLATFORM_ACC_SSO_IDP_URL: SAML metadata URL (Okta trial fine)
-//   - JAMFPLATFORM_ACC_SSO_METADATA_BASE64: base64 of Google IdP metadata
+//   - JAMFPLATFORM_ACC_PRO_SSO_IDP_URL: SAML metadata URL (Okta trial fine)
+//   - JAMFPLATFORM_ACC_PRO_SSO_METADATA_BASE64: base64 of Google IdP metadata
 //     XML (the IdP type must differ from any previously-stored URL to
 //     trigger a real switch on the tenant).
 const (
-	envSsoIdpURL         = "JAMFPLATFORM_ACC_SSO_IDP_URL"
-	envSsoMetadataBase64 = "JAMFPLATFORM_ACC_SSO_METADATA_BASE64"
+	envSsoIdpURL         = "JAMFPLATFORM_ACC_PRO_SSO_IDP_URL"
+	envSsoMetadataBase64 = "JAMFPLATFORM_ACC_PRO_SSO_METADATA_BASE64"
 )
 
 // requireIdpURL skips the test when the IdP URL env var is unset.
 func requireIdpURL(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv(envSsoIdpURL)
+	v := testhelpers.AccEnv(envSsoIdpURL)
 	if v == "" {
 		t.Skipf("skipping: set %s to a SAML IdP metadata URL to exercise URL-mode SAML tests", envSsoIdpURL)
 	}
@@ -50,7 +49,7 @@ func requireIdpURL(t *testing.T) string {
 // requireMetadataBase64 skips the test when the metadata env var is unset.
 func requireMetadataBase64(t *testing.T) string {
 	t.Helper()
-	v := os.Getenv(envSsoMetadataBase64)
+	v := testhelpers.AccEnv(envSsoMetadataBase64)
 	if v == "" {
 		t.Skipf("skipping: set %s to a base64-encoded SAML metadata XML to exercise FILE-mode SAML tests", envSsoMetadataBase64)
 	}
@@ -187,7 +186,7 @@ func TestAccResource_ProSsoSettings_OIDC_Baseline(t *testing.T) {
 
 // TestAccResource_ProSsoSettings_OIDC_WithSAML_URL configures the hybrid
 // OIDC_WITH_SAML mode with metadata_source = URL. Gated by
-// JAMFPLATFORM_ACC_SSO_IDP_URL. Returns to OIDC at the end so subsequent
+// JAMFPLATFORM_ACC_PRO_SSO_IDP_URL. Returns to OIDC at the end so subsequent
 // suites start from a clean baseline.
 func TestAccResource_ProSsoSettings_OIDC_WithSAML_URL(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -236,7 +235,7 @@ func TestAccResource_ProSsoSettings_OIDC_WithSAML_URL(t *testing.T) {
 
 // TestAccResource_ProSsoSettings_OIDC_WithSAML_File configures the hybrid
 // OIDC_WITH_SAML mode with metadata_source = FILE. Gated by
-// JAMFPLATFORM_ACC_SSO_METADATA_BASE64 (must be Google IdP metadata so the
+// JAMFPLATFORM_ACC_PRO_SSO_METADATA_BASE64 (must be Google IdP metadata so the
 // transition triggers a genuine IdP-type switch on the tenant).
 func TestAccResource_ProSsoSettings_OIDC_WithSAML_File(t *testing.T) {
 	testhelpers.AccPreCheck(t)

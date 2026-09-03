@@ -101,10 +101,10 @@ func TestAccResource_SecurityCloudActivationProfile_Lifecycle(t *testing.T) {
 	}
 
 	paused := base
-	paused.paused = boolPtr(true)
+	paused.paused = new(true)
 
 	resumed := base
-	resumed.paused = boolPtr(false)
+	resumed.paused = new(false)
 
 	renamed := resumed
 	renamed.name = name + "-renamed"
@@ -428,12 +428,6 @@ func hclStringList(values []string) string {
 		quoted = append(quoted, fmt.Sprintf("%q", v))
 	}
 	return "[" + strings.Join(quoted, ", ") + "]"
-}
-
-// boolPtr returns a pointer to b, so a config can distinguish "paused is set to
-// false" from "paused is not configured at all".
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 // captureActivationCode records the applied activation code so later steps can
