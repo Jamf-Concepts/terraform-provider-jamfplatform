@@ -10,7 +10,7 @@ description: |-
   Uploads and updates
   package_file_source_checksum (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading, which catches on-disk corruption.size is read-only. Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.Changing only metadata (info, notes, priority and so on) updates the record without re-uploading the file. The file is re-uploaded only when its contents change.manifest_file_source (optional) uploads a .plist manifest for the package. Setting it uploads the manifest, and clearing it removes the manifest from Jamf Pro. The manifest is likewise re-uploaded only when its contents change.Both package_file_source and manifest_file_source accept http(s):// URLs. The provider downloads the URL to a temporary file, up to 8 GiB and following at most 10 redirects, before uploading.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Packages | Create, Read, Update, Delete | `packages` |
@@ -39,7 +39,7 @@ The mode is inferred from your configuration.
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

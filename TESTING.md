@@ -279,12 +279,31 @@ package path prefix:
 | `securitycloud` | `internal/{resources,actions}/security_cloud/` | environment | `securitycloud` |
 | `aigovernance` | `internal/resources/ai_governance/` | environment | `aigovernance` |
 | `platform-env` | `internal/resources/{blueprints,cbengine}/` | environment | `environment` |
-| `pro-tenant` | `internal/provider/`, `internal/resources/pro/tenant_id/` | tenant | `pro-tenant` |
+| `pro-tenant` | `internal/provider/`, `internal/resources/pro/tenant_id/`, `internal/resources/devices/`, `internal/resources/device_group/` | tenant | `pro-tenant` |
 | `pro` (default) | everything unclaimed | environment | `platform` |
 
 `protect`, `school` and `android` are reserved with `planned: true` and must
 match zero packages; the moment one matches, both `acclanes` and the conformance
 test fail and name the wiring to finish.
+
+Two of the `pro-tenant` lane's packages are claimed for a reason that is not
+product shape. `internal/providerdata/scopes.go` derives every construct's
+permitted scopes from the SDK privilege registry and then widens three Platform
+families — `Platform devices`, `Platform device groups`, `Platform device
+actions` — back to tenant scope in its `gatewayWidenings` table, because the
+Platform API GA deleted `X-Tenant-Id` from six Platform specs while the gateway
+went on serving it. A widening asserts that those constructs work **end to end**
+on a credential the spec says should not reach them, which no status code can
+show, so it holds only while some lane actually sends `X-Tenant-Id` at them:
+hence `internal/resources/devices/` and `internal/resources/device_group/` — the
+only Platform device packages that hold acceptance tests — run on the tenant
+credential rather than falling through to the environment-scoped `pro` lane. The
+environment path for the same constructs stays covered incidentally, by the
+blueprint, benchmark, policy, class, webhook, patch-policy, app-installer and
+device-action tests that each build or read one. `internal/actions/device/` is
+deliberately left in `pro`: its commands are destructive (erase, unmanage) and
+were never run under tenant scope, so the `Platform device actions` widening
+rests on its wire probe alone.
 
 **Preview the split locally with `make acclanes-preview`**, which prints the
 matrix the `plan` job would build for your current change set — lane, package

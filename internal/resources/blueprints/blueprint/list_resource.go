@@ -52,7 +52,7 @@ func (r *BlueprintListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_blueprint", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_blueprint", providerdata.BlueprintsScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

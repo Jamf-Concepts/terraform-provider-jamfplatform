@@ -100,7 +100,7 @@ func (d *BenchmarksDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_benchmarks", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_benchmarks", providerdata.ComplianceBenchmarksScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

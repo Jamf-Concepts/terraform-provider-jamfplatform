@@ -73,8 +73,17 @@ func TestSection_NoPrivilegeEndpoint(t *testing.T) {
 		t.Skip("no zero-privilege method in registry")
 	}
 	got := Section(pro.Privileges, none)
-	if !strings.Contains(got, "None — any authenticated Jamf Platform API integration") {
-		t.Errorf("expected no-privilege wording for %s, got:\n%s", none, got)
+	if !strings.Contains(got, "None beyond scope") {
+		t.Errorf("expected the no-privilege wording for %s, got:\n%s", none, got)
+	}
+	if !strings.Contains(got, "**Platform environment** scope (preferred for new integrations) or **Tenant** scope") {
+		t.Errorf("a permission-free endpoint still has a scope to state, got:\n%s", got)
+	}
+	if !strings.Contains(got, scopeCaveat) {
+		t.Errorf("a permission-free endpoint still carries the scope caveat, got:\n%s", got)
+	}
+	if strings.Contains(got, "| Category |") {
+		t.Errorf("expected no table for a permission-free endpoint, got:\n%s", got)
 	}
 }
 
@@ -83,6 +92,10 @@ func TestSection_NoPrivilegeEndpoint(t *testing.T) {
 // affirmative wording is a positive claim about the underlying endpoints, so a
 // list mixing a permission-free method with one absent from the registry must
 // render nothing rather than an assurance that was never read.
+//
+// synth builds entries carrying no Scopes, so this also exercises the
+// scope-suppressed form of the wording — the fallback for a registry predating
+// MethodPrivileges.Scopes, which no shipped registry is any longer.
 func TestSection_NoPrivilegeWordingNeedsEveryMethodResolved(t *testing.T) {
 	reg, names := synth([]string{})
 	if got := Section(reg, names...); !strings.Contains(got, "None — any authenticated") {
@@ -328,6 +341,14 @@ type registryPair struct {
 // two registries would document whichever was passed to Merge last and grant the
 // operator a permission that does not reach its endpoint.
 //
+// The entries disagree on scope as well, which doubles the cost of the collision
+// now that collect reads Scopes off the winning entry too: the aigovernance
+// entry declares environment alone and the proclassic one declares tenant and
+// environment, so the losing order does not merely name the wrong
+// permission — it either withholds a scope the construct accepts or claims one
+// its endpoint refuses, in the same rendered sentence that tells the operator
+// how to create the integration.
+//
 // It is tolerated as an exception rather than fixed here because no construct
 // merges that pair — every Merge call in the provider is pro+proclassic or
 // pro+devices, both fully disjoint — and the fix belongs in the SDK's method
@@ -373,9 +394,11 @@ func TestSDKRegistriesAreDisjoint(t *testing.T) {
 					continue
 				}
 				t.Errorf("%s.Privileges and %s.Privileges both key %q — Merge would silently drop one "+
-					"(%s requires %v, %s requires %v); rename in the SDK, or record it in "+
+					"(%s requires %v at %v, %s requires %v at %v); rename in the SDK, or record it in "+
 					"knownRegistryCollisions with the reason it is harmless",
-					a, b, method, a, regs[a][method].Scoped, b, regs[b][method].Scoped)
+					a, b, method,
+					a, regs[a][method].Scoped, regs[a][method].Scopes,
+					b, regs[b][method].Scoped, regs[b][method].Scopes)
 			}
 		}
 	}
@@ -468,5 +491,210 @@ func TestRenders_IgnoresNonTableText(t *testing.T) {
 	}
 	if Renders("", "buildings:read") {
 		t.Error("Renders matched an empty section")
+	}
+}
+
+// TestSection_StatesTheIntegrationScope covers the scope clause the lead-in
+// opens with, per family, against the real registries. The three shapes it can
+// take — one scope, two with the first recommended, and the organization case —
+// each have a shipped family, so nothing here is synthetic.
+//
+// The clause is deliberately not an instruction to create an integration with
+// the named scope. It reports where the endpoints are published and defers to
+// the Configure-time diagnostic, because a page telling an operator whose
+// tenant-scoped credential already works to register a replacement is the
+// failure this wording exists to avoid.
+//
+// The last case is the one that pins that divergence rather than merely
+// permitting it. Platform device groups are declared environment-only by their
+// specification and accepted under tenant scope by providerdata.RequireScope,
+// which reads providerdata.gatewayWidenings and this package deliberately does
+// not: a published table carries Jamf's own declaration, and the provider's
+// evidenced tolerances live where they are enforced. Without a widened family
+// among the cases, teaching this package about the widenings — or dropping the
+// omission — would rewrite the clause on every page of three families with a
+// green suite.
+func TestSection_StatesTheIntegrationScope(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		reg     Registry
+		method  string
+		want    string
+		notWant string
+	}{
+		{name: "pro is published at both", reg: pro.Privileges, method: "GetCategoryV1",
+			want: "Jamf lists this under **Platform environment** scope " +
+				"(preferred for new integrations) or **Tenant** scope."},
+		{name: "ai governance is environment only", reg: aigovernance.Privileges, method: "ListPolicies",
+			want:    "Jamf lists this under **Platform environment** scope.",
+			notWant: "Tenant"},
+		{name: "account is organization only", reg: account.Privileges, method: "ListDomains",
+			want:    "Jamf lists this under **Organization management** scope.",
+			notWant: "Tenant"},
+		{name: "a widened family still reports its specification", reg: devicegroups.Privileges, method: "ListDeviceGroups",
+			want:    "Jamf lists this under **Platform environment** scope.",
+			notWant: "Tenant"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, ok := tc.reg[tc.method]; !ok {
+				t.Fatalf("%s is no longer in the registry — pick another method for this case", tc.method)
+			}
+			got := Section(tc.reg, tc.method)
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("want the lead-in to open %q, got:\n%s", tc.want, got)
+			}
+			if !strings.Contains(got, scopeCaveat) {
+				t.Errorf("want the scope caveat alongside the clause, got:\n%s", got)
+			}
+			if tc.notWant != "" && strings.Contains(got, tc.notWant) {
+				t.Errorf("the clause must not name %q, got:\n%s", tc.notWant, got)
+			}
+		})
+	}
+}
+
+// TestSection_ScopeIsIntersectedAcrossMethods pins the direction of the fold at
+// the rendered level. A construct calls every one of its methods through a
+// single client, so a union would send an operator to create an integration one
+// of the endpoints refuses.
+func TestSection_ScopeIsIntersectedAcrossMethods(t *testing.T) {
+	reg := Registry{
+		"Both": {Method: "Both", Scoped: []string{"categories:read"}, Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeEnvironment, jamfplatform.ScopeTenant,
+		}},
+		"EnvironmentOnly": {Method: "EnvironmentOnly", Scoped: []string{"categories:read"}, Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeEnvironment,
+		}},
+	}
+	got := Section(reg, "Both", "EnvironmentOnly")
+	if !strings.Contains(got, "Jamf lists this under **Platform environment** scope.") {
+		t.Errorf("want the intersection, got:\n%s", got)
+	}
+	if strings.Contains(got, "Tenant") {
+		t.Errorf("a method refusing tenant must remove it from the claim, got:\n%s", got)
+	}
+}
+
+// TestSection_ScopeSuppressedWhenAMethodDeclaresNone asserts a registry entry
+// with no Scopes drops the clause rather than answering from the entries that do
+// carry one. Every shipped registry now populates the field, so this covers a
+// downgrade — an SDK old enough to predate it — where a partial answer rendered
+// as a complete one would send an operator to the wrong integration.
+func TestSection_ScopeSuppressedWhenAMethodDeclaresNone(t *testing.T) {
+	reg := Registry{
+		"Scoped": {Method: "Scoped", Scoped: []string{"categories:read"}, Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeEnvironment,
+		}},
+		"Unscoped": {Method: "Unscoped", Scoped: []string{"categories:read"}},
+	}
+	got := Section(reg, "Scoped", "Unscoped")
+	if strings.Contains(got, "Jamf lists this under") {
+		t.Errorf("want no scope claim when a method declares none, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Grant the API integration the following permissions") {
+		t.Errorf("want the scope-free lead-in, got:\n%s", got)
+	}
+}
+
+// TestSection_ScopeSuppressedForAnUnlabelledKind covers a scope kind the SDK
+// grows that this package has no Jamf Account label for. Printing the kinds it
+// does recognise would understate what the endpoints accept, so the clause goes
+// entirely.
+//
+// This case reaches the suppression through the intersection rather than
+// through scopePhrase's own guard: a kind absent from scopeOrder cannot survive
+// the fold, so the set arriving at scopePhrase is empty. The mixed-set case
+// below is what exercises the guard itself.
+func TestSection_ScopeSuppressedForAnUnlabelledKind(t *testing.T) {
+	reg := Registry{
+		"Method": {Method: "Method", Scoped: []string{"categories:read"}, Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeKind(99),
+		}},
+	}
+	if got := Section(reg, "Method"); strings.Contains(got, "Jamf lists this under") {
+		t.Errorf("want no scope claim for an unlabelled kind, got:\n%s", got)
+	}
+}
+
+// TestSection_ScopeSuppressedForAMixedLabelledSet is the case that pins
+// scopePhrase's all-or-nothing rule: one kind labelled, another not, must render
+// no clause at all rather than the half it can name, which would understate what
+// the endpoints accept and send an operator to create an integration narrower
+// than they need.
+//
+// Reaching it takes the scopeOrder mutation. intersectScopes folds against
+// scopeOrder, so a kind this package does not order is dropped before
+// scopePhrase ever sees it — meaning the guard is live only for a kind that is
+// ordered and unlabelled, which is precisely the drift the size check in
+// TestScopeLabelsCoverEveryKnownKind exists to fail on. Setting that state up is
+// what makes the guard's behaviour asserted rather than assumed: without it,
+// relaxing the guard to skip the unlabelled kind and print the rest passes every
+// other test in this file.
+func TestSection_ScopeSuppressedForAMixedLabelledSet(t *testing.T) {
+	unlabelled := jamfplatform.ScopeKind(99)
+	original := scopeOrder
+	scopeOrder = append(slices.Clone(original), unlabelled)
+	t.Cleanup(func() { scopeOrder = original })
+
+	reg := Registry{
+		"Method": {Method: "Method", Scoped: []string{"categories:read"}, Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeEnvironment, unlabelled,
+		}},
+	}
+	got := Section(reg, "Method")
+	if strings.Contains(got, "Jamf lists this under") {
+		t.Errorf("want no scope claim when one of the kinds has no label, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Grant the API integration the following permissions") {
+		t.Errorf("want the scope-free lead-in, got:\n%s", got)
+	}
+}
+
+// TestSection_ScopeSuppressedWhenAMethodIsMissing covers the third way a fold
+// can be partial: a method the registry does not carry contributes no Scopes at
+// all, so the intersection is computed from a strict subset of what the
+// construct calls while reading as the whole answer. A scope every resolved
+// method accepts can still be refused by the one that was skipped, so the table
+// renders without a clause and the drift-guard test is left to fail on the
+// missing method.
+func TestSection_ScopeSuppressedWhenAMethodIsMissing(t *testing.T) {
+	got := Section(pro.Privileges, "GetCategoryV1", "NoSuchMethodXYZ")
+	if !strings.Contains(got, "| Category | Permission | Actions | API capability |") {
+		t.Fatalf("want the table to still render, got:\n%s", got)
+	}
+	if strings.Contains(got, "Jamf lists this under") {
+		t.Errorf("want no scope claim when a method is unresolved, got:\n%s", got)
+	}
+}
+
+// TestScopeLabelsCoverEveryKnownKind pins the two scope tables to each other
+// and to the three kinds this package knows: each is labelled, each is ordered,
+// and the tables are the same size, so a kind added to one and forgotten in the
+// other cannot silently stop the clause rendering across every construct at
+// once.
+//
+// It does not catch an SDK that grows a fourth kind. The kinds are iterated from
+// a literal because there is nothing to iterate instead — jamfplatform.ScopeKind
+// is an alias of the client package's type, three explicit constants with no
+// generated values helper — so a new kind adds nothing here to fail on. The
+// guard for that is providerdata.scopeKindFromSDK, which panics at package
+// initialisation on a kind it has no mapping for rather than defaulting to one;
+// `go test ./...` reaches it before any build ships. This package's own exposure
+// to a fourth kind is bounded by scopePhrase, which suppresses the whole clause
+// when any kind is unlabelled.
+func TestScopeLabelsCoverEveryKnownKind(t *testing.T) {
+	for _, k := range []jamfplatform.ScopeKind{
+		jamfplatform.ScopeOrganization, jamfplatform.ScopeEnvironment, jamfplatform.ScopeTenant,
+	} {
+		if _, ok := scopeLabels[k]; !ok {
+			t.Errorf("scopeLabels has no Jamf Account label for %s", k)
+		}
+		if !slices.Contains(scopeOrder, k) {
+			t.Errorf("scopeOrder does not carry %s, so it can never be rendered", k)
+		}
+	}
+	if len(scopeLabels) != len(scopeOrder) {
+		t.Errorf("scopeLabels has %d entries and scopeOrder %d — a kind in one and not the other "+
+			"either renders unordered or never renders", len(scopeLabels), len(scopeOrder))
 	}
 }
