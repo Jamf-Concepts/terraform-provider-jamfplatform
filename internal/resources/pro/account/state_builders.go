@@ -43,18 +43,37 @@ func assignProBaseFields(state *AccountResourceModel, a *pro.UserAccount) {
 	state.ForcePasswordChange = helpers.BoolPointerValueOrNull(a.ChangePasswordOnNextLogin)
 }
 
+// importHydration reports whether this Read is the one Terraform issues after an
+// import, with state holding the account id and nothing else. A null state value
+// cannot answer that: the plugin framework writes the passthrough id into state
+// before calling Read, so on the import path Read receives a populated object and
+// `Raw.IsNull()` returns false. A null `username` does answer it, because the
+// attribute is Required and every other path into Read sets it.
+//
+// The username Read passes here comes off the immutable request state, never off
+// the model Read is assembling. `assignProBaseFields` writes `username` from the
+// Pro response, so a signal taken from the model would answer differently
+// depending on where in Read it was sampled, and the request state is the only
+// source no later assignment can reach. Wire-verified 2026-09-04: the post-import
+// Read reached assignClassicPrivileges with a false import flag and a populated
+// `username`, and the privilege grid the classic endpoint had returned in full
+// was discarded (issue #372).
+func importHydration(stateAbsent bool, username types.String) bool {
+	return stateAbsent || username.IsNull()
+}
+
 // assignClassicPrivileges reconciles the Custom privilege grid from a ProClassic
 // Account response using intersect-on-read (same semantics as account_group):
 // declared ∩ server per managed category, null categories stay null, import
 // materialises the full grid.
-func assignClassicPrivileges(ctx context.Context, state *AccountResourceModel, a *proclassic.Account, isImport bool) diag.Diagnostics {
+func assignClassicPrivileges(ctx context.Context, state *AccountResourceModel, a *proclassic.Account, hydrating bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	var serverPriv map[string][]string
 	if a != nil {
 		serverPriv = accountprivileges.FromAccountPrivileges(a.Privileges)
 	}
 	switch {
-	case isImport:
+	case hydrating:
 		out, d := accountprivileges.IntersectIntoState(ctx, nil, serverPriv)
 		diags.Append(d...)
 		if out.IsEmpty() {

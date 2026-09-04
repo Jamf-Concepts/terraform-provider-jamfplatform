@@ -117,17 +117,17 @@ func TestDataSourcePrivileges_Rendered(t *testing.T) {
 }
 
 // TestListResourceSDKMethods_KnownToSDK fails if a declared list resource method
-// has been renamed or removed in the Pro privilege registry.
+// has been renamed or removed in the merged Pro + ProClassic privilege registry.
 func TestListResourceSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(pro.Privileges, listResourceSDKMethods...); len(missing) > 0 {
-		t.Fatalf("listResourceSDKMethods not present in pro.Privileges (SDK drift): %v", missing)
+	if missing := permissions.Missing(resourcePrivilegeRegistry, listResourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("listResourceSDKMethods not present in the merged Pro + ProClassic registry (SDK drift): %v", missing)
 	}
 }
 
 // TestListResourceSDKMethods_MatchListCalls keeps the list resource privilege
 // table honest as list_resource.go changes.
 func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
-	assertDeclaredMatchesCalled(t, "list_resource.go", pro.Privileges, listResourceSDKMethods)
+	assertDeclaredMatchesCalled(t, "list_resource.go", resourcePrivilegeRegistry, listResourceSDKMethods)
 }
 
 // TestListResourcePrivileges_Rendered guards that the table actually rendered

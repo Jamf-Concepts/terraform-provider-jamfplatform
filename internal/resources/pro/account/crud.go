@@ -19,7 +19,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -94,9 +96,9 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 // classic (intersect-on-read) when the account is Custom + Full Access.
 func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state AccountResourceModel
-	isImport := req.State.Raw.IsNull()
+	stateAbsent := req.State.Raw.IsNull()
 
-	if isImport {
+	if stateAbsent {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError("Missing resource identity", "Terraform requested a refresh without existing state or identity data.")
 			return
@@ -118,6 +120,15 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 			return
 		}
 	}
+
+	priorUsername := types.StringNull()
+	if !stateAbsent {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("username"), &priorUsername)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	hydrating := importHydration(stateAbsent, priorUsername)
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
 	resp.Diagnostics.Append(timeoutDiags...)
@@ -155,7 +166,7 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.Diagnostics.AddError("Error reading Jamf Pro account privileges", err.Error())
 			return
 		}
-		resp.Diagnostics.Append(assignClassicPrivileges(readCtx, &state, classicGot, isImport)...)
+		resp.Diagnostics.Append(assignClassicPrivileges(readCtx, &state, classicGot, hydrating)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

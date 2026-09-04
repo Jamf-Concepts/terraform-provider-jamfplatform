@@ -14,6 +14,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -220,9 +221,9 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 // Read syncs the Terraform state with the latest API representation.
 func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state DeviceGroupResourceModel
-	isImport := req.State.Raw.IsNull()
+	stateAbsent := req.State.Raw.IsNull()
 
-	if isImport {
+	if stateAbsent {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError(
 				"Missing resource identity",
@@ -285,10 +286,17 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	priorName := types.StringNull()
+	if !stateAbsent {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("name"), &priorName)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	hydrating := importHydration(stateAbsent, priorName)
+
 	var members []string
-	manageMembers := isImport || helpers.IsConfiguredValue(state.Members)
-	manageDescription := isImport || helpers.IsConfiguredValue(state.Description)
-	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && manageMembers {
+	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && (hydrating || helpers.IsConfiguredValue(state.Members)) {
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(readCtx, grp.ID)
 		if err != nil {
@@ -296,6 +304,9 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			return
 		}
 	}
+
+	manageMembers := manageMembersOnRead(hydrating, state.Members, members)
+	manageDescription := hydrating || helpers.IsConfiguredValue(state.Description)
 
 	priorCriteria := state.Criteria
 	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)

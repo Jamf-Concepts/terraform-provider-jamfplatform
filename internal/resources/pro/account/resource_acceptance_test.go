@@ -45,6 +45,31 @@ func testAccCheckAccountDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
+// importedPrivilegeCheck asserts that an imported account carries a populated
+// Jamf-Pro-server-objects privilege category including the named privilege. It
+// matches on the element values rather than on an index, because a Set lands in
+// the shimmed import state under keys the provider does not choose, and it
+// asserts membership rather than an exact count, because Jamf Pro adds
+// dependency privileges of its own to the grid an import materialises.
+func importedPrivilegeCheck(want string) resource.ImportStateCheckFunc {
+	const category = "privileges.jamf_pro_server_objects."
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported instance, got %d", len(states))
+		}
+		attrs := states[0].Attributes
+		if count := attrs[category+"#"]; count == "" || count == "0" {
+			return fmt.Errorf("imported account has no jamf_pro_server_objects privileges; the grid the classic endpoint returns must reach state on import")
+		}
+		for key, value := range attrs {
+			if strings.HasPrefix(key, category) && !strings.HasSuffix(key, "#") && value == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("imported jamf_pro_server_objects does not contain %q", want)
+	}
+}
+
 func customAccountConfig(suffix string, objects ...string) string {
 	var quoted strings.Builder
 	for i, p := range objects {
@@ -107,9 +132,13 @@ func TestAccResource_ProAccount(t *testing.T) {
 				// Import smoke. ImportStateVerify omitted: password is WriteOnly
 				// (never returned) and import materialises the full server
 				// privilege grid, so a full-fidelity compare would not match.
+				// ImportStateCheck carries the assertion instead. The grid is
+				// what an earlier revision dropped on this path, and a compare
+				// that cannot run is no cover for it (issue #372).
 				ResourceName:      "jamfplatform_pro_account.test",
 				ImportState:       true,
 				ImportStateVerify: false,
+				ImportStateCheck:  importedPrivilegeCheck("Read Computers"),
 			},
 		},
 	})
