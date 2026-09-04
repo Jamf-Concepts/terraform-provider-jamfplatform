@@ -15,7 +15,9 @@
 package self_service_branding_image
 
 import (
+	"bytes"
 	"context"
+	"io"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -25,8 +27,14 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// Create uploads an image and derives its ID from the returned URL. source_hash
-// is already set on the plan by ModifyPlan, so Create just streams the bytes.
+// Create uploads an image, derives its ID from the returned URL, and records the
+// hash of the bytes it uploaded.
+//
+// The bytes are read once, hashed, and streamed to the upload from that one
+// copy, so source_hash always describes what was actually sent. Computing it at
+// plan time instead meant reading the source twice, and a source that answers
+// two reads with different bytes then planned one hash and applied another,
+// which Terraform rejects as an inconsistent plan (issue #373).
 func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
@@ -54,7 +62,13 @@ func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resou
 	}
 	defer cleanup()
 
-	uploaded, err := r.client.UploadBrandingImageV1(createCtx, filename, file)
+	data, err := io.ReadAll(file)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading branding image source", err.Error())
+		return
+	}
+
+	uploaded, err := r.client.UploadBrandingImageV1(createCtx, filename, bytes.NewReader(data))
 	if err != nil {
 		resp.Diagnostics.AddError("Error uploading Jamf Pro branding image", err.Error())
 		return
@@ -64,7 +78,7 @@ func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resou
 		resp.Diagnostics.AddError("Error processing branding image upload response", err.Error())
 		return
 	}
-	// plan.SourceHash was set by ModifyPlan — do not overwrite.
+	plan.SourceHash = types.StringValue(files.ComputeContentSHA256(data))
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, selfServiceBrandingImageIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

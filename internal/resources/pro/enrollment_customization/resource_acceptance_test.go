@@ -8,14 +8,22 @@ package enrollment_customization_test
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"regexp"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -85,6 +93,47 @@ func fixtureIconPath(t *testing.T) string {
 // (distinct bytes) used to assert icon-drift behaviour on Update.
 func fixtureAltIconPath(t *testing.T) string {
 	return fixturePath(t, "icon_alt.png")
+}
+
+// fixtureIconHash returns the canonical hash of a committed fixture, so a test
+// can assert the value the provider arrived at rather than only its format.
+func fixtureIconHash(t *testing.T, path string) string {
+	t.Helper()
+	return files.ComputeContentSHA256(readIconFixture(t, path))
+}
+
+// unstableIconServer answers every request for one path with a different one of
+// the two committed PNGs, the way Apple's iTunes artwork CDN answers a fixed
+// URL. The returned counter records how many times the provider fetched it, so
+// a test can prove the provider read the source once rather than once per plan.
+//
+// The provider runs in this process, so a loopback server is reachable from it.
+func unstableIconServer(t *testing.T) (string, *atomic.Int64) {
+	t.Helper()
+	images := [][]byte{
+		readIconFixture(t, fixtureIconPath(t)),
+		readIconFixture(t, fixtureAltIconPath(t)),
+	}
+
+	var hits atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := hits.Add(1)
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(images[int(n-1)%len(images)])
+	}))
+	t.Cleanup(server.Close)
+
+	return server.URL + "/icon.png", &hits
+}
+
+// readIconFixture returns the bytes of a committed PNG fixture.
+func readIconFixture(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path) //nolint:gosec // committed test fixture
+	if err != nil {
+		t.Fatalf("reading icon fixture %q: %v", path, err)
+	}
+	return b
 }
 
 func fixturePath(t *testing.T, name string) string {
@@ -358,11 +407,127 @@ func TestAccResource_ProEnrollmentCustomization_IconSourceUpload(t *testing.T) {
 		CheckDestroy:             testAccCheckEnrollmentCustomizationDestroy(t),
 		Steps: []resource.TestStep{{
 			Config: cfg,
+			ConfigPlanChecks: resource.ConfigPlanChecks{
+				PreApply: []plancheck.PlanCheck{
+					// Resolved in Create from the bytes uploaded, so it cannot
+					// be planned (issue #373).
+					plancheck.ExpectUnknownValue("jamfplatform_pro_enrollment_customization.test", tfjsonpath.New("icon_source_hash")),
+				},
+			},
 			Check: resource.ComposeAggregateTestCheckFunc(
-				resource.TestCheckResourceAttrSet("jamfplatform_pro_enrollment_customization.test", "icon_source_hash"),
+				// The committed hash must be the fixture's own, which is what
+				// proves it came from the bytes the upload received.
+				resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "icon_source_hash", fixtureIconHash(t, pngPath)),
 				resource.TestCheckResourceAttrSet("jamfplatform_pro_enrollment_customization.test", "branding_settings.icon_url"),
 			),
 		}},
+	})
+}
+
+// TestAccResource_ProEnrollmentCustomization_IconSource_UnstableURL is the
+// acceptance cover for issue #373 on this resource, reproduced against a live
+// tenant on 2026-09-04.
+//
+// The condition is a URL whose bytes differ between two requests, which no
+// public URL can be relied on to do on demand, so the test serves it. The apply
+// has to succeed on the first run, the re-apply has to plan nothing, and the
+// provider has to have read the URL exactly once across both: before the fix it
+// read it on every plan, so the count is the assertion that would still catch a
+// plan-time fetch reintroduced somewhere the hash comparison no longer visits.
+func TestAccResource_ProEnrollmentCustomization_IconSource_UnstableURL(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	url, hits := unstableIconServer(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ec-iconurl-" + suffix
+	cfg := fmt.Sprintf(`
+		resource "jamfplatform_pro_enrollment_customization" "test" {
+			display_name = %q
+			description  = "tf acc unstable icon url"
+			icon_source  = %q
+			%s
+		}
+	`, name, url, configCommon())
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEnrollmentCustomizationDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectUnknownValue("jamfplatform_pro_enrollment_customization.test", tfjsonpath.New("icon_source_hash")),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestMatchResourceAttr("jamfplatform_pro_enrollment_customization.test", "icon_source_hash", regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)),
+					resource.TestCheckResourceAttrSet("jamfplatform_pro_enrollment_customization.test", "branding_settings.icon_url"),
+				),
+			},
+			{
+				Config: cfg,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+
+	if got := hits.Load(); got != 1 {
+		t.Fatalf("the provider fetched the icon URL %d times, want 1: only the upload may read it, or an unstable source plans one hash and applies another", got)
+	}
+}
+
+// TestAccResource_ProEnrollmentCustomization_IconSource_UnrelatedChangeKeepsIcon
+// is the regression the unknown-hash signal most invites. Update uploads when
+// the planned hash is unknown, so a plan that leaves the icon alone must leave
+// the hash known: otherwise renaming a customization silently re-uploads its
+// icon and mints a new image on the tenant every apply.
+func TestAccResource_ProEnrollmentCustomization_IconSource_UnrelatedChangeKeepsIcon(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	pngPath := fixtureIconPath(t)
+	suffix := testhelpers.RunSuffix()
+
+	mkCfg := func(desc string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_pro_enrollment_customization" "test" {
+				display_name = %q
+				description  = %q
+				icon_source  = %q
+				%s
+			}
+		`, "tf-acc-ec-iconkeep-"+suffix, desc, pngPath, configCommon())
+	}
+
+	iconHash := fixtureIconHash(t, pngPath)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEnrollmentCustomizationDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: mkCfg("tf acc icon keep"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "icon_source_hash", iconHash),
+				),
+			},
+			{
+				Config: mkCfg("tf acc icon keep, edited"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("jamfplatform_pro_enrollment_customization.test", plancheck.ResourceActionUpdate),
+						// Known, not unknown: nothing about the icon changed, so
+						// Update must not upload.
+						plancheck.ExpectKnownValue("jamfplatform_pro_enrollment_customization.test", tfjsonpath.New("icon_source_hash"), knownvalue.StringExact(iconHash)),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "icon_source_hash", iconHash),
+				),
+			},
+		},
 	})
 }
 
@@ -975,9 +1140,24 @@ func TestAccResource_ProEnrollmentCustomization_IconSource_DriftOnUpdate(t *test
 			},
 			{
 				Config: mkCfg(altPath),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						// A customization has an update endpoint, so a new icon
+						// is delivered in place rather than by replacement.
+						plancheck.ExpectResourceAction("jamfplatform_pro_enrollment_customization.test", plancheck.ResourceActionUpdate),
+						// Both values the upload settles go unknown together:
+						// the hash is the signal Update reads, and icon_url is
+						// what the upload returns (issue #373).
+						plancheck.ExpectUnknownValue("jamfplatform_pro_enrollment_customization.test", tfjsonpath.New("icon_source_hash")),
+						plancheck.ExpectUnknownValue("jamfplatform_pro_enrollment_customization.test", tfjsonpath.New("branding_settings").AtMapKey("icon_url")),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					expectAttrChanged("icon_source_hash", &initialHash),
 					expectAttrChanged("branding_settings.icon_url", &initialURL),
+					// The committed hash must be the new fixture's own, which is
+					// what proves it came from the bytes the upload received.
+					resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "icon_source_hash", fixtureIconHash(t, altPath)),
 				),
 			},
 		},

@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_enrollment_customization Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (icon_source, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (branding_settings.icon_url); the two are mutually exclusive.
+  Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. Supply the icon either as a source the provider uploads (icon_source) or as a URL you uploaded yourself (branding_settings.icon_url); the two are mutually exclusive. The provider hashes a local icon_source on every plan and re-uploads it when the bytes change. It reads an http(s):// one during apply and compares the URL string at plan time, so re-pointing the URL uploads the new image, and the provider will not see a file published behind an unchanged URL.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_enrollment_customization (Resource)
 
-Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.
+Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. Supply the icon either as a source the provider uploads (`icon_source`) or as a URL you uploaded yourself (`branding_settings.icon_url`); the two are mutually exclusive. The provider hashes a local `icon_source` on every plan and re-uploads it when the bytes change. It reads an `http(s)://` one during apply and compares the URL string at plan time, so re-pointing the URL uploads the new image, and the provider will not see a file published behind an unchanged URL.
 
 **Required Jamf permissions**
 
@@ -33,9 +33,14 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # At most one authentication pane (LDAP or SSO) may be configured per
 # customization; the two are mutually exclusive.
 #
-# The icon may be supplied either as a local file path (`icon_source`,
-# re-uploaded automatically when its bytes change) or as a pre-uploaded URL
-# (`branding_settings.icon_url`); the two are mutually exclusive.
+# Supply the icon either as a source the provider uploads (`icon_source`) or as
+# a URL you uploaded yourself (`branding_settings.icon_url`); the two are
+# mutually exclusive.
+#
+# The provider hashes a local `icon_source` on every plan and re-uploads it when
+# the bytes change. It reads an `http(s)://` one during apply and compares the
+# URL string at plan time, so re-pointing the URL uploads the new image, and the
+# provider will not see a file published behind an unchanged URL.
 
 resource "jamfplatform_pro_enrollment_customization" "welcome" {
   display_name = "Welcome flow"
@@ -102,7 +107,7 @@ output "enrollment_customization_id" {
 
 ### Optional
 
-- `icon_source` (String) Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.
+- `icon_source` (String) Local filesystem path or `http(s)://` URL of the icon image to upload to Jamf Pro. The provider reads a local path on every plan and re-uploads when the bytes change. It reads a URL during apply only, so a plan compares the URL string rather than the bytes it serves. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.
 - `ldap_panes` (Attributes List) Optional LDAP authentication pane. At most one authentication pane (LDAP or SSO) may be configured per customization; supplying both `ldap_panes` and `sso_panes` is rejected at plan time. (see [below for nested schema](#nestedatt--ldap_panes))
 - `site_id` (String) Optional Jamf Pro site ID to associate with this customization. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors that value into state.
 - `sso_panes` (Attributes List) Optional SSO authentication pane. At most one authentication pane (LDAP or SSO) may be configured per customization; supplying both `sso_panes` and `ldap_panes` is rejected at plan time. (see [below for nested schema](#nestedatt--sso_panes))
@@ -111,7 +116,7 @@ output "enrollment_customization_id" {
 
 ### Read-Only
 
-- `icon_source_hash` (String) Provider-computed SHA-256 of the most recently uploaded icon bytes, prefixed `sha256:`. Used to detect changes to `icon_source` between plans. Returned by the provider; not user-settable.
+- `icon_source_hash` (String) SHA-256 of the most recently uploaded icon bytes, prefixed `sha256:`. The provider computes it during apply from the bytes it sends, so it reads `(known after apply)` on any plan that uploads an icon. An imported customization carries no hash, because nothing in a read recovers one. The first apply that gives it an `icon_source` therefore uploads the image once. Read-only.
 - `id` (String) Enrollment customization ID assigned by Jamf Pro.
 
 <a id="nestedatt--branding_settings"></a>

@@ -6,15 +6,17 @@ description: |-
   Uploads an image to Jamf Pro for use in Self Service branding. The resulting id is referenced by jamfplatform_pro_self_service_branding_macos (icon_id / banner_image_id) and jamfplatform_pro_self_service_branding_ios (icon_id).
   The Self Service branding image store is separate from the general Jamf Pro icon store (jamfplatform_pro_icon). The same numeric ID refers to a different image in each store, so a branding configuration must reference an ID minted by this resource rather than a jamfplatform_pro_icon ID.
   Change detection
-  The provider opens image_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. A changed hash replaces the resource, because Jamf Pro cannot update a branding image in place. An unchanged hash leaves the resource stable.
-  Source types
-  A local path (image_file_source = "./banner.png"): read on every plan, and stable unless the file content changes.A URL (image_file_source = "https://cdn.example.com/banner.png"): downloaded on every plan, and replaced when the remote content changes.
+  Jamf Pro has no branding-image update endpoint, so changing the image replaces the resource. source_hash holds a SHA-256 of the uploaded bytes. The provider computes it during apply from the exact bytes it sends, so any plan that creates or replaces an image shows source_hash = (known after apply).
+  image_file_source accepts a local filesystem path or an http(s):// URL, and the provider detects a change differently for each.
+  The provider reads and hashes a local path on every plan. Edit the file and the next plan shows the replacement.
+  For a URL it waits until apply, and compares the URL string at plan time instead. Re-point the URL and the next plan replaces the image. It cannot hash a URL during a plan, because remote content is not stable between reads. A CDN can answer one URL with different bytes from one request to the next, so a plan-time hash proposes replacements nobody asked for and fails applies. The cost is that the provider will not see a new file published behind an unchanged URL; to track a vendor's artwork, download it and point image_file_source at the committed copy.
   Dimensions
   The Jamf Pro admin UI recommends 180×180 for an icon and 1500×235 for a home page banner. PNG or GIF.
   Destroy behaviour
   Jamf Pro cannot delete a branding image. terraform destroy and replacements remove the resource from Terraform state only; the image stays on the tenant.
   Import
-  terraform import jamfplatform_pro_self_service_branding_image.example 81. The provider downloads the image bytes from Jamf Pro and stores their SHA-256. Jamf Pro may re-encode an uploaded image, so point image_file_source at the downloaded copy rather than your original upload; otherwise the next plan shows a replacement that changes nothing.
+  terraform import jamfplatform_pro_self_service_branding_image.example 81. The provider downloads the image bytes from Jamf Pro and stores their SHA-256.
+  Point image_file_source at the file you uploaded. This store hands an image back exactly as you sent it, so the hash import records matches your own copy and the first plan after import is an in-place update. The general icon store (jamfplatform_pro_icon) re-encodes a PNG, which is why its import workflow tells you to download the stored copy instead; that advice does not apply here.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -30,12 +32,13 @@ The Self Service branding image store is **separate** from the general Jamf Pro 
 
 ### Change detection
 
-The provider opens `image_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. A changed hash replaces the resource, because Jamf Pro cannot update a branding image in place. An unchanged hash leaves the resource stable.
+Jamf Pro has no branding-image update endpoint, so changing the image replaces the resource. `source_hash` holds a SHA-256 of the uploaded bytes. The provider computes it during apply from the exact bytes it sends, so any plan that creates or replaces an image shows `source_hash = (known after apply)`.
 
-### Source types
+`image_file_source` accepts a local filesystem path or an `http(s)://` URL, and the provider detects a change differently for each.
 
-- A local path (`image_file_source = "./banner.png"`): read on every plan, and stable unless the file content changes.
-- A URL (`image_file_source = "https://cdn.example.com/banner.png"`): downloaded on every plan, and replaced when the remote content changes.
+The provider reads and hashes a local path on every plan. Edit the file and the next plan shows the replacement.
+
+For a URL it waits until apply, and compares the URL string at plan time instead. Re-point the URL and the next plan replaces the image. It cannot hash a URL during a plan, because remote content is not stable between reads. A CDN can answer one URL with different bytes from one request to the next, so a plan-time hash proposes replacements nobody asked for and fails applies. The cost is that the provider will not see a new file published behind an unchanged URL; to track a vendor's artwork, download it and point `image_file_source` at the committed copy.
 
 ### Dimensions
 
@@ -47,7 +50,9 @@ Jamf Pro cannot delete a branding image. `terraform destroy` and replacements re
 
 ### Import
 
-`terraform import jamfplatform_pro_self_service_branding_image.example 81`. The provider downloads the image bytes from Jamf Pro and stores their SHA-256. Jamf Pro may re-encode an uploaded image, so point `image_file_source` at the downloaded copy rather than your original upload; otherwise the next plan shows a replacement that changes nothing.
+`terraform import jamfplatform_pro_self_service_branding_image.example 81`. The provider downloads the image bytes from Jamf Pro and stores their SHA-256.
+
+Point `image_file_source` at the file you uploaded. This store hands an image back exactly as you sent it, so the hash import records matches your own copy and the first plan after import is an in-place update. The general icon store (`jamfplatform_pro_icon`) re-encodes a PNG, which is why its import workflow tells you to download the stored copy instead; that advice does not apply here.
 
 **Required Jamf permissions**
 
@@ -62,7 +67,9 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 ```terraform
 # Upload a branding image (icon or banner) for Self Service branding.
 # The resulting id is referenced by the macOS / iOS branding resources.
-# Local file. Provider hashes bytes on every plan; replaces on content change.
+
+# Local file. The provider hashes the bytes on every plan, so editing the file
+# replaces the image and the next plan shows it.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png" # recommended 180x180 PNG/GIF
 }
@@ -71,7 +78,9 @@ resource "jamfplatform_pro_self_service_branding_image" "banner" {
   image_file_source = "./self-service-banner.png" # recommended 1500x235 PNG/GIF
 }
 
-# URL source. Provider downloads on every plan; replaces on upstream change.
+# URL source. The provider reads the bytes during apply and compares the URL
+# string at plan time. Re-point it to replace the image. The provider cannot see
+# a new file published behind this URL.
 # resource "jamfplatform_pro_self_service_branding_image" "from_url" {
 #   image_file_source = "https://cdn.example.com/self-service-icon.png"
 # }
@@ -82,7 +91,7 @@ resource "jamfplatform_pro_self_service_branding_image" "banner" {
 
 ### Required
 
-- `image_file_source` (String) Local filesystem path or `http(s)://` URL to the image. Read by the provider during every plan to compute `source_hash`. Required.
+- `image_file_source` (String) Local filesystem path or `http(s)://` URL to the image. The provider reads a local path on every plan and again on apply. It reads a URL on apply only, so a plan compares the URL string rather than the bytes it serves.
 
 ### Optional
 
@@ -91,7 +100,7 @@ resource "jamfplatform_pro_self_service_branding_image" "banner" {
 ### Read-Only
 
 - `id` (String) Jamf Pro Self Service branding image ID, derived from the upload URL. Changes when the resource is replaced.
-- `source_hash` (String) Provider-computed SHA-256 of the image bytes, prefixed `sha256:`. Replacement is triggered when this value changes.
+- `source_hash` (String) SHA-256 of the uploaded image bytes, prefixed `sha256:`. The provider computes it during apply from the bytes it sends, so it reads `(known after apply)` on any plan that creates or replaces the image.
 - `url` (String) Download URL returned by Jamf Pro after upload.
 
 <a id="nestedatt--timeouts"></a>
