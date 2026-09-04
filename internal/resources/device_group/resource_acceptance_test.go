@@ -208,6 +208,7 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_device_group" "test_import" {
 						name        = %q
+						description = "Acceptance test — safe to delete"
 						group_type  = "static"
 						device_type = "computer"
 					}
@@ -221,6 +222,69 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 				ResourceName:      "jamfplatform_device_group.test_import",
 				ImportState:       true,
 				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccResource_DeviceGroup_ImportStateSmartWithDescription is the acceptance
+// half of the issue #372 regression. The description is what the defect dropped,
+// and the smart shape is where it was reported, so this imports a group whose
+// criteria hydrate on the same path. `ImportStateVerify` compares the imported
+// state against the state the create left; the second import step then names the
+// description, because a future change that dropped it on both paths at once
+// would satisfy the comparison while managing nothing.
+//
+// `order` is declared rather than left to the element index because the criteria
+// flatten reconciles it against prior state on create (an omitted order stays
+// null) and adopts the wire value on import (0). Declaring it makes both sides 0,
+// which is the attribute's own contract rather than a concession to the test.
+func TestAccResource_DeviceGroup_ImportStateSmartWithDescription(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-import-smart-desc-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test_import_smart" {
+						name        = %q
+						description = "Acceptance test — safe to delete"
+						group_type  = "smart"
+						device_type = "computer"
+						criteria = [{
+							order    = 0
+							criteria = "Serial Number"
+							operator = "is"
+							value    = "C02IMPORT0001"
+						}]
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_device_group.test_import_smart", "description", "Acceptance test — safe to delete"),
+					logAttrValue(t, "jamfplatform_device_group.test_import_smart", "id"),
+				),
+			},
+			{
+				ResourceName:      "jamfplatform_device_group.test_import_smart",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				ResourceName: "jamfplatform_device_group.test_import_smart",
+				ImportState:  true,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected one imported instance, got %d", len(states))
+					}
+					if got := states[0].Attributes["description"]; got != "Acceptance test — safe to delete" {
+						return fmt.Errorf("imported description = %q, want the configured description", got)
+					}
+					return nil
+				},
 			},
 		},
 	})

@@ -220,9 +220,9 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 // Read syncs the Terraform state with the latest API representation.
 func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state DeviceGroupResourceModel
-	isImport := req.State.Raw.IsNull()
+	stateAbsent := req.State.Raw.IsNull()
 
-	if isImport {
+	if stateAbsent {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError(
 				"Missing resource identity",
@@ -285,10 +285,10 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	hydrating := importHydration(stateAbsent, state.Name)
+
 	var members []string
-	manageMembers := isImport || helpers.IsConfiguredValue(state.Members)
-	manageDescription := isImport || helpers.IsConfiguredValue(state.Description)
-	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && manageMembers {
+	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && (hydrating || helpers.IsConfiguredValue(state.Members)) {
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(readCtx, grp.ID)
 		if err != nil {
@@ -296,6 +296,9 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			return
 		}
 	}
+
+	manageMembers := manageMembersOnRead(hydrating, state.Members, members)
+	manageDescription := hydrating || helpers.IsConfiguredValue(state.Description)
 
 	priorCriteria := state.Criteria
 	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)

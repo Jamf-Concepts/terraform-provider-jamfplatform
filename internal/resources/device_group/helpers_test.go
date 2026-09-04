@@ -5,9 +5,18 @@ package device_group
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func TestValidateDeviceGroupPlan_SmartGroup(t *testing.T) {
@@ -204,5 +213,237 @@ func TestDiffStringSlices(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestImportHydration(t *testing.T) {
+	cases := []struct {
+		name        string
+		stateAbsent bool
+		groupName   types.String
+		want        bool
+	}{
+		{"a post-import read carries the id and nothing else", false, types.StringNull(), true},
+		{"an identity-only refresh has no state at all", true, types.StringNull(), true},
+		{"an ordinary refresh of a managed group", false, types.StringValue("tf-acc-group"), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := importHydration(tc.stateAbsent, tc.groupName); got != tc.want {
+				t.Errorf("importHydration = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestManageMembersOnRead(t *testing.T) {
+	declared, diags := types.SetValueFrom(context.Background(), types.StringType, []string{"device-uuid"})
+	if diags.HasError() {
+		t.Fatalf("building the declared member set: %v", diags)
+	}
+	declaredEmpty, diags := types.SetValueFrom(context.Background(), types.StringType, []string{})
+	if diags.HasError() {
+		t.Fatalf("building the empty member set: %v", diags)
+	}
+
+	cases := []struct {
+		name      string
+		hydrating bool
+		prior     types.Set
+		members   []string
+		want      bool
+	}{
+		{"declared members are owned", false, declared, []string{"device-uuid"}, true},
+		{"a declared empty set is owned", false, declaredEmpty, nil, true},
+		{"an import adopts the membership a group has", true, types.SetNull(types.StringType), []string{"device-uuid"}, true},
+		{"an import leaves an empty group unmanaged", true, types.SetNull(types.StringType), nil, false},
+		{"an undeclared set stays unmanaged on refresh", false, types.SetNull(types.StringType), []string{"device-uuid"}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := manageMembersOnRead(tc.hydrating, tc.prior, tc.members); got != tc.want {
+				t.Errorf("manageMembersOnRead = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// readTestGroupID is the identifier the import-hydration Read tests below pass
+// through, matching the UUID shape the platform mints.
+const readTestGroupID = "9c43905e-d220-4f17-a5e1-869f7440e979"
+
+// deviceGroupReadClient returns a device-group client pointed at a stub server
+// answering the group read with grp and the member read with members. The seam is
+// the HTTP boundary rather than an injected interface, matching
+// pro_id_resolver_test.go, whose mock client this reuses.
+func deviceGroupReadClient(t *testing.T, grp map[string]any, members []string) *devicegroups.Client {
+	t.Helper()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/members") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"totalCount": len(members), "results": members})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(grp)
+	})
+	return devicegroups.New(newProIDMockClient(t, handler))
+}
+
+// readAfterImport drives Read with the state Terraform hands a resource after an
+// import: the framework's empty state with the passthrough identifier written
+// into it, which is what ImportStatePassthroughID produces. Building the state
+// that way rather than asserting on a flag is the point. Read receives a
+// populated object on that path, so a null-state check cannot recognise it.
+func readAfterImport(t *testing.T, r *DeviceGroupResource) DeviceGroupResourceModel {
+	t.Helper()
+	ctx := context.Background()
+
+	var schemaResp resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	var identityResp resource.IdentitySchemaResponse
+	r.IdentitySchema(ctx, resource.IdentitySchemaRequest{}, &identityResp)
+
+	stub := tfsdk.State{
+		Schema: schemaResp.Schema,
+		Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+	}
+	if diags := stub.SetAttribute(ctx, path.Root("id"), readTestGroupID); diags.HasError() {
+		t.Fatalf("seeding the imported identifier: %v", diags)
+	}
+	if stub.Raw.IsNull() {
+		t.Fatal("the imported state must be a populated object; a null one would make the old detector work")
+	}
+
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: schemaResp.Schema, Raw: stub.Raw.Copy()},
+		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema},
+	}
+	r.Read(ctx, resource.ReadRequest{State: stub}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var state DeviceGroupResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the hydrated state: %v", diags)
+	}
+	return state
+}
+
+// TestRead_ImportHydratesDescription is the regression test for issue #372: an
+// imported group came back with a null description whatever the API held, which
+// left the attribute unmanaged and no later plan to show it.
+func TestRead_ImportHydratesDescription(t *testing.T) {
+	r := &DeviceGroupResource{client: deviceGroupReadClient(t, map[string]any{
+		"id":          readTestGroupID,
+		"name":        "tf-acc-import",
+		"description": "Created outside Terraform",
+		"deviceType":  "COMPUTER",
+		"groupType":   "SMART",
+		"memberCount": 0,
+	}, nil)}
+
+	state := readAfterImport(t, r)
+	if got := state.Description.ValueString(); got != "Created outside Terraform" {
+		t.Errorf("description = %q, want %q", got, "Created outside Terraform")
+	}
+}
+
+// TestRead_ImportHydratesMembers covers the second attribute the same gate
+// governed. A static group's membership was discarded on import for the same
+// reason the description was.
+func TestRead_ImportHydratesMembers(t *testing.T) {
+	r := &DeviceGroupResource{client: deviceGroupReadClient(t, map[string]any{
+		"id":          readTestGroupID,
+		"name":        "tf-acc-import-static",
+		"deviceType":  "COMPUTER",
+		"groupType":   "STATIC",
+		"memberCount": 1,
+	}, []string{"db1c72d0-1620-44ae-a4cd-4992b713efcd"})}
+
+	state := readAfterImport(t, r)
+	var members []string
+	if diags := state.Members.ElementsAs(context.Background(), &members, false); diags.HasError() {
+		t.Fatalf("reading the hydrated members: %v", diags)
+	}
+	if len(members) != 1 || members[0] != "db1c72d0-1620-44ae-a4cd-4992b713efcd" {
+		t.Errorf("members = %v, want one device", members)
+	}
+}
+
+// TestRead_ImportLeavesAnEmptyGroupsMembersNull pins the other half of the
+// membership rule. A group with no members imports as null rather than as an
+// empty set, so importing it agrees with creating the same group without the
+// attribute. Storing the empty set instead makes the import round-trip report a
+// difference over nothing.
+func TestRead_ImportLeavesAnEmptyGroupsMembersNull(t *testing.T) {
+	r := &DeviceGroupResource{client: deviceGroupReadClient(t, map[string]any{
+		"id":          readTestGroupID,
+		"name":        "tf-acc-import-empty",
+		"deviceType":  "COMPUTER",
+		"groupType":   "STATIC",
+		"memberCount": 0,
+	}, nil)}
+
+	state := readAfterImport(t, r)
+	if !state.Members.IsNull() {
+		t.Errorf("members = %s, want null", state.Members)
+	}
+}
+
+// TestRead_RefreshLeavesAnUndeclaredDescriptionNull is the control on the fix. An
+// ordinary refresh must keep honouring the resource's omit-means-unmanaged
+// contract, so a description set outside Terraform stays out of state when the
+// configuration never declared one.
+func TestRead_RefreshLeavesAnUndeclaredDescriptionNull(t *testing.T) {
+	ctx := context.Background()
+	r := &DeviceGroupResource{client: deviceGroupReadClient(t, map[string]any{
+		"id":          readTestGroupID,
+		"name":        "tf-acc-refresh",
+		"description": "Set in the admin UI",
+		"deviceType":  "COMPUTER",
+		"groupType":   "SMART",
+		"memberCount": 0,
+	}, nil)}
+
+	var schemaResp resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	var identityResp resource.IdentitySchemaResponse
+	r.IdentitySchema(ctx, resource.IdentitySchemaRequest{}, &identityResp)
+
+	prior := tfsdk.State{
+		Schema: schemaResp.Schema,
+		Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+	}
+	if diags := prior.Set(ctx, DeviceGroupResourceModel{
+		ID:          types.StringValue(readTestGroupID),
+		Name:        types.StringValue("tf-acc-refresh"),
+		Description: types.StringNull(),
+		DeviceType:  types.StringValue("computer"),
+		GroupType:   types.StringValue("smart"),
+		Members:     types.SetNull(types.StringType),
+		MemberCount: types.Int64Value(0),
+		Timeouts:    helpers.NewResourceTimeoutsNullValue(deviceGroupTimeoutAttributeTypes),
+	}); diags.HasError() {
+		t.Fatalf("seeding prior state: %v", diags)
+	}
+
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: schemaResp.Schema, Raw: prior.Raw.Copy()},
+		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema},
+	}
+	r.Read(ctx, resource.ReadRequest{State: prior}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var state DeviceGroupResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the refreshed state: %v", diags)
+	}
+	if !state.Description.IsNull() {
+		t.Errorf("description = %q, want null: an undeclared attribute stays unmanaged on refresh", state.Description.ValueString())
 	}
 }
