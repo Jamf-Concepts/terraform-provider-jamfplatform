@@ -4,14 +4,12 @@
 // SDK endpoints used:
 //   securitycloud.CreateDeviceGroupV1
 //   securitycloud.GetDeviceGroupV1
-//   securitycloud.UpdateDeviceGroupV1
+//   securitycloud.UpdateDeviceGroupV2
 //   securitycloud.DeleteDeviceGroupV1
 //   securitycloud.ListDeviceGroupsV2 (data sources, list resource, and the
 //                                     singular data source's name lookup)
 //
 // Deliberately not used:
-//   securitycloud.ListDeviceGroupsV1   deprecated in the spec (deprecation-date
-//                                      2026-08-12); content identical to V2.
 //   securitycloud.ResolveDeviceGroupV2ByName
 //                                      cannot express the built-in group. Where
 //                                      the match is the implicit "Default Group",
@@ -22,18 +20,10 @@
 //                                      reach its own id-less refusal. The name
 //                                      lookup matches over ListDeviceGroupsV2
 //                                      locally instead — see groupsNamedExactly.
-//   securitycloud.UpdateDeviceGroupV2  the spec's nominated successor to the
-//                                      deprecated V1 update, but the gateway does
-//                                      not route PUT /v2/groups/{id} — 403, same
-//                                      body as a deliberately bogus path, under
-//                                      the privilege that makes V1 succeed.
-//                                      Re-verified 2026-08-29. Raised upstream, so
-//                                      Update still calls the deprecated V1 with a
-//                                      staticcheck suppression.
 //   securitycloud.ApplyDeviceGroupV*   generated name-keyed upsert; Terraform owns
 //                                      the create-versus-update decision.
 //
-// Status: current. Last reviewed 2026-08-29.
+// Status: current. Last reviewed 2026-09-04.
 
 package device_group
 
@@ -200,27 +190,41 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 
 // Update renames a Jamf Security Cloud device group.
 //
-// A rename is the only update this resource can make. The PUT echoes the stored
-// object, but state is taken from a fresh read for the same reason Create does it.
+// A rename is the only update this resource can make, and state comes from a
+// fresh read afterwards for the same reason Create does it.
 //
-// UpdateDeviceGroupV1 is called despite being marked deprecated in the spec
-// (deprecation-date 2026-08-25), because its nominated successor does not exist on
-// the wire. STYLE_GUIDE §Deprecated with no generated successor says to verify the
-// successor before concluding anything, so it was verified twice against the EU
-// sandbox on 2026-08-29: PUT /securitycloud/v2/groups/{id} answers 403
-// BAD_PERMISSIONS through both curl and the SDK, using the same token and the same
-// device-groups:update privilege that makes the v1 PUT return 200. A control probe
-// on a deliberately bogus path returns the identical body, which is what
-// identifies it as an unrouted endpoint rather than a privilege gap; PATCH is not
-// served at either version either. Raised upstream.
+// The write goes to PUT /securitycloud/v2/groups/{id}, which answers 204 with no
+// body, so that read-back is the only source of the stored name — unlike the v1
+// PUT this used to call, which echoed the stored object. That route was
+// unrouted when this resource shipped — 403 BAD_PERMISSIONS through both curl and
+// the SDK, indistinguishable from a bogus path — and Update called the deprecated
+// v1 PUT under a staticcheck suppression while the defect was open. It was fixed on
+// 2026-09-04 and SDK v0.22.0 withdrew both v1 write paths with the spec, so the
+// suppression and the fallback are gone. POST and GET/DELETE by id remain at v1;
+// only the list and the update moved.
 //
-// Revisit when the v2 route starts answering, but note the swap is not call-for-call:
-// the request body is identical (*UpdateGroupRequest both sides), yet v1 answers 200
-// with the stored object and v2 answers 204 with none, so the SDK generates
-// `UpdateDeviceGroupV2(ctx, id, req) error` against v1's `(*Group, error)`. The call
-// site below discards the object already, so the change is to
-// `if err := r.client.UpdateDeviceGroupV2(...)` plus dropping this suppression — the
-// arity differs and the current line will not compile as-is.
+// That history is also why the read-back is compared rather than merely assigned. A
+// 204 says the gateway accepted the request, not that the handler applied it, and
+// this exact route has already been both: it answered 403 on 2026-08-29, the refusal
+// cleared on 2026-09-03 when the authorization policy deployed, and the handler
+// behind it then 404'd until it was fixed on 2026-09-04. A handler that takes a write
+// and discards it would be worse than one that refuses it, because Terraform would
+// report a converged rename over a group still holding its old name — so a served
+// name that differs from the planned one is an error naming the route, not a value to
+// commit. Assigning it instead would overwrite the plan and hide the whole failure.
+//
+// A read-back that fails errors without writing state, which is the opposite of what
+// Create does and for the opposite reason. The rename has already landed on the
+// tenant, and the group is already tracked, so leaving state on the previous name
+// costs one refresh to reconcile; there is nothing to orphan and no unique name to
+// collide with on a retry. The diagnostic has to say so, or an operator reading "could
+// not be read" will assume the rename did not happen.
+//
+// Both calls share the one updateCtx built from a single timeout, so a PUT that spends
+// most of the 60s default leaves the GET whatever remains and the read-back is what
+// fails. Deliberate: the timeout is the operator's budget for the update as a whole,
+// and a per-call split would let a configured 60s take 120s. The failure mode is the
+// one described above — state one refresh behind, never a silent divergence.
 func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DeviceGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -241,8 +245,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	//nolint:staticcheck // SA1019: the v2 successor is unrouted — see the doc comment above.
-	if _, err := r.client.UpdateDeviceGroupV1(updateCtx, plan.ID.ValueString(), buildGroupUpdateInput(plan)); err != nil {
+	if err := r.client.UpdateDeviceGroupV2(updateCtx, plan.ID.ValueString(), buildGroupUpdateInput(plan)); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
 			resp.Diagnostics.AddError("Error updating Jamf Security Cloud device group", err.Error())
 		}
@@ -251,7 +254,27 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 	got, err := r.client.GetDeviceGroupV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud device group", err.Error())
+		resp.Diagnostics.AddError(
+			"Error confirming the renamed Jamf Security Cloud device group",
+			"Jamf Security Cloud accepted the rename of group \""+plan.ID.ValueString()+"\", so the group "+
+				"already carries the new name on the tenant. The provider could not read it back to confirm "+
+				"what was stored, so Terraform's state still holds the previous name. Run \"terraform plan\" "+
+				"again to reconcile it, and do not rename the group back. Underlying error: "+
+				err.Error(),
+		)
+		return
+	}
+
+	if got.Name != plan.Name.ValueString() {
+		resp.Diagnostics.AddError(
+			"Jamf Security Cloud accepted the rename without applying it",
+			"PUT /securitycloud/v2/groups/"+plan.ID.ValueString()+" reported success, but reading the group "+
+				"back returned the name \""+got.Name+"\" rather than the configured \""+plan.Name.ValueString()+
+				"\". Jamf Security Cloud accepted the write and dropped it. Terraform has left state on the "+
+				"previous name rather than recording a rename that did not happen. Retry the apply. If it "+
+				"persists, report it to Jamf quoting that route, because no change to the configuration can "+
+				"work around a write the service accepts and drops.",
+		)
 		return
 	}
 	assignDeviceGroupResourceModel(&plan, got)

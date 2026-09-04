@@ -47,7 +47,7 @@ func ConfigureSecurityCloud(_ context.Context, providerData any, resourceType st
 		)
 		return nil, diags
 	}
-	if scopeDiags := pd.RequireScope(resourceType, ScopeEnvironment, ScopeTenant); scopeDiags.HasError() {
+	if scopeDiags := pd.RequireScope(resourceType, SecurityCloudScopes...); scopeDiags.HasError() {
 		diags.Append(scopeDiags...)
 		return nil, diags
 	}

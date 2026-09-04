@@ -109,7 +109,7 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("Jamf Platform device actions", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("Jamf Platform device actions", providerdata.DeviceActionsScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

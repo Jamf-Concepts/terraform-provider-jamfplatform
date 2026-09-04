@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro login page disclaimer (Settings > System > Login page). One record per tenant. The three disclaimer text fields (disclaimer_heading, disclaimer_main_text, action_text) are required on every write, regardless of include_custom_disclaimer: Jamf Pro rejects a write that omits any of them or sends an empty string. The custom disclaimer is shown to users only when include_custom_disclaimer = true, but the text must always be present. A field you omit keeps its current Jamf Pro value, including on the first apply: the resource adopts the existing settings and changes only the fields you declare. Import with terraform import jamfplatform_pro_login_page_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Login disclaimer | Update | `login-disclaimer` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro login page disclaimer (Settings > System > Login page). One
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

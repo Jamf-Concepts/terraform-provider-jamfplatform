@@ -189,6 +189,54 @@ func TestRequireScope_DiagnosticIsActionable(t *testing.T) {
 // with no warning on that path — so a remedy naming only the provider block
 // tells the most likely reader, a CI runner exporting the preferred environment
 // variable, to remove a line that is not in their configuration.
+// TestRequireScope_RemedyNamesTheSwapNotJustTheAddition pins the one thing every
+// reader of this diagnostic needs and the earlier wording withheld.
+//
+// Reaching the refusal means carrying a scope the construct rejects, so the
+// input that selected it is already set. `environment_id` and `tenant_id` are
+// mutually exclusive, so a remedy that said only "set `environment_id`" traded
+// this error for `Conflicting API Integration Scope` on the next plan — a
+// deterministic second cycle for 100% of readers. The remedy has to name what to
+// remove as well as what to add.
+func TestRequireScope_RemedyNamesTheSwapNotJustTheAddition(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		configured ScopeKind
+		allowed    []ScopeKind
+		wantRemove string
+		wantAdd    string
+	}{
+		{"tenant aimed at an environment-only family", ScopeTenant, []ScopeKind{ScopeEnvironment},
+			"`tenant_id`", "`environment_id`"},
+		{"environment aimed at a tenant-only family", ScopeEnvironment, []ScopeKind{ScopeTenant},
+			"`environment_id`", "`tenant_id`"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := scopeRemedy(tc.configured, tc.allowed)
+			if !strings.Contains(got, "Replace "+tc.wantRemove+" with "+tc.wantAdd) {
+				t.Errorf("remedy does not name the swap %s -> %s, got:\n%s", tc.wantRemove, tc.wantAdd, got)
+			}
+			if !strings.Contains(got, "mutually exclusive") {
+				t.Errorf("remedy does not say the two cannot both be set, got:\n%s", got)
+			}
+		})
+	}
+}
+
+// TestRequireScope_OrganizationRemedyDoesNotNameASwap covers the branch where
+// there is nothing to remove: an organization-scoped provider has neither
+// attribute set, so "replace X with Y" would name an attribute the operator
+// never wrote.
+func TestRequireScope_OrganizationRemedyDoesNotNameASwap(t *testing.T) {
+	got := scopeRemedy(ScopeOrganization, []ScopeKind{ScopeEnvironment})
+	if strings.Contains(got, "Replace ") {
+		t.Errorf("organization scope has no attribute to replace, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Set `environment_id`") {
+		t.Errorf("remedy should still say which attribute to set, got:\n%s", got)
+	}
+}
+
 func TestRequireScope_OrganizationOnlyRemedyNamesTheEnvironment(t *testing.T) {
 	for _, configured := range []ScopeKind{ScopeEnvironment, ScopeTenant} {
 		t.Run(configured.String(), func(t *testing.T) {
