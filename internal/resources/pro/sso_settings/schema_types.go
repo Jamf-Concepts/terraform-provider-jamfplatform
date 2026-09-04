@@ -6,6 +6,8 @@ package sso_settings
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // ssoSettingsTimeoutAttributeTypes defines the timeout attribute types.
@@ -16,51 +18,56 @@ var ssoSettingsTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// configurationType values accepted by /v3/sso. UNKNOWN appears in the
-// upstream openapi enum but is rejected at runtime (probe G7); the schema
-// restricts to the three accepted values.
+// configurationType values accepted by /v3/sso. The generated set is the three
+// accepted values; the UNKNOWN that the upstream openapi enum once carried, and
+// that probe G7 found runtime-rejected, is no longer generated, so there is
+// nothing left to narrow.
 const (
-	configurationTypeSAML         = "SAML"
-	configurationTypeOIDC         = "OIDC"
-	configurationTypeOIDCWithSAML = "OIDC_WITH_SAML"
+	configurationTypeSAML         = pro.SsoSettingsV3ConfigurationTypeSaml
+	configurationTypeOIDC         = pro.SsoSettingsV3ConfigurationTypeOidc
+	configurationTypeOIDCWithSAML = pro.SsoSettingsV3ConfigurationTypeOidcWithSaml
 )
 
 // validConfigurationTypes are the accepted configuration_type values.
-var validConfigurationTypes = []string{
-	configurationTypeSAML,
-	configurationTypeOIDC,
-	configurationTypeOIDCWithSAML,
-}
+var validConfigurationTypes = pro.SsoSettingsV3ConfigurationTypeValues()
 
-// metadataSource values accepted by /v3/sso. UNKNOWN appears in openapi but
-// is runtime-rejected (probe G7).
+// metadataSource values accepted by /v3/sso.
 const (
-	metadataSourceURL  = "URL"
-	metadataSourceFILE = "FILE"
+	metadataSourceURL  = pro.SamlSettingsMetadataSourceURL
+	metadataSourceFILE = pro.SamlSettingsMetadataSourceFile
 )
 
+// validMetadataSources is deliberately narrower than
+// pro.SamlSettingsMetadataSourceValues(), which also carries UNKNOWN: probe G7
+// found /v3/sso rejects UNKNOWN at runtime, so offering it in the schema would
+// let a plan pass validation and then fail mid-apply. The set is curated; the
+// spellings are still the SDK's.
 var validMetadataSources = []string{metadataSourceURL, metadataSourceFILE}
 
-// idpProviderType enum values.
-var validIdpProviderTypes = []string{
-	"ADFS", "OKTA", "GOOGLE", "SHIBBOLETH", "ONELOGIN",
-	"PING", "CENTRIFY", "AZURE", "OTHER",
-}
+// validIdpProviderTypes are the accepted saml_settings.idp_provider_type values.
+var validIdpProviderTypes = pro.SamlSettingsIdpProviderTypeValues()
 
-// userMapping enum (shared between SAML and OIDC blocks).
-var validUserMappings = []string{"USERNAME", "EMAIL"}
+// validUserMappings is the userMapping enum, shared between the SAML and OIDC
+// blocks because the API declares the same two values for both. Keyed on the
+// SAML vocabulary; TestUserMappingVocabulariesAgree fails if a future SDK
+// release stops the two agreeing, since one shared var could then only be right
+// for one of them.
+var validUserMappings = pro.SamlSettingsUserMappingValues()
 
 // signing_certificate.setup_type enum.
 const (
-	setupTypeGenerated = "GENERATED"
-	setupTypeUploaded  = "UPLOADED"
-	setupTypeNone      = "NONE"
+	setupTypeGenerated = pro.SsoKeystoreKeystoreSetupTypeGenerated
+	setupTypeUploaded  = pro.SsoKeystoreKeystoreSetupTypeUploaded
+	setupTypeNone      = pro.SsoKeystoreKeystoreSetupTypeNone
 )
 
-var validSetupTypes = []string{setupTypeGenerated, setupTypeUploaded, setupTypeNone}
+var validSetupTypes = pro.SsoKeystoreKeystoreSetupTypeValues()
 
-// signing_certificate.type enum.
-var validKeystoreTypes = []string{"PKCS12", "JKS"}
+// validKeystoreTypes is deliberately narrower than pro.SsoKeystoreTypeValues(),
+// which also carries NONE: NONE is what the keystore type reads back as when no
+// certificate is configured, not a type a caller can ask for. The set is
+// curated; the spellings are the SDK's.
+var validKeystoreTypes = []string{pro.SsoKeystoreTypePkcs12, pro.SsoKeystoreTypeJks}
 
 // signingCertificateKeyAttrTypes describes the element type of the Computed
 // `keys` list in the cert sub-block. The wire shape is

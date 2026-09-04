@@ -66,7 +66,7 @@ func (r *ComputerCheckInSettingsResource) IdentitySchema(ctx context.Context, re
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Client Check-In settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Client Check-In settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -77,8 +77,8 @@ func (r *ComputerCheckInSettingsResource) IdentitySchema(ctx context.Context, re
 func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). " +
-			"Singleton — one record per tenant. " +
-			"**Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. " +
+			"One record per tenant. " +
+			"A startup or login toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the toggles you declare. A boolean has no \"unset\" state, so omit it to preserve the current value, or set `true` or `false` to change it. `check_in_frequency` is required. " +
 			"Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

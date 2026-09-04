@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_app_installer Data Source - terraform-provider-jam
 subcategory: ""
 description: |-
   Look up a single App Installer deployment by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Mac Applications | `read:pro:mac-applications` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Read | `applications` |
 ---
 
 # jamfplatform_pro_app_installer (Data Source)
 
 Look up a single App Installer deployment by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Mac Applications | `read:pro:mac-applications` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Read | `applications` |
 
 ## Example Usage
 
@@ -59,7 +59,7 @@ data "jamfplatform_pro_app_installer" "by_id" {
 - `enabled` (Boolean) Whether the deployment is enabled.
 - `install_predefined_config_profiles` (Boolean) Whether predefined configuration profiles are installed.
 - `latest_available_version` (String) Latest version available in the catalog.
-- `selected_version` (String) Version Jamf Pro has selected. Empty under `AUTOMATIC`.
+- `selected_version` (String) Version the deployment installs under `MANUAL`. Empty under `AUTOMATIC`.
 - `site_id` (String) Site ID. `-1` means none.
 - `smart_group_id` (String) Smart computer group ID. `-1` means none.
 - `title_available_in_ais` (Boolean) Whether the title is available in the App Installers catalog.

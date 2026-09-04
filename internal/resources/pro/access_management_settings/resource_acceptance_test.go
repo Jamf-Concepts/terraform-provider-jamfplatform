@@ -8,7 +8,6 @@ package access_management_settings_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -24,7 +23,7 @@ import (
 // object's Server UUID, so the test creates a `jamfplatform_pro_automated_device_enrollment`
 // instance from this token and points the setting at its `server_uuid`. Without the token
 // the test skips. Never commit token material to fixtures.
-const adeTokenEnvVar = "JAMFPLATFORM_ADE_TOKEN"
+const adeTokenEnvVar = "JAMFPLATFORM_ACC_PRO_DEP_TOKEN"
 
 // adeFixture returns an ADE resource block created from the env-supplied token. Its
 // `server_uuid` (the Apple-recorded MDM Server UUID) is what the Access Management setting
@@ -67,7 +66,7 @@ func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
 // NOTE: this mutates the tenant's live Access Management configuration and clears it on
 // destroy — re-apply your real value afterwards if the tenant is in use.
 func TestAccResource_ProAccessManagementSettings_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping Access Management settings acceptance test", adeTokenEnvVar)
 	}
@@ -157,7 +156,7 @@ func TestAccResource_ProAccessManagementSettings_RejectsNonSingletonImport(t *te
 // TestAccDataSource_ProAccessManagementSettings_Basic reads the setting back through the
 // data source after the resource points it at the ADE instance's Server UUID.
 func TestAccDataSource_ProAccessManagementSettings_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping Access Management settings data source test", adeTokenEnvVar)
 	}

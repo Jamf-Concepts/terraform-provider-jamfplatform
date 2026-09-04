@@ -78,7 +78,7 @@ func (r *AdvancedVolumePurchasingContentSearchResource) IdentitySchema(ctx conte
 // resource.
 func (r *AdvancedVolumePurchasingContentSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro advanced volume purchasing content search: a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is report data Jamf Pro computes, and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels: the UI's `Content Name` is `Name`, `Price` is `Cost`, and `Location` is `Account`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced volume purchasing content search ID assigned by Jamf Pro.",
@@ -101,7 +101,7 @@ func (r *AdvancedVolumePurchasingContentSearchResource) Schema(ctx context.Conte
 				Default:             stringdefault.StaticString(noSiteID),
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria.",
+				MarkdownDescription: "Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omitting the attribute leaves any existing criteria untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all criteria.",
 				Optional:            true,
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
@@ -112,7 +112,7 @@ func (r *AdvancedVolumePurchasingContentSearchResource) Schema(ctx context.Conte
 				},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Set of content column names to display in the search results (e.g. `Name`, `Cost`, `Total`, `Type`). Order is not significant — Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.",
+				MarkdownDescription: "Set of content column names shown in the search results, for example `Name`, `Cost`, `Total`, `Type`. Order is not significant: Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omitting the attribute leaves any existing columns untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all display columns.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,

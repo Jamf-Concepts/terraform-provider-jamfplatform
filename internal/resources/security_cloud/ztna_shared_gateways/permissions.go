@@ -16,6 +16,6 @@ var dataSourceSDKMethods = []string{
 	"ListZtnaSharedGatewaysV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the shared gateways data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)

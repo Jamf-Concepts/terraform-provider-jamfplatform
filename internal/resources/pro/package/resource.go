@@ -81,7 +81,7 @@ func (r *PackageResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the package resource.
 func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, operating system requirement, info/notes, optional manifest, optional hashes) that Jamf Pro pairs with a file on a distribution point.\n\n**The operating mode is inferred from the configuration**:\n\n- **Cloud distribution point upload** — set `package_file_source` (a local path or `https?://` URL). The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and `cloud_transfer_status` becomes `READY`. In this mode Jamf Pro populates the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`); setting any of them in configuration is rejected before the change runs.\n- **Distribution point with supplied hashes** — omit `package_file_source` and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.\n- **Metadata only** — omit `package_file_source` and all hash attributes. The provider manages only the package record; no file is uploaded.\n\n**Notes:**\n\n- `package_file_source_checksum` (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.\n- `size` is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.\n- Changing only metadata (`info`, `notes`, `priority`, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.\n\n**Manifest**: `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.\n\n**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata Jamf Pro pairs with a file on a distribution point: name, category, restart requirement, operating system requirement, info and notes, an optional manifest and optional hashes.\n\n### Operating modes\n\nThe mode is inferred from your configuration.\n\n- Cloud distribution point upload. Set `package_file_source` to a local path or an `https?://` URL. The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and `cloud_transfer_status` becomes `READY`. In this mode Jamf Pro populates the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`), and setting any of them in configuration is rejected before the change runs.\n- Distribution point with supplied hashes. Omit `package_file_source` and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.\n- Metadata only. Omit `package_file_source` and every hash attribute. The provider manages the package record alone, and no file is uploaded.\n\n### Uploads and updates\n\n- `package_file_source_checksum` (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading, which catches on-disk corruption.\n- `size` is read-only. Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.\n- Changing only metadata (`info`, `notes`, `priority` and so on) updates the record without re-uploading the file. The file is re-uploaded only when its contents change.\n- `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest, and clearing it removes the manifest from Jamf Pro. The manifest is likewise re-uploaded only when its contents change.\n- Both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file, up to 8 GiB and following at most 10 redirects, before uploading." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID assigned by Jamf Pro.",
@@ -113,7 +113,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"info": schema.StringAttribute{
-				MarkdownDescription: "**\"Info\"** in the Jamf Pro admin UI. Free-form metadata field. Jamf Pro returns `\"\"` when null — the provider reconciles to keep state stable.",
+				MarkdownDescription: "**\"Info\"** in the Jamf Pro admin UI. Free-form metadata field. Jamf Pro returns an empty string when the field is unset, and the provider reconciles that to keep state stable.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -121,7 +121,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"notes": schema.StringAttribute{
-				MarkdownDescription: "**\"Notes\"** in the Jamf Pro admin UI. Free-form notes field. Jamf Pro returns `\"\"` when null — the provider reconciles to keep state stable.",
+				MarkdownDescription: "**\"Notes\"** in the Jamf Pro admin UI. Free-form notes field. Jamf Pro returns an empty string when the field is unset, and the provider reconciles that to keep state stable.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -172,7 +172,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"available_in_software_update": schema.BoolAttribute{
-				MarkdownDescription: "**\"Install only if available in Software Update\"** in the Jamf Pro admin UI. Defaults to `false`. NOT the same as the deferred `osInstall` flag.",
+				MarkdownDescription: "**\"Install only if available in Software Update\"** in the Jamf Pro admin UI. Defaults to `false`. This is not the separate OS-installer flag, which this resource does not expose.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -182,7 +182,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Upload-source inputs (no wire field — pure provider plumbing).
 			"package_file_source": schema.StringAttribute{
-				MarkdownDescription: "Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes — setting both is rejected before the change runs.",
+				MarkdownDescription: "Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. A cloud distribution point must be configured on the tenant; without one the change is refused before any bytes are uploaded. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes; setting both is rejected before the change runs.",
 				Optional:            true,
 			},
 			"package_file_source_checksum": schema.StringAttribute{
@@ -287,7 +287,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 			// computed fields so it can recompute when the binary changes without
 			// tripping "inconsistent result after apply".
 			"size": schema.StringAttribute{
-				MarkdownDescription: "Package binary size in bytes. Read-only — Jamf Pro calculates this from the uploaded package file, so any value set in configuration is ignored. Packages managed as metadata only (no uploaded file) leave this empty. Shown as `(known after apply)` on any update that changes the package, because Jamf Pro recalculates the size after the change is saved.",
+				MarkdownDescription: "Package binary size in bytes. Read-only: Jamf Pro calculates it from the uploaded package file, so any value set in configuration is ignored. A package managed as metadata only, with no uploaded file, leaves this empty. It shows as `(known after apply)` on any update that changes the package, because Jamf Pro recalculates the size after the change is saved.",
 				Computed:            true,
 			},
 			"install_language": schema.StringAttribute{
@@ -319,7 +319,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"cloud_transfer_status": schema.StringAttribute{
-				MarkdownDescription: "Cloud distribution point transfer status — updated as Jamf Pro processes an uploaded file, reaching `\"READY\"` once the upload is complete. Empty for records with no uploaded file.",
+				MarkdownDescription: "Cloud distribution point transfer status. Jamf Pro updates it as it processes an uploaded file, reaching `\"READY\"` once the upload is complete. Empty for a record with no uploaded file.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					resetIfSourceChangedString(path.MatchRoot("package_file_source")),

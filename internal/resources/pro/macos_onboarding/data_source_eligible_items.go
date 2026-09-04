@@ -61,7 +61,7 @@ func (d *OnboardingEligibleItemsDataSource) Schema(ctx context.Context, req data
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							MarkdownDescription: "Object ID — use as `entity_id` in an onboarding item.",
+							MarkdownDescription: "Object ID. Use it as the `entity_id` of an onboarding item.",
 							Computed:            true,
 						},
 						"name": schema.StringAttribute{

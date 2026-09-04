@@ -15,13 +15,20 @@ Provides resources and data sources for managing the products and services avail
 * [Devices](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-devices)
 * [Device Actions](https://developer.jamf.com/platform-api/reference/post_v1-tenant-tenantid-devices-id-check-in)
 
-It additionally provides resources and data sources for [Jamf Pro](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-account-groups) under the `jamfplatform_pro_*` namespace, with further Jamf products to follow. See the **Supported Jamf products** section below for the per-product tenant version targets.
+It additionally provides resources and data sources for these products, each under its own namespace:
 
-Note that the Platform API is currently in public beta. Provider stability, functionality and schemas are subject to change without notice.
+* [Jamf Pro](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-account-groups) — `jamfplatform_pro_*`
+* [Jamf Security Cloud](https://learn.jamf.com/en-US/bundle/jamf-security-cloud-documentation/page/Jamf_Security_Cloud_Documentation.html) — `jamfplatform_security_cloud_*`: Custom DNS, ZTNA gateways and access policy, UEM Connect, device groups and activation profiles
+* Jamf AI Governance — `jamfplatform_ai_governance_*`: the managed settings delivered to an AI tool, and the product catalogue
+* Jamf Account — `jamfplatform_account_*`: organization-level single sign-on, meaning claimed domains and the identity providers that sign users in for them
+
+Further Jamf products are expected to follow. See the **Supported Jamf products** section below for the per-product tenant version targets, and the [guides](./docs/guides/) for the families that carry behaviour worth reading first.
+
+The Jamf Platform API reached general availability on 3 September 2026. Upgrading a configuration written against the public beta takes a coordinated change to the gateway host, the credentials and the scope attribute — see the [Upgrading to the Platform API GA](docs/guides/platform-api-ga.md) guide.
 
 ## Acknowledgements
 
-This provider builds on a path charted by [Deployment Theory](https://github.com/deploymenttheory) and their [`terraform-provider-jamfpro`](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, it has grown into the most comprehensive community Terraform provider for Jamf and the one the community rallies behind. It proved the depth of demand for managing Jamf as code and sets the bar for what a Jamf provider could be; this provider would not exist in its current form without that groundwork. `terraform-provider-jamfpro` remains an independent, actively maintained project, and we're grateful to its maintainers for the example they produce.
+This provider builds on a path charted by [Deployment Theory](https://github.com/deploymenttheory) and their [`terraform-provider-jamfpro`](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, it has grown into the most comprehensive community Terraform provider for Jamf and the one the community rallies behind. It proved the depth of demand for managing Jamf as code and sets the bar for what a Jamf provider could be; this provider would not exist in its current form without that groundwork. `terraform-provider-jamfpro` remains an independent, actively maintained project, and we're grateful to its maintainers for the example they set.
 
 ## Requirements
 
@@ -33,9 +40,11 @@ The provider groups resources by the Jamf product they target. Some products are
 
 | Product | Resource namespace | Built against API as of | Notes |
 |---------|--------------------|--------------------------|-------|
-| Jamf Pro | `jamfplatform_pro_*` | **11.31.0** (see [`ProviderMinJamfProVersion`](./internal/providerdata/providerdata.go) for the current source-tree value) | Tenants below this version emit an advisory warning at apply time. Individual resources and actions that depend on newer endpoints declare their own `minJamfProVersion` and hard-fail Configure on unsupported tenants — for example the enhanced log collection actions require 11.30.0. |
+| Jamf Pro | `jamfplatform_pro_*` | **11.31.0** (see [`ProviderMinJamfProVersion`](./internal/providerdata/providerdata.go) for the current source-tree value) | Tenants below this version emit an advisory warning at apply time. Individual resources and actions that depend on newer endpoints declare their own `minJamfProVersion` and hard-fail Configure on unsupported tenants — for example `jamfplatform_pro_service_discovery_enrollment` requires 11.25.0. |
 | Jamf Platform Services (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) | resources without a product-name prefix (e.g. `jamfplatform_blueprints_blueprint`, `jamfplatform_device_group`) | continuously-deployed | No tenant version requirement. No version fetch is performed against tenants that use only these resources. |
-| Jamf Security Cloud (Custom DNS, ZTNA gateways) | `jamfplatform_security_cloud_*` | continuously-deployed | No tenant version requirement. Security Cloud is a separate entitlement: a tenant can hold Jamf Pro without holding it, and these resources then fail with a named diagnostic saying the tenant is not entitled. |
+| Jamf Security Cloud (Custom DNS, ZTNA, UEM Connect, device groups, activation profiles) | `jamfplatform_security_cloud_*` | continuously-deployed | No tenant version requirement. Security Cloud is a separate entitlement: a tenant can hold Jamf Pro without holding it, and these resources then fail with a named diagnostic saying the tenant is not entitled. |
+| Jamf AI Governance | `jamfplatform_ai_governance_*` | continuously-deployed | No tenant version requirement. Reachable only by an integration scoped to a platform environment; a tenant-scoped one is refused when the resource is configured. |
+| Jamf Account (single sign-on) | `jamfplatform_account_*` | continuously-deployed | No tenant version requirement. Reachable only by an integration scoped to organization management, which is also the only scope that reaches it. Served from the US gateway alone. |
 
 Further Jamf products are expected to be added; each will get its own row, namespace, and version constant.
 

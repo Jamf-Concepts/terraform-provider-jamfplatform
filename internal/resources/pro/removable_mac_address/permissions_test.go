@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -115,7 +114,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:removable-mac-address") {
+	if !permissions.Renders(resourcePrivileges, "removable-mac-address:create") {
 		t.Fatalf("resourcePrivileges did not render the removable MAC address privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -123,7 +122,7 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the
 // data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:removable-mac-address") {
+	if !permissions.Renders(dataSourcePrivileges, "removable-mac-address:read") {
 		t.Fatalf("dataSourcePrivileges did not render the removable MAC address privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -131,7 +130,7 @@ func TestDataSourcePrivileges_Rendered(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the
 // list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:removable-mac-address") {
+	if !permissions.Renders(listResourcePrivileges, "removable-mac-address:read") {
 		t.Fatalf("listResourcePrivileges did not render the removable MAC address privileges:\n%s", listResourcePrivileges)
 	}
 }

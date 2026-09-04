@@ -80,7 +80,7 @@ func (r *PrinterResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the printer resource.
 func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer (and its PPD) onto Mac computers. The `use_generic` toggle is bound to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) by cross-field rules enforced at plan time — see each attribute for details." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro printer. Printers are reusable definitions Jamf Pro policies use to map an IPP / LPD / SMB printer, and its PPD, onto Mac computers. Cross-field rules bind the `use_generic` toggle to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) and are enforced at plan time. See each attribute for details." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Printer ID assigned by Jamf Pro.",
@@ -134,7 +134,7 @@ func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Default:             booldefault.StaticBool(false),
 			},
 			"use_generic": schema.BoolAttribute{
-				MarkdownDescription: "Whether to use the bundled macOS Generic.ppd. When `true` (the default) the Jamf Pro server uses the generic PPD and clears any user-supplied `ppd`, `ppd_path`, or `ppd_contents`. When `false` you must supply a concrete `ppd_path` — `ppd` and `ppd_contents` alone are not sufficient; the server falls back to the generic PPD if `ppd_path` is missing.",
+				MarkdownDescription: "Whether to use the bundled macOS Generic.ppd. When `true` (the default) Jamf Pro uses the generic PPD and clears any `ppd`, `ppd_path`, or `ppd_contents` you supplied. When `false` you must supply a concrete `ppd_path`. `ppd` and `ppd_contents` alone are not sufficient; Jamf Pro falls back to the generic PPD if `ppd_path` is missing.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
@@ -144,7 +144,7 @@ func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"ppd_path": schema.StringAttribute{
-				MarkdownDescription: "Filesystem path to the PPD file on target Macs (e.g. `/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd`). Required when `use_generic = false` — without it the server silently falls back to the generic PPD. Plan-time error if set with `use_generic = true`. Computed when unset: the server populates it with the bundled Generic.ppd path under the generic configuration.",
+				MarkdownDescription: "Filesystem path to the PPD file on target Macs (e.g. `/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd`). Required when `use_generic = false`; without it Jamf Pro silently falls back to the generic PPD. Plan-time error if set with `use_generic = true`. Computed when unset: under the generic configuration Jamf Pro populates it with the bundled Generic.ppd path.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -152,7 +152,7 @@ func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"ppd_contents": schema.StringAttribute{
-				MarkdownDescription: "Inline contents of the PPD file. Only valid when `use_generic = false`. Jamf Pro strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file(\"some.ppd\")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets — `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.",
+				MarkdownDescription: "Inline contents of the PPD file. Only valid when `use_generic = false`. Jamf Pro strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file(\"some.ppd\")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets, so `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.",
 				CustomType:          trimmedStringType{},
 				Optional:            true,
 				Computed:            true,

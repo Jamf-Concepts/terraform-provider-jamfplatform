@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteComputerInventoryCollectionCustomPathV2",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -32,6 +32,6 @@ var dataSourceSDKMethods = []string{
 	"GetComputerInventoryCollectionSettingsV2",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)

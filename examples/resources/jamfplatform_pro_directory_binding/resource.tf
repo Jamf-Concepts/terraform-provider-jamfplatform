@@ -1,4 +1,4 @@
-# Active Directory binding. `password` is `WriteOnly` — sent to Jamf Pro
+# Active Directory binding. `password` is `WriteOnly`, sent to Jamf Pro
 # on writes but never persisted in Terraform state. Bump `password_wo_version`
 # to rotate the stored password on the next apply.
 #
@@ -26,9 +26,9 @@ resource "jamfplatform_pro_directory_binding" "ad" {
   }
 }
 
-# Apple Open Directory binding. Note: the admin UI labels this "Apple Open
-# Directory" but the value Jamf Pro stores is the bare "Open Directory" —
-# use that form for the `type` attribute.
+# Apple Open Directory binding. The admin UI labels this "Apple Open
+# Directory", but the value Jamf Pro stores is the bare "Open Directory". Use
+# that form for the `type` attribute.
 resource "jamfplatform_pro_directory_binding" "open_directory" {
   name                = "od-staging"
   priority            = 2
@@ -47,8 +47,8 @@ resource "jamfplatform_pro_directory_binding" "open_directory" {
 }
 
 # PowerBroker Identity Services. PowerBroker has no per-type configuration
-# options, so no nested block is supplied — setting `type` alone is enough
-# to register the binding as PowerBroker.
+# options, so no nested block is supplied. Setting `type` alone registers the
+# binding as PowerBroker.
 resource "jamfplatform_pro_directory_binding" "powerbroker" {
   name                = "pb-lab"
   priority            = 3
@@ -61,7 +61,7 @@ resource "jamfplatform_pro_directory_binding" "powerbroker" {
 }
 
 # ADmitMac binding. `home_location` is the ADmitMac UI's "Home Location"
-# field — distinct from the AD type's bool `force_local_home_directory`.
+# field, distinct from the AD type's bool `force_local_home_directory`.
 resource "jamfplatform_pro_directory_binding" "admitmac" {
   name                = "admitmac-prod"
   priority            = 4

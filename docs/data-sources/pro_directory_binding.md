@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_directory_binding Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:directory-bindings` |
+  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password, because Jamf Pro does not return it on read. Use the resource to manage the password.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Directory bindings | Read | `directory-bindings` |
 ---
 
 # jamfplatform_pro_directory_binding (Data Source)
 
-Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
+Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password, because Jamf Pro does not return it on read. Use the resource to manage the password.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:directory-bindings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Directory bindings | Read | `directory-bindings` |
 
 ## Example Usage
 

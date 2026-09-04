@@ -13,6 +13,8 @@ import (
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 var _ action.Action = (*FlushMdmCommandsAction)(nil)
@@ -62,7 +64,7 @@ func (a *FlushMdmCommandsAction) Schema(ctx context.Context, req action.SchemaRe
 				Required:            true,
 				MarkdownDescription: "Which commands to flush: `Pending`, `Failed`, or `Pending+Failed`.",
 				Validators: []validator.String{
-					stringvalidator.OneOf("Pending", "Failed", "Pending+Failed"),
+					stringvalidator.OneOf(proclassic.CommandflushStatusValues()...),
 				},
 			},
 		},

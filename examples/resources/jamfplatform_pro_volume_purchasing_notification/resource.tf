@@ -6,8 +6,8 @@ resource "jamfplatform_pro_volume_purchasing_notification" "low_licenses" {
   enabled = true
 
   # Events that send the notification:
-  #   NO_MORE_LICENSES       — a location runs out of licenses
-  #   REMOVED_FROM_APP_STORE — an item is removed from the App Store
+  #   NO_MORE_LICENSES:       a location runs out of licenses
+  #   REMOVED_FROM_APP_STORE: an item is removed from the App Store
   triggers = ["NO_MORE_LICENSES", "REMOVED_FROM_APP_STORE"]
 
   # Volume Purchasing location IDs the notification covers

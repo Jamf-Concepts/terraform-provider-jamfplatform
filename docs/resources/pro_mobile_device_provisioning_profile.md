@@ -3,32 +3,28 @@
 page_title: "jamfplatform_pro_mobile_device_provisioning_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro mobile device provisioning profile — the signed .mobileprovision profile that authorises in-house (enterprise) apps to run on managed devices.
+  Manages a Jamf Pro mobile device provisioning profile: the signed .mobileprovision profile that authorises in-house (enterprise) apps to run on managed devices.
   An uploaded profile cannot be modified in place: changing name or profile_data replaces the profile (Terraform deletes and recreates it).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:provisioning-profiles` |
-  | `delete:pro:provisioning-profiles` |
-  | `read:pro:provisioning-profiles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Provisioning profiles | Create, Read, Delete | `provisioning-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Resource)
 
-Manages a Jamf Pro mobile device provisioning profile — the signed `.mobileprovision` profile that authorises in-house (enterprise) apps to run on managed devices.
+Manages a Jamf Pro mobile device provisioning profile: the signed `.mobileprovision` profile that authorises in-house (enterprise) apps to run on managed devices.
 
 An uploaded profile cannot be modified in place: changing `name` or `profile_data` replaces the profile (Terraform deletes and recreates it).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:provisioning-profiles` |
-| `delete:pro:provisioning-profiles` |
-| `read:pro:provisioning-profiles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Provisioning profiles | Create, Read, Delete | `provisioning-profiles` |
 
 ## Example Usage
 
@@ -36,12 +32,12 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # Upload a signed in-house (enterprise) .mobileprovision profile.
 # An uploaded profile cannot be modified in place: changing name or profile_data
 # replaces the profile (Terraform deletes and recreates it). display_name is
-# computed — Jamf Pro sets it to match name.
+# computed: Jamf Pro sets it to match name.
 resource "jamfplatform_pro_mobile_device_provisioning_profile" "in_house" {
   name = "In-House App Profile"
 
-  # Base64-encoded signed .mobileprovision. Jamf parses the UUID and expiration
-  # out of it; those land in the computed attributes below.
+  # Base64-encoded signed .mobileprovision. Jamf Pro parses the UUID and
+  # expiration out of it; those land in the computed attributes below.
   profile_data = filebase64("${path.module}/InHouse.mobileprovision")
 }
 

@@ -1,4 +1,4 @@
-# A Jamf Pro class for Apple Classroom — groups students and teachers (by
+# A Jamf Pro class for Apple Classroom. It groups students and teachers (by
 # username) and student/teacher/mobile-device groups (by ID). Membership is
 # authoritative: each set is applied in full on every change, so removing an
 # entry removes the member and omitting a set leaves it empty.

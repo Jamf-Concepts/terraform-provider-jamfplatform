@@ -3,7 +3,7 @@
 
 # Manage the Jamf Pro local administrator password (LAPS) settings
 # (Settings > Computer Management > Security > "Password settings for managed
-# local administrator accounts"). Singleton — one record per tenant.
+# local administrator accounts"). One record per tenant.
 resource "jamfplatform_pro_local_admin_password_settings" "this" {
   # Enable LAPS for managed local administrator accounts created via PreStage enrollment.
   laps_for_prestage_accounts_enabled = true

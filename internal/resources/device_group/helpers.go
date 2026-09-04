@@ -40,7 +40,7 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 	}
 
 	var members []string
-	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
+	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && manageMembers {
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(ctx, grp.ID)
 		if err != nil {

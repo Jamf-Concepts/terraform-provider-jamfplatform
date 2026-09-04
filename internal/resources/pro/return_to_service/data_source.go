@@ -47,7 +47,7 @@ func (d *ReturnToServiceDataSource) Metadata(ctx context.Context, req datasource
 // Schema returns the data source schema.
 func (d *ReturnToServiceDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not guaranteed unique: a name matching more than one configuration returns an error." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Return to Service configuration ID. Mutually exclusive with `display_name`.",

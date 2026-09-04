@@ -6,10 +6,10 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
   file_vault_enabled_users = "Current or Next User"
 }
 
-# Institutional key_type: Jamf issues recovery keys derived from the
+# Institutional key_type: Jamf Pro issues recovery keys derived from the
 # uploaded PKCS12 certificate. The `data` payload is the base64 of the
 # `.p12` file contents; `password` is the import password. The plaintext
-# `password` is a Terraform `WriteOnly` attribute — sent on writes but
+# `password` is a Terraform `WriteOnly` attribute, sent on writes but
 # never persisted in state. Pair with `password_wo_version` to rotate
 # the stored password (bump the integer to force the next apply to re-send
 # the certificate). `certificate_type` and `key` (Subject DN) are returned
@@ -34,7 +34,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
 
 # Individual + Institutional: a per-Mac personal key AND a recovery key
 # derived from the uploaded cert. Same upload shape as the Institutional
-# example. Note that `key_type` is case-sensitive — use the exact string
+# example. `key_type` is case-sensitive, so use the exact string
 # `Individual and Institutional` (lowercase `and`).
 resource "jamfplatform_pro_disk_encryption_configuration" "both" {
   name                     = "Individual and Institutional"

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_account_privileges Data Source - terraform-provide
 subcategory: ""
 description: |-
   Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is Administrator (which holds every grantable privilege). Use it to look up exact privilege strings for the privileges block of jamfplatform_pro_account and jamfplatform_pro_account_group.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:accounts` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Admin account | Read | `accounts` |
 ---
 
 # jamfplatform_pro_account_privileges (Data Source)
 
 Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is `Administrator` (which holds every grantable privilege). Use it to look up exact privilege strings for the `privileges` block of `jamfplatform_pro_account` and `jamfplatform_pro_account_group`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:accounts` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Admin account | Read | `accounts` |
 
 ## Example Usage
 

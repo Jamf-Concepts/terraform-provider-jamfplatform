@@ -37,15 +37,15 @@ func (d *SelfServiceBrandingIosDataSource) Metadata(ctx context.Context, req dat
 // Schema returns the data source schema — a read mirror of the resource.
 func (d *SelfServiceBrandingIosDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Errors if no iOS branding is configured." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Errors if no iOS branding is configured." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                           schema.StringAttribute{MarkdownDescription: "Fixed singleton identifier. Always `singleton`.", Computed: true},
-			"main_header":                  schema.StringAttribute{MarkdownDescription: "UI: **Main Header**.", Computed: true},
+			"main_header":                  schema.StringAttribute{MarkdownDescription: "**\"Main Header\"** in the Jamf Pro admin UI.", Computed: true},
 			"branding_name_color_code":     schema.StringAttribute{MarkdownDescription: "Hex colour of the Main Header text.", Computed: true},
 			"header_background_color_code": schema.StringAttribute{MarkdownDescription: "Hex colour of the header background.", Computed: true},
 			"menu_icon_color_code":         schema.StringAttribute{MarkdownDescription: "Hex colour of the menu icons.", Computed: true},
 			"status_bar_text_color":        schema.StringAttribute{MarkdownDescription: "Status bar text appearance, `light` or `dark`.", Computed: true},
-			"icon_id":                      schema.Int64Attribute{MarkdownDescription: "UI: **Icon**. Branding image ID (separate store from `jamfplatform_pro_icon`).", Computed: true},
+			"icon_id":                      schema.Int64Attribute{MarkdownDescription: "**\"Icon\"** in the Jamf Pro admin UI. Branding image ID, from a store separate to `jamfplatform_pro_icon`.", Computed: true},
 			"timeouts":                     timeouts.Attributes(ctx),
 		},
 	}

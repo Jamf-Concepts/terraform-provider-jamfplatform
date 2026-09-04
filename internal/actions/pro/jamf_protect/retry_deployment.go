@@ -65,7 +65,7 @@ import (
 // task, matched client-side with EqualFold. Live-confirmed; the response enum
 // (unlike the broken status filter) uses this value. Other observed values:
 // VERIFIED_INSTALL / COMPLETE (success), INSTALL_IN_PROGRESS (pending).
-const statusFailed = "GAVE_UP"
+const statusFailed = pro.DeploymentTaskStatusGaveUp
 
 var _ action.Action = (*RetryDeploymentAction)(nil)
 var _ action.ActionWithConfigure = (*RetryDeploymentAction)(nil)
@@ -100,7 +100,7 @@ func (a *RetryDeploymentAction) Schema(ctx context.Context, req action.SchemaReq
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). " +
 			"Specify exactly one target: a computer (`serial_number`, `management_id`, or `udid`), an explicit `task_ids` list, or `all_failed = true`. " +
-			"Resolving a computer identifier also requires the **Read Computers** privilege. Takes no state." +
+			"Resolving a computer identifier also requires the **Inventory → Devices → Read** permission in Jamf Account (API capability `devices:read`). Takes no state." +
 			retryDeploymentPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"deployment_id": actionschema.StringAttribute{
@@ -137,7 +137,7 @@ func (a *RetryDeploymentAction) Schema(ctx context.Context, req action.SchemaReq
 			"task_ids": actionschema.ListAttribute{
 				Optional:            true,
 				ElementType:         types.StringType,
-				MarkdownDescription: "Explicit deployment task IDs to retry (the `id` values returned by the deployment's task search). Advanced escape hatch — mutually exclusive with the computer selector and `all_failed`.",
+				MarkdownDescription: "Explicit deployment task IDs to retry (the `id` values returned by the deployment's task search). Advanced escape hatch. Mutually exclusive with the computer selector and `all_failed`.",
 				Validators: []validator.List{
 					listvalidator.SizeAtLeast(1),
 					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
@@ -145,7 +145,7 @@ func (a *RetryDeploymentAction) Schema(ctx context.Context, req action.SchemaReq
 			},
 			"all_failed": actionschema.BoolAttribute{
 				Optional:            true,
-				MarkdownDescription: "Retry every failed task in the deployment. Mirrors the admin UI \"Retry Failed\" button — this can re-queue installs across many computers. Mutually exclusive with the computer selector and `task_ids`.",
+				MarkdownDescription: "Retry every failed task in the deployment. Mirrors the admin UI \"Retry Failed\" button. It can re-queue installs across many computers. Mutually exclusive with the computer selector and `task_ids`.",
 			},
 			"only_failed": actionschema.BoolAttribute{
 				Optional:            true,

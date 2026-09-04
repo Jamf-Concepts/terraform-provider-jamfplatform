@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_inventory_preload_record List Resource - terraform
 subcategory: ""
 description: |-
   Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Inventory preload | Read | `inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (List Resource)
 
 Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Inventory preload | Read | `inventory-preload-records` |
 
 ## Example Usage
 
@@ -68,7 +68,7 @@ list "jamfplatform_pro_inventory_preload_record" "it_computers" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `serialNumber`, `deviceType`, `username`, `fullName`, `emailAddress`, `phoneNumber`, `position`, `department`, `building`, `room`, `poNumber`, `poDate`, `warrantyExpiration`, `leaseExpiration`, `appleCareId`, `lifeExpectancy`, `purchasePrice`, `purchasingContact`, `purchasingAccount`, `barCode1`, `barCode2`, `assetTag`, `vendor`. When filtering by `deviceType`, use `0` for Computer and `1` for Mobile Device.
 
 Optional:

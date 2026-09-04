@@ -3,39 +3,31 @@
 page_title: "jamfplatform_pro_self_service_branding_macos Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from jamfplatform_pro_self_service_branding_image (the branding image store is separate from jamfplatform_pro_icon). Import with terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
-  | Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
-  | Read Self Service | `read:pro:self-service` |
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
-  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+  Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). One configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it, and the Self Service app reverts to its default branding. All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from jamfplatform_pro_self_service_branding_image. That store is separate to jamfplatform_pro_icon. Import with terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Resource)
 
-Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from `jamfplatform_pro_self_service_branding_image` (the branding image store is separate from `jamfplatform_pro_icon`). Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`.
+Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). One configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it, and the Self Service app reverts to its default branding. All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from `jamfplatform_pro_self_service_branding_image`. That store is separate to `jamfplatform_pro_icon`. Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
-| Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
-| Read Self Service | `read:pro:self-service` |
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
-| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
 
 ## Example Usage
 
 ```terraform
 # Self Service macOS branding (Settings > Self Service > Branding > macOS Branding).
-# Singleton — one configuration per tenant. All fields optional.
+# One configuration per tenant. All fields optional.
 resource "jamfplatform_pro_self_service_branding_image" "icon" {
   image_file_source = "./self-service-icon.png"
 }
@@ -60,13 +52,13 @@ resource "jamfplatform_pro_self_service_branding_macos" "this" {
 
 ### Optional
 
-- `application_header` (String) UI: **Application Header**. Name displayed for the Self Service application in Finder, the Dock, and the menu bar. Omit to leave unset.
-- `banner_image_id` (Number) UI: **Home page - Banner Image**. ID of the banner image shown across the top of Self Service (recommended 1500×235 PNG/GIF). Use a `jamfplatform_pro_self_service_branding_image` ID. Omit to leave unset.
-- `home_page_heading` (String) UI: **Home page - Heading**. Heading shown on the Self Service home page. Omit to leave unset.
-- `home_page_subheading` (String) UI: **Home page - Subheading**. Subheading shown on the Self Service home page. Omit to leave unset.
-- `icon_id` (Number) UI: **Icon**. ID of the branding image shown on the Login screen and in Self Service (recommended 180×180 PNG/GIF). Use a `jamfplatform_pro_self_service_branding_image` ID — **not** a `jamfplatform_pro_icon` ID (separate stores). Omit to leave unset.
-- `sidebar_heading` (String) UI: **Sidebar - Heading**. Heading shown in the Self Service sidebar. Omit to leave unset.
-- `sidebar_subheading` (String) UI: **Sidebar - Subheading**. Subheading shown in the Self Service sidebar. Omit to leave unset.
+- `application_header` (String) **"Application Header"** in the Jamf Pro admin UI. Name displayed for the Self Service application in Finder, the Dock, and the menu bar. Omit to leave unset.
+- `banner_image_id` (Number) **"Home page - Banner Image"** in the Jamf Pro admin UI. ID of the banner image shown across the top of Self Service (1500×235 PNG/GIF recommended). Use a `jamfplatform_pro_self_service_branding_image` ID. Omit to leave unset.
+- `home_page_heading` (String) **"Home page - Heading"** in the Jamf Pro admin UI. Heading shown on the Self Service home page. Omit to leave unset.
+- `home_page_subheading` (String) **"Home page - Subheading"** in the Jamf Pro admin UI. Subheading shown on the Self Service home page. Omit to leave unset.
+- `icon_id` (Number) **"Icon"** in the Jamf Pro admin UI. ID of the branding image shown on the Login screen and in Self Service (180×180 PNG/GIF recommended). Use a `jamfplatform_pro_self_service_branding_image` ID, **not** a `jamfplatform_pro_icon` ID; the two stores are separate. Omit to leave unset.
+- `sidebar_heading` (String) **"Sidebar - Heading"** in the Jamf Pro admin UI. Heading shown in the Self Service sidebar. Omit to leave unset.
+- `sidebar_subheading` (String) **"Sidebar - Subheading"** in the Jamf Pro admin UI. Subheading shown in the Self Service sidebar. Omit to leave unset.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

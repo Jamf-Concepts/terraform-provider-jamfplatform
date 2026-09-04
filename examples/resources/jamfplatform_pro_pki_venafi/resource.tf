@@ -17,7 +17,7 @@ resource "jamfplatform_pro_pki_venafi" "example" {
   client_id          = "REPLACE_WITH_VENAFI_CLIENT_ID"
   revocation_enabled = true
 
-  # The Venafi refresh token is write-only — sent to Jamf Pro but never stored
+  # The Venafi refresh token is write-only, sent to Jamf Pro but never stored
   # in Terraform state. Bump refresh_token_wo_version to re-send / rotate it.
   refresh_token_wo         = "REPLACE_WITH_VENAFI_REFRESH_TOKEN"
   refresh_token_wo_version = 1

@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_script Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via parameter_4 through parameter_11.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Scripts | `create:pro:scripts` |
-  | Delete Scripts | `delete:pro:scripts` |
-  | Read Scripts | `read:pro:scripts` |
-  | Update Scripts | `update:pro:scripts` |
+  Manages a Jamf Pro script. Scripts execute on managed devices through policies or Self Service workflows. Jamf Pro reserves parameter slots 1–3; the labels you control are parameter_4 through parameter_11.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Scripts | Create, Read, Update, Delete | `scripts` |
 ---
 
 # jamfplatform_pro_script (Resource)
 
-Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.
+Manages a Jamf Pro script. Scripts execute on managed devices through policies or Self Service workflows. Jamf Pro reserves parameter slots 1–3; the labels you control are `parameter_4` through `parameter_11`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Scripts | `create:pro:scripts` |
-| Delete Scripts | `delete:pro:scripts` |
-| Read Scripts | `read:pro:scripts` |
-| Update Scripts | `update:pro:scripts` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Scripts | Create, Read, Update, Delete | `scripts` |
 
 ## Example Usage
 
@@ -85,7 +79,7 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 - `parameter_8` (String) Label for script parameter slot 8. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `parameter_9` (String) Label for script parameter slot 9. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `priority` (String) Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.
-- `script_contents` (String) Script contents as plain text (shell, Python, etc.). Omit to leave the existing contents untouched — Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI; set to `""` to clear. A declared value is owned by Terraform and reverts out-of-band edits.
+- `script_contents` (String) Script contents as plain text (shell, Python, and so on). Omit to leave the existing contents untouched: Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI. Set to `""` to clear. A declared value is owned by Terraform and reverts out-of-band edits.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

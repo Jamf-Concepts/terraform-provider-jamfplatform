@@ -33,14 +33,14 @@ var listResourceSDKMethods = []string{
 	"GetMobileDeviceConfigurationProfileByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the list resource, appended to its Description.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

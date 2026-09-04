@@ -10,13 +10,13 @@ import (
 )
 
 // assignAppInstallerSettingsResourceModel populates a resource model from an SDK response.
-func assignAppInstallerSettingsResourceModel(state *AppInstallerSettingsResourceModel, s *pro.AppInstallerGlobalSettings) {
+func assignAppInstallerSettingsResourceModel(state *AppInstallerSettingsResourceModel, s *pro.AppInstallersGlobalSettings) {
 	state.DeploymentSettings = assignDeploymentSettings(s.DeploymentProcessControls)
 	state.EndUserExperience = assignEndUserExperience(s.EndUserExperienceSettings)
 }
 
 // assignAppInstallerSettingsDataSourceModel populates a data source model from an SDK response.
-func assignAppInstallerSettingsDataSourceModel(state *AppInstallerSettingsDataSourceModel, s *pro.AppInstallerGlobalSettings) {
+func assignAppInstallerSettingsDataSourceModel(state *AppInstallerSettingsDataSourceModel, s *pro.AppInstallersGlobalSettings) {
 	state.DeploymentSettings = assignDeploymentSettings(s.DeploymentProcessControls)
 	state.EndUserExperience = assignEndUserExperience(s.EndUserExperienceSettings)
 }
@@ -25,7 +25,7 @@ func assignAppInstallerSettingsDataSourceModel(state *AppInstallerSettingsDataSo
 // the block is ObjectNull iff ALL leaf fields are nil. This ensures import
 // captures actual server values rather than returning null when prior state
 // has no block.
-func assignDeploymentSettings(s *pro.AppInstallerDeploymentProcessControls) types.Object {
+func assignDeploymentSettings(s *pro.AppInstallersDeploymentProcessControls) types.Object {
 	if s == nil {
 		return types.ObjectNull(deploymentSettingsAttrTypes)
 	}
@@ -43,10 +43,7 @@ func assignDeploymentSettings(s *pro.AppInstallerDeploymentProcessControls) type
 }
 
 // assignEndUserExperience normalizes the SDK block using value-based logic.
-func assignEndUserExperience(s *pro.AppInstallerEndUserExperienceSettings) types.Object {
-	if s == nil {
-		return types.ObjectNull(endUserExperienceAttrTypes)
-	}
+func assignEndUserExperience(s pro.GlobalSettingsEndUserExperience) types.Object {
 	if s.NotificationInterval == nil && s.NotificationMessage == nil &&
 		s.Deadline == nil && s.DeadlineMessage == nil &&
 		s.QuitDelay == nil && s.CompleteMessage == nil &&
@@ -54,11 +51,11 @@ func assignEndUserExperience(s *pro.AppInstallerEndUserExperienceSettings) types
 		return types.ObjectNull(endUserExperienceAttrTypes)
 	}
 	return types.ObjectValueMust(endUserExperienceAttrTypes, map[string]attr.Value{
-		"notification_frequency":  int64PtrValueOrNull(s.NotificationInterval),
+		"notification_frequency":  int64PtrOrNull(s.NotificationInterval),
 		"notification_message":    stringPtrValueOrNull(s.NotificationMessage),
-		"update_deadline":         int64PtrValueOrNull(s.Deadline),
+		"update_deadline":         int64PtrOrNull(s.Deadline),
 		"force_quit_message":      stringPtrValueOrNull(s.DeadlineMessage),
-		"force_quit_grace_period": int64PtrValueOrNull(s.QuitDelay),
+		"force_quit_grace_period": int64PtrOrNull(s.QuitDelay),
 		"update_complete_message": stringPtrValueOrNull(s.CompleteMessage),
 		"relaunch":                boolPtrValueOrNull(s.Relaunch),
 		"suppress":                boolPtrValueOrNull(s.Suppress),
@@ -83,6 +80,13 @@ func int64PtrValueOrNull(v *int) types.Int64 {
 		return types.Int64Null()
 	}
 	return types.Int64Value(int64(*v))
+}
+
+func int64PtrOrNull(v *int64) types.Int64 {
+	if v == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(*v)
 }
 
 func stringPtrValueOrNull(v *string) types.String {

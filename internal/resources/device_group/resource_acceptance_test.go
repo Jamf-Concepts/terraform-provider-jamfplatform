@@ -96,7 +96,7 @@ func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "group_type", "static"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "device_type", "computer"),
 					// jamf_pro_id is resolved via Pro /v2/groups and depends on the test
-					// tenant having the "Read Groups" privilege wired up on the API
+					// tenant having the Device groups Read permission wired up on the API
 					// client. If this assertion fails on a tenant that lacks Jamf Pro
 					// entirely or lacks the privilege, see the Pro forbidden warning
 					// surfaced during the plan output.
@@ -374,7 +374,7 @@ func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
 // Requires a tenant with a directory service configured and a real resolvable
 // group. Stands up the shared Okta LDAP directory-service fixture (via the SDK, so
 // the directory exists before the pre-apply group resolve) and resolves
-// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it. The equivalent base64 is resolved +
+// JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME against it. The equivalent base64 is resolved +
 // encoded in-test (same path the provider uses) so the swap value always matches;
 // the live apply is the independent check that the encoding is server-acceptable.
 // Real group names are never committed — see memory: no real LDAP names in public

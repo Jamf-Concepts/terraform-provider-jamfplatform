@@ -8,7 +8,6 @@ package jamf_protect_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -22,7 +21,7 @@ import (
 )
 
 // protectCreds gates every Protect-touching test: all of
-// JAMFPLATFORM_PROTECT_URL / _CLIENT_ID / _PASSWORD must be set (matching the
+// JAMFPLATFORM_ACC_PRO_PROTECT_URL / _CLIENT_ID / _PASSWORD must be set (matching the
 // SDK acceptance-test precedent). Values are read trimmed, and a bare Protect
 // console URL is accepted — the register endpoint expects the GraphQL
 // endpoint, so /graphql is appended when missing.
@@ -33,11 +32,11 @@ import (
 // password is write-only) — re-register manually if that matters.
 func protectCreds(t *testing.T) (protectURL, clientID, password string) {
 	t.Helper()
-	protectURL = strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_URL"))
-	clientID = strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_CLIENT_ID"))
-	password = strings.TrimSpace(os.Getenv("JAMFPLATFORM_PROTECT_PASSWORD"))
+	protectURL = strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_URL"))
+	clientID = strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_CLIENT_ID"))
+	password = strings.TrimSpace(testhelpers.AccEnv("JAMFPLATFORM_ACC_PRO_PROTECT_PASSWORD"))
 	if protectURL == "" || clientID == "" || password == "" {
-		t.Skip("JAMFPLATFORM_PROTECT_{URL,CLIENT_ID,PASSWORD} not all set — Jamf Protect tests need a Jamf Protect API client")
+		t.Skip("JAMFPLATFORM_ACC_PRO_PROTECT_{URL,CLIENT_ID,PASSWORD} not all set — Jamf Protect tests need a Jamf Protect API client")
 	}
 	if !strings.HasSuffix(protectURL, "/graphql") {
 		protectURL = strings.TrimRight(protectURL, "/") + "/graphql"

@@ -19,11 +19,16 @@ import (
 )
 
 // PatchPolicyDataSource implements the Terraform data source for Jamf Pro patch
-// policies. Lookup is by id only: the classic /patchpolicies list response
-// surfaces id+name per item but offers no GetByName helper, so a name selector
-// would require an N-GET scan. The data source surfaces the general fields,
-// including the server-derived ones; manage the policy as a resource for full
-// scope / user_interaction detail.
+// policies. Lookup is by id only, and the reason is no longer the one it used to
+// be: the classic /patchpolicies collection reads that made a name selector an
+// N-GET scan have been withdrawn, and the Pro v2 collection that replaced them
+// for enumeration accepts a server-side RSQL query on policyName, so a name
+// selector would now cost one filtered list call plus one by-id read. It is
+// therefore unbuilt rather than rejected — note that RSQL string comparison is
+// case-sensitive, so a name selector added here would match exactly, unlike the
+// list resource's deliberately case-insensitive substring filter. The data
+// source surfaces the general fields, including the server-derived ones; manage
+// the policy as a resource for full scope / user_interaction detail.
 type PatchPolicyDataSource struct {
 	client *proclassic.Client
 }
@@ -47,7 +52,7 @@ func (d *PatchPolicyDataSource) Metadata(ctx context.Context, req datasource.Met
 // attributes are populated from the SDK response.
 func (d *PatchPolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only `release_date` / `incremental_update` / `reboot` / `minimum_os` / `kill_apps` fields returned by Jamf Pro. Scope and user interaction are not surfaced — manage the policy as a resource for that detail." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps` fields returned by Jamf Pro. Scope and user interaction are not surfaced; manage the policy as a resource for that detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch policy ID.",

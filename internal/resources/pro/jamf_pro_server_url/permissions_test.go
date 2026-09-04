@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -72,7 +71,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description (catches an empty/parse-skipped registry).
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:jss-url") {
+	if !permissions.Renders(dataSourcePrivileges, "jss-url:read") {
 		t.Fatalf("dataSourcePrivileges did not render the jss-url privileges:\n%s", dataSourcePrivileges)
 	}
 }

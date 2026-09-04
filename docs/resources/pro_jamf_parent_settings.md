@@ -3,36 +3,34 @@
 page_title: "jamfplatform_pro_jamf_parent_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro Jamf Parent settings page (UI: Settings → Jamf apps → Jamf Parent). Singleton — one record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.
-  Omit = preserve — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. timezone, device_group_id, and restricted_times must always be set — the Jamf Pro API requires them on every write.
-  Destroy — terraform destroy removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
+  Manages the Jamf Pro Jamf Parent settings page (UI: Settings → Jamf apps → Jamf Parent). One record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.
+  An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. timezone, device_group_id, and restricted_times must always be set, because Jamf Pro requires them on every write.
+  terraform destroy removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Parent App Settings | `read:pro:parent-app-settings` |
-  | Update Parent App Settings | `update:pro:parent-app-settings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Parent app settings | Read, Update | `parent-app` |
 ---
 
 # jamfplatform_pro_jamf_parent_settings (Resource)
 
-Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps → Jamf Parent). Singleton — one record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.
+Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps → Jamf Parent). One record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.
 
-**Omit = preserve** — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. `timezone`, `device_group_id`, and `restricted_times` must always be set — the Jamf Pro API requires them on every write.
+An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. `timezone`, `device_group_id`, and `restricted_times` must always be set, because Jamf Pro requires them on every write.
 
-**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
+`terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Parent App Settings | `read:pro:parent-app-settings` |
-| Update Parent App Settings | `update:pro:parent-app-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Parent app settings | Read, Update | `parent-app` |
 
 ## Example Usage
 
@@ -41,10 +39,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # SPDX-License-Identifier: MPL-2.0
 
 # Manage the Jamf Pro Jamf Parent settings (Settings > Jamf apps > Jamf Parent).
-# Singleton — one record per tenant. Optional attributes you omit keep their
-# current Jamf Pro value, including on the first apply (the resource adopts the
-# existing settings); timezone, device_group_id and restricted_times must
-# always be set.
+# One record per tenant. Optional attributes you omit keep their current Jamf
+# Pro value, including on the first apply (the resource adopts the existing
+# settings); timezone, device_group_id and restricted_times must always be set.
 resource "jamfplatform_pro_jamf_parent_settings" "example" {
   # Allow limited management of students' devices by parents or guardians
   # using Jamf Parent.
@@ -53,12 +50,12 @@ resource "jamfplatform_pro_jamf_parent_settings" "example" {
   # IANA time zone the restricted times are evaluated in.
   timezone = "Europe/London"
 
-  # Student Device Group — id of the mobile device group (smart or static)
+  # Student Device Group: id of the mobile device group (smart or static)
   # whose members Jamf Parent can manage. Reference your own group resource or
   # data source instead of a literal id where possible.
   device_group_id = 1
 
-  # Jamf Parent App Restrictions — per-day Start/End times, keyed by uppercase
+  # Jamf Parent App Restrictions: per-day Start/End times, keyed by uppercase
   # day name. Only the days you declare are sent and stored; use {} for no
   # restrictions.
   restricted_times = {
@@ -93,8 +90,8 @@ resource "jamfplatform_pro_jamf_parent_settings" "example" {
 
 ### Required
 
-- `device_group_id` (Number) **"Student Device Group"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.
-- `restricted_times` (Attributes Map) **"Jamf Parent App Restrictions"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored — Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions. (see [below for nested schema](#nestedatt--restricted_times))
+- `device_group_id` (Number) **"Student Device Group"**. ID of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.
+- `restricted_times` (Attributes Map) **"Jamf Parent App Restrictions"**. Per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored; Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions. (see [below for nested schema](#nestedatt--restricted_times))
 - `timezone` (String) **"Time Zone"** the restricted times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `"Europe/London"`).
 
 ### Optional

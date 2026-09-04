@@ -40,9 +40,9 @@ func AudioAccessorySettingsComponentSchema() map[string]schema.Attribute {
 			MarkdownDescription: "Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.",
 			Optional:            true,
 			Computed:            true,
-			Default:             stringdefault.StaticString("None"),
+			Default:             stringdefault.StaticString(blueprints.UnpairingTimePolicyNone),
 			Validators: []validator.String{
-				stringvalidator.OneOf("None", "Hour"),
+				stringvalidator.OneOf(blueprints.UnpairingTimePolicyValues()...),
 			},
 		},
 		"unpairing_time_hour": schema.Int64Attribute{

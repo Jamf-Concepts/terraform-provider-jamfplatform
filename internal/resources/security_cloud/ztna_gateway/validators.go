@@ -6,8 +6,8 @@ package ztna_gateway
 import (
 	"context"
 	"fmt"
-	"net"
 
+	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -32,41 +32,28 @@ var jamfSidePrivateRanges = []privateRange{
 	{cidr: "192.168.0.0/16", minPrefix: 16, maxPrefix: 30},
 }
 
-// cidrBlockValidator checks that a string attribute holds an IPv4 CIDR block.
-type cidrBlockValidator struct{}
-
-// cidrBlock returns a validator.String enforcing IPv4 CIDR notation.
+// cidrBlock returns a validator.String enforcing IPv4 CIDR notation on a customer
+// subnet.
 //
 // Why plan time: an invalid subnet reaches the user as
 // `400 [INVALID_FIELD] ipsec: IPSec configuration is not valid.` — the whole
 // block named, nothing about which address or why (wire-probed 2026-08-27).
+//
+// It is the shared commonvalidators grammar rather than a local restatement, so the
+// one CIDR parse in the provider governs every Security Cloud attribute that takes a
+// range. The local version this replaced had drifted: it trusted net.ParseCIDR's
+// `To4`, which is non-nil for an IPv4-mapped IPv6 block, so `::ffff:10.0.0.0/104`
+// passed plan time and reached the opaque `ipsec` rejection above.
+//
+// It is the AllowingHostBits variant deliberately. The stricter IPv4CIDR also refuses
+// a range carrying host bits, but that rule is a wire fact probed on the ZTNA app's
+// `bareIps` endpoint and on no other. This construct is already shipped, and its IPsec
+// endpoint has never been probed for canonicalisation, so applying the rule here would
+// refuse at plan time a configuration that may apply cleanly today. Probe it — write
+// `10.10.0.1/16` and read the subnet back — and if it canonicalises, switch to
+// IPv4CIDR and drop the variant.
 func cidrBlock() validator.String {
-	return cidrBlockValidator{}
-}
-
-// Description returns a plain-text description of the validator.
-func (cidrBlockValidator) Description(_ context.Context) string {
-	return "must be an IPv4 CIDR block, for example 10.10.0.0/16"
-}
-
-// MarkdownDescription returns the markdown description of the validator.
-func (v cidrBlockValidator) MarkdownDescription(ctx context.Context) string {
-	return v.Description(ctx)
-}
-
-// ValidateString implements validator.String.
-func (v cidrBlockValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	value := req.ConfigValue.ValueString()
-	if _, _, err := parseIPv4CIDR(value); err != nil {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Invalid CIDR block",
-			"Expected an IPv4 CIDR block such as `10.10.0.0/16`. Got: "+value,
-		)
-	}
+	return commonvalidators.IPv4CIDRAllowingHostBits()
 }
 
 // privateCIDRValidator checks that a string attribute holds an IPv4 CIDR block
@@ -79,6 +66,10 @@ type privateCIDRValidator struct{}
 // The prefix bounds matter as much as the range: the server accepts
 // `172.16.0.0/12` but not `172.16.0.0/31`, and rejects both an out-of-range
 // address and an out-of-bounds prefix with the same message.
+//
+// The grammar comes from commonvalidators.ParseIPv4CIDR, so the shape rules are the
+// same ones cidrBlock applies; only the range and prefix bounds are this gateway's
+// own.
 func privateCIDR() validator.String {
 	return privateCIDRValidator{}
 }
@@ -100,19 +91,19 @@ func (v privateCIDRValidator) ValidateString(_ context.Context, req validator.St
 	}
 	value := req.ConfigValue.ValueString()
 
-	ip, prefix, err := parseIPv4CIDR(value)
+	network, prefix, err := commonvalidators.ParseIPv4CIDR(value)
 	if err != nil {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Jamf Security Cloud subnet",
-			"Expected an IPv4 CIDR block such as `172.16.0.0/12`. Got: "+value,
+			err.Error()+" Got: "+value,
 		)
 		return
 	}
 
 	for _, r := range jamfSidePrivateRanges {
-		_, network, parseErr := net.ParseCIDR(r.cidr)
-		if parseErr != nil || !network.Contains(ip) {
+		rangeNetwork, _, rangeErr := commonvalidators.ParseIPv4CIDR(r.cidr)
+		if rangeErr != nil || !rangeNetwork.Contains(network.IP) {
 			continue
 		}
 		if prefix < r.minPrefix || prefix > r.maxPrefix {
@@ -131,20 +122,6 @@ func (v privateCIDRValidator) ValidateString(_ context.Context, req validator.St
 		"Jamf Security Cloud requires this subnet to fall inside 10.0.0.0/8 (/8-/30), 172.16.0.0/12 (/12-/30) or "+
 			"192.168.0.0/16 (/16-/30). Got: "+value,
 	)
-}
-
-// parseIPv4CIDR parses an IPv4 CIDR block, returning the address and prefix
-// length. It rejects IPv6, which the gateway endpoints do not accept.
-func parseIPv4CIDR(value string) (net.IP, int, error) {
-	ip, network, err := net.ParseCIDR(value)
-	if err != nil {
-		return nil, 0, err
-	}
-	if ip.To4() == nil {
-		return nil, 0, fmt.Errorf("%q is not an IPv4 CIDR block", value)
-	}
-	prefix, _ := network.Mask.Size()
-	return ip, prefix, nil
 }
 
 // ipsecSourceAddressesValidator enforces that ipsec_source_ip_addresses is only

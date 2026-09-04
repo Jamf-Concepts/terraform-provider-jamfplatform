@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_self_service_macos_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service | `read:pro:self-service` |
+  Read the current Self Service for macOS app settings (Settings > Self Service > macOS). One record per tenant.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_macos_settings (Data Source)
 
-Read the current Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant.
+Read the current Self Service for macOS app settings (Settings > Self Service > macOS). One record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service | `read:pro:self-service` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read | `self-service` |
 
 ## Example Usage
 

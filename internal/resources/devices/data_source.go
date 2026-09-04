@@ -51,7 +51,7 @@ func (d *DevicesDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // Schema defines the data source schema.
 func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List Jamf devices via the Device Inventory API. Requires **Device Inventory API** access." + dataSourcePrivileges,
+		MarkdownDescription: "Lists Jamf devices from the device inventory. Requires **Device Inventory API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",
@@ -99,7 +99,7 @@ func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 							Computed:            true,
 						},
 						"enrollment_type": schema.StringAttribute{
-							MarkdownDescription: "Enrollment type reported by the API.",
+							MarkdownDescription: "Enrollment type reported by the platform.",
 							Computed:            true,
 						},
 						"last_enrollment_time": schema.StringAttribute{

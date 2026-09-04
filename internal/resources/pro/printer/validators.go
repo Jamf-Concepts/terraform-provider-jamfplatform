@@ -97,7 +97,7 @@ func (useGenericPPDConfigValidator) ValidateResource(ctx context.Context, req re
 		resp.Diagnostics.AddAttributeError(
 			path.Root("ppd_path"),
 			"ppd_path required when use_generic is false",
-			"`ppd_path` is required when `use_generic = false`. The Jamf Pro server uses `ppd_path` as the gate that distinguishes a user-supplied PPD from the bundled Generic.ppd; without it the server silently flips `use_generic` back to true. To match any specific printer set `ppd_path` to the path of an installed PPD file (e.g. `/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd`).",
+			"`ppd_path` is required when `use_generic = false`. Jamf Pro uses `ppd_path` as the gate that distinguishes a user-supplied PPD from the bundled Generic.ppd; without it Jamf Pro silently flips `use_generic` back to true. To match any specific printer set `ppd_path` to the path of an installed PPD file (e.g. `/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd`).",
 		)
 	}
 }
@@ -130,8 +130,8 @@ func (noLiteralSentinelValidator) ValidateString(ctx context.Context, req valida
 	if req.ConfigValue.ValueString() == categoryUnassignedSentinel {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
-			"category cannot be the server sentinel",
-			fmt.Sprintf("The Jamf Pro server uses %q as an internal sentinel for printers with no category assigned. To mean \"no category\" leave the `category` attribute unset; the provider hides the sentinel from state. To assign a real category, supply its display name (e.g. `category = \"Printers\"`).", categoryUnassignedSentinel),
+			"category cannot be the Jamf Pro sentinel",
+			fmt.Sprintf("Jamf Pro uses %q as an internal sentinel for printers with no category assigned. To mean \"no category\" leave the `category` attribute unset; the provider hides the sentinel from state. To assign a real category, supply its display name (e.g. `category = \"Printers\"`).", categoryUnassignedSentinel),
 		)
 	}
 }

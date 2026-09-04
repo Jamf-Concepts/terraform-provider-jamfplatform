@@ -115,10 +115,10 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 		MarkdownDescription: "Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Settings > Global > PKI certificates > Certificate Authorities). " +
 			"An AD CS connector issues certificates to managed devices. The integration runs in one of two modes selected by `connector_mode`:\n\n" +
 			"- **`INBOUND`**: Jamf Pro reaches an AD CS Connector at `adcs_url`, presenting a `client_certificate` and trusting a `server_certificate`.\n" +
-			"- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges.\n\n" +
-			"**`connector_mode` is immutable** — changing it forces resource replacement (Jamf Pro rejects an in-place mode flip).\n\n" +
-			"**Certificate write semantics:** certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.\n\n" +
-			"**Validator footgun:** the `connector_mode` cross-field validator only sees what is *declared* in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.\n\n" +
+			"- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that is permitted to read and update AD CS certificate jobs. Jamf Pro called that pair *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA; this provider has no Jamf Account permission recorded for it, so grant it from the Jamf Pro AD CS documentation rather than from the table below.\n\n" +
+			"`connector_mode` is immutable. Changing it forces resource replacement, because Jamf Pro rejects an in-place mode flip.\n\n" +
+			"Certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly`: sent to Jamf Pro on writes, but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate; Jamf Pro accepts a certificate in full or not at all. On update, an omitted certificate is left unchanged.\n\n" +
+			"The `connector_mode` cross-field validator sees only what your configuration *declares*. Because Jamf Pro preserves an omitted optional field, a value left over from a previous apply is not re-validated: the validator catches a both-declared conflict, not a preserved one.\n\n" +
 			"Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -129,7 +129,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"connector_mode": schema.StringAttribute{
-				MarkdownDescription: "AD CS connector mode. One of `INBOUND` or `OUTBOUND`. **Immutable** — changing it forces resource replacement. `INBOUND` requires `adcs_url`, `server_certificate`, and `client_certificate` (and forbids `api_client_id`); `OUTBOUND` requires `api_client_id` (and forbids `adcs_url` / `server_certificate` / `client_certificate`).",
+				MarkdownDescription: "AD CS connector mode. One of `INBOUND` or `OUTBOUND`. Immutable: changing it forces resource replacement. `INBOUND` requires `adcs_url`, `server_certificate` and `client_certificate`, and forbids `api_client_id`. `OUTBOUND` requires `api_client_id`, and forbids `adcs_url`, `server_certificate` and `client_certificate`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(connectorModeInbound, connectorModeOutbound),
@@ -139,15 +139,15 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. A label for the integration. Required — Jamf Pro mandates it on create (both modes).",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. A label for the integration. Jamf Pro requires it on create in both modes.",
 				Required:            true,
 			},
 			"ca_name": schema.StringAttribute{
-				MarkdownDescription: "**\"CA Name\"** in the Jamf Pro admin UI. The Certificate Authority name. Required — Jamf Pro mandates it on create (both modes).",
+				MarkdownDescription: "**\"CA Name\"** in the Jamf Pro admin UI. The Certificate Authority name. Jamf Pro requires it on create in both modes.",
 				Required:            true,
 			},
 			"fqdn": schema.StringAttribute{
-				MarkdownDescription: "**\"FQDN\"** in the Jamf Pro admin UI. The fully-qualified domain name of the AD CS server. Required — Jamf Pro mandates it on create (both modes).",
+				MarkdownDescription: "**\"FQDN\"** in the Jamf Pro admin UI. The fully-qualified domain name of the AD CS server. Jamf Pro requires it on create in both modes.",
 				Required:            true,
 			},
 			"revocation_enabled": schema.BoolAttribute{
@@ -159,7 +159,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"adcs_url": schema.StringAttribute{
-				MarkdownDescription: "**\"AD CS Connector URL\"** in the Jamf Pro admin UI. The AD CS Connector address (e.g. `connector.example.com`; no scheme required). **`INBOUND` only.** Optional; omit to preserve the current value.",
+				MarkdownDescription: "**\"AD CS Connector URL\"** in the Jamf Pro admin UI. The AD CS Connector address, without a scheme (e.g. `connector.example.com`). **`INBOUND` only.** Optional; omit to preserve the current value.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -167,7 +167,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"api_client_id": schema.StringAttribute{
-				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. (Reference a `jamfplatform_pro_api_client`'s `client_id`.)",
+				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client the AD CS Connector authenticates as when it polls for certificate jobs. That client must be permitted to read and update those jobs: the privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA, which this provider has no Jamf Account permission recorded for. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -175,11 +175,11 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"server_certificate": schema.SingleNestedAttribute{
-				MarkdownDescription: "**`INBOUND` only.** The server (trust) certificate Jamf Pro presents/trusts for the AD CS Connector (`.pem`/`.cer`). Public, but Jamf Pro never returns the bytes on read, so the certificate is modelled `WriteOnly` (bytes stay out of state; rotate by bumping `wo_version`). Required when `connector_mode = \"INBOUND\"`; forbidden for `OUTBOUND`.",
+				MarkdownDescription: "**`INBOUND` only.** The server (trust) certificate Jamf Pro trusts for the AD CS Connector (`.pem` or `.cer`). It is public, but Jamf Pro never returns the bytes on read, so it is modelled `WriteOnly`: the bytes stay out of state, and you rotate them by bumping `wo_version`. Required when `connector_mode = \"INBOUND\"`; forbidden for `OUTBOUND`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"data_wo": schema.StringAttribute{
-						MarkdownDescription: "The base64-encoded server certificate (`.pem`/`.cer`). Supply with `filebase64(\"server.pem\")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.",
+						MarkdownDescription: "The base64-encoded server certificate (`.pem` or `.cer`). Supply it with `filebase64(\"server.pem\")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -188,7 +188,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 						},
 					},
 					"filename": schema.StringAttribute{
-						MarkdownDescription: "Filename for the uploaded server certificate (e.g. `server.pem`). Required when the `server_certificate` block is set — Jamf Pro uses the extension to detect the certificate format.",
+						MarkdownDescription: "Filename for the uploaded server certificate (e.g. `server.pem`). Required when the `server_certificate` block is set, because Jamf Pro reads the certificate format from the extension.",
 						Required:            true,
 					},
 					"wo_version": schema.Int64Attribute{
@@ -198,11 +198,11 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"client_certificate": schema.SingleNestedAttribute{
-				MarkdownDescription: "**`INBOUND` only.** The confidential client certificate Jamf Pro presents to the AD CS Connector (`.pfx`/`.p12`). Required when `connector_mode = \"INBOUND\"`; forbidden for `OUTBOUND`.",
+				MarkdownDescription: "**`INBOUND` only.** The confidential client certificate Jamf Pro presents to the AD CS Connector (`.pfx` or `.p12`). Required when `connector_mode = \"INBOUND\"`; forbidden for `OUTBOUND`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"data_wo": schema.StringAttribute{
-						MarkdownDescription: "The base64-encoded client certificate keystore (`.pfx`/`.p12`). Supply with `filebase64(\"client.p12\")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.",
+						MarkdownDescription: "The base64-encoded client certificate keystore (`.pfx` or `.p12`). Supply it with `filebase64(\"client.p12\")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
@@ -211,13 +211,13 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 						},
 					},
 					"password_wo": schema.StringAttribute{
-						MarkdownDescription: "The password protecting the client certificate keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent together with `data_wo` when `wo_version` changes.",
+						MarkdownDescription: "The password protecting the client certificate keystore. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent together with `data_wo` when `wo_version` changes.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
 					},
 					"filename": schema.StringAttribute{
-						MarkdownDescription: "Filename for the uploaded client certificate (e.g. `client.p12`). Required when the `client_certificate` block is set — Jamf Pro uses the extension to detect the certificate format.",
+						MarkdownDescription: "Filename for the uploaded client certificate (e.g. `client.p12`). Required when the `client_certificate` block is set, because Jamf Pro reads the certificate format from the extension.",
 						Required:            true,
 					},
 					"wo_version": schema.Int64Attribute{

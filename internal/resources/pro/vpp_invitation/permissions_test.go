@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -92,7 +91,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:vpp-invitations") {
+	if !permissions.Renders(resourcePrivileges, "volume-purchasing-locations:create") {
 		t.Fatalf("resourcePrivileges did not render the vpp-invitations privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -116,7 +115,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the
 // data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:vpp-invitations") {
+	if !permissions.Renders(dataSourcePrivileges, "volume-purchasing-locations:read") {
 		t.Fatalf("dataSourcePrivileges did not render the vpp-invitations privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -140,7 +139,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the
 // list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:vpp-invitations") {
+	if !permissions.Renders(listResourcePrivileges, "volume-purchasing-locations:read") {
 		t.Fatalf("listResourcePrivileges did not render the vpp-invitations privileges:\n%s", listResourcePrivileges)
 	}
 }

@@ -45,7 +45,7 @@ func (d *SupervisionIdentityDataSource) Metadata(ctx context.Context, req dataso
 func (d *SupervisionIdentityDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `id` or `display_name` must be supplied. " +
-			"Display names are not required to be unique; a lookup by `display_name` errors if more than one identity shares the name — use `id` to disambiguate." + dataSourcePrivileges,
+			"Display names are not required to be unique. A lookup by `display_name` errors if more than one identity shares the name; use `id` to disambiguate." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Supervision identity ID. Mutually exclusive with `display_name`.",

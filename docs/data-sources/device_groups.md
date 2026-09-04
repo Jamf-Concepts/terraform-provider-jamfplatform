@@ -3,25 +3,25 @@
 page_title: "jamfplatform_device_groups Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Search Jamf device groups using optional filters. Requires Device Group Inventory API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:read` |
+  Searches Jamf device groups with optional filters. Requires Device Group Inventory API access.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Read | `device-groups` |
 ---
 
 # jamfplatform_device_groups (Data Source)
 
-Search Jamf device groups using optional filters. Requires **Device Group Inventory API** access.
+Searches Jamf device groups with optional filters. Requires **Device Group Inventory API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Read | `device-groups` |
 
 ## Example Usage
 
@@ -86,7 +86,7 @@ data "jamfplatform_device_groups" "name_does_not_contain" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `name`, `description`, `deviceType`, `groupType`.
 
 Optional:

@@ -3,16 +3,16 @@
 page_title: "jamfplatform_pro_login_page_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). Singleton — one record per tenant.
-  Required Jamf privileges
+  Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). One record per tenant.
+  Required Jamf permissions
   None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 ---
 
 # jamfplatform_pro_login_page_settings (Data Source)
 
-Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). Singleton — one record per tenant.
+Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). One record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
 None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 
@@ -36,9 +36,9 @@ output "include_custom_disclaimer" {
 
 ### Read-Only
 
-- `action_text` (String) Text used for the button that acknowledges the disclaimer dialog.
-- `disclaimer_heading` (String) Text used for the title of the disclaimer dialog.
-- `disclaimer_main_text` (String) Text used for the body of the disclaimer dialog.
+- `action_text` (String) Label on the button that acknowledges the disclaimer dialog.
+- `disclaimer_heading` (String) Title text of the disclaimer dialog.
+- `disclaimer_main_text` (String) Body text of the disclaimer dialog.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
 - `include_custom_disclaimer` (Boolean) Whether the custom disclaimer message is shown on the Jamf Pro login page.
 

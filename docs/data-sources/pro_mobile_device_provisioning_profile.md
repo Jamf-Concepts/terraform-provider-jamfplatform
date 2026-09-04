@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_provisioning_profile Data Source - t
 subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of id, name, or uuid must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:provisioning-profiles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Provisioning profiles | Read | `provisioning-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Data Source)
 
 Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of `id`, `name`, or `uuid` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:provisioning-profiles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Provisioning profiles | Read | `provisioning-profiles` |
 
 ## Example Usage
 

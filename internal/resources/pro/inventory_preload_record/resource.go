@@ -32,6 +32,16 @@ import (
 // endpoint was deprecated in 2020), so no per-resource gate is needed.
 const minJamfProVersion = ""
 
+// validDeviceTypes is the accepted device_type set. Deliberately narrower than
+// pro.InventoryPreloadRecordV2DeviceTypeValues(), which also generates Unknown:
+// Unknown is what the field reads back as for a record whose type the server
+// cannot classify, not a type a caller can ask for. The set is curated; the
+// spellings are the SDK's.
+var validDeviceTypes = []string{
+	pro.InventoryPreloadRecordV2DeviceTypeComputer,
+	pro.InventoryPreloadRecordV2DeviceTypeMobileDevice,
+}
+
 // InventoryPreloadRecordResource implements the Terraform resource for Jamf Pro
 // Inventory Preload records.
 type InventoryPreloadRecordResource struct {
@@ -93,11 +103,11 @@ func fullReplaceStringAttribute(desc string) schema.StringAttribute {
 func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a single Jamf Pro Inventory Preload record. " +
-			"The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records via CSV upload; " +
-			"this resource manages individual records through the API instead. " +
-			"Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, " +
+			"The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records by CSV upload; " +
+			"this resource manages them one at a time instead. " +
+			"Preloaded data is applied at every inventory collection by matching the device serial number, " +
 			"and overwrites manual inventory edits each time it is applied. " +
-			"Records persist after a device enrolls — they are consumed, not deleted." +
+			"Records persist after a device enrolls; applying one does not remove it." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -109,8 +119,8 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 			},
 			"serial_number": schema.StringAttribute{
 				MarkdownDescription: "Serial number of the device the record applies to. " +
-					"Jamf Pro enforces case-insensitive uniqueness across records — creating a second record whose serial number differs only in case fails — " +
-					"while the value itself is stored and returned exactly as entered. Can be changed in place.",
+					"Jamf Pro enforces case-insensitive uniqueness across records, so creating a second record whose serial number differs only in case fails. " +
+					"The value itself is stored and returned exactly as entered. Can be changed in place.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -120,7 +130,7 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 				MarkdownDescription: "Type of device the record applies to. Valid values: `Computer`, `Mobile Device`. Can be changed in place.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Computer", "Mobile Device"),
+					stringvalidator.OneOf(validDeviceTypes...),
 				},
 			},
 			"username":      fullReplaceStringAttribute("Username assigned to the device."),
@@ -145,9 +155,9 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 			"purchase_price":     fullReplaceStringAttribute("Purchase price of the device."),
 			"purchasing_contact": fullReplaceStringAttribute("Purchasing contact for the device."),
 			"purchasing_account": fullReplaceStringAttribute("Purchasing account for the device."),
-			"bar_code_1": fullReplaceStringAttribute("Bar code 1 for the device. Per Jamf documentation bar codes apply to computers only; " +
+			"bar_code_1": fullReplaceStringAttribute("Bar code 1 for the device. Documented as applying to computers only; " +
 				"the API does not enforce this."),
-			"bar_code_2": fullReplaceStringAttribute("Bar code 2 for the device. Per Jamf documentation bar codes apply to computers only; " +
+			"bar_code_2": fullReplaceStringAttribute("Bar code 2 for the device. Documented as applying to computers only; " +
 				"the API does not enforce this."),
 			"asset_tag": fullReplaceStringAttribute("Asset tag for the device."),
 			"vendor":    fullReplaceStringAttribute("Vendor the device was purchased from."),

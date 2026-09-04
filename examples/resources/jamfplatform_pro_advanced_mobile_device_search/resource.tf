@@ -1,4 +1,4 @@
-# Advanced mobile device search — a saved, criteria-driven inventory query with a
+# Advanced mobile device search: a saved, criteria-driven inventory query with a
 # configurable set of display columns. Criteria order is significant: Jamf
 # evaluates left-to-right using the supplied `and_or` joins and parentheses.
 resource "jamfplatform_pro_advanced_mobile_device_search" "unmanaged_ipads" {
@@ -18,8 +18,8 @@ resource "jamfplatform_pro_advanced_mobile_device_search" "unmanaged_ipads" {
     },
   ]
 
-  # The set of inventory columns shown in the results. Order is not significant
-  # — Jamf Pro returns the columns in its own canonical order.
+  # The set of inventory columns shown in the results. Order is not
+  # significant; Jamf Pro returns the columns in its own canonical order.
   display_fields = ["Display Name", "Serial Number", "Last Inventory Update"]
 }
 

@@ -39,7 +39,7 @@ func (a *AbandonFeatureToggleAction) Metadata(ctx context.Context, req action.Me
 func (a *AbandonFeatureToggleAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Force-stops a stuck Managed Software Updates enable/disable process. " +
-			"Break-glass only — use this when `jamfplatform_pro_managed_software_update` reports that the feature did not finish turning on or off. Takes no input." +
+			"Break-glass only. Use it when `jamfplatform_pro_managed_software_update` reports that the feature did not finish turning on or off. Takes no input." +
 			abandonFeatureTogglePrivileges,
 		Attributes: map[string]actionschema.Attribute{},
 	}

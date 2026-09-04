@@ -39,7 +39,7 @@ func extractEndUserExperience(t *testing.T, obj types.Object) EndUserExperienceM
 // TestAssignDeploymentSettings_AllNull verifies that an all-null SDK block
 // normalizes to ObjectNull, preventing drift when the user omits the block.
 func TestAssignDeploymentSettings_AllNull(t *testing.T) {
-	got := assignDeploymentSettings(&pro.AppInstallerDeploymentProcessControls{})
+	got := assignDeploymentSettings(&pro.AppInstallersDeploymentProcessControls{})
 	if !got.IsNull() {
 		t.Errorf("all-null block should normalize to null types.Object, got %v", got)
 	}
@@ -58,7 +58,7 @@ func TestAssignDeploymentSettings_Populated(t *testing.T) {
 	fromTime := "08:00:00Z"
 	toTime := "17:00:00Z"
 	days := []string{"MONDAY", "WEDNESDAY"}
-	s := &pro.AppInstallerDeploymentProcessControls{
+	s := &pro.AppInstallersDeploymentProcessControls{
 		CommandsBatchSize:       &batchSize,
 		BatchFrequencyInMinutes: &batchFreq,
 		DaysOfWeek:              &days,
@@ -110,22 +110,22 @@ func TestAssignDays_NullVsEmpty(t *testing.T) {
 
 // TestAssignEndUserExperience_AllNull mirrors the deployment block test.
 func TestAssignEndUserExperience_AllNull(t *testing.T) {
-	got := assignEndUserExperience(&pro.AppInstallerEndUserExperienceSettings{})
+	got := assignEndUserExperience(pro.GlobalSettingsEndUserExperience{})
 	if !got.IsNull() {
 		t.Errorf("all-null EUX block should normalize to null types.Object, got %v", got)
 	}
 }
 
 func TestAssignEndUserExperience_Populated(t *testing.T) {
-	interval := 2
+	interval := int64(2)
 	msg := "Update pending"
-	deadline := 24
+	deadline := int64(24)
 	dlMsg := "Please quit and save"
-	delay := 10
+	delay := int64(10)
 	complete := "Update complete"
 	relaunch := true
 	suppress := false
-	s := &pro.AppInstallerEndUserExperienceSettings{
+	s := pro.GlobalSettingsEndUserExperience{
 		NotificationInterval: &interval,
 		NotificationMessage:  &msg,
 		Deadline:             &deadline,
@@ -163,8 +163,8 @@ func TestAssignEndUserExperience_Populated(t *testing.T) {
 // TestAssignEndUserExperience_PartialPopulated verifies that a block with at
 // least one non-nil field is not collapsed to null.
 func TestAssignEndUserExperience_PartialPopulated(t *testing.T) {
-	interval := 4
-	s := &pro.AppInstallerEndUserExperienceSettings{
+	interval := int64(4)
+	s := pro.GlobalSettingsEndUserExperience{
 		NotificationInterval: &interval,
 	}
 	got := assignEndUserExperience(s)
@@ -185,7 +185,7 @@ func TestAssignResourceModel_DoesNotClobberID(t *testing.T) {
 	state := AppInstallerSettingsResourceModel{
 		ID: types.StringValue(helpers.SingletonID),
 	}
-	assignAppInstallerSettingsResourceModel(&state, &pro.AppInstallerGlobalSettings{})
+	assignAppInstallerSettingsResourceModel(&state, &pro.AppInstallersGlobalSettings{})
 	if state.ID.ValueString() != helpers.SingletonID {
 		t.Errorf("ID clobbered: got %q, want %q", state.ID.ValueString(), helpers.SingletonID)
 	}

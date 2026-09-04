@@ -1,15 +1,16 @@
 # Manages a Jamf Pro Volume Purchasing (VPP) location.
 #
-# `service_token` is `WriteOnly` — the contents of the `.vpptoken` file
+# `service_token` is `WriteOnly`. The contents of the `.vpptoken` file
 # downloaded from Apple Business Manager / Apple School Manager are sent to
 # Jamf Pro on writes but never persisted in Terraform state. The file already
 # contains a base64-encoded payload, so use `file()` (not `filebase64()`).
 # Bump `service_token_wo_version` to rotate the stored token on the next apply.
 #
-# Create + token-rotating Update perform: POST → Reclaim → poll until the
-# Apple-side content sync completes (`last_sync_time != null`) → final GET.
-# On large catalogs the sync can take minutes; override the default 30-minute
-# create timeout with the `timeouts` block if your tenant needs longer.
+# Creating the location, and rotating its token, both wait for the Apple-side
+# content sync to finish (`last_sync_time` becomes non-null) before the apply
+# completes. On large catalogs the sync can take minutes; override the default
+# 30-minute create timeout with the `timeouts` block if your tenant needs
+# longer.
 resource "jamfplatform_pro_volume_purchasing_location" "prod" {
   name                     = "vpp-prod"
   service_token            = file("${path.module}/tokens/vpp-prod.vpptoken")
@@ -19,8 +20,8 @@ resource "jamfplatform_pro_volume_purchasing_location" "prod" {
   send_notification_when_no_longer_assigned = true
   auto_register_managed_users               = false
 
-  # site_id is optional. Omit to let Jamf Pro decide; the server emits the
-  # sentinel "-1" when unset.
+  # site_id is optional. Omit to let Jamf Pro decide; it emits the sentinel
+  # "-1" when unset.
   # site_id = "1"
 
   timeouts {

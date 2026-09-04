@@ -96,7 +96,7 @@ func (r *VPPInvitationResource) IdentitySchema(ctx context.Context, req resource
 
 func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.\n\n" +
+		MarkdownDescription: "Manages a Jamf Pro VPP invitation, a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.\n\n" +
 			"Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -147,12 +147,12 @@ func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaR
 				Optional:            true,
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it.",
+				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and updates preserve whatever is configured outside Terraform.",
 				Optional:            true,
 				Attributes:          scope.UserScopeAttributes(),
 			},
 			"invitation_usages": schema.ListNestedAttribute{
-				MarkdownDescription: "Read-only per-user registration status the server tracks for this invitation.",
+				MarkdownDescription: "Read-only per-user registration status Jamf Pro tracks for this invitation.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

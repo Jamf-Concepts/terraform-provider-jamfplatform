@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_building List Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Searches for Jamf Pro buildings using the same filter clauses as the buildings data source.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Buildings | Read | `buildings` |
 ---
 
 # jamfplatform_pro_building (List Resource)
 
 Searches for Jamf Pro buildings using the same filter clauses as the buildings data source.
+
+**Required Jamf permissions**
+
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Buildings | Read | `buildings` |
 
 ## Example Usage
 
@@ -50,7 +63,7 @@ list "jamfplatform_pro_building" "buildings_by_name_prefix" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `city`, `country`, `stateProvince`, `streetAddress1`, `streetAddress2`, `zipPostalCode`.
 
 Optional:

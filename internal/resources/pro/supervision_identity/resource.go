@@ -88,7 +88,7 @@ func (r *SupervisionIdentityResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the Terraform schema for the supervision identity resource.
 func (r *SupervisionIdentityResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro supervision identity — the certificate used to supervise and enroll devices through Apple Configurator (Settings > Apple Configurator Enrollment).\n\n" +
+		MarkdownDescription: "Manages a Jamf Pro supervision identity, the certificate used to supervise and enroll devices through Apple Configurator (Settings → Apple Configurator Enrollment).\n\n" +
 			"Provide `certificate_data` to import an existing `.p12` identity, or omit it to have Jamf Pro generate a new identity for you. " +
 			"The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. " +
 			"Only `display_name` can be changed in place; changing the password or certificate replaces the identity." + resourcePrivileges,
@@ -109,7 +109,7 @@ func (r *SupervisionIdentityResource) Schema(ctx context.Context, req resource.S
 			},
 			"password": schema.StringAttribute{
 				MarkdownDescription: "Password that protects the supervision identity's `.p12`. When generating a new identity this is the password Jamf Pro assigns to the minted certificate; when importing an existing `.p12` this is its passphrase. " +
-					"`WriteOnly` — sent to Jamf Pro when the identity is created but never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.",
+					"`WriteOnly`: sent to Jamf Pro when the identity is created, never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.",
 				Required:  true,
 				Sensitive: true,
 				WriteOnly: true,
@@ -117,7 +117,7 @@ func (r *SupervisionIdentityResource) Schema(ctx context.Context, req resource.S
 			"certificate_data": schema.StringAttribute{
 				MarkdownDescription: "Base64-encoded `.p12` certificate to import as the supervision identity. Supply with `filebase64(\"identity.p12\")`. " +
 					"Omit this to have Jamf Pro generate a new identity instead. " +
-					"`WriteOnly` — sent to Jamf Pro when the identity is created but never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.",
+					"`WriteOnly`: sent to Jamf Pro when the identity is created, never stored in Terraform state, and never returned on read. To change it, replace the identity with `terraform apply -replace`.",
 				Optional:  true,
 				Sensitive: true,
 				WriteOnly: true,

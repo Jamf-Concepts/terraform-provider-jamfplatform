@@ -3,6 +3,8 @@
 
 package disk_encryption_configuration
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+
 // Wire enum values for the top-level `<key_type>` element.
 //
 // Asymmetric server normalisation (STYLE_GUIDE §Asymmetric server
@@ -20,14 +22,20 @@ package disk_encryption_configuration
 // keyTypeWriteAlias. Users see the lowercase wire form everywhere; the
 // alias is an implementation detail.
 const (
-	keyTypeIndividual              = "Individual"
-	keyTypeInstitutional           = "Institutional"
+	keyTypeIndividual    = proclassic.DiskEncryptionConfigurationKeyTypeIndividual
+	keyTypeInstitutional = proclassic.DiskEncryptionConfigurationKeyTypeInstitutional
+
+	// keyTypeIndividualInstitutional is the read-canonical form and stays a
+	// literal: proclassic.DiskEncryptionConfigurationKeyType carries only the
+	// Title-Cased write spelling, so there is no constant for the lowercase
+	// "and" the server returns on read. Aliasing the write constant here would
+	// collapse the two spellings this package exists to keep apart.
 	keyTypeIndividualInstitutional = "Individual and Institutional"
 
 	// keyTypeIndividualInstitutionalWriteAlias is the only spelling the
 	// classic POST/PUT endpoint accepts for the combined recovery key
 	// type. Server returns the lowercase form on read regardless.
-	keyTypeIndividualInstitutionalWriteAlias = "Individual And Institutional"
+	keyTypeIndividualInstitutionalWriteAlias = proclassic.DiskEncryptionConfigurationKeyTypeIndividualAndInstitutional
 )
 
 // allKeyTypeWireValues lists the canonical read-form `key_type` values.
@@ -52,8 +60,8 @@ func keyTypeWriteAlias(v string) string {
 
 // Wire enum values for the top-level `<file_vault_enabled_users>` element.
 const (
-	fileVaultEnabledUsersCurrentOrNext   = "Current or Next User"
-	fileVaultEnabledUsersManagementAccnt = "Management Account"
+	fileVaultEnabledUsersCurrentOrNext   = proclassic.DiskEncryptionConfigurationFileVaultEnabledUsersCurrentOrNextUser
+	fileVaultEnabledUsersManagementAccnt = proclassic.DiskEncryptionConfigurationFileVaultEnabledUsersManagementAccount
 )
 
 // allFileVaultEnabledUsersValues lists the accepted file_vault_enabled_users

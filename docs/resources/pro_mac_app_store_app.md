@@ -3,37 +3,31 @@
 page_title: "jamfplatform_pro_mac_app_store_app Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro App Store Mac app (the classic /macapplications endpoint — the "App Store App" entry under the "Mac Apps" sidebar). general.name, general.version, general.bundle_id, and general.url are required on create and stored verbatim — there is no App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:mac-applications` |
-  | `delete:pro:mac-applications` |
-  | `read:pro:mac-applications` |
-  | `update:pro:mac-applications` |
+  Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac Apps" sidebar. general.name, general.version, general.bundle_id and general.url are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (Resource)
 
-Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the "App Store App" entry under the "Mac Apps" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
+Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac Apps" sidebar. `general.name`, `general.version`, `general.bundle_id` and `general.url` are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:mac-applications` |
-| `delete:pro:mac-applications` |
-| `read:pro:mac-applications` |
-| `update:pro:mac-applications` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 
 ## Example Usage
 
 ```terraform
 # Minimal App Store Mac app. name, version, and bundle_id are required and
-# stored verbatim — there is no App Store metadata resolution.
+# stored verbatim. There is no App Store metadata resolution.
 resource "jamfplatform_pro_mac_app_store_app" "minimal" {
   general = {
     name      = "iMovie"
@@ -111,10 +105,10 @@ resource "jamfplatform_pro_mac_app_store_app" "automatic" {
 
 ### Optional
 
-- `scope` (Attributes) App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are intentionally absent — the endpoint silently drops them. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids` and `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations and exclusions are deliberately absent, because Jamf Pro silently drops them. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title — setting `assign_vpp_device_based_licenses = true` on a non-VPP app returns HTTP 409 "App is not available for device assignment". The license counts are server-computed. (see [below for nested schema](#nestedatt--vpp))
+- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, "App is not available for device assignment". The license counts are calculated by Jamf Pro. (see [below for nested schema](#nestedatt--vpp))
 
 ### Read-Only
 
@@ -125,10 +119,10 @@ resource "jamfplatform_pro_mac_app_store_app" "automatic" {
 
 Required:
 
-- `bundle_id` (String) App bundle identifier (e.g. `com.apple.iMovieApp`). Stored verbatim — Jamf Pro does not resolve it from the App Store.
+- `bundle_id` (String) App bundle identifier (e.g. `com.apple.iMovieApp`). Stored verbatim; Jamf Pro does not resolve it from the App Store.
 - `name` (String) App display name. Must be unique within the tenant.
-- `url` (String) App Store (iTunes) URL. Required on create — the server rejects a POST without it. Stored verbatim as a string; it does not auto-populate name/version/bundle_id.
-- `version` (String) App version string. Stored verbatim — Jamf Pro does not resolve it from the App Store.
+- `url` (String) App Store (iTunes) URL. Required on create: Jamf Pro rejects a create without it. Stored verbatim, and does not auto-populate `name`, `version` or `bundle_id`.
+- `version` (String) App version string. Stored verbatim; Jamf Pro does not resolve it from the App Store.
 
 Optional:
 
@@ -151,7 +145,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) The audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -209,7 +203,7 @@ Optional:
 - `notification_subject` (String) Notification subject line.
 - `self_service_categories` (Attributes Set) Set of Self Service categories the app appears under. Each item identifies the category by `id`; `name` is returned by Jamf Pro. (see [below for nested schema](#nestedatt--self_service--self_service_categories))
 - `self_service_description` (String) Self Service description. Markdown supported.
-- `self_service_icon` (Attributes) Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported (Jamf re-encodes PNGs server-side, which would permadiff) — open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
+- `self_service_icon` (Attributes) Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported, because Jamf Pro re-encodes PNGs and the result would diff forever. Open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
 
 <a id="nestedatt--self_service--self_service_categories"></a>
 ### Nested Schema for `self_service.self_service_categories`

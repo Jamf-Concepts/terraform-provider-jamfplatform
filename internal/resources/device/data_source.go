@@ -36,7 +36,7 @@ func (d *DeviceDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema defines the data source schema.
 func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lookup a Jamf device by ID via the Device Inventory API. Requires **Device Inventory API** access." + dataSourcePrivileges,
+		MarkdownDescription: "Looks up a Jamf device by ID. Requires **Device Inventory API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Device UUID (Jamf Pro Management ID) to query.",
@@ -75,7 +75,7 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				Computed:            true,
 			},
 			"enrollment_type": schema.StringAttribute{
-				MarkdownDescription: "Enrollment type reported by the API.",
+				MarkdownDescription: "Enrollment type reported by the platform.",
 				Computed:            true,
 			},
 			"last_enrollment_time": schema.StringAttribute{

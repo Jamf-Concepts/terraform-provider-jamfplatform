@@ -3,36 +3,40 @@
 page_title: "jamfplatform_pro_service_discovery_enrollment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro's hosted service-discovery ("well-known") settings for Account-Driven enrollment (Jamf Pro API service-discovery-enrollment/well-known-settings). When configured, Jamf Pro hosts the .well-known redirect that Apple devices fetch during Account-Driven Device (mdm-adde) or User (mdm-byod) enrollment, so you do not have to self-host the service-discovery JSON. Requires Jamf Pro 11.25.0 or later. Singleton — one record per tenant.
-  The set of rows is server-keyed and fixed. Each row corresponds to a synced Apple Business/School Manager (AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > Automated Device Enrollment > Server UUID). You can only set enrollment_type on a server_uuid Jamf Pro already knows — a server_uuid that does not match a synced AxM org is silently ignored by Jamf Pro (the provider emits a warning when this happens).
-  This resource manages only the rows you declare (merge semantics, wire-probed). Rows for AxM orgs you do not declare are left untouched. Removing a well_known_setting block stops managing that org and leaves its current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, set its enrollment_type = "none" (do not delete the block).
+  Manages Jamf Pro's hosted service-discovery ("well-known") settings for Account-Driven enrollment. When configured, Jamf Pro hosts the .well-known redirect that Apple devices fetch during Account-Driven Device (mdm-adde) or User (mdm-byod) enrollment, so you do not have to self-host the service-discovery JSON. Requires Jamf Pro 11.25.0 or later. One record per tenant.
+  Jamf Pro fixes the set of rows
+  Each row corresponds to a synced Apple Business/School Manager (AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > Automated Device Enrollment > Server UUID). You can only set enrollment_type on a server_uuid Jamf Pro already knows. A server_uuid that does not match a synced AxM org is silently ignored by Jamf Pro, and the provider emits a warning when that happens.
+  Only the rows you declare are managed
+  Rows for AxM orgs you do not declare are left untouched. Removing a well_known_setting block stops managing that org and leaves its current Jamf Pro value unchanged; it does not reset it. To turn off Jamf-hosted service discovery for an org, set its enrollment_type = "none" rather than deleting the block.
   Import with terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
-  | Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | User-initiated enrollment settings | Read, Update | `user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_service_discovery_enrollment (Resource)
 
-Manages Jamf Pro's hosted service-discovery ("well-known") settings for Account-Driven enrollment (Jamf Pro API `service-discovery-enrollment/well-known-settings`). When configured, Jamf Pro hosts the `.well-known` redirect that Apple devices fetch during Account-Driven Device (`mdm-adde`) or User (`mdm-byod`) enrollment, so you do not have to self-host the service-discovery JSON. Requires Jamf Pro 11.25.0 or later. Singleton — one record per tenant.
+Manages Jamf Pro's hosted service-discovery ("well-known") settings for Account-Driven enrollment. When configured, Jamf Pro hosts the `.well-known` redirect that Apple devices fetch during Account-Driven Device (`mdm-adde`) or User (`mdm-byod`) enrollment, so you do not have to self-host the service-discovery JSON. Requires Jamf Pro 11.25.0 or later. One record per tenant.
 
-**The set of rows is server-keyed and fixed.** Each row corresponds to a synced Apple Business/School Manager (AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > Automated Device Enrollment > Server UUID). You can only set `enrollment_type` on a `server_uuid` Jamf Pro already knows — a `server_uuid` that does not match a synced AxM org is silently ignored by Jamf Pro (the provider emits a warning when this happens).
+### Jamf Pro fixes the set of rows
 
-**This resource manages only the rows you declare (merge semantics, wire-probed).** Rows for AxM orgs you do not declare are left untouched. **Removing a `well_known_setting` block stops managing that org and leaves its current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, set its `enrollment_type = "none"` (do not delete the block).**
+Each row corresponds to a synced Apple Business/School Manager (AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > Automated Device Enrollment > Server UUID). You can only set `enrollment_type` on a `server_uuid` Jamf Pro already knows. A `server_uuid` that does not match a synced AxM org is silently ignored by Jamf Pro, and the provider emits a warning when that happens.
+
+### Only the rows you declare are managed
+
+Rows for AxM orgs you do not declare are left untouched. Removing a `well_known_setting` block stops managing that org and leaves its current Jamf Pro value unchanged; it does **not** reset it. To turn off Jamf-hosted service discovery for an org, set its `enrollment_type = "none"` rather than deleting the block.
 
 Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
-| Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | User-initiated enrollment settings | Read, Update | `user-initiated-enrollment` |
 
 ## Example Usage
 
@@ -44,9 +48,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 #
 # The set of rows is server-keyed: you can only set enrollment_type on a server_uuid Jamf
 # Pro already knows (a synced AxM org). This resource manages only the rows you declare
-# (merge) — undeclared orgs are left untouched. To turn off Jamf-hosted service discovery
-# for an org, set its enrollment_type = "none"; REMOVING a block stops managing it and
-# leaves the current value unchanged.
+# and merges them, so undeclared orgs are left untouched. To turn off Jamf-hosted service
+# discovery for an org, set its enrollment_type = "none". Removing a block stops managing
+# it and leaves the current value unchanged.
 
 # Reference the Server UUID from ADE instances managed by this provider:
 resource "jamfplatform_pro_service_discovery_enrollment" "this" {
@@ -82,7 +86,7 @@ resource "jamfplatform_pro_service_discovery_enrollment" "this" {
 
 ### Required
 
-- `well_known_setting` (Attributes List) The per-organization service-discovery rows to manage. Each row sets the Account-Driven enrollment type for one synced AxM organization, keyed by its `server_uuid`. Only the rows declared here are written; undeclared orgs are left untouched (merge). Removing a row stops managing it (its server value is preserved) — set `enrollment_type = "none"` to disable an org. An empty list writes nothing. (see [below for nested schema](#nestedatt--well_known_setting))
+- `well_known_setting` (Attributes List) The per-organization service-discovery rows to manage. Each row sets the Account-Driven enrollment type for one synced AxM organization, keyed by its `server_uuid`. Only the rows declared here are written; undeclared orgs are left untouched (merge). Removing a row stops managing it and preserves its current Jamf Pro value: set `enrollment_type = "none"` to disable an org. An empty list writes nothing. (see [below for nested schema](#nestedatt--well_known_setting))
 
 ### Optional
 
@@ -102,7 +106,7 @@ Required:
 
 Read-Only:
 
-- `org_name` (String) Display name of the Apple Business/School Manager organization, as returned by Jamf Pro. Read-only — set automatically; any value supplied is ignored.
+- `org_name` (String) Display name of the Apple Business/School Manager organization, as returned by Jamf Pro. Returned by Jamf Pro; not user-settable. Any value supplied is ignored.
 
 
 <a id="nestedatt--timeouts"></a>

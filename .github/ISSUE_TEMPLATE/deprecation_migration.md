@@ -43,11 +43,13 @@ Conventions are mandatory — see STYLE_GUIDE.md §Deprecation migration timelin
      types, query-parameter contract, privilege names. State what was probed on which
      Jamf Pro version and on what date. -->
 
-## Privileges
+## Permissions
 
-<!-- Do the successors' scoped/legacy privilege names in the SDK privilege registry match
-     the predecessors'? If not, the rendered "Required Jamf privileges" table diffs and
-     `make generate` is required — list the old→new scoped names. -->
+<!-- Do the successors' Scoped capability permissions in the SDK privilege registry
+     match the predecessors'? If not, the rendered "Required Jamf permissions" table
+     diffs and `make generate` is required — list the old→new {capability}:{action}
+     values. MethodPrivileges.Legacy is no longer rendered, so a change there is not
+     user-facing. -->
 
 ## Work required
 

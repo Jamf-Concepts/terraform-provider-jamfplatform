@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
@@ -19,78 +18,6 @@ import (
 
 // --- SDK drift guards: every declared method must exist in its registry ---
 
-func TestClearPasscodeSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, clearPasscodeSDKMethods...); len(missing) > 0 {
-		t.Fatalf("clearPasscodeSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestClearRestrictionsPasswordSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, clearRestrictionsPasswordSDKMethods...); len(missing) > 0 {
-		t.Fatalf("clearRestrictionsPasswordSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestDeleteUserSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, deleteUserSDKMethods...); len(missing) > 0 {
-		t.Fatalf("deleteUserSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestDeviceLockSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, deviceLockSDKMethods...); len(missing) > 0 {
-		t.Fatalf("deviceLockSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestDisableLostModeSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, disableLostModeSDKMethods...); len(missing) > 0 {
-		t.Fatalf("disableLostModeSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestDisableRemoteDesktopSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, disableRemoteDesktopSDKMethods...); len(missing) > 0 {
-		t.Fatalf("disableRemoteDesktopSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestEnableLostModeSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, enableLostModeSDKMethods...); len(missing) > 0 {
-		t.Fatalf("enableLostModeSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestEnableRemoteDesktopSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, enableRemoteDesktopSDKMethods...); len(missing) > 0 {
-		t.Fatalf("enableRemoteDesktopSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestLogOutUserSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, logOutUserSDKMethods...); len(missing) > 0 {
-		t.Fatalf("logOutUserSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestPlayLostModeSoundSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, playLostModeSoundSDKMethods...); len(missing) > 0 {
-		t.Fatalf("playLostModeSoundSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestSetAutoAdminPasswordSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, setAutoAdminPasswordSDKMethods...); len(missing) > 0 {
-		t.Fatalf("setAutoAdminPasswordSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestUnlockUserAccountSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, unlockUserAccountSDKMethods...); len(missing) > 0 {
-		t.Fatalf("unlockUserAccountSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
 func TestSendBlankPushSDKMethods_KnownToSDK(t *testing.T) {
 	if missing := permissions.Missing(resolveSerialMerged, sendBlankPushSDKMethods...); len(missing) > 0 {
 		t.Fatalf("sendBlankPushSDKMethods not present in SDK registries (drift): %v", missing)
@@ -99,13 +26,13 @@ func TestSendBlankPushSDKMethods_KnownToSDK(t *testing.T) {
 
 func TestRenewMdmProfileSDKMethods_KnownToSDK(t *testing.T) {
 	if missing := permissions.Missing(pro.Privileges, renewMdmProfileSDKMethods...); len(missing) > 0 {
-		t.Fatalf("renewMdmProfileSDKMethods not present in pro.Privileges (drift): %v", missing)
+		t.Fatalf("renewMdmProfileSDKMethods not present in the pro registry (drift): %v", missing)
 	}
 }
 
 func TestFlushMdmCommandsSDKMethods_KnownToSDK(t *testing.T) {
 	if missing := permissions.Missing(proclassic.Privileges, flushMdmCommandsSDKMethods...); len(missing) > 0 {
-		t.Fatalf("flushMdmCommandsSDKMethods not present in proclassic.Privileges (drift): %v", missing)
+		t.Fatalf("flushMdmCommandsSDKMethods not present in the proclassic registry (drift): %v", missing)
 	}
 }
 
@@ -113,10 +40,8 @@ func TestFlushMdmCommandsSDKMethods_KnownToSDK(t *testing.T) {
 //
 // Each MDM command action reaches the SDK two ways: via direct calls on its
 // configured client surfaces (a.client.*, a.devices.*, a.classic.*) and via the
-// shared helpers in helpers.go (sendCommand -> SendMdmCommandV2;
-// resolveManagementID's serial path -> ResolveDeviceIDBySerialNumber, which is a
-// resolver wrapper over the /v1/devices list documented as ListDevices;
-// resolveUnlockToken -> ListMobileDevicesDetailV2 + GetMobileDeviceDetailV2).
+// shared helpers in helpers.go (resolveManagementIDs' serial path ->
+// resolveSerialNumbers -> ListDevices).
 //
 // reachableSDKMethods reads an action's own source file, resolves the helper
 // indirections it invokes, and returns the full set of SDK privilege-registry
@@ -128,12 +53,8 @@ func TestFlushMdmCommandsSDKMethods_KnownToSDK(t *testing.T) {
 // resolver has no registry entry of its own and hits the same /v1/devices list
 // endpoint, so its required privilege is that of ListDevices.
 var helperSDKMethods = map[string][]string{
-	"sendCommand":          {"SendMdmCommandV2"},
-	"sendCommandBatch":     {"SendMdmCommandV2"},
-	"resolveManagementID":  {"ListDevices"}, // serial path -> ResolveDeviceIDBySerialNumber -> /v1/devices
 	"resolveManagementIDs": {"ListDevices"}, // serial path -> resolveSerialNumbers -> ListDevices (RSQL in= set)
 	"resolveSerialNumbers": {"ListDevices"},
-	"resolveUnlockToken":   {"ListMobileDevicesDetailV2", "GetMobileDeviceDetailV2"},
 }
 
 // directSDKAliases maps SDK methods callable directly in an action file to their
@@ -233,54 +154,6 @@ func assertMatch(t *testing.T, filename string, declared []string) {
 	}
 }
 
-func TestClearPasscodeSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "clear_passcode.go", clearPasscodeSDKMethods)
-}
-
-func TestClearRestrictionsPasswordSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "clear_restrictions_password.go", clearRestrictionsPasswordSDKMethods)
-}
-
-func TestDeleteUserSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "delete_user.go", deleteUserSDKMethods)
-}
-
-func TestDeviceLockSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "device_lock.go", deviceLockSDKMethods)
-}
-
-func TestDisableLostModeSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "disable_lost_mode.go", disableLostModeSDKMethods)
-}
-
-func TestDisableRemoteDesktopSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "disable_remote_desktop.go", disableRemoteDesktopSDKMethods)
-}
-
-func TestEnableLostModeSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "enable_lost_mode.go", enableLostModeSDKMethods)
-}
-
-func TestEnableRemoteDesktopSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "enable_remote_desktop.go", enableRemoteDesktopSDKMethods)
-}
-
-func TestLogOutUserSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "log_out_user.go", logOutUserSDKMethods)
-}
-
-func TestPlayLostModeSoundSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "play_lost_mode_sound.go", playLostModeSoundSDKMethods)
-}
-
-func TestSetAutoAdminPasswordSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "set_auto_admin_password.go", setAutoAdminPasswordSDKMethods)
-}
-
-func TestUnlockUserAccountSDKMethods_MatchFile(t *testing.T) {
-	assertMatch(t, "unlock_user_account.go", unlockUserAccountSDKMethods)
-}
-
 func TestSendBlankPushSDKMethods_MatchFile(t *testing.T) {
 	assertMatch(t, "send_blank_push.go", sendBlankPushSDKMethods)
 }
@@ -295,39 +168,27 @@ func TestFlushMdmCommandsSDKMethods_MatchFile(t *testing.T) {
 
 // --- rendered-table guards: each section actually produced a privileges block ---
 
-func TestSendCommandPrivileges_Rendered(t *testing.T) {
-	// All serial-resolving command actions render the execute command privilege
-	// plus the devices read privilege.
-	for _, section := range []string{deviceLockPrivileges, clearPasscodePrivileges} {
-		if !strings.Contains(section, "execute:pro:computer-commands") {
-			t.Fatalf("section did not render the command execute privilege:\n%s", section)
-		}
-		if !strings.Contains(section, "devices:read") {
-			t.Fatalf("section did not render the devices read privilege:\n%s", section)
+func TestSendBlankPushPrivileges_Rendered(t *testing.T) {
+	// Both privileges, deliberately. devices:read comes from ListDevices, the
+	// serial-resolution helper, so asserting it alone would leave the privilege
+	// the command itself needs unpinned — and an operator who granted only the
+	// resolver's privilege would be refused at POST /v2/mdm/blank-push by a
+	// table that told them they were done.
+	for _, want := range []string{"device-actions:execute", "devices:read"} {
+		if !permissions.Renders(sendBlankPushPrivileges, want) {
+			t.Errorf("sendBlankPushPrivileges did not render %q:\n%s", want, sendBlankPushPrivileges)
 		}
 	}
 }
 
 func TestRenewMdmProfilePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(renewMdmProfilePrivileges, "execute:pro:mobile-device-commands") {
+	if !permissions.Renders(renewMdmProfilePrivileges, "device-actions:execute") {
 		t.Fatalf("renewMdmProfilePrivileges did not render the expected privilege:\n%s", renewMdmProfilePrivileges)
 	}
 }
 
 func TestFlushMdmCommandsPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(flushMdmCommandsPrivileges, "delete:pro:computer-commands") {
+	if !permissions.Renders(flushMdmCommandsPrivileges, "device-actions:delete") {
 		t.Fatalf("flushMdmCommandsPrivileges did not render the expected privilege:\n%s", flushMdmCommandsPrivileges)
-	}
-}
-
-func TestTriggerEnhancedLogCollectionSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, triggerEnhancedLogCollectionSDKMethods...); len(missing) > 0 {
-		t.Fatalf("triggerEnhancedLogCollectionSDKMethods not present in SDK registries (drift): %v", missing)
-	}
-}
-
-func TestCancelEnhancedLogCollectionSDKMethods_KnownToSDK(t *testing.T) {
-	if missing := permissions.Missing(resolveSerialMerged, cancelEnhancedLogCollectionSDKMethods...); len(missing) > 0 {
-		t.Fatalf("cancelEnhancedLogCollectionSDKMethods not present in SDK registries (drift): %v", missing)
 	}
 }

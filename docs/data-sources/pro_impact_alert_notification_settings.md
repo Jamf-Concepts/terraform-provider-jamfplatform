@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_impact_alert_notification_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
+  Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). One record per tenant.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Notification settings | Read | `impact-alert-notification-settings` |
 ---
 
 # jamfplatform_pro_impact_alert_notification_settings (Data Source)
 
-Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant.
+Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). One record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Notification settings | Read | `impact-alert-notification-settings` |
 
 ## Example Usage
 

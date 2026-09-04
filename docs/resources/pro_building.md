@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_building Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Buildings | `create:pro:buildings` |
-  | Delete Buildings | `delete:pro:buildings` |
-  | Read Buildings | `read:pro:buildings` |
-  | Update Buildings | `update:pro:buildings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Buildings | Create, Read, Update, Delete | `buildings` |
 ---
 
 # jamfplatform_pro_building (Resource)
 
 Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Buildings | `create:pro:buildings` |
-| Delete Buildings | `delete:pro:buildings` |
-| Read Buildings | `read:pro:buildings` |
-| Update Buildings | `update:pro:buildings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Buildings | Create, Read, Update, Delete | `buildings` |
 
 ## Example Usage
 

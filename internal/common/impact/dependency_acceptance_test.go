@@ -14,6 +14,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers/accrequire"
 )
 
 // The dependency index is the one part of impact reporting whose correctness
@@ -25,6 +27,21 @@ import (
 // so they pass on any estate.
 
 // liveCache builds a Cache against the tenant named by the environment.
+//
+// It builds its client directly rather than through testhelpers.NewAcceptanceClient
+// because it needs WithMinRequestInterval(0) — the provider's own default, and
+// the configuration the sweep's concurrency bound was chosen against — which the
+// shared client does not carry. The unset-credential branch still routes through
+// accrequire.SkipOrFailUnset, so bypassing the shared client does not also
+// bypass the require gate: a bare t.Skip here would skip these three tests green
+// in the pro lane while everything around them failed loudly.
+// internal/conformance/acc_lanes_test.go allow-lists them by name for the direct
+// construction, which records the exemption; this is what makes it safe.
+//
+// It reaches the gate through internal/testhelpers/accrequire rather than
+// testhelpers, because testhelpers imports internal/provider, which reaches this
+// package — importing it here would be an import cycle in the test binary. That
+// is exactly why the gate is a leaf package.
 func liveCache(t *testing.T) *Cache {
 	t.Helper()
 	baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
@@ -33,7 +50,7 @@ func liveCache(t *testing.T) *Cache {
 	environmentID := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID")
 	tenantID := os.Getenv("JAMFPLATFORM_TENANT_ID")
 	if baseURL == "" || clientID == "" || clientSecret == "" || (environmentID == "" && tenantID == "") {
-		t.Skip("set JAMFPLATFORM_BASE_URL, _CLIENT_ID, _CLIENT_SECRET and one of _ENVIRONMENT_ID / _TENANT_ID to run")
+		accrequire.SkipOrFailUnset(t, "AccPreCheck", "JAMFPLATFORM_BASE_URL, _CLIENT_ID, _CLIENT_SECRET and one of _ENVIRONMENT_ID / _TENANT_ID are not all set")
 	}
 	scope := jamfplatform.WithEnvironmentID(environmentID)
 	if environmentID == "" {

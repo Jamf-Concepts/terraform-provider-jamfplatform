@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_removable_mac_address Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record — useful when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:removable-mac-address` |
-  | `delete:pro:removable-mac-address` |
-  | `read:pro:removable-mac-address` |
-  | `update:pro:removable-mac-address` |
+  Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record. Use them when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Removable MAC addresses | Create, Read, Update, Delete | `removable-mac-address` |
 ---
 
 # jamfplatform_pro_removable_mac_address (Resource)
 
-Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record — useful when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches.
+Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record. Use them when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:removable-mac-address` |
-| `delete:pro:removable-mac-address` |
-| `read:pro:removable-mac-address` |
-| `update:pro:removable-mac-address` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Removable MAC addresses | Create, Read, Update, Delete | `removable-mac-address` |
 
 ## Example Usage
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -91,7 +90,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table rendered into the
 // resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "app-request-settings") {
+	if !permissions.Renders(resourcePrivileges, "app-request:update") {
 		t.Fatalf("resourcePrivileges did not render the app-request privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -115,7 +114,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the data
 // source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "app-request-settings") {
+	if !permissions.Renders(dataSourcePrivileges, "app-request:read") {
 		t.Fatalf("dataSourcePrivileges did not render the app-request privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -139,7 +138,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the list
 // resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "app-request-settings") {
+	if !permissions.Renders(listResourcePrivileges, "app-request:read") {
 		t.Fatalf("listResourcePrivileges did not render the app-request privileges:\n%s", listResourcePrivileges)
 	}
 }

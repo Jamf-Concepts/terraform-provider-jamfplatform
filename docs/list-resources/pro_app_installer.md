@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_app_installer List Resource - terraform-provider-j
 subcategory: ""
 description: |-
   Lists App Installer deployments. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Mac Applications | `read:pro:mac-applications` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Read | `applications` |
 ---
 
 # jamfplatform_pro_app_installer (List Resource)
 
 Lists App Installer deployments. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Mac Applications | `read:pro:mac-applications` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Read | `applications` |
 
 ## Example Usage
 
@@ -34,7 +34,7 @@ list "jamfplatform_pro_app_installer" "all" {
 
   config {
     filter = {
-      name_substring = "Editor"
+      name_substring = "Chrome"
     }
   }
 }

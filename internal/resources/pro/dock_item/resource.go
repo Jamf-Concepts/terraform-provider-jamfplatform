@@ -30,11 +30,14 @@ import (
 // below ProviderMinJamfProVersion.
 const minJamfProVersion = ""
 
-// Dock item type enum values accepted by the classic /dockitems endpoint.
+// Dock item type enum values accepted by the classic /dockitems endpoint,
+// aliased from the SDK. Note the classic vocabulary is title-cased —
+// pro.DockItemType, the Pro JSON one, spells the same three values APP / FILE /
+// FOLDER, so the two are not interchangeable.
 const (
-	DockItemTypeApp    = "App"
-	DockItemTypeFile   = "File"
-	DockItemTypeFolder = "Folder"
+	DockItemTypeApp    = proclassic.DockItemTypeApp
+	DockItemTypeFile   = proclassic.DockItemTypeFile
+	DockItemTypeFolder = proclassic.DockItemTypeFolder
 )
 
 // DockItemResource implements the Terraform resource for Jamf Pro dock items.
@@ -82,7 +85,7 @@ func (r *DockItemResource) IdentitySchema(ctx context.Context, req resource.Iden
 // Schema returns the Terraform schema for the dock item resource.
 func (r *DockItemResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST `contents` field is derived from `name`, `type`, and `path` by Jamf Pro and exposed read-only." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro dock item. Dock items are reusable references that Jamf Pro policies use to add an application, file, or folder to a Mac's Dock. The PLIST `contents` field is derived from `name`, `type`, and `path` by Jamf Pro and exposed read-only." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Dock item ID assigned by Jamf Pro.",
@@ -113,7 +116,7 @@ func (r *DockItemResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"contents": schema.StringAttribute{
-				MarkdownDescription: "PLIST representation of the dock tile. Read-only — Jamf Pro derives this from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.",
+				MarkdownDescription: "Property-list representation of the dock tile. Jamf Pro derives it from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

@@ -10,27 +10,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func sampleEntries() []pro.AppInstallerDeploymentListEntry {
-	return []pro.AppInstallerDeploymentListEntry{
+func sampleEntries() []pro.AppTitleDeploymentSummary {
+	return []pro.AppTitleDeploymentSummary{
 		{
 			ID:             "177",
 			Name:           "Jamf Composer",
 			Enabled:        true,
 			DeploymentType: "SELF_SERVICE",
 			UpdateBehavior: "AUTOMATIC",
-			App: &pro.AppInstallerApp{
-				ID:                  "518",
-				BundleID:            "com.jamfsoftware.Composer",
-				LatestVersion:       "16.0.4",
+			App: &pro.AppTitleDeploymentSummaryApp{
+				ID:                  "Composer",
+				BundleID:            new("com.jamfsoftware.Composer"),
+				LatestVersion:       new("16.0.4"),
 				SelectedVersion:     "",
 				DeployedVersion:     "16.0.4",
 				MediaSourceType:     "JAMF_SERVER",
 				TitleAvailableInAis: true,
 				VersionRemoved:      false,
 			},
-			Site:             &pro.AppInstallerNamedRef{ID: "-1", Name: "None"},
-			Category:         &pro.AppInstallerNamedRef{ID: "58", Name: "Productivity"},
-			ComputerStatuses: &pro.AppInstallerComputerStatuses{Available: 3, Failed: 1, InProgress: 0, Installed: 5, Unqualified: 2},
+			Site:             &pro.AppInstallersSite{ID: "-1", Name: new("None")},
+			Category:         &pro.AppInstallersCategory{ID: "58", Name: new("Productivity")},
+			ComputerStatuses: &pro.AppInstallersInstallationSummary{Available: 3, Failed: 1, InProgress: 0, Installed: 5, Unqualified: 2},
 		},
 		{
 			ID:             "200",

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_notification Data Source - terra
 subcategory: ""
 description: |-
   Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Data Source)
 
 Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 
 ## Example Usage
 

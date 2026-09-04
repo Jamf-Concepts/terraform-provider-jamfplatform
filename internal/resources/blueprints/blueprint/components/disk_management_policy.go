@@ -31,12 +31,12 @@ func DiskManagementPolicyComponentSchema() map[string]schema.Attribute {
 		"external_storage": schema.StringAttribute{
 			MarkdownDescription: "Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.StorageModeValueValues()...)},
 		},
 		"network_storage": schema.StringAttribute{
 			MarkdownDescription: "Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.StorageModeValueValues()...)},
 		},
 	}
 }

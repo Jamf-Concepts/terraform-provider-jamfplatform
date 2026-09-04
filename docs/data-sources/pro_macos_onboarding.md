@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_macos_onboarding Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Items are returned in priority order.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+  Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). One record per tenant. Items are returned in priority order.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Onboarding configuration | Read | `onboarding` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Data Source)
 
-Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Items are returned in priority order.
+Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). One record per tenant. Items are returned in priority order.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Onboarding configuration | Read | `onboarding` |
 
 ## Example Usage
 

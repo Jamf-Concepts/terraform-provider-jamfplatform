@@ -57,7 +57,7 @@ func FilterAttribute(selectorDescription string, validSelectors []string) schema
 					},
 				},
 				"argument": schema.StringAttribute{
-					MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).",
+					MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).",
 					Required:            true,
 				},
 				"has_opening_parenthesis": schema.BoolAttribute{
@@ -105,7 +105,7 @@ func ListFilterAttribute(selectorDescription string, validSelectors []string) li
 					},
 				},
 				"argument": listschema.StringAttribute{
-					MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).",
+					MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).",
 					Required:            true,
 				},
 				"has_opening_parenthesis": listschema.BoolAttribute{

@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the notification resource's CRUD path
 // calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // r.client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteVolumePurchasingSubscriptionV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the notification resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -29,13 +29,13 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // calls. data_source.go also calls ResolveVolumePurchasingSubscriptionV1IDByName,
 // but that resolver wrapper is not a registry key — its privilege need (the
 // list read) is already covered by GetVolumePurchasingSubscriptionV1's
-// read:pro:volume-purchasing-locations privilege, so the rendered table is
+// volume-purchasing-locations:read privilege, so the rendered table is
 // complete with just the registry-backed methods.
 var dataSourceSDKMethods = []string{
 	"GetVolumePurchasingSubscriptionV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the notification data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -46,6 +46,6 @@ var listResourceSDKMethods = []string{
 	"GetVolumePurchasingSubscriptionV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the notification list resource, appended to its Description.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

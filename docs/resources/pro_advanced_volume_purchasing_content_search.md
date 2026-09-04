@@ -3,39 +3,33 @@
 page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's Content Name is Name, Price is Cost, Location is Account.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
-  | Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
-  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
-  | Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
+  Manages a Jamf Pro advanced volume purchasing content search: a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is report data Jamf Pro computes, and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels: the UI's Content Name is Name, Price is Cost, and Location is Account.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Resource)
 
-Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`.
+Manages a Jamf Pro advanced volume purchasing content search: a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is report data Jamf Pro computes, and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels: the UI's `Content Name` is `Name`, `Price` is `Cost`, and `Location` is `Account`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
-| Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
-| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
-| Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 
 ## Example Usage
 
 ```terraform
-# Advanced Volume Purchasing Content search — a saved, criteria-driven query over
+# Advanced Volume Purchasing Content search: a saved, criteria-driven query over
 # Volume Purchasing (VPP) content with a configurable set of display columns.
 #
-# NOTE: criteria and display-field names use Jamf Pro's WIRE vocabulary, which
+# Criteria and display-field names use Jamf Pro's stored vocabulary, which
 # differs from the admin-UI labels:
 #   UI "Content Name"        -> "Name"
 #   UI "Price"               -> "Cost"
@@ -63,8 +57,8 @@ resource "jamfplatform_pro_advanced_volume_purchasing_content_search" "office_ap
     },
   ]
 
-  # The set of content columns shown in the results (wire names). Order is not
-  # significant — Jamf Pro returns the columns in its own canonical order and
+  # The set of content columns shown in the results (stored names). Order is not
+  # significant; Jamf Pro returns the columns in its own canonical order and
   # silently drops names it does not recognise.
   display_fields = ["Name", "Cost", "Total", "Used"]
 }
@@ -93,8 +87,8 @@ resource "jamfplatform_pro_advanced_volume_purchasing_content_search" "all_in_si
 
 ### Optional
 
-- `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria. (see [below for nested schema](#nestedatt--criteria))
-- `display_fields` (Set of String) Set of content column names to display in the search results (e.g. `Name`, `Cost`, `Total`, `Type`). Order is not significant — Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.
+- `criteria` (Attributes List) Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omitting the attribute leaves any existing criteria untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all criteria. (see [below for nested schema](#nestedatt--criteria))
+- `display_fields` (Set of String) Set of content column names shown in the search results, for example `Name`, `Cost`, `Total`, `Type`. Order is not significant: Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omitting the attribute leaves any existing columns untouched; they are not cleared on an unrelated update. Set it to `[]` to remove all display columns.
 - `site_id` (String) Optional Jamf Pro site ID to scope the search. Omit to leave unscoped (Jamf Pro reports the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

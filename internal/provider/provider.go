@@ -22,15 +22,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	ssodomainactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/account/sso_domain"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	appinstalleractions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/app_installers"
 	jamfprotectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/jamf_protect"
 	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
 	patchactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/patch"
+	uemconnectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/security_cloud/uem_connect"
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	ssoconnection "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/account/sso_connection"
+	ssodomain "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/account/sso_domain"
+	aigovernancepolicy "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/policy"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/tool"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
@@ -53,9 +60,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/allowed_file_extension"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_client"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role_privileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_title"
@@ -137,6 +141,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/supervision_identity"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/tenant_id"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_group"
@@ -145,9 +150,17 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/activation_profile"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/content_categories"
+	securityclouddevicegroup "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/device_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_hostname_mappings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_search_domain"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_predefined_apps"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_shared_gateways"
 )
 
@@ -200,19 +213,24 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
 				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
 				"**📘 New here? Start with the getting-started guide:** [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/) on Jamf Concepts walks through installing Terraform, creating API credentials, configuring the provider, writing your first device groups, compliance benchmarks and blueprints, applying a configuration, and bringing an existing tenant under management.\n\n"+
-				"> **Note:** The Jamf Platform API is currently in public beta. Provider stability, functionality, and schemas are subject to change without notice.\n\n"+
+				"> **⚠️ Upgrading from any pre-GA version — `v0.28.1` or earlier, or a `v0.29.0` release candidate?** The Jamf Platform API has reached general availability, and this release targets the GA gateway. Beta API integration credentials are revoked whichever pre-GA version you are coming from, so register a replacement integration in Jamf Account and replace `tenant_id` with `environment_id`. On `v0.28.1` or earlier, set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade; a release candidate already points there. Earlier versions reach only the retired beta host, and several constructs were removed along with the endpoints they called. See [Upgrading to the Platform API GA](guides/platform-api-ga).\n\n"+
 				"**Supported Jamf products and tenant version targets**\n\n"+
 				"| Product | Resource namespace | Built against API as of |\n"+
 				"|---------|--------------------|--------------------------|\n"+
-				"| Jamf Pro | `jamfplatform_pro_*` | %s |\n\n"+
-				"Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.\n\n"+
+				"| Jamf Pro | `jamfplatform_pro_*` | %s |\n"+
+				"| Jamf Platform Services (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) | no product prefix, such as `jamfplatform_blueprints_blueprint` | continuously deployed |\n"+
+				"| Jamf Security Cloud (Custom DNS, ZTNA, UEM Connect, device groups, activation profiles) | `jamfplatform_security_cloud_*` | continuously deployed |\n"+
+				"| Jamf AI Governance | `jamfplatform_ai_governance_*` | continuously deployed |\n"+
+				"| Jamf Account (single sign-on) | `jamfplatform_account_*` | continuously deployed |\n\n"+
+				"Jamf Pro is the only product versioned at the tenant. A tenant below the listed version raises an advisory warning at apply time, and a resource that needs a newer endpoint declares its own floor and fails when it is configured rather than mid-apply. The rest target continuously-deployed platform services, and no version is fetched for a configuration that uses only those.\n\n"+
+				"Which namespaces an API integration reaches depends on the scope it was created with: Jamf AI Governance needs a platform environment, and `jamfplatform_account_*` needs organization management and is the only family that scope reaches. Every resource and data source reports the scope it needs when it is configured. See `environment_id` below.\n\n"+
 				"This provider builds on the work of [Deployment Theory](https://github.com/deploymenttheory)'s [terraform-provider-jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, the most widely adopted community Terraform provider for Jamf.",
 			providerdata.ProviderMinJamfProVersion,
 		),
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
 				Optional:    true,
-				Description: "Required. The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com for production US region or https://us.stage.apigw.jamfnebula.com for internal staging US region). Must be set either here or via the JAMFPLATFORM_BASE_URL environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
+				Description: "Required. The regional Jamf Platform gateway root: `https://us.api.jamfcloud.com`, `https://eu.api.jamfcloud.com` or `https://apac.api.jamfcloud.com`. Give the host alone. The gateway serves the token endpoint and every API namespace at the root, so a path such as `/api` makes authentication fail. Must be set either here or via the JAMFPLATFORM_BASE_URL environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
 			},
 			"client_id": schema.StringAttribute{
 				Optional:    true,
@@ -225,18 +243,26 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			},
 			"environment_id": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration targets — a group of tenants across product types with interconnected capabilities. " +
-					"Can also be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. " +
-					"This is the scope Jamf intends new integrations to be created with, and Blueprints and Compliance Benchmarks are moving to it exclusively. " +
-					"Mutually exclusive with the legacy `tenant_id`: an API integration targets one or the other, so setting both is an error, and supplying the ID that does not match the integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer — pick the one your integration was created for rather than treating them as two spellings of the same thing. " +
-					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration (single sign-on, AI Governance, and similar organization-level resources); no resource or data source in this provider uses that scope yet, and each one reports the scope it needs when it is configured.",
+				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration " +
+					"targets, a group of tenants across product types with interconnected capabilities. Can also " +
+					"be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. This is the scope new " +
+					"integrations should be created with, and Blueprints and Compliance Benchmarks are moving to " +
+					"it exclusively. Mutually exclusive with the legacy `tenant_id`. An API integration targets " +
+					"one or the other, so setting both is an error, and supplying the ID that does not match the " +
+					"integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same " +
+					"customer. Pick the one your integration was created for rather than treating them as two " +
+					"spellings of the same thing. Setting neither leaves the provider organization-scoped, " +
+					"matching an **\"Organization management\"** integration: the scope the " +
+					"`jamfplatform_account_*` resources require, and the only one that reaches them. Each " +
+					"resource and data source reports the scope it needs when it is configured, so a mismatch is " +
+					"named at plan time rather than failing mid-apply.",
 			},
 			"tenant_id": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: "**Legacy — prefer `environment_id`.** UUID of the single **\"Tenant\"** your API integration targets: one Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant. " +
+				MarkdownDescription: "**Legacy.** Prefer `environment_id`. UUID of the single **\"Tenant\"** your API integration targets: one Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant. " +
 					"Can also be set via the `JAMFPLATFORM_TENANT_ID` environment variable. " +
-					"Jamf describes tenant scope as the legacy method for targeting integrations without a platform environment. " +
-					"It stays supported — and a few surfaces are still only reachable this way — but new configurations should use `environment_id`. " +
+					"Tenant scope is the legacy method for targeting integrations without a platform environment. " +
+					"It stays supported, and a few surfaces are still only reachable this way, but new configurations should use `environment_id`. " +
 					"Mutually exclusive with `environment_id`; see that attribute for what happens when the ID and the integration disagree.",
 			},
 			"min_request_interval_ms": schema.Int64Attribute{
@@ -247,32 +273,50 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				Optional:    true,
 				Sensitive:   true,
 				ElementType: types.StringType,
-				MarkdownDescription: "Extra HTTP headers to send on every request the provider makes, including the token request it uses to authenticate. " +
-					"Keyed by header name; header names are case-insensitive, so `x-proxy-route` and `X-Proxy-Route` are the same header and only one of the two may appear. " +
-					"For deployments whose traffic reaches Jamf through a reverse proxy that authenticates callers itself, or routes on a tag the provider knows nothing about. " +
-					"Marked sensitive in full, because these headers commonly carry a credential and Terraform cannot redact one entry of a map. " +
-					"Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` environment variable, as one `Name: value` pair per line — the form a CI runner can inject without a Terraform variable. " +
-					"When this attribute is set the variable is not read at all. " +
-					"Three names are refused. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from `environment_id` and `tenant_id`, and Jamf answers an overridden scope with the same error a wrong credential gets. " +
-					"`Cookie` is refused because a supplied header replaces rather than adds to what the provider sends, and it would displace the session cookie Jamf Cloud uses to keep this client on one application node — a proxy that needs a cookie of its own can simply set one on a response, which the provider stores and sends back on its own. " +
-					"Supplying `Authorization` is supported and is the point of the feature — pair it with `authorization_header_name` so the proxy's credential and Jamf's own both reach the request. " +
-					"See the [Reverse proxy guide](../guides/reverse-proxy) for the whole arrangement.",
+				MarkdownDescription: "Extra HTTP headers to send on every request the provider makes, including " +
+					"the token request it uses to authenticate. Keyed by header name; header names are " +
+					"case-insensitive, so `x-proxy-route` and `X-Proxy-Route` are the same header and only one " +
+					"of the two may appear. For deployments whose traffic reaches Jamf through a reverse proxy " +
+					"that authenticates callers itself, or routes on a tag the provider knows nothing about. " +
+					"Marked sensitive in full, because these headers commonly carry a credential and Terraform " +
+					"cannot redact one entry of a map. Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` " +
+					"environment variable, as one `Name: value` pair per line, which a CI runner can inject " +
+					"without a Terraform variable. When this attribute is set the variable is not read at all. " +
+					"Five names are refused, all because a supplied header replaces rather than adds to what the " +
+					"provider sends. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from " +
+					"`environment_id` and `tenant_id`, and the gateway answers an overridden scope with the same " +
+					"error a wrong credential gets. `Cookie` would displace the session cookie Jamf Cloud uses " +
+					"to keep this client on one application node. A proxy that needs a cookie of its own can set " +
+					"one on a response, which the provider stores and sends back on its own. `Content-Type` is " +
+					"chosen per request: JSON, merge-patch JSON, XML on some Jamf Pro requests, or multipart " +
+					"with a generated boundary for a file upload. One value here overrides all four and leaves " +
+					"an upload without its boundary. `Accept` is `application/xml` on those same Jamf Pro " +
+					"requests, and setting it elsewhere is no safer: Jamf Security Cloud's UEM Connect service " +
+					"answers `Accept: application/xml` with an XML body the provider would decode as JSON. " +
+					"Supplying `Authorization` is supported and is the point of the feature. Pair it with " +
+					"`authorization_header_name` so the proxy's credential and the Jamf credential both reach " +
+					"the request. See the [Reverse proxy guide](../guides/reverse-proxy) for the whole " +
+					"arrangement.",
 			},
 			"authorization_header_name": schema.StringAttribute{
 				Optional: true,
-				MarkdownDescription: "Send the Jamf credential in this header instead of `Authorization`. " +
-					"For a reverse proxy that consumes `Authorization` for its own service account and expects Jamf's credential under a name it chose. " +
-					"Leave it unset — the default — to keep the credential in `Authorization`, which is what talking to Jamf directly needs. " +
-					"Can also be set via the `JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. " +
-					"Only the credential the provider sends on API requests moves; the credentials that obtain it are unaffected, so authentication keeps working. " +
-					"`Authorization`, `X-Environment-Id`, `X-Tenant-Id`, and any name also present in `custom_headers` are refused, since each leaves the request with no usable credential and fails in terms that name something else as the cause. " +
-					"See the [Reverse proxy guide](../guides/reverse-proxy).",
+				MarkdownDescription: "Send the Jamf credential in this header instead of `Authorization`. For a " +
+					"reverse proxy that consumes `Authorization` for its own service account and expects the " +
+					"Jamf credential under a name it chose. By default it is unset and the credential stays in " +
+					"`Authorization`, which is what talking to Jamf directly needs. Can also be set via the " +
+					"`JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. Only the credential the " +
+					"provider sends on API requests moves; the credentials that obtain it are unaffected, so " +
+					"authentication keeps working. `Authorization`, `X-Environment-Id`, `X-Tenant-Id`, `Accept`, " +
+					"`Content-Type`, and any name also present in `custom_headers` are refused. Each leaves the " +
+					"request with no usable credential (or, for the two media-type headers, one the gateway " +
+					"cannot parse) and fails in terms that name something else as the cause. See the [Reverse " +
+					"proxy guide](../guides/reverse-proxy).",
 			},
 			"impact_alerts": schema.BoolAttribute{
 				Optional: true,
-				MarkdownDescription: "Show **impact alerts** during `terraform plan`: an advisory warning on each deployable or scopeable object this plan changes, reporting how many computers or mobile devices the change affects — the same signal Jamf Pro shows on Save. " +
+				MarkdownDescription: "Show **impact alerts** during `terraform plan`: an advisory warning on each deployable or scopeable object this plan changes, reporting how many computers or mobile devices the change affects. It is the same signal Jamf Pro shows on Save. " +
 					"Off by default; alerts never block a plan. " +
-					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable, which accepts the values of Go's `strconv.ParseBool` (`true`, `false`, `1`, `0`, …) — an unparseable value leaves alerts off and raises a configure-time warning, and this attribute, when set, always takes precedence over the variable. " +
+					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable, which accepts the values of Go's `strconv.ParseBool` (`true`, `false`, `1`, `0`, …). An unparseable value leaves alerts off and raises a configure-time warning. This attribute, when set, always takes precedence over the variable. " +
 					"This does not change any Jamf Pro setting; to configure the alerts Jamf Pro shows in its own web interface, use `jamfplatform_pro_impact_alert_notification_settings`. " +
 					"See the [Impact alerts guide](../guides/impact-alerts) for how to read the figures, how to consume them in CI, and what they cost.",
 			},
@@ -299,6 +343,9 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 			"base_url must be set either in the provider block or via the JAMFPLATFORM_BASE_URL environment variable.",
 		)
 		return
+	}
+	if summary, detail := baseURLPathWarning(baseURL); summary != "" {
+		resp.Diagnostics.AddWarning(summary, detail)
 	}
 
 	clientID := data.ClientID.ValueString()
@@ -415,8 +462,6 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 	return []func() resource.Resource{
 		account.NewAccountResource,
 		account_group.NewAccountGroupResource,
-		api_client.NewApiClientResource,
-		api_role.NewApiRoleResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentResource,
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
@@ -474,8 +519,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchResource,
 		advanced_user_search.NewAdvancedUserSearchResource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchResource,
-		app_installer_settings.NewAppInstallerSettingsResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
+		app_installer_settings.NewAppInstallerSettingsResource,
 		activation_code.NewActivationCodeResource,
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsResource,
@@ -509,7 +554,16 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_assignment.NewVPPAssignmentResource,
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
+		ssodomain.NewDomainResource,
+		ssoconnection.NewConnectionResource,
+		aigovernancepolicy.NewPolicyResource,
+		activation_profile.NewActivationProfileResource,
+		securityclouddevicegroup.NewDeviceGroupResource,
+		dns_hostname_mappings.NewHostnameMappingsResource,
+		dns_search_domain.NewSearchDomainResource,
 		dns_zone.NewDNSZoneResource,
+		uem_connect.NewUEMConnectResource,
+		ztna_app.NewZtnaAppResource,
 		ztna_gateway.NewGatewayResource,
 		ztna_grouped_gateway.NewGroupedGatewayResource,
 	}
@@ -520,11 +574,6 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		account.NewAccountDataSource,
 		account_group.NewAccountGroupDataSource,
 		account_privileges.NewAccountPrivilegesDataSource,
-		api_client.NewApiClientDataSource,
-		api_client.NewApiClientsDataSource,
-		api_role.NewApiRoleDataSource,
-		api_role_privileges.NewApiRolePrivilegesDataSource,
-		api_role.NewApiRolesDataSource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentDataSource,
 		automated_device_enrollment_public_key.NewAutomatedDeviceEnrollmentPublicKeyDataSource,
 		blueprint.NewBlueprintDataSource,
@@ -540,12 +589,29 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		ssodomain.NewDomainDataSource,
+		ssodomain.NewDomainsDataSource,
+		ssoconnection.NewConnectionDataSource,
+		ssoconnection.NewConnectionsDataSource,
+		aigovernancepolicy.NewPolicyDataSource,
+		aigovernancepolicy.NewPoliciesDataSource,
+		tool.NewToolDataSource,
+		tool.NewToolsDataSource,
+		content_categories.NewContentCategoriesDataSource,
+		securityclouddevicegroup.NewDeviceGroupDataSource,
+		securityclouddevicegroup.NewDeviceGroupsDataSource,
+		dns_hostname_mappings.NewHostnameMappingsDataSource,
+		dns_search_domain.NewSearchDomainDataSource,
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
+		uem_connect.NewUEMConnectDataSource,
+		ztna_app.NewZtnaAppDataSource,
+		ztna_app.NewZtnaAppsDataSource,
 		ztna_gateway.NewGatewayDataSource,
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
 		ztna_grouped_gateway.NewGroupedGatewaysDataSource,
+		ztna_predefined_apps.NewPredefinedAppsDataSource,
 		ztna_shared_gateways.NewSharedGatewaysDataSource,
 		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,
@@ -573,6 +639,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
 		supervision_identity.NewSupervisionIdentityDataSource,
+		tenant_id.NewTenantIDDataSource,
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
@@ -600,8 +667,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
 		script.NewScriptsDataSource,
-		app_installer_settings.NewAppInstallerSettingsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
+		app_installer_settings.NewAppInstallerSettingsDataSource,
 		activation_code.NewActivationCodeDataSource,
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsDataSource,
@@ -655,15 +722,19 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 	return []func() list.ListResource{
 		account.NewAccountListResource,
 		account_group.NewAccountGroupListResource,
-		api_client.NewApiClientListResource,
-		api_role.NewApiRoleListResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentListResource,
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
 		allowed_file_extension.NewAllowedFileExtensionListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		securityclouddevicegroup.NewDeviceGroupListResource,
+		ssodomain.NewDomainListResource,
+		ssoconnection.NewConnectionListResource,
+		aigovernancepolicy.NewPolicyListResource,
 		dns_zone.NewDNSZoneListResource,
+		uem_connect.NewUEMConnectListResource,
+		ztna_app.NewZtnaAppListResource,
 		ztna_gateway.NewGatewayListResource,
 		ztna_grouped_gateway.NewGroupedGatewayListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,
@@ -730,28 +801,20 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		deviceactions.NewUnmanageAction,
 		msuactions.NewPlanAction,
 		msuactions.NewAbandonFeatureToggleAction,
-		mdmactions.NewDeviceLockAction,
-		mdmactions.NewEnableLostModeAction,
-		mdmactions.NewDisableLostModeAction,
-		mdmactions.NewPlayLostModeSoundAction,
-		mdmactions.NewEnableRemoteDesktopAction,
-		mdmactions.NewDisableRemoteDesktopAction,
-		mdmactions.NewClearRestrictionsPasswordAction,
-		mdmactions.NewClearPasscodeAction,
-		mdmactions.NewDeleteUserAction,
-		mdmactions.NewLogOutUserAction,
-		mdmactions.NewUnlockUserAccountAction,
-		mdmactions.NewSetAutoAdminPasswordAction,
-		mdmactions.NewTriggerEnhancedLogCollectionAction,
-		mdmactions.NewCancelEnhancedLogCollectionAction,
 		mdmactions.NewSendBlankPushAction,
 		mdmactions.NewRenewMdmProfileAction,
 		mdmactions.NewFlushMdmCommandsAction,
 		maintenanceactions.NewRedeployManagementFrameworkAction,
+		uemconnectactions.NewSynchronizeAction,
+		uemconnectactions.NewDeployActivationProfileAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
+		appinstalleractions.NewRetryInstallationsAction,
+		appinstalleractions.NewRetryAllInstallationsAction,
+		appinstalleractions.NewUpdateVersionAction,
 		jamfprotectactions.NewSyncPlansAction,
 		jamfprotectactions.NewRetryDeploymentAction,
+		ssodomainactions.NewVerifySSODomainAction,
 	}
 }
 

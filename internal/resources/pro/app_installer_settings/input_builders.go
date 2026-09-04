@@ -17,8 +17,8 @@ import (
 // unchanged. Within a managed block, null leaf values clear the corresponding
 // server field (field-level full-replace).
 // Pass current=nil on unit tests that exercise the build logic in isolation.
-func buildMergedInput(current *pro.AppInstallerGlobalSettings, plan AppInstallerSettingsResourceModel) *pro.AppInstallerGlobalSettings {
-	out := &pro.AppInstallerGlobalSettings{}
+func buildMergedInput(current *pro.AppInstallersGlobalSettings, plan AppInstallerSettingsResourceModel) *pro.AppInstallersGlobalSettings {
+	out := &pro.AppInstallersGlobalSettings{}
 
 	if plan.DeploymentSettings.IsNull() || plan.DeploymentSettings.IsUnknown() {
 		if current != nil {
@@ -45,15 +45,15 @@ func buildMergedInput(current *pro.AppInstallerGlobalSettings, plan AppInstaller
 
 // buildAppInstallerSettingsInput converts the Terraform plan model into an SDK payload
 // without a merge base. Used only in unit tests that verify the build helpers in isolation.
-func buildAppInstallerSettingsInput(plan AppInstallerSettingsResourceModel) *pro.AppInstallerGlobalSettings {
+func buildAppInstallerSettingsInput(plan AppInstallerSettingsResourceModel) *pro.AppInstallersGlobalSettings {
 	return buildMergedInput(nil, plan)
 }
 
-func buildDeploymentSettings(m *DeploymentSettingsModel) *pro.AppInstallerDeploymentProcessControls {
+func buildDeploymentSettings(m *DeploymentSettingsModel) *pro.AppInstallersDeploymentProcessControls {
 	if m == nil {
 		return nil
 	}
-	return &pro.AppInstallerDeploymentProcessControls{
+	return &pro.AppInstallersDeploymentProcessControls{
 		CommandsBatchSize:       int64ValueToIntPtr(m.BatchSize),
 		BatchFrequencyInMinutes: int64ValueToIntPtr(m.BatchFrequency),
 		DaysOfWeek:              buildDays(m.Days),
@@ -62,16 +62,20 @@ func buildDeploymentSettings(m *DeploymentSettingsModel) *pro.AppInstallerDeploy
 	}
 }
 
-func buildEndUserExperience(m *EndUserExperienceModel) *pro.AppInstallerEndUserExperienceSettings {
+// buildEndUserExperience returns the block by value: the Jamf API declares
+// endUserExperienceSettings as a required member of the global-settings body, so
+// there is no omitted form to express — a nil model yields the all-null block,
+// which the server reads as "clear every field".
+func buildEndUserExperience(m *EndUserExperienceModel) pro.GlobalSettingsEndUserExperience {
 	if m == nil {
-		return nil
+		return pro.GlobalSettingsEndUserExperience{}
 	}
-	return &pro.AppInstallerEndUserExperienceSettings{
-		NotificationInterval: int64ValueToIntPtr(m.NotificationFrequency),
+	return pro.GlobalSettingsEndUserExperience{
+		NotificationInterval: int64ValueToPtr(m.NotificationFrequency),
 		NotificationMessage:  stringValueToPtr(m.NotificationMessage),
-		Deadline:             int64ValueToIntPtr(m.UpdateDeadline),
+		Deadline:             int64ValueToPtr(m.UpdateDeadline),
 		DeadlineMessage:      stringValueToPtr(m.ForceQuitMessage),
-		QuitDelay:            int64ValueToIntPtr(m.ForceQuitGracePeriod),
+		QuitDelay:            int64ValueToPtr(m.ForceQuitGracePeriod),
 		CompleteMessage:      stringValueToPtr(m.UpdateCompleteMessage),
 		Relaunch:             boolValueToPtr(m.Relaunch),
 		Suppress:             boolValueToPtr(m.Suppress),
@@ -97,6 +101,13 @@ func int64ValueToIntPtr(v types.Int64) *int {
 	}
 	n := int(v.ValueInt64())
 	return &n
+}
+
+func int64ValueToPtr(v types.Int64) *int64 {
+	if v.IsNull() || v.IsUnknown() {
+		return nil
+	}
+	return new(v.ValueInt64())
 }
 
 func stringValueToPtr(v types.String) *string {

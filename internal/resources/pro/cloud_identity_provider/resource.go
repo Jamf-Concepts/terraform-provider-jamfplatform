@@ -84,10 +84,10 @@ func (r *CloudIdentityProviderResource) IdentitySchema(ctx context.Context, req 
 // Schema returns the Terraform schema for the resource.
 func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. " +
+		MarkdownDescription: "Manages a Jamf Pro Cloud Identity Provider: the integration that lets Jamf Pro look up users and groups in a cloud directory. " +
 			"One resource type covers both supported providers; set `provider_name` to choose, and supply the matching nested block (`google` for Google Secure LDAP, `entra_id` for Microsoft Entra ID). " +
 			"Changing `provider_name` forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. " +
-			"**Microsoft Entra ID:** after the first apply you must complete the manual **\"refresh consent\"** step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra." + resourcePrivileges,
+			"For Microsoft Entra ID, complete the manual **\"refresh consent\"** step in the Jamf Pro admin UI after the first apply: sign into Entra ID and authorise the Jamf cloud connector. Until that consent exists the connection is unusable, and Entra rejects later updates." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cloud Identity Provider ID assigned by Jamf Pro.",
@@ -125,7 +125,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 							"server_url":         defaultedString("**\"Server\"** in the Jamf Pro admin UI. Google Secure LDAP hostname. Defaults to `ldap.google.com`.", "ldap.google.com"),
 							"domain_name":        requiredString("**\"Domain\"** in the Jamf Pro admin UI. The directory domain (e.g. `example.com`)."),
 							"port":               defaultedInt64("**\"Port\"** in the Jamf Pro admin UI. LDAPS port. Defaults to `636`.", 636),
-							"connection_type":    defaultedStringOneOf("**\"Connection type\"** in the Jamf Pro admin UI. Defaults to `LDAPS`.", "LDAPS", []string{"LDAPS"}),
+							"connection_type":    defaultedStringOneOf("**\"Connection type\"** in the Jamf Pro admin UI. Defaults to `LDAPS`.", pro.CloudLdapServerRequestConnectionTypeLdaps, []string{pro.CloudLdapServerRequestConnectionTypeLdaps}),
 							"connection_timeout": defaultedInt64("**\"Connection timeout\"** in the Jamf Pro admin UI, in seconds. Defaults to `15`.", 15),
 							"search_timeout":     defaultedInt64("**\"Search timeout\"** in the Jamf Pro admin UI, in seconds. Defaults to `60`.", 60),
 							"use_wildcards":      defaultedBool("**\"Use wildcards\"** in the Jamf Pro admin UI. Defaults to `true`.", true),
@@ -136,7 +136,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 								Required:            true,
 								Attributes: map[string]schema.Attribute{
 									"file": schema.StringAttribute{
-										MarkdownDescription: "Base64-encoded PKCS#12 (`.p12`) client certificate. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `file = filebase64(\"google-ldap.p12\")`. Must be supplied together with `password`.",
+										MarkdownDescription: "Base64-encoded PKCS#12 (`.p12`) client certificate. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `file = filebase64(\"google-ldap.p12\")`. Must be supplied together with `password`.",
 										Optional:            true,
 										Sensitive:           true,
 										WriteOnly:           true,
@@ -145,7 +145,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 										},
 									},
 									"password": schema.StringAttribute{
-										MarkdownDescription: "Password protecting the PKCS#12 keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Must be supplied together with `file`.",
+										MarkdownDescription: "Password protecting the PKCS#12 keystore. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Must be supplied together with `file`.",
 										Optional:            true,
 										Sensitive:           true,
 										WriteOnly:           true,
@@ -154,7 +154,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 										},
 									},
 									"wo_version": schema.Int64Attribute{
-										MarkdownDescription: "Rotation trigger for the `WriteOnly` keystore (`file` + `password`). Bump this integer (any change) to force the next apply to re-upload the keystore. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored keystore alone\" — the provider omits the keystore from the next update so Jamf Pro retains the existing certificate.",
+										MarkdownDescription: "Rotation trigger for the `WriteOnly` keystore (`file` and `password`). Bump this integer (any change) to force the next apply to re-upload the keystore. Initial create should set `wo_version = 1`. Leaving it unset or unchanged leaves the stored keystore alone: the provider omits the keystore from the next update, so Jamf Pro retains the existing certificate.",
 										Optional:            true,
 									},
 									"file_name":       nestedOptString("File name recorded for the uploaded keystore. Returned by Jamf Pro when omitted."),
@@ -166,7 +166,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 						},
 					},
 					"mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Attribute mappings for users and groups. **All-or-nothing:** omit the whole block to let Jamf Pro generate the standard Google defaults, or supply it and specify every field across all three sub-blocks. Supplying a partial block sends empty values for the fields you leave out — it does not merge with the defaults.",
+						MarkdownDescription: "Attribute mappings for users and groups. The block is all-or-nothing. Omit it to let Jamf Pro generate the standard Google defaults, or supply it and specify every field across all three sub-blocks. A partial block sends empty values for the fields you leave out; it does not merge with the defaults.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"user_mappings": schema.SingleNestedAttribute{
@@ -177,7 +177,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 									"object_classes":          nestedOptString("Object classes (e.g. `inetOrgPerson`)."),
 									"search_base":             nestedOptString("User search base (e.g. `ou=Users`)."),
 									"search_scope":            nestedOptString("User search scope (e.g. `ALL_SUBTREES`)."),
-									"additional_search_base":  nestedOptString("Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); the server rejects an empty value."),
+									"additional_search_base":  nestedOptString("Additional user search base. When `mappings` is supplied, this must be a valid LDAP distinguished name (e.g. `ou=Users`); Jamf Pro rejects an empty value."),
 									"user_id":                 nestedOptString("Attribute mapped to user ID."),
 									"username":                nestedOptString("Attribute mapped to username."),
 									"real_name":               nestedOptString("Attribute mapped to real name."),
@@ -221,7 +221,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"tenant_id": schema.StringAttribute{
-						MarkdownDescription: "The Microsoft Entra ID tenant (directory) ID — the GUID identifying your Entra ID tenant, obtained from the Microsoft Entra admin center (not entered in the Jamf Pro UI). Changing it forces replacement — the connection's tenant cannot be updated in place.",
+						MarkdownDescription: "The Microsoft Entra ID tenant (directory) ID: the GUID identifying your Entra ID tenant. Take it from the Microsoft Entra admin center; it is not entered in the Jamf Pro UI. Changing it forces replacement, because the connection's tenant cannot be updated in place.",
 						Required:            true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),
@@ -240,7 +240,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 					"migrated":           computedBool("Whether the connection has been migrated. Read-only."),
 					"deprecated_consent": computedBool("Whether the connection uses a deprecated consent flow. Read-only."),
 					"mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Entra ID attribute mappings. Optional — omit to let Jamf Pro generate defaults; supply it to override.",
+						MarkdownDescription: "Entra ID attribute mappings. Omit the block to let Jamf Pro generate defaults, or supply it to override them.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"user_id":    nestedOptString("Attribute mapped to user ID (e.g. `id`)."),

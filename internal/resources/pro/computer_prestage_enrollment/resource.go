@@ -89,8 +89,8 @@ func (r *ComputerPrestageEnrollmentResource) IdentitySchema(ctx context.Context,
 // Schema returns the Terraform schema for the resource.
 func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. " +
-			"Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro Computer PreStage Enrollment: the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. " +
+			"Device scope (`scope_serial_numbers`) is folded into this resource. Serial numbers must exist on the underlying ADE token, or Jamf Pro rejects the assignment." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Computer PreStage enrollment ID assigned by Jamf Pro.",
@@ -100,7 +100,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Required. Must not be blank.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Must not be blank.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -139,7 +139,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"department": schema.StringAttribute{
-				MarkdownDescription: "**\"Department\"** label shown during Setup Assistant. Free-form text; *not* the department ID (`location_information.department_id`).",
+				MarkdownDescription: "**\"Department\"** label shown during Setup Assistant. Free-form text, *not* the department ID (`location_information.department_id`).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -193,7 +193,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				Required:            true,
 			},
 			"enrollment_customization_id": schema.StringAttribute{
-				MarkdownDescription: "Enrollment customization ID to apply during Setup Assistant. Sentinel `\"0\"` = no customization (note: `\"0\"`, not `\"-1\"`).",
+				MarkdownDescription: "Enrollment customization ID to apply during Setup Assistant. Sentinel `\"0\"` = no customization; it is `\"0\"`, not `\"-1\"`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -256,7 +256,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 			// rejection). The provider's update path detects this via a
 			// post-write diff and surfaces a hard error.
 			"anchor_certificates": schema.ListAttribute{
-				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format; Jamf Pro rejects malformed entries by silently discarding the entire change — the provider catches this and surfaces a hard error.",
+				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format. Jamf Pro rejects malformed entries by silently discarding the whole change; the provider catches that and surfaces a hard error.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -341,7 +341,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"platform_sso_app_bundle_id": schema.StringAttribute{
-				MarkdownDescription: "Bundle identifier of the **unattended** Platform SSO application (e.g. `\"com.okta.mobile\"`). Mutually exclusive with `psso_config_profile_id` (attended Platform SSO).",
+				MarkdownDescription: "Bundle identifier of the unattended Platform SSO application, for example `\"com.okta.mobile\"`. Mutually exclusive with `psso_config_profile_id`, which configures attended Platform SSO.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -349,7 +349,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"psso_config_profile_id": schema.StringAttribute{
-				MarkdownDescription: "Configuration profile ID for **attended** Platform SSO. Mutually exclusive with `platform_sso_app_bundle_id` (unattended Platform SSO), and incompatible with an enrollment customization (`enrollment_customization_id` must be `\"0\"`). Sentinel `\"-1\"` = none.",
+				MarkdownDescription: "Configuration profile ID for attended Platform SSO. Mutually exclusive with `platform_sso_app_bundle_id`, which configures unattended Platform SSO. Incompatible with an enrollment customization, so `enrollment_customization_id` must be `\"0\"`. Sentinel `\"-1\"` means none.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -549,7 +549,7 @@ func optInt64(md string) schema.Attribute {
 // ⇒ block is Optional-only; inner fields are Optional+Computed.
 func skipSetupItemsSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane shown in the Jamf Pro admin UI's *Skip Setup Items* checklist; `true` skips the pane. Supply the block (even empty: `skip_setup_items = {}`) to manage this section — omitting it produces drift on the next refresh.",
+		MarkdownDescription: "Setup Assistant panes to skip during enrolment. Each attribute corresponds to a pane in the Jamf Pro admin UI's *Skip Setup Items* checklist, and `true` skips that pane. Supply the block to manage this section, even empty as `skip_setup_items = {}`. Omitting it produces drift on the next refresh.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"biometric":                   optBool("**\"Biometric\"** pane (Face ID / Touch ID)."),
@@ -584,7 +584,7 @@ func skipSetupItemsSchema() schema.SingleNestedAttribute {
 // locationInformationSchema returns the User and Location Information block.
 func locationInformationSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"User and Location Information\"** in the Jamf Pro admin UI. Supply the block (even empty: `location_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block.",
+		MarkdownDescription: "**\"User and Location Information\"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `location_information = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"username":      optString("**\"Username\"** for the device record."),
@@ -602,7 +602,7 @@ func locationInformationSchema() schema.SingleNestedAttribute {
 // purchasingInformationSchema returns the Purchasing Information block.
 func purchasingInformationSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Purchasing Information\"** in the Jamf Pro admin UI. Supply the block (even empty: `purchasing_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block.",
+		MarkdownDescription: "**\"Purchasing Information\"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `purchasing_information = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"leased":             optBool("**\"Leased\"** in the Jamf Pro admin UI."),
@@ -628,7 +628,7 @@ func purchasingInformationSchema() schema.SingleNestedAttribute {
 // part of the user-facing constraint.
 func accountSettingsSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Account Settings\"** in the Jamf Pro admin UI. Supply the block (even empty: `account_settings = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true` — Jamf Pro rejects mixed states.",
+		MarkdownDescription: "**\"Account Settings\"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `account_settings = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true`; Jamf Pro rejects mixed states.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"payload_configured":          optBool("**\"Configure Account Settings\"** toggle. Must be `true` when any other account-settings field is non-default."),

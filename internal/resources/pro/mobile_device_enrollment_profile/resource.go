@@ -73,8 +73,8 @@ func (r *EnrollmentProfileResource) IdentitySchema(ctx context.Context, req reso
 
 func (r *EnrollmentProfileResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.\n\n" +
-			"Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment profile: the Apple Configurator and over-the-air enrollment profile devices use to enrol into Jamf Pro. It carries enrolment metadata alongside user and location information and purchasing information.\n\n" +
+			"Attachments are read-only. Jamf Pro refuses this provider's authentication when an attachment is uploaded to an enrollment profile, so attachments can be listed here but not managed. Add or remove them in the Jamf Pro admin UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Enrollment profile ID assigned by Jamf Pro.",

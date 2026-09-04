@@ -8,7 +8,7 @@ locals {
   deployment_id = data.jamfplatform_pro_jamf_protect_plans.all.plans[0].uuid
 }
 
-# Mode 1 — retry one computer's failed task(s), by serial number.
+# Mode 1: retry one computer's failed task(s), by serial number.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_serial" {
   config {
     deployment_id = local.deployment_id
@@ -16,7 +16,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_serial" {
   }
 }
 
-# Mode 2 — retry one computer's failed task(s), by management id.
+# Mode 2: retry one computer's failed task(s), by management id.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_management_id" {
   config {
     deployment_id = local.deployment_id
@@ -24,7 +24,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_management_id" {
   }
 }
 
-# Mode 2b — retry one computer's failed task(s), by hardware UDID.
+# Mode 2b: retry one computer's failed task(s), by hardware UDID.
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_udid" {
   config {
     deployment_id = local.deployment_id
@@ -32,7 +32,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "by_udid" {
   }
 }
 
-# Mode 3 — retry every failed task in the deployment (UI "Retry Failed").
+# Mode 3: retry every failed task in the deployment (UI "Retry Failed").
 action "jamfplatform_pro_jamf_protect_deployment_retry" "all_failed" {
   config {
     deployment_id = local.deployment_id
@@ -40,7 +40,7 @@ action "jamfplatform_pro_jamf_protect_deployment_retry" "all_failed" {
   }
 }
 
-# Mode 4 — retry an explicit set of deployment task ids (advanced escape hatch).
+# Mode 4: retry an explicit set of deployment task ids (advanced escape hatch).
 action "jamfplatform_pro_jamf_protect_deployment_retry" "by_task_ids" {
   config {
     deployment_id = local.deployment_id

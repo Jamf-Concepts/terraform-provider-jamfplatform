@@ -3,29 +3,25 @@
 page_title: "jamfplatform_cbengine_benchmark Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure. Requires Compliance Benchmarks API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `compliance-benchmarks:create` |
-  | `compliance-benchmarks:delete` |
-  | `compliance-benchmarks:read` |
+  Creates a Jamf Compliance Benchmark. Creation is asynchronous: the platform accepts the request and deploys the associated artifacts to the MDM. The provider polls the benchmark's sync state until it reaches SYNCED or a terminal failure. Requires Compliance Benchmarks API access.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | Compliance Benchmarks | Create, Read, Delete | `compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (Resource)
 
-Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.
+Creates a Jamf Compliance Benchmark. Creation is asynchronous: the platform accepts the request and deploys the associated artifacts to the MDM. The provider polls the benchmark's sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `compliance-benchmarks:create` |
-| `compliance-benchmarks:delete` |
-| `compliance-benchmarks:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | Compliance Benchmarks | Create, Read, Delete | `compliance-benchmarks` |
 
 ## Example Usage
 
@@ -104,24 +100,23 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 ### Required
 
 - `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
-- `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
+- `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) is reported by the platform. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
+- `target_device_groups` (Set of String) Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Immutable (replace on change).
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional
 
 - `description` (String) Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.
-- `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source. (see [below for nested schema](#nestedatt--selected_os_versions))
+- `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. Omit it and the benchmark targets every version available for the baseline; name a subset and it targets only those. Immutable (replace on change). Valid values come from `available_os_versions` on the `jamfplatform_cbengine_rules` data source. (see [below for nested schema](#nestedatt--selected_os_versions))
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.
-- `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).
-- `target_device_groups` (Set of String) Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
 - `available_os_versions` (Attributes List) All operating system versions available for the benchmark's baseline. Computed. (see [below for nested schema](#nestedatt--available_os_versions))
 - `can_switch_to_enforce` (Boolean) Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.
-- `deleted` (Boolean) Whether the benchmark is marked deleted by the API.
-- `id` (String) Unique identifier assigned by the API (maps to benchmarkId).
+- `deleted` (Boolean) Whether the benchmark is marked deleted by the platform.
+- `id` (String) Unique identifier assigned by the platform.
 - `last_updated_at` (String) Timestamp (RFC3339) of the last update to the benchmark.
 - `sources` (Attributes List) mSCP sources (branch + revision) included in the benchmark. Computed and read-only: the benchmark always spans the full source set of its baseline, so this cannot be configured. Use `selected_os_versions` to choose which operating system versions the benchmark applies to. (see [below for nested schema](#nestedatt--sources))
 - `tenant_id` (String) Identifier for the tenant that owns the benchmark.

@@ -4,19 +4,16 @@ page_title: "jamfplatform_pro_pki_adcs Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Settings > Global > PKI certificates > Certificate Authorities). An AD CS connector issues certificates to managed devices. The integration runs in one of two modes selected by connector_mode:
-  INBOUND: Jamf Pro reaches an AD CS Connector at adcs_url, presenting a client_certificate and trusting a server_certificate.OUTBOUND: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by api_client_id) that holds the Read AD CS Certificate Jobs and Update AD CS Certificate Jobs privileges.
-  connector_mode is immutable — changing it forces resource replacement (Jamf Pro rejects an in-place mode flip).
-  Certificate write semantics: certificate bytes (data_wo) and the client certificate password_wo are WriteOnly — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's wo_version to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.
-  Validator footgun: the connector_mode cross-field validator only sees what is declared in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
+  INBOUND: Jamf Pro reaches an AD CS Connector at adcs_url, presenting a client_certificate and trusting a server_certificate.OUTBOUND: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by api_client_id) that is permitted to read and update AD CS certificate jobs. Jamf Pro called that pair Read AD CS Certificate Jobs and Update AD CS Certificate Jobs before the Platform API GA; this provider has no Jamf Account permission recorded for it, so grant it from the Jamf Pro AD CS documentation rather than from the table below.
+  connector_mode is immutable. Changing it forces resource replacement, because Jamf Pro rejects an in-place mode flip.
+  Certificate bytes (data_wo) and the client certificate password_wo are WriteOnly: sent to Jamf Pro on writes, but never persisted in Terraform state and never returned on read. Bump a block's wo_version to re-send that certificate; Jamf Pro accepts a certificate in full or not at all. On update, an omitted certificate is left unchanged.
+  The connector_mode cross-field validator sees only what your configuration declares. Because Jamf Pro preserves an omitted optional field, a value left over from a previous apply is not re-validated: the validator catches a both-declared conflict, not a preserved one.
   Import with terraform import jamfplatform_pro_pki_adcs.<name> <id>.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create AD CS Settings | `create:pro:ad-cs-settings` |
-  | Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-  | Read AD CS Settings | `read:pro:ad-cs-settings` |
-  | Update AD CS Settings | `update:pro:ad-cs-settings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | AD Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -24,26 +21,23 @@ description: |-
 Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Settings > Global > PKI certificates > Certificate Authorities). An AD CS connector issues certificates to managed devices. The integration runs in one of two modes selected by `connector_mode`:
 
 - **`INBOUND`**: Jamf Pro reaches an AD CS Connector at `adcs_url`, presenting a `client_certificate` and trusting a `server_certificate`.
-- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges.
+- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that is permitted to read and update AD CS certificate jobs. Jamf Pro called that pair *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA; this provider has no Jamf Account permission recorded for it, so grant it from the Jamf Pro AD CS documentation rather than from the table below.
 
-**`connector_mode` is immutable** — changing it forces resource replacement (Jamf Pro rejects an in-place mode flip).
+`connector_mode` is immutable. Changing it forces resource replacement, because Jamf Pro rejects an in-place mode flip.
 
-**Certificate write semantics:** certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.
+Certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly`: sent to Jamf Pro on writes, but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate; Jamf Pro accepts a certificate in full or not at all. On update, an omitted certificate is left unchanged.
 
-**Validator footgun:** the `connector_mode` cross-field validator only sees what is *declared* in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
+The `connector_mode` cross-field validator sees only what your configuration *declares*. Because Jamf Pro preserves an omitted optional field, a value left over from a previous apply is not re-validated: the validator catches a both-declared conflict, not a preserved one.
 
 Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create AD CS Settings | `create:pro:ad-cs-settings` |
-| Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-| Read AD CS Settings | `read:pro:ad-cs-settings` |
-| Update AD CS Settings | `update:pro:ad-cs-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | AD Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 
 ## Example Usage
 
@@ -51,7 +45,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
-# AD CS (Active Directory Certificate Services) integration — INBOUND mode.
+# AD CS (Active Directory Certificate Services) integration: INBOUND mode.
 # Jamf Pro reaches an AD CS Connector at adcs_url, presenting a client
 # certificate (.pfx/.p12) and trusting a server certificate (.pem/.cer).
 #
@@ -85,29 +79,23 @@ variable "adcs_client_p12_password" {
   sensitive = true
 }
 
-# AD CS integration — OUTBOUND mode.
-# An AD CS Connector polls Jamf Pro using a Jamf Pro API client that holds the
-# "Read AD CS Certificate Jobs" and "Update AD CS Certificate Jobs" privileges.
-resource "jamfplatform_pro_api_role" "adcs" {
-  display_name = "AD CS Connector"
-  privileges = [
-    "Read AD CS Certificate Jobs",
-    "Update AD CS Certificate Jobs",
-  ]
+# The UUID of an existing Jamf Pro API client permitted to read and update AD CS
+# certificate jobs. Those are the privileges Jamf Pro called "Read AD CS
+# Certificate Jobs" and "Update AD CS Certificate Jobs" before the Platform API
+# GA, which this provider has no Jamf Account permission recorded for. API
+# clients and roles are created in Jamf Account, not by this provider.
+variable "adcs_api_client_id" {
+  type = string
 }
 
-resource "jamfplatform_pro_api_client" "adcs" {
-  display_name = "AD CS Connector"
-  api_roles    = [jamfplatform_pro_api_role.adcs.display_name]
-  enabled      = true
-}
-
+# AD CS integration: OUTBOUND mode.
+# An AD CS Connector polls Jamf Pro using the API client above.
 resource "jamfplatform_pro_pki_adcs" "outbound" {
   connector_mode = "OUTBOUND"
   display_name   = "AD CS — Outbound"
   ca_name        = "Example Issuing CA"
   fqdn           = "adcs.example.com"
-  api_client_id  = jamfplatform_pro_api_client.adcs.client_id
+  api_client_id  = var.adcs_api_client_id
 }
 ```
 
@@ -116,18 +104,18 @@ resource "jamfplatform_pro_pki_adcs" "outbound" {
 
 ### Required
 
-- `ca_name` (String) **"CA Name"** in the Jamf Pro admin UI. The Certificate Authority name. Required — Jamf Pro mandates it on create (both modes).
-- `connector_mode` (String) AD CS connector mode. One of `INBOUND` or `OUTBOUND`. **Immutable** — changing it forces resource replacement. `INBOUND` requires `adcs_url`, `server_certificate`, and `client_certificate` (and forbids `api_client_id`); `OUTBOUND` requires `api_client_id` (and forbids `adcs_url` / `server_certificate` / `client_certificate`).
-- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. A label for the integration. Required — Jamf Pro mandates it on create (both modes).
-- `fqdn` (String) **"FQDN"** in the Jamf Pro admin UI. The fully-qualified domain name of the AD CS server. Required — Jamf Pro mandates it on create (both modes).
+- `ca_name` (String) **"CA Name"** in the Jamf Pro admin UI. The Certificate Authority name. Jamf Pro requires it on create in both modes.
+- `connector_mode` (String) AD CS connector mode. One of `INBOUND` or `OUTBOUND`. Immutable: changing it forces resource replacement. `INBOUND` requires `adcs_url`, `server_certificate` and `client_certificate`, and forbids `api_client_id`. `OUTBOUND` requires `api_client_id`, and forbids `adcs_url`, `server_certificate` and `client_certificate`.
+- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. A label for the integration. Jamf Pro requires it on create in both modes.
+- `fqdn` (String) **"FQDN"** in the Jamf Pro admin UI. The fully-qualified domain name of the AD CS server. Jamf Pro requires it on create in both modes.
 
 ### Optional
 
-- `adcs_url` (String) **"AD CS Connector URL"** in the Jamf Pro admin UI. The AD CS Connector address (e.g. `connector.example.com`; no scheme required). **`INBOUND` only.** Optional; omit to preserve the current value.
-- `api_client_id` (String) **"API Client ID"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. (Reference a `jamfplatform_pro_api_client`'s `client_id`.)
-- `client_certificate` (Attributes) **`INBOUND` only.** The confidential client certificate Jamf Pro presents to the AD CS Connector (`.pfx`/`.p12`). Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--client_certificate))
+- `adcs_url` (String) **"AD CS Connector URL"** in the Jamf Pro admin UI. The AD CS Connector address, without a scheme (e.g. `connector.example.com`). **`INBOUND` only.** Optional; omit to preserve the current value.
+- `api_client_id` (String) **"API Client ID"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client the AD CS Connector authenticates as when it polls for certificate jobs. That client must be permitted to read and update those jobs: the privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA, which this provider has no Jamf Account permission recorded for. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.
+- `client_certificate` (Attributes) **`INBOUND` only.** The confidential client certificate Jamf Pro presents to the AD CS Connector (`.pfx` or `.p12`). Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--client_certificate))
 - `revocation_enabled` (Boolean) **"Enable Revocation"** in the Jamf Pro admin UI. Whether certificate revocation is enabled. Optional; omit to preserve the current value.
-- `server_certificate` (Attributes) **`INBOUND` only.** The server (trust) certificate Jamf Pro presents/trusts for the AD CS Connector (`.pem`/`.cer`). Public, but Jamf Pro never returns the bytes on read, so the certificate is modelled `WriteOnly` (bytes stay out of state; rotate by bumping `wo_version`). Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--server_certificate))
+- `server_certificate` (Attributes) **`INBOUND` only.** The server (trust) certificate Jamf Pro trusts for the AD CS Connector (`.pem` or `.cer`). It is public, but Jamf Pro never returns the bytes on read, so it is modelled `WriteOnly`: the bytes stay out of state, and you rotate them by bumping `wo_version`. Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--server_certificate))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -142,12 +130,12 @@ resource "jamfplatform_pro_pki_adcs" "outbound" {
 
 Required:
 
-- `filename` (String) Filename for the uploaded client certificate (e.g. `client.p12`). Required when the `client_certificate` block is set — Jamf Pro uses the extension to detect the certificate format.
+- `filename` (String) Filename for the uploaded client certificate (e.g. `client.p12`). Required when the `client_certificate` block is set, because Jamf Pro reads the certificate format from the extension.
 
 Optional:
 
-- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded client certificate keystore (`.pfx`/`.p12`). Supply with `filebase64("client.p12")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.
-- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The password protecting the client certificate keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent together with `data_wo` when `wo_version` changes.
+- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded client certificate keystore (`.pfx` or `.p12`). Supply it with `filebase64("client.p12")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The password protecting the client certificate keystore. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent together with `data_wo` when `wo_version` changes.
 - `wo_version` (Number) Rotation trigger for the `WriteOnly` `data_wo` (and `password_wo`). Bump this integer (any change) to re-send the client certificate on the next apply; leaving it unset or unchanged means "leave the stored certificate alone". Set it on create when you supply `data_wo`.
 
 
@@ -156,11 +144,11 @@ Optional:
 
 Required:
 
-- `filename` (String) Filename for the uploaded server certificate (e.g. `server.pem`). Required when the `server_certificate` block is set — Jamf Pro uses the extension to detect the certificate format.
+- `filename` (String) Filename for the uploaded server certificate (e.g. `server.pem`). Required when the `server_certificate` block is set, because Jamf Pro reads the certificate format from the extension.
 
 Optional:
 
-- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded server certificate (`.pem`/`.cer`). Supply with `filebase64("server.pem")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.
+- `data_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The base64-encoded server certificate (`.pem` or `.cer`). Supply it with `filebase64("server.pem")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Sent when `wo_version` changes.
 - `wo_version` (Number) Rotation trigger for the `WriteOnly` `data_wo`. Bump this integer (any change) to re-send the server certificate on the next apply; leaving it unset or unchanged means "leave the stored certificate alone". Set it on create when you supply `data_wo`.
 
 

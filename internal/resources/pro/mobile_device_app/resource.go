@@ -100,7 +100,7 @@ func (r *MobileAppResource) IdentitySchema(ctx context.Context, req resource.Ide
 // attribute descriptions.
 func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device app — the \"App Store App\" / in-house app entries under the \"Mobile Device Apps\" sidebar. The resource models the app's **metadata**; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version`, and `general.bundle_id` are required. `general.os_type` is required only for in-house apps; App Store apps (with an `itunes_store_url`) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.\n\n**Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro mobile device app: the \"App Store App\" and in-house app entries under the \"Mobile Device Apps\" sidebar. The resource models the app's metadata only; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version` and `general.bundle_id` are required. `general.os_type` is required only for in-house apps, and an App Store app carrying an `itunes_store_url` does not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations and exclusions are not supported for mobile device apps.\n\nUpdates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `vpp` or `app_configuration`) from your configuration does not clear it; the values set previously are retained. To clear a block, null its individual fields instead of deleting the block." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID assigned by Jamf Pro.",
@@ -154,7 +154,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 					"external_url":                           optComputedString("External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side."),
 					"itunes_store_url":                       optComputedString("Canonical App Store (iTunes) URL. Setting it also populates the deprecated `url` mirror server-side."),
 					"itunes_country_region":                  optComputedString("Two-letter App Store country/region code used to resolve store metadata."),
-					"itunes_sync_time":                       optComputedInt64("App Store sync time as a Unix epoch (server-managed counter)."),
+					"itunes_sync_time":                       optComputedInt64("App Store sync time as a Unix epoch. Maintained by Jamf Pro."),
 					"category_id":                            optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
 					"category_name":                          computedString("Category display name. Returned by Jamf Pro; not user-settable."),
 					"site_id":                                optComputedString("Jamf Pro site ID scoping the app. Use `-1` for \"No site\"."),
@@ -173,7 +173,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps.",
+				MarkdownDescription: "App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids` and `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations and exclusions are not supported for mobile device apps.",
 				Optional:            true,
 				Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: false}),
 			},

@@ -575,9 +575,9 @@ func printerActionFromWire(action *string) types.String {
 		return types.StringNull()
 	}
 	switch *action {
-	case "install":
+	case proclassic.PolicyPrintersPrinterItemActionInstall:
 		return types.StringValue("Map")
-	case "uninstall":
+	case proclassic.PolicyPrintersPrinterItemActionUninstall:
 		return types.StringValue("Unmap")
 	default:
 		return types.StringValue(*action)

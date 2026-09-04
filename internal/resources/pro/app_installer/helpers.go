@@ -4,19 +4,24 @@
 package app_installer
 
 import (
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// Wire enum values for deployment_type and update_behavior. The server enums are
-// stable, so these back static OneOf validators.
+// deployment_type and update_behavior vocabularies, taken from the SDK's own
+// generated helpers rather than restated as literals, so the OneOf validators
+// and the documented value lists cannot drift from the API — see
+// STYLE_GUIDE §"Enum values and error codes come from the SDK, not from
+// literals". Aliased here because both the schema and the acceptance fixtures
+// name individual values.
 const (
-	deploymentTypeInstallAutomatically = "INSTALL_AUTOMATICALLY"
-	deploymentTypeSelfService          = "SELF_SERVICE"
+	deploymentTypeInstallAutomatically = pro.AppTitleDeploymentDeploymentTypeInstallAutomatically
+	deploymentTypeSelfService          = pro.AppTitleDeploymentDeploymentTypeSelfService
 
-	updateBehaviorAutomatic = "AUTOMATIC"
-	updateBehaviorManual    = "MANUAL"
+	updateBehaviorAutomatic = pro.AppTitleDeploymentUpdateBehaviorAutomatic
+	updateBehaviorManual    = pro.AppTitleDeploymentUpdateBehaviorManual
 )
 
 // boolPointerOrFalse returns the bool value, treating null/unknown as false.
@@ -30,13 +35,12 @@ func boolPointerOrFalse(value types.Bool) *bool {
 	return &v
 }
 
-// optionalIntPointer collapses null/unknown TF Int64 to nil so an unset field is
-// dropped from the wire payload (the server rejects a non-positive value on any
-// notification interval/delay that is present).
-func optionalIntPointer(value types.Int64) *int {
+// optionalInt64Pointer collapses null/unknown TF Int64 to nil so an unset field
+// is dropped from the wire payload (the server rejects a non-positive value on
+// any notification interval/delay that is present).
+func optionalInt64Pointer(value types.Int64) *int64 {
 	if !helpers.IsConfiguredValue(value) {
 		return nil
 	}
-	v := int(value.ValueInt64())
-	return &v
+	return new(value.ValueInt64())
 }

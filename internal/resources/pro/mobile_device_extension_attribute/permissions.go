@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the mobile device extension
 // attribute resource's CRUD path calls (crud.go). It mirrors the "SDK endpoints
-// used" block in crud.go and drives the "Required Jamf privileges" table
+// used" block in crud.go and drives the "Required Jamf permissions" table
 // appended to the resource MarkdownDescription. permissions_test.go asserts
 // this list stays in sync with the actual client.<Method> calls in crud.go and
 // with the SDK privilege registry.
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteMobileDeviceExtensionAttributeV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device extension attribute resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
@@ -31,13 +31,13 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // attribute data source calls (data_source.go). The name-lookup path resolves
 // via ResolveMobileDeviceExtensionAttributeV1ByName, a synthetic resolver
 // absent from the SDK privilege registry; the privilege it requires
-// (read:pro:mobile-device-extension-attributes) is already covered by
+// (extension-attributes:read) is already covered by
 // GetMobileDeviceExtensionAttributeV1.
 var dataSourceSDKMethods = []string{
 	"GetMobileDeviceExtensionAttributeV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device extension attribute data source.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -47,6 +47,6 @@ var listResourceSDKMethods = []string{
 	"ListMobileDeviceExtensionAttributesV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device extension attribute list resource.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

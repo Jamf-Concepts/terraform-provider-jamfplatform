@@ -48,7 +48,7 @@ func (d *DNSZonesDataSource) Metadata(_ context.Context, req datasource.Metadata
 func (d *DNSZonesDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists every Jamf Security Cloud custom DNS zone on the tenant. Jamf Security Cloud " +
-			"exposes no filter parameters for zones, so this data source takes no search arguments — filter the " +
+			"exposes no filter parameters for zones, so this data source takes no search arguments. Filter the " +
 			"result in Terraform." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

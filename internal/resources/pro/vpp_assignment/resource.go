@@ -95,7 +95,7 @@ func (r *VPPAssignmentResource) IdentitySchema(ctx context.Context, req resource
 
 func (r *VPPAssignmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.\n\n" +
+		MarkdownDescription: "Manages a Jamf Pro VPP assignment, a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.\n\n" +
 			"Related: `jamfplatform_pro_vpp_invitation` registers users with a VPP account; device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -109,7 +109,7 @@ func (r *VPPAssignmentResource) Schema(ctx context.Context, req resource.SchemaR
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"vpp_admin_account_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the VPP (Apple Business/School Manager) account (\"Location\") whose content this assignment distributes. Required. The VPP account itself is not managed by this provider. Changing this updates the assignment in place; the server rejects a change to a different account with a 409.",
+				MarkdownDescription: "ID of the VPP (Apple Business/School Manager) account (\"Location\") whose content this assignment distributes. Required. The VPP account itself is not managed by this provider. Changing this updates the assignment in place, but Jamf Pro refuses a move to a different account.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
@@ -118,23 +118,23 @@ func (r *VPPAssignmentResource) Schema(ctx context.Context, req resource.SchemaR
 				Computed:            true,
 			},
 			"ios_app_adam_ids": schema.SetAttribute{
-				MarkdownDescription: "Apple catalog adam IDs of the iOS apps to assign. Omit to leave the server's current iOS apps untouched; set to `[]` to clear all iOS apps; otherwise the listed apps replace the assignment's iOS apps. App names are resolved server-side.",
+				MarkdownDescription: "Apple catalog adam IDs of the iOS apps to assign. Omit to leave the assignment's current iOS apps untouched; set to `[]` to clear all iOS apps; otherwise the listed apps replace the assignment's iOS apps. Jamf Pro resolves the app names.",
 				Optional:            true,
 				ElementType:         types.Int64Type,
 			},
 			"mac_app_adam_ids": schema.SetAttribute{
-				MarkdownDescription: "Apple catalog adam IDs of the Mac apps to assign. Omit to leave the server's current Mac apps untouched; set to `[]` to clear all Mac apps; otherwise the listed apps replace the assignment's Mac apps. App names are resolved server-side.",
+				MarkdownDescription: "Apple catalog adam IDs of the Mac apps to assign. Omit to leave the assignment's current Mac apps untouched; set to `[]` to clear all Mac apps; otherwise the listed apps replace the assignment's Mac apps. Jamf Pro resolves the app names.",
 				Optional:            true,
 				ElementType:         types.Int64Type,
 			},
 			"ebook_adam_ids": schema.SetAttribute{
-				MarkdownDescription: "Apple catalog adam IDs of the books to assign. Omit to leave the server's current books untouched; set to `[]` to clear all books; otherwise the listed books replace the assignment's books. Book names are resolved server-side.\n\n" +
-					"Note: un-assigning a book removes it from the assignment on the wire, but Apple does not return or refund the underlying book license to the account — book licenses are consumed irrevocably.",
+				MarkdownDescription: "Apple catalog adam IDs of the books to assign. Omit to leave the assignment's current books untouched; set to `[]` to clear all books; otherwise the listed books replace the assignment's books. Jamf Pro resolves the book names.\n\n" +
+					"Un-assigning a book removes it from the assignment, but Apple does not return or refund the underlying book license to the account. Book licenses are consumed irrevocably.",
 				Optional:    true,
 				ElementType: types.Int64Type,
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it.",
+				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and updates preserve whatever is configured outside Terraform.",
 				Optional:            true,
 				Attributes:          scope.UserScopeAttributes(),
 			},

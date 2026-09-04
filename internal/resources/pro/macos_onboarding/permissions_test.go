@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -89,7 +88,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:onboarding-configuration") {
+	if !permissions.Renders(resourcePrivileges, "onboarding:update") {
 		t.Fatalf("resourcePrivileges did not render the onboarding privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -113,7 +112,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:onboarding-configuration") {
+	if !permissions.Renders(dataSourcePrivileges, "onboarding:read") {
 		t.Fatalf("dataSourcePrivileges did not render the onboarding privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -137,7 +136,7 @@ func TestPluralDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestPluralDataSourcePrivileges_Rendered guards that the table actually rendered
 // into the eligible-items data source description.
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:onboarding-configuration") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "onboarding:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the onboarding privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }

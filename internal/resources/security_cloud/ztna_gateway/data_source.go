@@ -48,7 +48,7 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to " +
 			"resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never " +
-			"reported — Jamf Security Cloud does not return it." + dataSourcePrivileges,
+			"reported, because Jamf Security Cloud does not return it." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Gateway ID to look up. Exactly one of `id` or `name` must be set.",
@@ -87,13 +87,17 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				ElementType:         types.StringType,
 			},
 			"dedicated_egress_ips_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is a dedicated internet gateway, routing through private egress " +
-					"IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.",
+				MarkdownDescription: "Whether this is a dedicated internet gateway, routing through private " +
+					"egress IP addresses Jamf Security Cloud provisions. Mutually exclusive with an IPsec " +
+					"configuration.",
 				Computed: true,
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
-				MarkdownDescription: "The private egress IP addresses Jamf provisioned for a dedicated internet " +
-					"gateway. Empty while provisioning, and always empty on an IPsec gateway.",
+				MarkdownDescription: "The private egress IP addresses Jamf Security Cloud provisioned for a " +
+					"dedicated internet gateway. Allocated within seconds of the gateway being created, well " +
+					"before it finishes provisioning, so a populated list means the addresses are reserved " +
+					"rather than that the gateway reports itself operational. Read `status` for that. Always " +
+					"empty on an IPsec gateway.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -118,7 +122,7 @@ func dsIPSecAttribute() schema.SingleNestedAttribute {
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
 					"host":          schema.StringAttribute{MarkdownDescription: "Endpoint address.", Computed: true},
-					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity Jamf presents.", Computed: true},
+					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity Jamf Security Cloud presents.", Computed: true},
 					"subnet":        schema.StringAttribute{MarkdownDescription: "Jamf-side encryption domain, in CIDR notation.", Computed: true},
 					"auth_method":   schema.StringAttribute{MarkdownDescription: "Authentication method.", Computed: true},
 				},
@@ -162,7 +166,13 @@ func dsStatusAttribute() schema.SingleNestedAttribute {
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway.",
 		Computed:            true,
 		Attributes: map[string]schema.Attribute{
-			"state":        schema.StringAttribute{MarkdownDescription: "Overall gateway state.", Computed: true},
+			"state": schema.StringAttribute{
+				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning (**Pending** in the " +
+					"Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational " +
+					"(**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the " +
+					"gateway is not enabled.",
+				Computed: true,
+			},
 			"tunnel_state": schema.StringAttribute{MarkdownDescription: "IPsec tunnel health.", Computed: true},
 		},
 	}
@@ -213,12 +223,24 @@ func (d *GatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
+	if !data.ID.IsNull() && data.ID.ValueString() == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"ZTNA gateway ID is empty",
+			"`id` is set to an empty string, which ExactlyOneOf still counts as configured, so `name` cannot "+
+				"be used instead. This usually means a variable or a reference resolved to \"\" — set `id` to "+
+				"an ID, or remove it and set `name`.",
+		)
+		return
+	}
+
 	var gateway *securitycloud.Gateway
 	var err error
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		gateway, err = d.client.GetZtnaGatewayV1(readCtx, data.ID.ValueString())
-	} else {
+	byName := data.ID.IsNull()
+	if byName {
 		gateway, err = d.client.ResolveZtnaGatewayV1ByName(readCtx, data.Name.ValueString())
+	} else {
+		gateway, err = d.client.GetZtnaGatewayV1(readCtx, data.ID.ValueString())
 	}
 	if err != nil {
 		if ambiguous, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
@@ -227,6 +249,16 @@ func (d *GatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 				"Jamf Security Cloud does not require gateway names to be unique, and more than one gateway is "+
 					"named "+data.Name.ValueString()+". Look the gateway up by `id` instead. Matching gateway "+
 					"IDs: "+strings.Join(ambiguous.Matches, ", "),
+			)
+			return
+		}
+		if byName && helpers.IsNotFoundError(err) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Unable to find Jamf Security Cloud ZTNA gateway",
+				"No ZTNA gateway on this tenant is named \""+data.Name.ValueString()+"\". Names are matched "+
+					"exactly, so one differing only in capitalisation or surrounding whitespace will not be "+
+					"found. Use the `jamfplatform_security_cloud_ztna_gateways` data source to list what exists.",
 			)
 			return
 		}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -260,16 +261,17 @@ var pkgNames = map[string]string{
 // providerFile renders a provider.go whose registration lists hold the given
 // constructor references.
 func providerFile(imports []string, resources []string, extra string) string {
-	out := "package provider\n\nimport (\n"
+	var out strings.Builder
+	out.WriteString("package provider\n\nimport (\n")
 	for _, imp := range imports {
-		out += "\t\"" + imp + "\"\n"
+		out.WriteString("\t\"" + imp + "\"\n")
 	}
-	out += ")\n\ntype P struct{}\n\nfunc (p *P) Resources() []func() any {\n\treturn []func() any{\n"
+	out.WriteString(")\n\ntype P struct{}\n\nfunc (p *P) Resources() []func() any {\n\treturn []func() any{\n")
 	for _, r := range resources {
-		out += "\t\t" + r + ",\n"
+		out.WriteString("\t\t" + r + ",\n")
 	}
-	out += "\t}\n}\n" + extra
-	return out
+	out.WriteString("\t}\n}\n" + extra)
+	return out.String()
 }
 
 func TestRegistrationDelta(t *testing.T) {

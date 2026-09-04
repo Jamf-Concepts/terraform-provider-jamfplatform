@@ -1,4 +1,4 @@
-# Minimal macOS configuration profile — name + payload only.
+# Minimal macOS configuration profile: name + payload only.
 resource "jamfplatform_pro_macos_configuration_profile" "minimal" {
   general = {
     name     = "Minimal Notifications Profile"

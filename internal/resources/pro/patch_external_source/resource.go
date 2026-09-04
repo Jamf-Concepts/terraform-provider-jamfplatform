@@ -74,7 +74,7 @@ func (r *PatchExternalSourceResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the Terraform schema for the patch external source resource.
 func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management**, in the **Patch External Source** section (the **New External Patch Source** form). An external patch source hosts third-party software title definitions for patch management to consume." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch external source ID assigned by Jamf Pro.",
@@ -91,7 +91,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the patch external source is enabled. Server-defaulted when omitted.",
+				MarkdownDescription: "Whether the patch external source is enabled. Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -106,14 +106,14 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"port": schema.Int64Attribute{
-				MarkdownDescription: "TCP port of the external patch source (the port portion of the UI \"Server and Port\" field). May be left unset; an empty value is treated as unset. Must be at least 1 when set — Jamf Pro echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.",
+				MarkdownDescription: "TCP port of the external patch source (the port portion of the UI \"Server and Port\" field). May be left unset, and an empty value is treated as unset. Must be at least 1 when set. Jamf Pro reports an unset port as empty, which the provider stores as null, so an explicit `0` is rejected at plan time to keep that mapping consistent.",
 				Optional:            true,
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
 			},
 			"ssl_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the source is contacted over SSL (UI \"Use SSL\"). Server-defaulted when omitted.",
+				MarkdownDescription: "Whether the source is contacted over SSL (UI \"Use SSL\"). Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -121,7 +121,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"certificate_validation_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI \"Validate Software Title Definitions\"); unsigned definitions are not downloaded. Server-defaulted when omitted.",
+				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI \"Validate Software Title Definitions\"); unsigned definitions are not downloaded. Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

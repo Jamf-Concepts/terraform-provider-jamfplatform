@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_local_admin_password_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `update:pro:local-admin-password-settings` |
+  Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). One record per tenant.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device secrets | Local Admin Passwords (LAPS) | Update | `local-admin-passwords` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Data Source)
 
-Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
+Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). One record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `update:pro:local-admin-password-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device secrets | Local Admin Passwords (LAPS) | Update | `local-admin-passwords` |
 
 ## Example Usage
 

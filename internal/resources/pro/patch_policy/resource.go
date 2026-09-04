@@ -2,8 +2,15 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // Package patch_policy implements the jamfplatform_pro_patch_policy resource,
-// data source, and list resource backed by the Jamf ProClassic /patchpolicies
-// API. The construct name mirrors the Jamf Pro admin UI ("Patch Policies", a tab
+// data source, and list resource. Every read of an individual policy — CRUD, the
+// data source, and the list resource's per-item hydration — goes through the
+// Jamf ProClassic /patchpolicies/id/{id} surface, which is the only one carrying
+// a policy's scope and user_interaction sections. The list resource *enumerates*
+// on the Pro v2 /patch-policies collection instead, because the classic
+// collection reads were withdrawn from the published Classic spec; see crud.go
+// for the endpoint-by-endpoint record.
+//
+// The construct name mirrors the Jamf Pro admin UI ("Patch Policies", a tab
 // on a software title under Computers → Patch management). A policy is created
 // against a patch software title
 // configuration and targets a single version of that title that has a package
@@ -43,7 +50,7 @@ const minJamfProVersion = ""
 // selfservice = UI "Make Available in Self Service"; prompt = UI "Install
 // Automatically". Invalid values coerce to prompt server-side, so the provider
 // validates to the two to surface the choice explicitly.
-var distributionMethods = []string{"selfservice", "prompt"}
+var distributionMethods = proclassic.PatchPolicyGeneralDistributionMethodValues()
 
 // PatchPolicyResource implements the Terraform resource for Jamf Pro patch
 // policies. No directory-service preflight is wired: patch-policy scope exposes
@@ -96,7 +103,7 @@ func (r *PatchPolicyResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.\n\n" +
-			"The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`." + resourcePrivileges,
+			"The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`) and **User Interaction** (`user_interaction`). Five **General**-tab fields are read-only, because Jamf Pro derives them from the selected `target_version`'s patch definition: `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch policy ID assigned by Jamf Pro.",
@@ -104,7 +111,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"software_title_configuration_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the patch software title configuration this policy deploys (a `jamfplatform_pro_patch_software_title` ID). A policy is created by config path and cannot be moved to another title — changing this forces replacement.",
+				MarkdownDescription: "ID of the patch software title configuration this policy deploys (a `jamfplatform_pro_patch_software_title` ID). A policy belongs to the title it was created against and cannot be moved to another, so changing this forces replacement.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -115,7 +122,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the patch policy is enabled. A policy can only be enabled when its scope resolves to at least one in-site smart group. Server-defaulted when omitted.",
+				MarkdownDescription: "Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -126,20 +133,20 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"distribution_method": schema.StringAttribute{
-				MarkdownDescription: "How the patch is delivered. `selfservice` = the admin UI \"Make Available in Self Service\"; `prompt` = \"Install Automatically\". Server-defaulted when omitted.",
+				MarkdownDescription: "How the patch is delivered. `selfservice` is the admin UI's \"Make Available in Self Service\", and `prompt` is \"Install Automatically\". Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(distributionMethods...)},
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"allow_downgrade": schema.BoolAttribute{
-				MarkdownDescription: "**\"Allow downgrade\"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Server-defaulted when omitted.",
+				MarkdownDescription: "**\"Allow downgrade\"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"patch_unknown": schema.BoolAttribute{
-				MarkdownDescription: "**\"Patch Unknown Version\"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Server-defaulted when omitted.",
+				MarkdownDescription: "**\"Patch Unknown Version\"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -185,11 +192,11 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 			// the schema; the user-facing description frames this as "does not
 			// apply to patch policies".
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon.",
+				MarkdownDescription: "Policy scope, the \"Scope\" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer, per-group, per-building and per-department targets. Targets, limitations and exclusions are all addressed by computer, computer group, building, department, network segment and iBeacon.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"targets": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope targets — the audience the policy applies to. Mirrors the admin UI's Targets tab: set `all_computers` for tenant-wide scope, or list specific IDs.",
+						MarkdownDescription: "Scope targets: the audience the policy applies to. Mirrors the admin UI's Targets tab. Set `all_computers` for tenant-wide scope, or list specific IDs.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"all_computers": schema.BoolAttribute{
@@ -244,7 +251,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				// Unknown-decode at apply (feedback_optional_computed_nested_object).
 				// Read is state-gated, so an undeclared block stays null and the
 				// server defaults are not surfaced — same tradeoff as scope.
-				MarkdownDescription: "User Interaction — the \"User Interaction\" tab in the Jamf Pro admin UI. Controls the Self Service description / button text / icon and the deferral notifications, deadlines, and grace period. The server applies full defaults when the block (or a nested field) is omitted; those defaults are not surfaced in state unless you declare the block.",
+				MarkdownDescription: "User interaction, the \"User Interaction\" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"install_button_text": schema.StringAttribute{
@@ -292,11 +299,11 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 							// preferCurrent still preserves a user-set value the server
 							// drops.
 							"message": schema.StringAttribute{
-								MarkdownDescription: "Notification message body. Write-only in practice — Jamf Pro does not return it, so a configured value is preserved in state but not refreshed.",
+								MarkdownDescription: "Notification message body. Write-only in practice: Jamf Pro does not return it, so a configured value is preserved in state but never refreshed.",
 								Optional:            true,
 							},
 							"type": schema.StringAttribute{
-								MarkdownDescription: "Notification type (e.g. `Self Service`). Write-only in practice — Jamf Pro does not return it.",
+								MarkdownDescription: "Notification type (e.g. `Self Service`). Write-only in practice: Jamf Pro does not return it.",
 								Optional:            true,
 							},
 							"reminders": schema.SingleNestedAttribute{

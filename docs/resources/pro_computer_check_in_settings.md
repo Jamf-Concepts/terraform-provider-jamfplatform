@@ -3,27 +3,25 @@
 page_title: "jamfplatform_pro_computer_check_in_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Omit = preserve — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set true/false to change it. check_in_frequency is required. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Computer Check-In | `read:pro:computer-check-in` |
-  | Update Computer Check-In | `update:pro:computer-check-in` |
+  Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). One record per tenant. A startup or login toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the toggles you declare. A boolean has no "unset" state, so omit it to preserve the current value, or set true or false to change it. check_in_frequency is required. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Device check-in configuration | Read, Update | `computer-check-in` |
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Resource)
 
-Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. **Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.
+Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). One record per tenant. A startup or login toggle you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the toggles you declare. A boolean has no "unset" state, so omit it to preserve the current value, or set `true` or `false` to change it. `check_in_frequency` is required. Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Computer Check-In | `read:pro:computer-check-in` |
-| Update Computer Check-In | `update:pro:computer-check-in` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Device check-in configuration | Read, Update | `computer-check-in` |
 
 ## Example Usage
 

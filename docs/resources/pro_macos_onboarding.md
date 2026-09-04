@@ -3,38 +3,37 @@
 page_title: "jamfplatform_pro_macos_onboarding Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The onboarding_items list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and onboarding_items = [] clears all items. priority follows the list order automatically. Import with terraform import jamfplatform_pro_macos_onboarding.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
-  | Update Onboarding Configuration | `update:pro:onboarding-configuration` |
+  Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). One record per tenant. Onboarding presents users with a curated, ordered list of Self Service items during macOS onboarding: policies, configuration profiles and apps. The onboarding_items list fully replaces what is stored. Declare the complete set in the order users should see them. An item you remove is removed from onboarding, and onboarding_items = [] clears every item. priority follows the list order automatically. Import with terraform import jamfplatform_pro_macos_onboarding.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Onboarding configuration | Read, Update | `onboarding` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Resource)
 
-Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The `onboarding_items` list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and `onboarding_items = []` clears all items. `priority` follows the list order automatically. Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`.
+Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). One record per tenant. Onboarding presents users with a curated, ordered list of Self Service items during macOS onboarding: policies, configuration profiles and apps. The `onboarding_items` list fully replaces what is stored. Declare the complete set in the order users should see them. An item you remove is removed from onboarding, and `onboarding_items = []` clears every item. `priority` follows the list order automatically. Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
-| Update Onboarding Configuration | `update:pro:onboarding-configuration` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Onboarding configuration | Read, Update | `onboarding` |
 
 ## Example Usage
 
 ```terraform
-# macOS Onboarding (Settings > Self Service > macOS Onboarding) — a curated, ordered
+# macOS Onboarding (Settings > Self Service > macOS Onboarding): a curated, ordered
 # list of Self Service items (policies, configuration profiles, apps) presented to
 # users during macOS onboarding. Singleton: one configuration per tenant.
 #
 # Item order is significant: items appear to users in `onboarding_items` order, and
-# `priority` is derived from that order automatically. The list fully replaces what is
-# stored — declare the complete set; removing an item here removes it from onboarding.
+# `priority` is derived from that order automatically. The list fully replaces what
+# is stored, so declare the complete set. Removing an item here removes it from
+# onboarding.
 #
 # Each referenced object must be enabled and available in Self Service. Discover
 # eligible IDs with the jamfplatform_pro_macos_onboarding_eligible_items data source.
@@ -66,8 +65,8 @@ resource "jamfplatform_pro_macos_onboarding" "example" {
 
 ### Required
 
-- `enabled` (Boolean) Whether macOS Onboarding is enabled for the tenant (the top-right "Enabled" toggle). Items may be staged while disabled — `enabled = false` with a populated `onboarding_items` list is accepted.
-- `onboarding_items` (Attributes List) Ordered list of Self Service items presented during macOS onboarding. Order is significant: items appear to users in this order, and `priority` follows it (1-based). This list fully replaces what is stored — declare the complete set; an item removed here is removed from onboarding, and `[]` clears all items. (see [below for nested schema](#nestedatt--onboarding_items))
+- `enabled` (Boolean) Whether macOS Onboarding is enabled for the tenant (the top-right "Enabled" toggle). Items may be staged while disabled: `enabled = false` with a populated `onboarding_items` list is accepted.
+- `onboarding_items` (Attributes List) Ordered list of Self Service items presented during macOS onboarding. Order is significant: items appear to users in this order, and `priority` follows it (1-based). This list fully replaces what is stored, so declare the complete set. An item removed here is removed from onboarding, and `[]` clears every item. (see [below for nested schema](#nestedatt--onboarding_items))
 
 ### Optional
 
@@ -82,7 +81,7 @@ resource "jamfplatform_pro_macos_onboarding" "example" {
 
 Required:
 
-- `entity_id` (String) ID of the Jamf Pro object to present, paired with `self_service_entity_type`. Source per type: `OS_X_POLICY` → `jamfplatform_pro_policy`; `OS_X_CONFIG_PROFILE` → `jamfplatform_pro_macos_configuration_profile`; `OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`; `OS_X_APP_INSTALLER` → `jamfplatform_pro_app_installer`. The referenced object must be enabled and available in Self Service — Jamf Pro rejects an ineligible item with a clear error. Use the `jamfplatform_pro_macos_onboarding_eligible_items` data source to discover eligible IDs.
+- `entity_id` (String) ID of the Jamf Pro object to present, paired with `self_service_entity_type`. Source per type: `OS_X_POLICY` → `jamfplatform_pro_policy`; `OS_X_CONFIG_PROFILE` → `jamfplatform_pro_macos_configuration_profile`; `OS_X_MAC_APP` → `jamfplatform_pro_mac_app_store_app`; `OS_X_APP_INSTALLER` → `jamfplatform_pro_app_installer`. The `jamfplatform_pro_macos_onboarding_eligible_items` data source lists the eligible IDs for every type. The referenced object must be enabled and available in Self Service. Jamf Pro rejects an ineligible item with a clear error.
 - `self_service_entity_type` (String) Type of the referenced object. One of `OS_X_POLICY`, `OS_X_CONFIG_PROFILE`, `OS_X_MAC_APP`, `OS_X_APP_INSTALLER`.
 
 Read-Only:

@@ -41,12 +41,14 @@ const (
 	// organization-level resources such as single sign-on and AI Governance.
 	//
 	// It is deliberately the zero value, because a provider block setting
-	// neither `environment_id` nor `tenant_id` is exactly this case. No
-	// construct this provider ships can be reached with it yet — the
-	// organization-level resources are not implemented — so RequireScope
-	// currently rejects it everywhere. That is the point: an organization-scoped
-	// integration otherwise produces an opaque gateway error deep in an apply
-	// instead of a named diagnostic at Configure.
+	// neither `environment_id` nor `tenant_id` is exactly this case.
+	//
+	// It is the only scope that reaches the jamfplatform_account_* family, and
+	// RequireScope rejects it everywhere else. Both directions matter: an
+	// organization-scoped integration pointed at a Jamf Pro resource, and an
+	// environment-scoped one pointed at a Jamf Account resource, each otherwise
+	// produce an opaque gateway error deep in an apply instead of a named
+	// diagnostic at Configure.
 	ScopeOrganization ScopeKind = iota
 	// ScopeEnvironment scopes every request to a platform environment — a group
 	// of tenants across product types with interconnected capabilities — sent as
@@ -143,21 +145,36 @@ func article(phrase string) string {
 	return "a"
 }
 
-// scopeDescription names the configured scope and the attribute that selected
-// it, so the diagnostic says what to look at rather than only what is wrong.
+// scopeDescription names the configured scope and both inputs that could have
+// selected it, so the diagnostic says what to look at rather than only what is
+// wrong.
+//
+// It names the environment variable alongside the provider-block attribute
+// because either source selects a scope and the diagnostic cannot tell which
+// one did: the provider resolves the scope from `JAMFPLATFORM_ENVIRONMENT_ID` /
+// `JAMFPLATFORM_TENANT_ID` whenever the provider block sets neither attribute,
+// and says nothing when it does. Asserting the attribute "is set" would point
+// the most likely reader — a CI runner exporting the preferred
+// `JAMFPLATFORM_ENVIRONMENT_ID` — at a line that is not in their configuration.
 func scopeDescription(k ScopeKind) string {
 	switch k {
 	case ScopeEnvironment:
-		return "an environment-scoped integration (`environment_id` is set)"
+		return "an environment-scoped integration (selected by `environment_id` or `JAMFPLATFORM_ENVIRONMENT_ID`)"
 	case ScopeTenant:
-		return "a tenant-scoped integration (`tenant_id` is set)"
+		return "a tenant-scoped integration (selected by `tenant_id` or `JAMFPLATFORM_TENANT_ID`)"
 	default:
-		return "an organization-scoped integration (neither `environment_id` nor `tenant_id` is set)"
+		return "an organization-scoped integration (no scope selected by `environment_id`, `tenant_id`, " +
+			"or either `JAMFPLATFORM_*` scope variable)"
 	}
 }
 
 // scopeRemedy says which attribute to set, and warns that the choice is not free
 // — the header has to match the scope the API integration was created against.
+//
+// The organization-only branch names the two environment variables as well as
+// the two attributes, for the reason given on scopeDescription: a scope set in
+// the environment is invisible in the provider block, so telling the operator to
+// remove an attribute they never wrote leaves the diagnostic unactionable.
 func scopeRemedy(allowed []ScopeKind) string {
 	attrs := make([]string, 0, len(allowed))
 	for _, k := range allowed {
@@ -169,7 +186,9 @@ func scopeRemedy(allowed []ScopeKind) string {
 		}
 	}
 	if len(attrs) == 0 {
-		return "Remove `environment_id` and `tenant_id` from the provider block so requests are scoped from the access token alone."
+		return "Unset both scope inputs so requests are scoped from the access token alone: remove `environment_id` " +
+			"and `tenant_id` from the provider block, and unset `JAMFPLATFORM_ENVIRONMENT_ID` and " +
+			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope."
 	}
 	return fmt.Sprintf(
 		"Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable. "+

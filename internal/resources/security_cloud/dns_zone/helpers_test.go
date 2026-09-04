@@ -41,19 +41,19 @@ func TestAppendWriteDiagnostics_MapsCodesToAttributes(t *testing.T) {
 			wantText: "only one custom DNS zone",
 		},
 		{
-			name:     "gateway not found points at name_servers, not the zone",
+			name:     "gateway not found points at authoritative_name_servers, not the zone",
 			err:      apiError(422, codeGatewayNotFound, "", "Referenced gateway not found."),
 			wantPath: path.Root("authoritative_name_servers"),
 			wantText: "gateway must exist before the zone can reference it",
 		},
 		{
-			name:     "restricted ip points at name_servers",
+			name:     "restricted ip points at authoritative_name_servers",
 			err:      apiError(422, codeNameServerIPRestricted, "", "Name server IP is restricted."),
 			wantPath: path.Root("authoritative_name_servers"),
 			wantText: "Reserved ranges",
 		},
 		{
-			name:     "out of range ip points at name_servers",
+			name:     "out of range ip points at authoritative_name_servers",
 			err:      apiError(422, codeNameServerIPOutOfRange, "", "Name server IP out of range."),
 			wantPath: path.Root("authoritative_name_servers"),
 			wantText: "refuses this name server address",

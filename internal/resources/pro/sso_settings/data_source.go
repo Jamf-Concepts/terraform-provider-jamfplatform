@@ -39,7 +39,7 @@ func (d *SsoSettingsDataSource) Metadata(ctx context.Context, req datasource.Met
 // the rotation companions, which carry no read-side signal.
 func (d *SsoSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Single Sign-On configuration. Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro Single Sign-On configuration. One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                                 schema.StringAttribute{Computed: true, MarkdownDescription: "Fixed singleton identifier. Always `singleton`."},
 			"sso_enabled":                        schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether SSO is enabled on the tenant."},

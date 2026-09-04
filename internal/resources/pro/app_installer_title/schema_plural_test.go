@@ -38,7 +38,7 @@ func TestAppInstallerTitlesDataSource_Schema(t *testing.T) {
 }
 
 func TestFilterAndMapTitles_NoFilter(t *testing.T) {
-	titles := []pro.AppInstallerTitle{
+	titles := []pro.AppTitle{
 		{ID: "1", TitleName: "Adobe Lightroom Classic"},
 		{ID: "2", TitleName: "Jamf Composer"},
 	}
@@ -49,7 +49,7 @@ func TestFilterAndMapTitles_NoFilter(t *testing.T) {
 }
 
 func TestFilterAndMapTitles_Substring(t *testing.T) {
-	titles := []pro.AppInstallerTitle{
+	titles := []pro.AppTitle{
 		{ID: "1", TitleName: "Adobe Lightroom Classic"},
 		{ID: "2", TitleName: "Jamf Composer"},
 	}

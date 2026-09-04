@@ -6,6 +6,8 @@ package re_enrollment_settings
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // reEnrollmentSettingsTimeoutAttributeTypes defines the timeout attribute types.
@@ -19,10 +21,10 @@ var reEnrollmentSettingsTimeoutAttributeTypes = map[string]attr.Type{
 // clear_management_history enum values. These control how much of a device's
 // pending/failed management command history is cleared when it re-enrolls.
 const (
-	clearManagementHistoryNothing                      = "DELETE_NOTHING"
-	clearManagementHistoryErrors                       = "DELETE_ERRORS"
-	clearManagementHistoryEverythingExceptAcknowledged = "DELETE_EVERYTHING_EXCEPT_ACKNOWLEDGED"
-	clearManagementHistoryEverything                   = "DELETE_EVERYTHING"
+	clearManagementHistoryNothing                      = pro.EnrollmentSettingsV4FlushMDMCommandsOnReenrollDeleteNothing
+	clearManagementHistoryErrors                       = pro.EnrollmentSettingsV4FlushMDMCommandsOnReenrollDeleteErrors
+	clearManagementHistoryEverythingExceptAcknowledged = pro.EnrollmentSettingsV4FlushMDMCommandsOnReenrollDeleteEverythingExceptAcknowledged
+	clearManagementHistoryEverything                   = pro.EnrollmentSettingsV4FlushMDMCommandsOnReenrollDeleteEverything
 )
 
 // validClearManagementHistory are the accepted clear_management_history values.

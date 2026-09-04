@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_ldap_server Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of id or name must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:ldap-servers` |
+  Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of id or name must be supplied. The data source never returns the bind password; Jamf Pro does not return it on read.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (Data Source)
 
-Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
+Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password; Jamf Pro does not return it on read.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:ldap-servers` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 
 ## Example Usage
 
@@ -89,7 +89,7 @@ Read-Only:
 Read-Only:
 
 - `distinguished_username` (String) Distinguished name of the bind account.
-- `password` (String, Sensitive) Always null — Jamf Pro never returns the bind password.
+- `password` (String, Sensitive) Always null. Jamf Pro never returns the bind password.
 - `password_wo_version` (Number) Always null in the data source.
 
 

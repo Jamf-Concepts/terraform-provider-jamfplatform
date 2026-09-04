@@ -71,9 +71,9 @@ func (r *SsoFailoverURLResource) IdentitySchema(ctx context.Context, req resourc
 // Schema returns the resource schema.
 func (r *SsoFailoverURLResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro **SSO failover URL** — a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.\n\n" +
-			"The URL is rotated by changing `regeneration_trigger`. Any change to that attribute causes the next Update to call the failover regenerate endpoint and replace the URL.\n\n" +
-			"**Destroy** is state-only — `terraform destroy` removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).\n\n" +
+		MarkdownDescription: "Manages the Jamf Pro **SSO failover URL**, a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.\n\n" +
+			"The URL is rotated by changing `regeneration_trigger`. Any change to that attribute makes the next apply regenerate the URL.\n\n" +
+			"Destroy is state-only. `terraform destroy` removes the resource from Terraform state but leaves the failover URL live on the tenant, because Jamf Pro offers no way to clear or disable it.\n\n" +
 			"Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -82,11 +82,11 @@ func (r *SsoFailoverURLResource) Schema(ctx context.Context, req resource.Schema
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"regeneration_trigger": schema.StringAttribute{
-				MarkdownDescription: "Rotation trigger. Set to any free-text value (e.g. a version label or timestamp); changing it on a subsequent apply calls the failover regenerate endpoint and produces a new `failover_url`. Optional — omit to leave the current URL untouched. Jamf Pro never returns this value, so it stays absent on read and an existing failover URL can be imported without supplying it.",
+				MarkdownDescription: "Rotation trigger. Set to any free-text value, such as a version label or timestamp; changing it on a subsequent apply produces a new `failover_url`. Omit it to leave the current URL untouched. Jamf Pro never returns this value, so it stays absent on read and an existing failover URL can be imported without supplying it.",
 				Optional:            true,
 			},
 			"failover_url": schema.StringAttribute{
-				MarkdownDescription: "Current failover URL. Treat as a credential — anyone holding the URL can bypass SSO to sign in.",
+				MarkdownDescription: "Current failover URL. Treat it as a credential: anyone holding the URL can bypass SSO to sign in.",
 				Computed:            true,
 				Sensitive:           true,
 			},

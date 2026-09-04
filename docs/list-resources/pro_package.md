@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_package List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the selector attribute for the allowed values.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Packages | `read:pro:packages` |
+  Searches Jamf Pro packages using an RSQL filter. Jamf Pro limits which selectors are supported; see the selector attribute for the allowed values.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Packages | Read | `packages` |
 ---
 
 # jamfplatform_pro_package (List Resource)
 
-Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values.
+Searches Jamf Pro packages using an RSQL filter. Jamf Pro limits which selectors are supported; see the `selector` attribute for the allowed values.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Packages | `read:pro:packages` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Packages | Read | `packages` |
 
 ## Example Usage
 
@@ -77,7 +77,7 @@ list "jamfplatform_pro_package" "ready_only" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `categoryId`, `cloudTransferStatus`, `fileName`, `id`, `info`, `manifestFileName`, `notes`, `packageName`.
 
 Optional:

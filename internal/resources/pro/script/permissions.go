@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the script resource's CRUD path
 // calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteScriptV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the script resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -31,7 +31,7 @@ var dataSourceSDKMethods = []string{
 	"GetScriptV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the script data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -41,7 +41,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListScriptsV1",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges"
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the plural scripts data source, appended to its
 // MarkdownDescription.
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
@@ -52,6 +52,6 @@ var listResourceSDKMethods = []string{
 	"ListScriptsV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the script list resource, appended to its Description.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_enrollment_profile List Resource - t
 subcategory: ""
 description: |-
   Lists Jamf Pro mobile device enrollment profiles. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:enrollment-profiles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | Enrollment profiles | Read | `enrollment-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (List Resource)
 
 Lists Jamf Pro mobile device enrollment profiles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:enrollment-profiles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | Enrollment profiles | Read | `enrollment-profiles` |
 
 ## Example Usage
 

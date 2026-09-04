@@ -81,7 +81,7 @@ func (r *ComputerExtensionAttributeResource) ConfigValidators(ctx context.Contex
 // Schema returns the Terraform schema for the computer extension attribute.
 func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro computer extension attribute — a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. The `input_type` acts as a discriminator: `script` is required for (and only valid with) `SCRIPT`; `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; and only `SCRIPT` EAs may be disabled. A plan-time validator enforces these rules before apply." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro computer extension attribute: a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. `input_type` acts as a discriminator. `script` is required with `SCRIPT` and valid only there; `popup_menu_choices` only with `POPUP`; `directory_service_attribute` and `allow_multiple_values` only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. Only `SCRIPT` extension attributes may be disabled. A plan-time validator enforces these rules before apply." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Computer extension attribute ID assigned by Jamf Pro.",
@@ -91,14 +91,14 @@ func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req res
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Extension attribute display name. Must be unique within the tenant.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Must be unique within the tenant.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Free-text description of the extension attribute. Omit it to leave any existing value untouched; it is not cleared on update. Set it to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -106,38 +106,38 @@ func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req res
 				},
 			},
 			"data_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Data type\"** in the Jamf Pro admin UI. Type of data collected: `STRING`, `INTEGER`, or `DATE` (date values use the `YYYY-MM-DD hh:mm:ss` format).",
+				MarkdownDescription: "**\"Data type\"** in the Jamf Pro admin UI. Type of data collected: `STRING`, `INTEGER`, or `DATE`. Date values use the `YYYY-MM-DD hh:mm:ss` format.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(validDataTypes...),
 				},
 			},
 			"input_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Input type\"** in the Jamf Pro admin UI. How the attribute value is populated: `TEXT` (text field), `POPUP` (pop-up menu of `popup_menu_choices`), `SCRIPT` (collected by a script), or `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING` (mapped from a directory service attribute). Note: the modern admin UI offers only Text field / Pop-up menu / Script for new computer EAs; `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING` is accepted by the API and retained here so existing LDAP-mapped EAs can be imported and managed.",
+				MarkdownDescription: "**\"Input type\"** in the Jamf Pro admin UI. How the attribute value is populated: `TEXT` (text field), `POPUP` (pop-up menu of `popup_menu_choices`), `SCRIPT` (collected by a script), or `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING` (mapped from a directory service attribute). The modern admin UI offers only Text field, Pop-up menu and Script for new computer extension attributes. Jamf Pro still accepts `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`, which is kept here so existing LDAP-mapped extension attributes can be imported and managed.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(validInputTypes...),
 				},
 			},
 			"inventory_display": schema.StringAttribute{
-				MarkdownDescription: "**\"Inventory display\"** in the Jamf Pro admin UI. Inventory category under which the attribute is shown: `GENERAL`, `HARDWARE`, `OPERATING_SYSTEM`, `USER_AND_LOCATION`, `PURCHASING`, or `EXTENSION_ATTRIBUTES`.",
+				MarkdownDescription: "**\"Inventory display\"** in the Jamf Pro admin UI. Inventory category the attribute is shown under: `GENERAL`, `HARDWARE`, `OPERATING_SYSTEM`, `USER_AND_LOCATION`, `PURCHASING`, or `EXTENSION_ATTRIBUTES`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(validInventoryDisplays...),
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "**\"Enable\"** in the Jamf Pro admin UI. Whether the extension attribute is enabled. Only `SCRIPT` extension attributes may be disabled; for every other input type Jamf Pro forces this to `true`. Defaults to `true`.",
+				MarkdownDescription: "**\"Enable\"** in the Jamf Pro admin UI. Only `SCRIPT` extension attributes may be disabled; for every other input type Jamf Pro forces this to `true`. Defaults to `true`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
 			},
 			"script": schema.StringAttribute{
-				MarkdownDescription: "**\"Script\"** in the Jamf Pro admin UI. Script contents collected as the attribute value. Required when `input_type = SCRIPT`; must be omitted for every other input type. Jamf Pro normalises the stored script (notably appending a trailing newline); the provider tolerates that so it does not show as a perpetual diff.",
+				MarkdownDescription: "**\"Script\"** in the Jamf Pro admin UI. Script contents collected as the attribute value. Required when `input_type = SCRIPT`, and must be omitted for every other input type. Jamf Pro normalises the stored script, notably by appending a trailing newline; the provider tolerates that, so it does not show as a perpetual diff.",
 				Optional:            true,
 			},
 			"popup_menu_choices": schema.SetAttribute{
-				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched (they are not cleared on an unrelated update); set to `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.",
+				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP`, and optional even then. Modelled as a set, because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit the attribute to leave any existing choices untouched; they are not cleared on an unrelated update. Set it to `[]` to clear them. Changing `input_type` away from `POPUP` also clears them.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
@@ -146,11 +146,11 @@ func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req res
 				},
 			},
 			"directory_service_attribute": schema.StringAttribute{
-				MarkdownDescription: "**\"Directory Service Attribute\"** in the Jamf Pro admin UI. The directory-service attribute name mapped to this EA. Required when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; must be omitted for every other input type.",
+				MarkdownDescription: "**\"Directory Service Attribute\"** in the Jamf Pro admin UI. The directory-service attribute name mapped to this extension attribute. Required when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`, and must be omitted for every other input type.",
 				Optional:            true,
 			},
 			"allow_multiple_values": schema.BoolAttribute{
-				MarkdownDescription: "**\"Allow Multiple Values\"** in the Jamf Pro admin UI. Collect multiple values for a directory-service-mapped attribute (results in a limited choice of operators when used in smart-group / advanced-search criteria). Meaningful only when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. Defaults to `false`. Jamf Pro does not allow this flag to change after creation, so changing it forces the extension attribute to be replaced.",
+				MarkdownDescription: "**\"Allow Multiple Values\"** in the Jamf Pro admin UI. Collect multiple values for a directory-service-mapped attribute. Doing so limits the operators available when the attribute is used in smart group or advanced search criteria. Meaningful only when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. Defaults to `false`. Jamf Pro does not allow the flag to change after creation, so changing it forces the extension attribute to be replaced.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
@@ -159,7 +159,7 @@ func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req res
 				},
 			},
 			"manage_existing_data": schema.StringAttribute{
-				MarkdownDescription: "Behavioural instruction (no admin-UI field) controlling what Jamf Pro does with the inventory data already collected by a `SCRIPT` extension attribute when that attribute is **disabled**: `RETAIN` keeps the existing values, `DELETE` clears them. Valid only with `input_type = SCRIPT` **and** `enabled = false` — Jamf Pro rejects it on any other update, and on create. Jamf Pro requires it when an enabled SCRIPT extension attribute is being disabled, so `RETAIN` is sent when it is omitted. This is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro on update but never stored in state (Jamf Pro never returns it, and it is an instruction, not a persistent property). Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.",
+				MarkdownDescription: "Controls what Jamf Pro does with the inventory data already collected by a `SCRIPT` extension attribute when that attribute is disabled: `RETAIN` keeps the existing values, `DELETE` clears them. There is no matching admin-UI field. Valid only with `input_type = SCRIPT` and `enabled = false`; Jamf Pro rejects it on create and on any other update. Jamf Pro requires the instruction when an enabled `SCRIPT` extension attribute is being disabled, so `RETAIN` is sent when you omit it. This is a Terraform `WriteOnly` attribute: it is sent to Jamf Pro on update but never stored in state, because Jamf Pro never returns it and it is an instruction rather than a persistent property. Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.",
 				Optional:            true,
 				WriteOnly:           true,
 				Validators: []validator.String{

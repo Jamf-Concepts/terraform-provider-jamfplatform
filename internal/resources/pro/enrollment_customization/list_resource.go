@@ -67,7 +67,7 @@ func (r *EnrollmentCustomizationListResource) Configure(ctx context.Context, req
 // ListResourceConfigSchema describes the supported list filters.
 func (r *EnrollmentCustomizationListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID." + listResourcePrivileges,
+		Description: "Lists Jamf Pro enrollment customizations. An optional case-insensitive `name_substring` filter is applied client-side after the full list is fetched. Each row carries the parent record: display name, description, site, branding palette and icon URL. Panes are not included; read them with the singular resource per ID." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

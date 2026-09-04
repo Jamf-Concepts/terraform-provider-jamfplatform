@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -111,16 +110,22 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 	assertMatches(t, "list_resource.go", listResourceSDKMethods, sdkCallsIn(t, "list_resource.go"))
 }
 
-// TestPrivileges_Rendered guards that each construct's table actually rendered the
-// allowed file extension privileges (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the allowed-file-extension
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, got := range map[string]string{
-		"resourcePrivileges":     resourcePrivileges,
-		"dataSourcePrivileges":   dataSourcePrivileges,
-		"listResourcePrivileges": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "allowed-file-extension:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "allowed-file-extension:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "allowed-file-extension:read"},
 	} {
-		if !strings.Contains(got, "pro:allowed-file-extension") {
-			t.Errorf("%s did not render the allowed-file-extension privileges:\n%s", name, got)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

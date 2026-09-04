@@ -136,8 +136,18 @@ func TestAccResource_SecurityCloudZtnaGateway_InternetGateway(t *testing.T) {
 				ResourceName:      "jamfplatform_security_cloud_ztna_gateway.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				// status.state is excluded because it is not a property of the
+				// configuration but a server-side deployment state that advances on its
+				// own. The step above sets enabled = false, and Jamf Security Cloud then
+				// moves the gateway from PENDING to DISABLED asynchronously — so the state
+				// stored by that step and the fresh read this import performs can
+				// legitimately disagree, and did: roughly one run in four failed with
+				// `- "status.state": "PENDING"` / `+ "status.state": "DISABLED"`. Comparing
+				// the two is a race, not a check. Same reason STYLE_GUIDE keeps
+				// status.updatedAt out of the schema entirely.
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
+					"status.state",
 				},
 			},
 		},
@@ -193,8 +203,12 @@ func TestAccResource_SecurityCloudZtnaGateway_IPSecGateway(t *testing.T) {
 				ResourceName:      "jamfplatform_security_cloud_ztna_gateway.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				// status.state: see the internet-gateway import step above — a
+				// server-side deployment state, not a configuration property, and racy to
+				// compare across two reads.
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
+					"status.state",
 					"ipsec.jamf_side.authentication_secret",
 					"ipsec.jamf_side.authentication_secret_wo_version",
 				},
@@ -598,9 +612,57 @@ func ipsecGatewayConfig(name, region, tenantID, jamfSubnet, peerHost, encryption
 // Expected-error patterns for the plan- and apply-time refusals. Terraform wraps
 // diagnostic text at roughly 80 columns, so each pattern matches a short phrase
 // that cannot be split across a line break.
+// TestAccDataSource_SecurityCloudZtnaGateway_EmptyIDRefused pins the guard for the
+// selector mistake ExactlyOneOf cannot catch.
+//
+// A set-but-empty `id` counts as configured, so `id = var.x` with an unset variable
+// satisfies the config validator and then falls through to whichever lookup is
+// left. Without the guard the name branch runs with a null name, and the operator
+// gets an SDK-internal string about an attribute they never set.
+func TestAccDataSource_SecurityCloudZtnaGateway_EmptyIDRefused(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_ztna_gateway" "empty_id" {
+						id = ""
+					}
+				`,
+				ExpectError: regexpEmptyID,
+			},
+		},
+	})
+}
+
+// TestAccDataSource_SecurityCloudZtnaGateway_NameNotFoundIsWritten pins that a name
+// matching nothing produces a written diagnostic rather than the resolver's
+// synthetic 404 body, which reads as an internal error and names no remedy.
+func TestAccDataSource_SecurityCloudZtnaGateway_NameNotFoundIsWritten(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_ztna_gateway" "missing" {
+						name = "tf-acc-no-such-ztna_gateway-zzz"
+					}
+				`,
+				ExpectError: regexpNameNotFound,
+			},
+		},
+	})
+}
+
 var (
 	regexpSourceAddressesNeedIPSec   = regexp.MustCompile(`IPsec source addresses require an IPsec gateway`)
 	regexpSubnetNotPrivate           = regexp.MustCompile(`is not a private range`)
 	regexpInvalidAttributeValueMatch = regexp.MustCompile(`Invalid Attribute Value Match`)
 	regexpExactlyOneSelector         = regexp.MustCompile(`Exactly one of these attributes must be configured`)
+	regexpEmptyID                    = regexp.MustCompile(`ID is empty`)
+	regexpNameNotFound               = regexp.MustCompile(`on this tenant is named`)
 )

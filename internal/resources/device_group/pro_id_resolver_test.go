@@ -108,8 +108,8 @@ func TestResolveJamfProID_Forbidden_NullsAndWarnsOnce(t *testing.T) {
 	if countSeverity(diags, diag.SeverityWarning) != 1 {
 		t.Fatalf("expected exactly 1 warning on first 403, got %d (%v)", countSeverity(diags, diag.SeverityWarning), diags)
 	}
-	if !strings.Contains(diags[0].Summary(), "Read Groups") {
-		t.Errorf("warning summary should reference 'Read Groups', got %q", diags[0].Summary())
+	if !strings.Contains(diags[0].Summary(), "Device groups Read permission") {
+		t.Errorf("warning summary should reference the Device groups Read permission, got %q", diags[0].Summary())
 	}
 
 	_, diags2 := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid-2")

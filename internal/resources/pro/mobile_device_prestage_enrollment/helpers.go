@@ -70,7 +70,7 @@ func isPutSerializerBug(err error) bool {
 // putWorkaroundWarning is the single source of truth for the user-facing
 // one-shot warning text logged when the 500-with-commit code path fires.
 const putWorkaroundWarning = "Jamf Pro mobile-device-prestage PUT returned HTTP 500 with an empty errors[] body; the underlying write committed. " +
-	"This is a known Jamf API response-serializer bug — see the upstream tracking issue. " +
+	"This is a known Jamf Pro defect; see the tracking issue. " +
 	"The provider verified the write via GET and is treating it as successful."
 
 // fmtUnchangedFields formats a list of plan-vs-GET mismatched field paths for

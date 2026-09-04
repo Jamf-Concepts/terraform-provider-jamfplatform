@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -74,7 +73,7 @@ func TestRetryPatchPolicyLogsSDKMethods_MatchInvokeCalls(t *testing.T) {
 // TestRetryPatchPolicyLogsPrivileges_Rendered guards that the table actually
 // rendered into the action description (catches an empty/parse-skipped registry).
 func TestRetryPatchPolicyLogsPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(retryPatchPolicyLogsPrivileges, "update:pro:patch-policies") {
+	if !permissions.Renders(retryPatchPolicyLogsPrivileges, "patch-policies:update") {
 		t.Fatalf("retryPatchPolicyLogsPrivileges did not render the patch-policies privileges:\n%s", retryPatchPolicyLogsPrivileges)
 	}
 }

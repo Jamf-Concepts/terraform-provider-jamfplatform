@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,9 +23,9 @@ import (
 // group criteria tests.
 //
 // One Okta directory backs them all: the SAML metadata URL
-// (JAMFPLATFORM_ACC_SSO_IDP_URL, also used by the SSO fixtures) yields the
-// subdomain/SLD/TLD; the bind credentials come from JAMFPLATFORM_ACC_LDAP_USERNAME
-// / JAMFPLATFORM_ACC_LDAP_PASSWORD; and JAMFPLATFORM_ACC_LDAP_GROUP_NAME names a
+// (JAMFPLATFORM_ACC_PRO_SSO_IDP_URL, also used by the SSO fixtures) yields the
+// subdomain/SLD/TLD; the bind credentials come from JAMFPLATFORM_ACC_PRO_LDAP_USERNAME
+// / JAMFPLATFORM_ACC_PRO_LDAP_PASSWORD; and JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME names a
 // group that exists in that directory (used wherever a test references a real
 // directory-service group by name).
 //
@@ -42,14 +41,14 @@ import (
 const (
 	// EnvSSOIdpURL is the SAML IdP metadata URL; its host is split into
 	// <subdomain>.<sld>.<tld> to derive the Okta LDAP hostname and DN components.
-	EnvSSOIdpURL = "JAMFPLATFORM_ACC_SSO_IDP_URL"
+	EnvSSOIdpURL = "JAMFPLATFORM_ACC_PRO_SSO_IDP_URL"
 	// EnvLdapUsername / EnvLdapPassword are the Okta LDAP bind service-account
 	// credentials.
-	EnvLdapUsername = "JAMFPLATFORM_ACC_LDAP_USERNAME"
-	EnvLdapPassword = "JAMFPLATFORM_ACC_LDAP_PASSWORD" //nolint:gosec // env var name, not a credential
+	EnvLdapUsername = "JAMFPLATFORM_ACC_PRO_LDAP_USERNAME"
+	EnvLdapPassword = "JAMFPLATFORM_ACC_PRO_LDAP_PASSWORD" //nolint:gosec // env var name, not a credential
 	// EnvLdapGroupName names a directory-service group that exists in the Okta
 	// directory; tests reference it wherever they need a real group by name.
-	EnvLdapGroupName = "JAMFPLATFORM_ACC_LDAP_GROUP_NAME"
+	EnvLdapGroupName = "JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME"
 
 	// LdapFixtureResourceLabel is the Terraform resource label of the shared LDAP
 	// server fixture written by LdapServerFixture; depends_on / id references use
@@ -69,9 +68,9 @@ type OktaLdapEnv struct {
 // SAML IdP metadata URL are all set, then derives the Okta host components.
 func RequireOktaLdapEnv(t *testing.T) OktaLdapEnv {
 	t.Helper()
-	username := os.Getenv(EnvLdapUsername)
-	password := os.Getenv(EnvLdapPassword)
-	idpURL := os.Getenv(EnvSSOIdpURL)
+	username := AccEnv(EnvLdapUsername)
+	password := AccEnv(EnvLdapPassword)
+	idpURL := AccEnv(EnvSSOIdpURL)
 	if username == "" || password == "" || idpURL == "" {
 		t.Skipf("skipping LDAP test: set %s, %s, and %s so the test can stand up an Okta LDAP directory-service fixture", EnvLdapUsername, EnvLdapPassword, EnvSSOIdpURL)
 	}
@@ -96,7 +95,7 @@ func RequireOktaLdapEnv(t *testing.T) OktaLdapEnv {
 // is set.
 func RequireLdapGroupName(t *testing.T) string {
 	t.Helper()
-	g := os.Getenv(EnvLdapGroupName)
+	g := AccEnv(EnvLdapGroupName)
 	if g == "" {
 		t.Skipf("skipping LDAP-group test: set %s to a directory-service group that exists in the Okta directory", EnvLdapGroupName)
 	}
@@ -226,11 +225,11 @@ func oktaLdapServerPost(c oktaLdapConfig) *proclassic.LdapServerPost {
 	return &proclassic.LdapServerPost{
 		Connection: &proclassic.LdapServerPostConnection{
 			Name:               new(c.displayName),
-			ServerType:         new("Custom"),
+			ServerType:         new(proclassic.LdapServerConnectionServerTypeCustom),
 			Hostname:           new(c.hostname),
 			Port:               new(636),
 			UseSsl:             new(true),
-			AuthenticationType: new("simple"),
+			AuthenticationType: new(proclassic.LdapServerConnectionAuthenticationTypeSimple),
 			OpenCloseTimeout:   new(15),
 			SearchTimeout:      new(60),
 			UseWildcards:       new(true),
@@ -241,10 +240,10 @@ func oktaLdapServerPost(c oktaLdapConfig) *proclassic.LdapServerPost {
 		},
 		MappingsForUsers: &proclassic.LdapServerPostMappingsForUsers{
 			UserMappings: &proclassic.LdapServerMappingsForUsersUserMappings{
-				MapObjectClassToAnyOrAll: new("all"),
+				MapObjectClassToAnyOrAll: new(proclassic.LdapServerMappingsForUsersUserMappingsMapObjectClassToAnyOrAllAll),
 				ObjectClasses:            new("inetOrgPerson"),
 				SearchBase:               new("ou=users," + c.dn),
-				SearchScope:              new("All Subtrees"),
+				SearchScope:              new(proclassic.LdapServerMappingsForUsersUserMappingsSearchScopeAllSubtrees),
 				MapUserID:                new("uid"),
 				MapUsername:              new("uid"),
 				MapRealname:              new("cn"),
@@ -254,22 +253,22 @@ func oktaLdapServerPost(c oktaLdapConfig) *proclassic.LdapServerPost {
 				MapUserUUID:              new("uid"),
 			},
 			UserGroupMappings: &proclassic.LdapServerMappingsForUsersUserGroupMappings{
-				MapObjectClassToAnyOrAll: new("all"),
+				MapObjectClassToAnyOrAll: new(proclassic.LdapServerMappingsForUsersUserMappingsMapObjectClassToAnyOrAllAll),
 				ObjectClasses:            new("groupofUniqueNames"),
 				SearchBase:               new("ou=groups," + c.dn),
-				SearchScope:              new("All Subtrees"),
+				SearchScope:              new(proclassic.LdapServerMappingsForUsersUserMappingsSearchScopeAllSubtrees),
 				MapGroupID:               new("uniqueIdentifier"),
 				MapGroupName:             new("cn"),
 				MapGroupUUID:             new("uniqueIdentifier"),
 			},
 			UserGroupMembershipMappings: &proclassic.LdapServerMappingsForUsersUserGroupMembershipMappings{
-				UserGroupMembershipStoredIn:   new("group object"),
+				UserGroupMembershipStoredIn:   new(proclassic.LdapServerMappingsForUsersUserGroupMembershipMappingsUserGroupMembershipStoredInGroupObject),
 				MapUserMembershipToGroupField: new("uniqueMember"),
 				UseDn:                         new(false),
 				RecursiveLookups:              new(false),
 				MapUserMembershipUseDn:        new(true),
-				MapObjectClassToAnyOrAll:      new("all"),
-				SearchScope:                   new("All Subtrees"),
+				MapObjectClassToAnyOrAll:      new(proclassic.LdapServerMappingsForUsersUserMappingsMapObjectClassToAnyOrAllAll),
+				SearchScope:                   new(proclassic.LdapServerMappingsForUsersUserMappingsSearchScopeAllSubtrees),
 				MembershipScopingOptimization: new(true),
 			},
 		},

@@ -48,7 +48,7 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 	}
 	model.Criteria = flattenDeviceGroupCriteria(criteria, prevCriteria)
 
-	if strings.EqualFold(grp.GroupType, "STATIC") {
+	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) {
 		if manageMembers {
 			memberValues := members
 			if memberValues == nil {

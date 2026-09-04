@@ -6,6 +6,8 @@ package smtp_server
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // Authentication-type discriminator values. Kept in one place so the schema
@@ -13,19 +15,19 @@ import (
 // and the state assigner share a single source of truth. These are both the
 // Terraform-facing values and the Jamf Pro wire values (`authenticationType`).
 const (
-	authNone       = "NONE"
-	authBasic      = "BASIC"
-	authGraphAPI   = "GRAPH_API"
-	authGoogleMail = "GOOGLE_MAIL"
+	authNone       = pro.SmtpServerV2AuthenticationTypeNone
+	authBasic      = pro.SmtpServerV2AuthenticationTypeBasic
+	authGraphAPI   = pro.SmtpServerV2AuthenticationTypeGraphApi
+	authGoogleMail = pro.SmtpServerV2AuthenticationTypeGoogleMail
 )
 
 // authenticationTypes is the full discriminator set, for the OneOf validator.
-var authenticationTypes = []string{authNone, authBasic, authGraphAPI, authGoogleMail}
+var authenticationTypes = pro.SmtpServerV2AuthenticationTypeValues()
 
 // encryptionTypes is the SMTP connection encryption enum (wire values). The
 // Jamf Pro admin UI labels these None / SSL / TLSv1.3 / TLSv1.2 / TLSv1.1 /
 // TLSv1 respectively; the resource uses the wire values verbatim.
-var encryptionTypes = []string{"NONE", "SSL", "TLS_1_2", "TLS_1_1", "TLS_1", "TLS_1_3"}
+var encryptionTypes = pro.SmtpConnectionSettingsEncryptionTypeValues()
 
 // The read-only OAuth-grant status enum returned in
 // google_mail_credentials.authentications[].status is FAILED / UNAUTHENTICATED /

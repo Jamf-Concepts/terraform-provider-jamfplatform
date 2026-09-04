@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the App Request settings resource's
 // CRUD path calls. It mirrors the "SDK endpoints used" block in crud.go and
-// drives the "Required Jamf privileges" table appended to the resource
+// drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry. This is a GET/PUT-only singleton — Create funnels into the PUT and
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"UpdateAppRequestSettingsV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the App Request settings resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)

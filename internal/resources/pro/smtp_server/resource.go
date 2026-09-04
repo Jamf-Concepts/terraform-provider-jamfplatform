@@ -78,7 +78,7 @@ func (r *SmtpServerResource) IdentitySchema(ctx context.Context, req resource.Id
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — SMTP Server settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". SMTP Server settings are one record per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -88,12 +88,12 @@ func (r *SmtpServerResource) IdentitySchema(ctx context.Context, req resource.Id
 // Schema returns the Terraform schema for the resource.
 func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server) — the outbound mail relay Jamf Pro uses to send notifications, enrollment invitations, and other email. " +
-			"Singleton — one record per tenant. " +
+		MarkdownDescription: "Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server), the outbound mail relay Jamf Pro sends notifications, enrollment invitations and other email through. " +
+			"One record per tenant. " +
 			"`authentication_type` selects the authentication method and which blocks apply: `NONE` and `BASIC` use `connection_settings` (SMTP host/port/encryption); `BASIC` adds `basic_auth_credentials`; `GRAPH_API` uses `graph_api_credentials` (Microsoft Graph); `GOOGLE_MAIL` uses `google_mail_credentials` (Google Workspace). A plan-time validator enforces that the block matching `authentication_type` is present and the others absent. " +
-			"**Full-replace** — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. " +
+			"Every apply replaces the whole configuration. Omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. " +
 			"Plaintext secrets (`basic_auth_credentials.password`, `graph_api_credentials.client_secret`, `google_mail_credentials.client_secret`) are `WriteOnly`: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its `*_wo_version` rotation trigger. " +
-			"**Google Workspace** sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI (\"Add an email address via Google\"); Terraform configures the client credentials but does not drive that grant — `google_mail_credentials.authentications` is read-only. " +
+			"Google Workspace sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI (\"Add an email address via Google\"). Terraform configures the client credentials but does not drive that grant, so `google_mail_credentials.authentications` is read-only. " +
 			"Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -112,7 +112,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				},
 			},
 			"authentication_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Authentication method\"** in the Jamf Pro admin UI. One of `NONE` (no authentication), `BASIC` (Basic Credentials — username + password), `GRAPH_API` (Microsoft Graph API), or `GOOGLE_MAIL` (Google Auth / Workspace). Selects which credential block is required.",
+				MarkdownDescription: "**\"Authentication method\"** in the Jamf Pro admin UI. One of `NONE` (no authentication), `BASIC` (Basic Credentials: username and password), `GRAPH_API` (Microsoft Graph API), or `GOOGLE_MAIL` (Google Auth / Workspace). Selects which credential block is required.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(authenticationTypes...),
@@ -142,7 +142,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 			},
 
 			"connection_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "**\"Authentication settings\"** (Server and port / Encryption / Connection timeout) in the Jamf Pro admin UI. The SMTP relay connection. Required when `authentication_type` is `NONE` or `BASIC`; must be omitted for `GRAPH_API` and `GOOGLE_MAIL` (which connect over HTTP, not SMTP).",
+				MarkdownDescription: "**\"Authentication settings\"** (Server and port / Encryption / Connection timeout) in the Jamf Pro admin UI. The SMTP relay connection. Required when `authentication_type` is `NONE` or `BASIC`; must be omitted for `GRAPH_API` and `GOOGLE_MAIL`, which connect over HTTP rather than SMTP.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"host": schema.StringAttribute{
@@ -167,7 +167,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 						},
 					},
 					"connection_timeout": schema.Int64Attribute{
-						MarkdownDescription: "**\"Connection timeout\"** in the Jamf Pro admin UI, in seconds. Time to wait before a connection attempt fails. Defaults to `30`.",
+						MarkdownDescription: "**\"Connection timeout\"** in the Jamf Pro admin UI. Seconds to wait before a connection attempt fails. Defaults to `30`.",
 						Optional:            true,
 						Computed:            true,
 						Default:             int64default.StaticInt64(defaultConnectionTimeout),
@@ -218,7 +218,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 			},
 
 			"google_mail_credentials": schema.SingleNestedAttribute{
-				MarkdownDescription: "Google Workspace (Google Auth) credentials. Required when `authentication_type = \"GOOGLE_MAIL\"`; forbidden otherwise. The sender Google accounts are linked out of band through the Jamf Pro admin UI's interactive Google OAuth grant — Terraform configures the client credentials only.",
+				MarkdownDescription: "Google Workspace (Google Auth) credentials. Required when `authentication_type = \"GOOGLE_MAIL\"`; forbidden otherwise. The sender Google accounts are linked out of band through the Jamf Pro admin UI's interactive Google OAuth grant. Terraform configures the client credentials only.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"client_id": schema.StringAttribute{
@@ -274,7 +274,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 // fires only when the secret is set.
 func writeOnlySecret(desc, woName string) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: desc + " `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.",
+		MarkdownDescription: desc + " `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.",
 		Optional:            true,
 		Sensitive:           true,
 		WriteOnly:           true,
@@ -287,7 +287,7 @@ func writeOnlySecret(desc, woName string) schema.StringAttribute {
 // woVersion returns the rotation-trigger Int64 attribute for a WriteOnly secret.
 func woVersion(secretName string) schema.Int64Attribute {
 	return schema.Int64Attribute{
-		MarkdownDescription: fmt.Sprintf("Rotation trigger for the `WriteOnly` `%s`. Bump this integer (any change) to send the current `%s` on the next apply; leaving it unset or unchanged signals \"leave the stored value alone\" — the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.", secretName, secretName),
+		MarkdownDescription: fmt.Sprintf("Rotation trigger for the `WriteOnly` `%s`. Bump this integer (any change) to send the current `%s` on the next apply; leaving it unset or unchanged signals \"leave the stored value alone\": the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.", secretName, secretName),
 		Optional:            true,
 	}
 }

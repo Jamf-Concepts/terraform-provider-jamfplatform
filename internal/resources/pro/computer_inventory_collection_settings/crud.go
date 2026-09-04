@@ -25,10 +25,18 @@ import (
 )
 
 // applicationPathScope is the only scope value the V2 custom-path create endpoint
-// accepts. The wire enum rejects FONT/PLUGIN, so this resource manages application
-// search paths exclusively (the Fonts/Plug-ins custom paths in the admin UI are not
-// reachable through the V2 API).
-const applicationPathScope = "APP"
+// accepts. Re-probed on Jamf Pro 11.31.1 (2026-09-01): FONT, PLUGIN, an unknown
+// BOGUS and the lower-case "app" are each refused with 400 INVALID_FIELD on field
+// "scope", the description naming the accepted set as "[APP]". So the vocabulary is
+// exactly one value, matched case-sensitively, and this resource manages application
+// search paths exclusively — the Fonts/Plug-ins custom paths in the admin UI are
+// reachable only through the deprecated V1 endpoint, which still answers but is not
+// adopted here.
+//
+// The narrowing to one value is a real V2 change and not a publish artifact: the
+// same instance served APP, FONT and PLUGIN on V1 minutes either side of the V2
+// refusals.
+const applicationPathScope = pro.CreatePathV2ScopeApp
 
 // reconcileApplicationPaths brings the tenant's user-created application search paths in
 // line with the planned set. It is a no-op when the attribute is unmanaged (null/unknown),

@@ -3,31 +3,25 @@
 page_title: "jamfplatform_device_group Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf device groups (static or smart) via the Platform API. Requires Device Group Inventory API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:create` |
-  | `device-groups:delete` |
-  | `device-groups:read` |
-  | `device-groups:update` |
+  Manages a Jamf device group, static or smart. Requires Device Group Inventory API access.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Create, Read, Update, Delete | `device-groups` |
 ---
 
 # jamfplatform_device_group (Resource)
 
-Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.
+Manages a Jamf device group, static or smart. Requires **Device Group Inventory API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:create` |
-| `device-groups:delete` |
-| `device-groups:read` |
-| `device-groups:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Create, Read, Update, Delete | `device-groups` |
 
 ## Example Usage
 
@@ -76,10 +70,11 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 }
 
 # Directory-service (LDAP / cloud-IdP) group criteria. Write the group by NAME and
-# the provider resolves it to the base64 {uuid,serverId} value the API stores
-# (and back again on read, so state keeps the readable name). A raw base64 value
-# is also accepted verbatim — useful to disambiguate a name that exists on more
-# than one directory server, or to paste a value straight from the API/UI.
+# the provider resolves it to the base64 {uuid,serverId} value the platform
+# stores (and back again on read, so state keeps the readable name). A raw
+# base64 value is also accepted verbatim. Use one to disambiguate a name that
+# exists on more than one directory server, or to paste a value copied from the
+# platform API or the admin UI.
 resource "jamfplatform_device_group" "example_directory_service_group" {
   name        = "Example Directory Service Smart Group"
   group_type  = "smart"
@@ -96,8 +91,9 @@ resource "jamfplatform_device_group" "example_directory_service_group" {
 
 # The Computed `jamf_pro_id` attribute exposes the numeric Jamf Pro classic ID
 # for the group. Reference it from classic-API scope blocks (policies,
-# configuration profiles, restricted software). The value is null when the
-# Platform API client lacks the `Read Groups` privilege.
+# configuration profiles, restricted software). The value is null when the API
+# integration lacks the Inventory → Device groups → Read permission in Jamf
+# Account (API capability `device-groups:read`).
 output "smart_computer_group_jamf_pro_id" {
   value = jamfplatform_device_group.example_smart_computer_group.jamf_pro_id
 }
@@ -121,9 +117,9 @@ output "smart_computer_group_jamf_pro_id" {
 
 ### Read-Only
 
-- `id` (String) Unique identifier assigned by the API.
-- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege (a single missing-privilege warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
-- `member_count` (Number) Total members reported by the API.
+- `id` (String) Unique identifier assigned by the platform.
+- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group: policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account (a single missing-permission warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
+- `member_count` (Number) Total members reported by the platform.
 
 <a id="nestedatt--criteria"></a>
 ### Nested Schema for `criteria`

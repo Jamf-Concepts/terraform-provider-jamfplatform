@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_automated_device_enrollment Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the jamfplatform_pro_automated_device_enrollment resource to manage the token.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
+  Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded server token, because Jamf Pro never returns it on reads. Use the jamfplatform_pro_automated_device_enrollment resource to manage the token.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Automated Device Enrollment connection | Read | `device-enrollment-program-instances` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Data Source)
 
-Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.
+Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token, because Jamf Pro never returns it on reads. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Automated Device Enrollment connection | Read | `device-enrollment-program-instances` |
 
 ## Example Usage
 

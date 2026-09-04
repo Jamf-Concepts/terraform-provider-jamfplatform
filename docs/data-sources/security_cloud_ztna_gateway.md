@@ -3,25 +3,25 @@
 page_title: "jamfplatform_security_cloud_ztna_gateway Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported, because Jamf Security Cloud does not return it.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_gateway (Data Source)
 
-Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
+Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported, because Jamf Security Cloud does not return it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 
@@ -62,8 +62,8 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 ### Read-Only
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Empty while provisioning, and always empty on an IPsec gateway.
-- `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf Security Cloud provisioned for a dedicated internet gateway. Allocated within seconds of the gateway being created, well before it finishes provisioning, so a populated list means the addresses are reserved rather than that the gateway reports itself operational. Read `status` for that. Always empty on an IPsec gateway.
+- `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf Security Cloud provisions. Mutually exclusive with an IPsec configuration.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
 - `ipsec` (Attributes) IPsec tunnel configuration. Null on a dedicated internet gateway. (see [below for nested schema](#nestedatt--ipsec))
@@ -118,7 +118,7 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_domain_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf Security Cloud presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
 
 
@@ -150,5 +150,5 @@ Read-Only:
 
 Read-Only:
 
-- `state` (String) Overall gateway state.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the gateway is not enabled.
 - `tunnel_state` (String) IPsec tunnel health.

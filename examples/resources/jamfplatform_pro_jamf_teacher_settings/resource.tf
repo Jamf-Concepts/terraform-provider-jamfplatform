@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MPL-2.0
 
 # Manage the Jamf Pro Jamf Teacher settings (Settings > Jamf apps > Jamf Teacher).
-# Singleton — one record per tenant. Optional attributes you omit keep their
-# current Jamf Pro value, including on the first apply (the resource adopts the
-# existing settings); timezone must always be set.
+# One record per tenant. Optional attributes you omit keep their current Jamf
+# Pro value, including on the first apply (the resource adopts the existing
+# settings); timezone must always be set.
 resource "jamfplatform_pro_jamf_teacher_settings" "example" {
   # Allow limited management of students' devices by Jamf Teacher.
   enabled = true
@@ -12,7 +12,7 @@ resource "jamfplatform_pro_jamf_teacher_settings" "example" {
   # IANA time zone the restriction times are evaluated in.
   timezone = "Europe/London"
 
-  # Restrictions End Time — all restrictions set by Jamf Teacher are cleared
+  # Restrictions End Time: all restrictions set by Jamf Teacher are cleared
   # from student devices at this time (24-hour HH:MM:SS). Set to "" to clear.
   restrictions_end_time = "17:30:00"
 

@@ -4,28 +4,24 @@ page_title: "jamfplatform_pro_allowed_file_extension Resource - terraform-provid
 subcategory: ""
 description: |-
   Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:allowed-file-extension` |
-  | `delete:pro:allowed-file-extension` |
-  | `read:pro:allowed-file-extension` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Allowed file upload extensions | Create, Read, Delete | `allowed-file-extension` |
 ---
 
 # jamfplatform_pro_allowed_file_extension (Resource)
 
 Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:allowed-file-extension` |
-| `delete:pro:allowed-file-extension` |
-| `read:pro:allowed-file-extension` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Allowed file upload extensions | Create, Read, Delete | `allowed-file-extension` |
 
 ## Example Usage
 

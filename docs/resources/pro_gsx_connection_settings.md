@@ -3,31 +3,27 @@
 page_title: "jamfplatform_pro_gsx_connection_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. Singleton — one record per tenant. Requires a valid Apple-registered GSX certificate. Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. Secrets are re-sent on every apply — token_wo, keystore_bytes_wo, and keystore_password_wo are Required + WriteOnly (never stored in state); the GSX API mandates them on every write, so they must always be present in config. Import with terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Push Certificates | `read:pro:gsx-connection` |
-  | Read GSX Connection | `read:pro:push-certificates` |
-  | Update GSX Connection | `update:pro:gsx-connection` |
-  | Update Push Certificates | `update:pro:push-certificates` |
+  Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. One record per tenant. Requires a valid Apple-registered GSX certificate. Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. Secrets are re-sent on every apply: token_wo, keystore_bytes_wo, and keystore_password_wo are Required and WriteOnly, so they are never stored in state and must always be present in config. Import with terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | APNS certificate | Read, Update | `push-certificates` |
+  | Infrastructure | Apple GSX connection | Read, Update | `gsx-connection` |
 ---
 
 # jamfplatform_pro_gsx_connection_settings (Resource)
 
-Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. Singleton — one record per tenant. **Requires a valid Apple-registered GSX certificate.** Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. **Secrets are re-sent on every apply** — `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are `Required` + `WriteOnly` (never stored in state); the GSX API mandates them on every write, so they must always be present in config. Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`.
+Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. One record per tenant. **Requires a valid Apple-registered GSX certificate.** Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. Secrets are re-sent on every apply: `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are Required and `WriteOnly`, so they are never stored in state and must always be present in config. Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Push Certificates | `read:pro:gsx-connection` |
-| Read GSX Connection | `read:pro:push-certificates` |
-| Update GSX Connection | `update:pro:gsx-connection` |
-| Update Push Certificates | `update:pro:push-certificates` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | APNS certificate | Read, Update | `push-certificates` |
+| Infrastructure | Apple GSX connection | Read, Update | `gsx-connection` |
 
 ## Example Usage
 
@@ -35,7 +31,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # Jamf Pro GSX Connection settings (Settings > Global > GSX connection).
 #
 # Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty,
-# repair, and purchase-date lookups. Singleton — one record per tenant.
+# repair, and purchase-date lookups. One record per tenant.
 #
 # Requires a valid Apple-registered GSX certificate. Every apply re-validates
 # the certificate, token, and account against Apple's live GSX service.
@@ -43,7 +39,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # The three secrets are `Required` + `WriteOnly`: sent to Jamf Pro on every
 # apply but never stored in Terraform state, and never returned on read. The
 # GSX API mandates them on every write, so they must always be present in
-# config — to rotate, change the value here.
+# config. Rotate by changing the value here.
 resource "jamfplatform_pro_gsx_connection_settings" "this" {
   enabled                = true
   username               = "gsx-admin@example.com"
@@ -64,11 +60,11 @@ resource "jamfplatform_pro_gsx_connection_settings" "this" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `keystore_bytes_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Upload the GSX certificate or keystore"** in the Jamf Pro admin UI. The base64-encoded GSX certificate keystore (p12). Supply with `filebase64("certificate.p12")`. `Required` + `WriteOnly` — sent to Jamf Pro on **every** apply but **never persisted in Terraform state**, and never returned on read. The GSX API re-validates the certificate against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
-- `keystore_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Enter the keystore password"** in the Jamf Pro admin UI. The password protecting the GSX certificate keystore. `Required` + `WriteOnly` — sent to Jamf Pro on **every** apply but **never persisted in Terraform state**, and never returned on read. The GSX API re-validates the certificate against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
+- `keystore_bytes_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Upload the GSX certificate or keystore"** in the Jamf Pro admin UI. The base64-encoded GSX certificate keystore (p12). Supply with `filebase64("certificate.p12")`. Required and `WriteOnly`: sent to Jamf Pro on every apply, never persisted in Terraform state, and never returned on read. The certificate is re-validated against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
+- `keystore_password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Enter the keystore password"** in the Jamf Pro admin UI. The password protecting the GSX certificate keystore. Required and `WriteOnly`: sent to Jamf Pro on every apply, never persisted in Terraform state, and never returned on read. The certificate is re-validated against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
 - `service_account_number` (String) **"GSX Account Number"** in the Jamf Pro admin UI. The GSX service account number.
-- `token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"API Token"** in the Jamf Pro admin UI. The GSX API token retrieved from your Apple GSX account. `Required` + `WriteOnly` — sent to Jamf Pro on **every** apply but **never persisted in Terraform state**, and never returned on read. The GSX API re-validates the certificate against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
-- `username` (String) **"Username"** in the Jamf Pro admin UI. The GSX account email — a GSX account with Manager privileges and access to Web Services.
+- `token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"API Token"** in the Jamf Pro admin UI. The GSX API token retrieved from your Apple GSX account. Required and `WriteOnly`: sent to Jamf Pro on every apply, never persisted in Terraform state, and never returned on read. The certificate is re-validated against Apple's GSX service on every write, so this must always be present in config. To rotate the stored value, change it in config.
+- `username` (String) **"Username"** in the Jamf Pro admin UI. The GSX account email. The account needs Manager privileges and access to Web Services.
 
 ### Optional
 

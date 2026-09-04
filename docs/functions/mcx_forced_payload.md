@@ -38,7 +38,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "app_settings" {
 # (https://code.visualstudio.com/docs/setup/enterprise). Vendors commonly
 # document these as a payload whose PayloadType is the app's own preference
 # domain with the policy keys inline. That shape is a valid profile and will
-# deploy through Jamf, but Jamf Pro's admin UI cannot render it — the settings
+# deploy through Jamf, but Jamf Pro's admin UI cannot render it, so the settings
 # are invisible to admins. Wrapping the same keys in the MCX "Forced" envelope
 # (which is exactly what this function emits) deploys the same preferences AND
 # shows them in the Jamf Pro UI under Application & Custom Settings.

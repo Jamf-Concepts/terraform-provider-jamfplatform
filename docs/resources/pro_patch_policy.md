@@ -4,33 +4,27 @@ page_title: "jamfplatform_pro_patch_policy Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages a Jamf Pro patch policy, found in the UI under Computers → Patch management on a software title's Patch Policies tab (the New Patch Policy form). A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
-  The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope), and User Interaction (user_interaction). Several General-tab fields are server-derived from the selected target_version's patch definition and are read-only: release_date, incremental_update, reboot, minimum_os, and kill_apps.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:patch-policies` |
-  | `delete:pro:patch-policies` |
-  | `read:pro:patch-policies` |
-  | `update:pro:patch-policies` |
+  The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope) and User Interaction (user_interaction). Five General-tab fields are read-only, because Jamf Pro derives them from the selected target_version's patch definition: release_date, incremental_update, reboot, minimum_os and kill_apps.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Patch policies | Create, Read, Update, Delete | `patch-policies` |
 ---
 
 # jamfplatform_pro_patch_policy (Resource)
 
 Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.
 
-The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.
+The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`) and **User Interaction** (`user_interaction`). Five **General**-tab fields are read-only, because Jamf Pro derives them from the selected `target_version`'s patch definition: `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:patch-policies` |
-| `delete:pro:patch-policies` |
-| `read:pro:patch-policies` |
-| `update:pro:patch-policies` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Patch policies | Create, Read, Update, Delete | `patch-policies` |
 
 ## Example Usage
 
@@ -141,18 +135,18 @@ output "patch_policy_kill_apps" {
 ### Required
 
 - `name` (String) **"Display Name"** in the Jamf Pro admin UI. Display name for the patch policy.
-- `software_title_configuration_id` (String) ID of the patch software title configuration this policy deploys (a `jamfplatform_pro_patch_software_title` ID). A policy is created by config path and cannot be moved to another title — changing this forces replacement.
+- `software_title_configuration_id` (String) ID of the patch software title configuration this policy deploys (a `jamfplatform_pro_patch_software_title` ID). A policy belongs to the title it was created against and cannot be moved to another, so changing this forces replacement.
 - `target_version` (String) The software version this policy deploys (e.g. `8.33.2.2`). Only a version that has a package assigned on the title (`version_packages` on `jamfplatform_pro_patch_software_title`) can be targeted.
 
 ### Optional
 
-- `allow_downgrade` (Boolean) **"Allow downgrade"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Server-defaulted when omitted.
-- `distribution_method` (String) How the patch is delivered. `selfservice` = the admin UI "Make Available in Self Service"; `prompt` = "Install Automatically". Server-defaulted when omitted.
-- `enabled` (Boolean) Whether the patch policy is enabled. A policy can only be enabled when its scope resolves to at least one in-site smart group. Server-defaulted when omitted.
-- `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Server-defaulted when omitted.
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon. (see [below for nested schema](#nestedatt--scope))
+- `allow_downgrade` (Boolean) **"Allow downgrade"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default when omitted.
+- `distribution_method` (String) How the patch is delivered. `selfservice` is the admin UI's "Make Available in Self Service", and `prompt` is "Install Automatically". Jamf Pro applies its own default when omitted.
+- `enabled` (Boolean) Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default when omitted.
+- `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default when omitted.
+- `scope` (Attributes) Policy scope, the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer, per-group, per-building and per-department targets. Targets, limitations and exclusions are all addressed by computer, computer group, building, department, network segment and iBeacon. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User Interaction — the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description / button text / icon and the deferral notifications, deadlines, and grace period. The server applies full defaults when the block (or a nested field) is omitted; those defaults are not surfaced in state unless you declare the block. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction, the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block. (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -170,7 +164,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by the targets. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations restrict the targets to computers that also match these network segments / iBeacon ranges. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the audience the policy applies to. Mirrors the admin UI's Targets tab: set `all_computers` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) Scope targets: the audience the policy applies to. Mirrors the admin UI's Targets tab. Set `all_computers` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -255,10 +249,10 @@ Optional:
 Optional:
 
 - `enabled` (Boolean) Whether notifications for the patch policy are shown in Notification Center (UI "Display notifications for the patch policy in Notification Center", under "Notifications and Reminders").
-- `message` (String) Notification message body. Write-only in practice — Jamf Pro does not return it, so a configured value is preserved in state but not refreshed.
+- `message` (String) Notification message body. Write-only in practice: Jamf Pro does not return it, so a configured value is preserved in state but never refreshed.
 - `reminders` (Attributes) Reminder cadence for the notifications. (see [below for nested schema](#nestedatt--user_interaction--notifications--reminders))
 - `subject` (String) Notification subject.
-- `type` (String) Notification type (e.g. `Self Service`). Write-only in practice — Jamf Pro does not return it.
+- `type` (String) Notification type (e.g. `Self Service`). Write-only in practice: Jamf Pro does not return it.
 
 <a id="nestedatt--user_interaction--notifications--reminders"></a>
 ### Nested Schema for `user_interaction.notifications.reminders`

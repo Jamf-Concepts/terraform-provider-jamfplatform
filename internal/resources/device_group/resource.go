@@ -87,10 +87,10 @@ func (r *DeviceGroupResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf device group, static or smart. Requires **Device Group Inventory API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Unique identifier assigned by the API.",
+				MarkdownDescription: "Unique identifier assigned by the platform.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -99,7 +99,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 			"jamf_pro_id": schema.StringAttribute{
 				// Wire source: pro/v2 groups lookup, bridging the Platform group UUID to
 				// the numeric Jamf Pro ID that scope blocks require.
-				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege (a single missing-privilege warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
+				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group: policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account (a single missing-permission warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -145,7 +145,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"member_count": schema.Int64Attribute{
-				MarkdownDescription: "Total members reported by the API.",
+				MarkdownDescription: "Total members reported by the platform.",
 				Computed:            true,
 			},
 			"criteria": schema.ListNestedAttribute{

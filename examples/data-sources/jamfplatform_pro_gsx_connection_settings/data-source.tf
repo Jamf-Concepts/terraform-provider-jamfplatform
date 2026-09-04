@@ -1,5 +1,5 @@
 # Read the current Jamf Pro GSX Connection settings. The token and keystore
-# secrets are never returned by the API and are not exposed here.
+# secrets are never returned by Jamf Pro and are not exposed here.
 data "jamfplatform_pro_gsx_connection_settings" "current" {}
 
 output "gsx_enabled" {

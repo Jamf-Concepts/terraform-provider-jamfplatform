@@ -6,6 +6,8 @@ package user_extension_attribute
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // userExtensionAttributeTimeoutAttributeTypes defines the timeout attribute
@@ -17,23 +19,28 @@ var userExtensionAttributeTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// Probed enum value sets (live tenant, 2026-06-02). The Classic API is
-// permissive (it accepted out-of-set values), but the admin UI offers only
-// these, so OneOf validators constrain to the UI-valid set. Classic strings are
-// human-cased, not SCREAMING_SNAKE.
+// Enum value sets, taken from the SDK's generated user-EA vocabularies. The
+// Classic API is permissive (a live-tenant probe on 2026-06-02 accepted
+// out-of-set values), but the admin UI offers only these, so OneOf validators
+// constrain to the UI-valid set. Classic strings are human-cased, not
+// SCREAMING_SNAKE.
+//
+// These are the UserExtensionAttribute* vocabularies specifically. The
+// computer and mobile-device classic EA types spell the same data types
+// identically but carry a third input type each (LDAP Mapping / LDAP Attribute
+// Mapping) that the user-EA payload has no field for — the server silently
+// coerces it to Text Field — so the generated user-EA set is already exactly
+// the UI-valid one and nothing needs narrowing.
 var (
 	// validDataTypes is the "Data Type" dropdown: String / Integer / Date.
-	validDataTypes = []string{"String", "Integer", "Date"}
+	validDataTypes = proclassic.UserExtensionAttributeDataTypeValues()
 
-	// validInputTypes is the "Input Type" dropdown. The user-EA UI offers only
-	// Text Field / Pop-up Menu — there is no LDAP/Directory Service option (the
-	// Classic user-EA payload carries no mapping field; the server silently
-	// coerces "LDAP Mapping" to "Text Field").
-	validInputTypes = []string{"Text Field", "Pop-up Menu"}
+	// validInputTypes is the "Input Type" dropdown: Text Field / Pop-up Menu.
+	validInputTypes = proclassic.UserExtensionAttributeInputTypeTypeValues()
 )
 
 // Input-type discriminator constants.
 const (
-	inputTypeTextField = "Text Field"
-	inputTypePopupMenu = "Pop-up Menu"
+	inputTypeTextField = proclassic.UserExtensionAttributeInputTypeTypeTextField
+	inputTypePopupMenu = proclassic.UserExtensionAttributeInputTypeTypePopUpMenu
 )

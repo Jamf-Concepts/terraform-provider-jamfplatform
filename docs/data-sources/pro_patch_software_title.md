@@ -4,24 +4,28 @@ page_title: "jamfplatform_pro_patch_software_title Data Source - terraform-provi
 subcategory: ""
 description: |-
   Look up a Jamf Pro patch software title by ID or by exact display name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:patch-management-software-titles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | External patch sources | Read | `patch-external-source` |
+  | App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
+  | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_software_title (Data Source)
 
 Look up a Jamf Pro patch software title by ID or by exact display name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:patch-management-software-titles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | External patch sources | Read | `patch-external-source` |
+| App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
+| App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 
 ## Example Usage
 
@@ -58,12 +62,10 @@ output "patch_software_title_version_packages" {
 
 - `available_versions` (List of String) All software_version strings the patch source publishes for this title.
 - `category_id` (String) Jamf Pro category ID.
-- `category_name` (String) Category display name.
 - `email_notification` (Boolean) Whether an email notification is sent for new versions.
 - `name_id` (String) Patch catalog key that defines the title.
 - `site_id` (String) Jamf Pro site ID.
-- `site_name` (String) Site display name.
-- `source_id` (Number) Patch source ID this title is sourced from.
+- `source_id` (Number) Patch source ID this title is sourced from. Jamf Pro reports the source by name here, so the provider matches that name against the tenant's internal and external patch sources: the value is null, with a warning, when the name matches none of them, matches both an internal and an external source, or those sources cannot be read.
 - `version_packages` (Map of String) Every version→package assignment on the title (software_version → package ID).
 - `web_notification` (Boolean) Whether a Jamf Pro notification is raised for new versions.
 

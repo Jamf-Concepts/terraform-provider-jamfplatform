@@ -23,10 +23,11 @@ import (
 const resourceAddr = "jamfplatform_pro_app_installer.test"
 
 // titleName is a stable catalog title in the test tenant. A Jamf-published
-// title is used deliberately: Jamf owns the catalog entry, so it stays healthy
-// (a third-party title, "Jamf Composer", was found server-corrupt on the test
-// tenant — its /titles/{id} GET 500s and the deployments LIST duplicates rows
-// backed by it, which is outside this provider's control).
+// title is used deliberately: Jamf owns the catalog entry, so it stays healthy.
+// A third-party title, "010 Editor" (catalog ID 518), was previously found
+// server-corrupt — its /titles/{id} GET 500s and the deployments LIST duplicates
+// rows backed by it, which is outside this provider's control, and nuking the
+// tenant did not clear it.
 const titleName = "Jamf Composer"
 
 // catalogDS resolves the title through the catalog data source; the deployment

@@ -22,7 +22,7 @@ import (
 // plan to stay consistent with, so every wire-present block is refreshed,
 // yielding a complete exported config rather than a scalar-only one. CRUD
 // callers pass false.
-func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.AppInstallerDeployment, includeUnmanaged bool) {
+func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.AppTitleDeploymentRead, includeUnmanaged bool) {
 	if d == nil {
 		return
 	}
@@ -55,7 +55,7 @@ func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.Ap
 // nullable on the wire (the server echoes null for an unset field, never a zero
 // value), so null is preserved as a TF null — matching the Optional-only schema
 // and the omit-when-unset input builder, which keeps state consistent with config.
-func flattenNotificationSettings(n *pro.AppInstallerNotificationSettings) *NotificationSettingsModel {
+func flattenNotificationSettings(n *pro.AppTitleDeploymentNotificationSettings) *NotificationSettingsModel {
 	return &NotificationSettingsModel{
 		NotificationMessage:  stringPtrValueOrNull(n.NotificationMessage),
 		NotificationInterval: int64PtrValueOrNull(n.NotificationInterval),
@@ -83,7 +83,7 @@ func flattenNotificationSettings(n *pro.AppInstallerNotificationSettings) *Notif
 // Synthesising an empty slice for a nil prior would turn an omitted (null) set
 // into an empty set and trip the "produced inconsistent result after apply"
 // check. See feedback_optional_computed_nested_object.
-func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppInstallerSelfServiceSettings) *SelfServiceSettingsModel {
+func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppTitleDeploymentSelfServiceSettings) *SelfServiceSettingsModel {
 	out := &SelfServiceSettingsModel{
 		Description:                 stringPtrValueOrNull(s.Description),
 		ForceViewDescription:        boolPtrValueOrFalse(s.ForceViewDescription),
@@ -99,12 +99,8 @@ func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppInsta
 	if s.Categories != nil {
 		out.Categories = make([]SelfServiceCategoryModel, 0, len(*s.Categories))
 		for _, c := range *s.Categories {
-			id := ""
-			if c.ID != nil {
-				id = *c.ID
-			}
 			out.Categories = append(out.Categories, SelfServiceCategoryModel{
-				CategoryID: types.StringValue(id),
+				CategoryID: types.StringValue(c.ID),
 				Featured:   boolPtrValueOrFalse(c.Featured),
 			})
 		}
@@ -114,7 +110,7 @@ func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppInsta
 
 // assignAppInstallerDataSourceModel projects the flat GET shape into the
 // singular data source model (scalar fields only).
-func assignAppInstallerDataSourceModel(state *AppInstallerDataSourceModel, d *pro.AppInstallerDeployment) {
+func assignAppInstallerDataSourceModel(state *AppInstallerDataSourceModel, d *pro.AppTitleDeploymentRead) {
 	if d == nil {
 		return
 	}
@@ -145,11 +141,11 @@ func stringPtrValueOrNull(p *string) types.String {
 }
 
 // int64PtrValueOrNull maps an SDK *int to a TF Int64, nil → null.
-func int64PtrValueOrNull(p *int) types.Int64 {
+func int64PtrValueOrNull(p *int64) types.Int64 {
 	if p == nil {
 		return types.Int64Null()
 	}
-	return types.Int64Value(int64(*p))
+	return types.Int64Value(*p)
 }
 
 // boolPtrValueOrNull maps an SDK *bool to a TF Bool, nil → null. Used for

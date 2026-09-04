@@ -44,6 +44,256 @@ jobs:
           git diff --compact-summary --exit-code || \
             (echo; echo "Unexpected difference in directories after code generation. Run 'make generate' command and commit."; exit 1)
 
+  # Drift gates: cheap, hermetic, credential-free checks that fail for reasons
+  # the other jobs structurally cannot see. Deliberately a job of its own rather
+  # than extra steps on `build`: `build` is the root of the needs chain
+  # (unit -> plan-acc -> acceptance), so a formatting nit bolted on there would
+  # block the acceptance run, and these three gates have nothing to do with
+  # whether the provider compiles. Standalone and needs-free, so it runs in
+  # parallel and fails on its own terms.
+  vet:
+    name: Vet
+    runs-on: ubuntu-latest
+    # Six full-program passes — go vet and go fix, each in three build contexts
+    # — measured at ~647 CPU-seconds over 2280 files on a cold GOCACHE, which is
+    # ~5.4 min on a 2-vCPU runner before checkout and a ~3 GB setup-go restore.
+    # At 10 minutes a cache miss turns a passing tree into a timeout, and the
+    # right answer to that is a cap that reflects the cost, not less checking.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - run: go vet ./...
+      # The acceptance suite is behind //go:build acceptance across
+      # ./internal/..., so the run above never compiles it and a signature
+      # change can break it silently and stay broken — the Unit Tests job
+      # cannot catch it either, because `go test ./...` is untagged too. This is
+      # the CI half of the `go vet -tags acceptance` rule that until now existed
+      # only as a pre-commit convention.
+      - run: go vet -tags acceptance ./...
+      # scripts/ is invisible to a bare ./...: every file there is behind a
+      # tag of its own (//go:build acctargets, //go:build acclanes), so
+      # `go list ./...` returns zero packages under it and both runs above skip
+      # the CI tooling entirely. Verified, not assumed: `go vet ./scripts/...`
+      # reports "matched no packages", and the tagged form below is what found
+      # the pre-existing strings.SplitSeq rewrite in scripts/acctargets.
+      #
+      # One invocation with both tags rather than one per tag: the commands are
+      # separate main packages in separate directories, so the tags cannot
+      # collide, and a combined pass means a new script tag needs adding in one
+      # place. Mirrors `make lint`, which enters ./scripts/acctargets/ for the
+      # same reason.
+      - run: go vet -tags acctargets,acclanes ./scripts/...
+
+      # Formatting and modernisation drift, including behind every build tag. An
+      # untagged `go fix ./...` cannot see the acceptance suite or scripts/, and
+      # that blind spot is not theoretical: at the time this gate was written
+      # the tagged paths already carried four files' worth of rewrites that no
+      # untagged run would ever report.
+      - name: Formatting and go fix drift
+        run: |
+          set -euo pipefail
+          # local-testing/ is gitignored scratch for manual API workflows, so it
+          # is absent from a CI checkout and the filter is a no-op here. It is
+          # kept so this command means the same thing when a contributor runs it
+          # locally, matching `make fmt`, which scopes to the shipped trees for
+          # the same reason.
+          unformatted="$(gofmt -l . | grep -v '^local-testing/' || true)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt would rewrite:"; echo "$unformatted"; exit 1
+          fi
+          # One pass of each build context. A single pass is all a DRIFT CHECK
+          # needs: go fix is not idempotent in one pass (a pass that stamps
+          # `//go:fix inline` on a helper only enables the NEXT pass to inline
+          # its call sites), but a tree that is already at a fixpoint yields no
+          # diff from one pass by definition. Looping here would only let CI
+          # *reach* the fixpoint on the author's behalf, which is not the gate's
+          # job — and it could not do that anyway, because `git diff` compares
+          # against HEAD rather than against the previous pass, so once any pass
+          # has written it never clears.
+          go fix ./... >/dev/null
+          go fix -tags acceptance ./... >/dev/null
+          go fix -tags acctargets,acclanes ./scripts/... >/dev/null
+          git diff --exit-code || {
+            echo "go fix produced changes — run these to a fixpoint locally and commit the result with your change:"
+            echo "  go fix ./...                                    (repeat until clean)"
+            echo "  go fix -tags acceptance ./...                   (repeat until clean)"
+            echo "  go fix -tags acctargets,acclanes ./scripts/...  (repeat until clean)"
+            echo "  gofmt -s -w -e main.go internal/ tools/ scripts/   (i.e. make fmt)"
+            exit 1
+          }
+
+      # The acceptance workflow's credential secrets must sit on the step that
+      # runs `go test`, not on a neighbouring step. Both yamllint and actionlint
+      # accept `env:` anywhere — a workflow with the secrets attached to the
+      # wrong step is structurally valid and semantically dead, and the only
+      # symptom is every lane failing with "credentials not configured", which
+      # reads as a missing secret rather than a misplaced one. That happened on
+      # the SDK's first matrix run: all 16 lanes landed on the summary step.
+      #
+      # The lane-coverage half of the check exists for this repo's own version
+      # of the same defect, which was worse because it was silent rather than
+      # red: the AI Governance entitlement declaration (then named
+      # JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID, now
+      # JAMFPLATFORM_ACC_AIGOVERNANCE_ENVIRONMENT_ID) was read by 18 tests and
+      # referenced by no workflow at all, so all 18 skipped green on every run
+      # for the life of the file. A skip is invisible — the package prints `ok`
+      # and the check goes green having asserted nothing.
+      - name: Acceptance credentials are on the test step
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import sys
+
+          import yaml
+
+          WF = ".github/workflows/acceptance.yml"
+          LANES = ".github/acceptance-lanes.json"
+
+          # The shape this check reads. acceptance.yml is being rewritten into a
+          # lane matrix as this gate lands, so every structural assumption is
+          # asserted with a message that names the expected shape rather than
+          # raising a KeyError a reader has to decode.
+          SHAPE = (
+              f"expected {WF} to define a top-level `acceptance` job with a step whose "
+              "`run` contains `go test`, carrying the JAMFPLATFORM_* credentials, the "
+              "per-lane JAMFPLATFORM_ACC_REQUIRE (from matrix.require) and TF_ACC in its "
+              "`env:` block"
+          )
+
+
+          def die(msg):
+              sys.exit(f"acceptance credential check: {msg}\n{SHAPE}")
+
+
+          try:
+              wf = yaml.safe_load(open(WF))
+          except FileNotFoundError:
+              die(f"{WF} does not exist")
+          lanes = json.load(open(LANES))
+
+          if not isinstance(wf, dict) or not isinstance(wf.get("jobs"), dict):
+              die(f"{WF} has no `jobs:` mapping")
+          jobs = wf["jobs"]
+          if "acceptance" not in jobs:
+              die(f"{WF} has no top-level `acceptance` job (jobs found: {sorted(jobs)})")
+          steps = (jobs["acceptance"] or {}).get("steps")
+          if not isinstance(steps, list):
+              die("jobs.acceptance carries no `steps:` list")
+
+          # Located by what the step DOES, not by its name: a rename must not
+          # quietly turn this gate into a no-op. Indices rather than a
+          # name-keyed map, so two steps sharing a name cannot mask each other.
+          runners = [i for i, s in enumerate(steps) if "go test" in ((s or {}).get("run") or "")]
+          if not runners:
+              die("no step in the `acceptance` job runs `go test`")
+          if len(runners) > 1:
+              die(
+                  f"{len(runners)} steps in the `acceptance` job run `go test`, so which one "
+                  "should hold the credentials is ambiguous — keep it to one"
+              )
+          runner_index = runners[0]
+          env = (steps[runner_index] or {}).get("env") or {}
+
+          # 1. The step runs the suite, so it must carry credentials.
+          creds = {
+              k for k in env
+              if k.startswith("JAMFPLATFORM_") and k != "JAMFPLATFORM_ACC_REQUIRE"
+          }
+          if not creds:
+              die("the step running `go test` carries no JAMFPLATFORM_* credentials")
+
+          # 2. The require token is what makes a missing credential FATAL rather
+          #    than an invisible skip, and it must come from the matrix so each
+          #    lane fails for its own gap and never for another lane's.
+          require = env.get("JAMFPLATFORM_ACC_REQUIRE")
+          if require is None:
+              die("the step running `go test` does not set JAMFPLATFORM_ACC_REQUIRE")
+          if "matrix.require" not in str(require):
+              die(
+                  "JAMFPLATFORM_ACC_REQUIRE is hard-coded to "
+                  f"{str(require)!r} — it must come from matrix.require, or every lane "
+                  "asserts one lane's requirement"
+              )
+
+          # 3. Lane table self-consistency, checked before the coverage sweep
+          #    below reads through `credentials`. A credential set wired for a
+          #    product that has not shipped is a stale row: the lane matches zero
+          #    packages, so nothing proves the secrets are real, and the wiring
+          #    rots until the product lands.
+          sets = lanes.get("credential_sets") or {}
+          active = [l for l in lanes["lanes"] if not l.get("planned")] + [lanes["default_lane"]]
+          planned = [l for l in lanes["lanes"] if l.get("planned")]
+          for lane in active:
+              key = lane.get("credentials") or ""
+              if key not in sets:
+                  sys.exit(
+                      f"acceptance credential check: active lane {lane['lane']!r} names credential "
+                      f"set {key!r}, which is not a key in credential_sets ({sorted(sets)})"
+                  )
+          for lane in planned:
+              if lane.get("credentials"):
+                  sys.exit(
+                      f"acceptance credential check: planned lane {lane['lane']!r} has credentials "
+                      f"{lane['credentials']!r} — do not wire a credential set ahead of the product; "
+                      "the lane matches zero packages, so nothing proves the secrets are real"
+                  )
+
+          # 4. Every var any active lane needs must be present on that step. The
+          #    assertion is on the env var KEY, not on the secret name inside it:
+          #    with dynamic secret indexing the VALUE is an expression
+          #    (secrets[format('{0}_BASE_URL', matrix.secret_prefix)]), so the
+          #    secret being read is only known at run time. `provides` is the
+          #    credential set's authentication vars; `declares` are the lane's
+          #    entitlement declarations, which are not credentials but skip
+          #    exactly as invisibly when absent.
+          for lane in active:
+              needed = list(sets[lane["credentials"]]["provides"]) + list(lane.get("declares") or [])
+              missing = [v for v in needed if v not in env]
+              if missing:
+                  sys.exit(
+                      f"acceptance credential check: lane {lane['lane']!r} (require "
+                      f"{lane['require']!r}, credentials {lane['credentials']!r}) needs "
+                      f"{missing} on the step that runs `go test`, and they are not set there"
+                  )
+
+          # 5. A dynamically indexed secret must index by the MATRIX prefix. A
+          #    literal one pins every lane to a single product's credentials —
+          #    which type-checks, lints and runs, and shows up only as the wrong
+          #    tenant answering 403. `secret_prefix` is the field name in the
+          #    lane table's credential_sets, so it is the matrix column too.
+          for key, value in env.items():
+              text = str(value)
+              if "secrets[format(" in text and "matrix.secret_prefix" not in text:
+                  sys.exit(
+                      f"acceptance credential check: {key} indexes secrets dynamically but does not "
+                      "use matrix.secret_prefix, so it is pinned to one lane's credentials: "
+                      f"{text}"
+                  )
+
+          # 6. Nothing else in the job may carry them: a stray copy on another
+          #    step is how the originals got orphaned in the first place.
+          for i, step in enumerate(steps):
+              if i == runner_index:
+                  continue
+              stray = sorted(k for k in ((step or {}).get("env") or {}) if k.startswith("JAMFPLATFORM_"))
+              if stray:
+                  label = (step or {}).get("name") or (step or {}).get("uses") or f"index {i}"
+                  sys.exit(
+                      f"acceptance credential check: step {label!r} carries credentials that belong "
+                      f"on the step that runs `go test`: {stray}"
+                  )
+
+          print(
+              f"OK: {len(creds)} credential vars on the test step, "
+              f"covering {len(active)} active lanes, none stranded elsewhere"
+          )
+          PY
+
   unit:
     name: Unit Tests
     needs: build
@@ -58,44 +308,42 @@ jobs:
       - run: go mod download
       - run: go test -v -race -cover -count=1 ./...
 
-  # Compute the minimal acceptance scope for this PR: the changed packages plus
-  # everything that transitively depends on them (scripts/acctargets). Changed Go
-  # files are attributed at declaration granularity, so purely ADDING to a hub
-  # package (providerdata, testhelpers, internal/common/*) reaches only that
-  # package, and a registration-only edit to the provider hub reaches only the
-  # constructs whose constructors moved. A change to a global file (go.mod,
-  # GNUmakefile, this workflow) still resolves to "./..." — the full suite.
-  plan-acc:
-    name: Plan Acceptance Scope
-    needs: unit
+  # Unit tests for scripts/, which a bare ./... cannot reach: acctargets and
+  # acclanes are each behind a build tag of their own, so `go list ./...` returns
+  # no packages under scripts/ and the run above skips the CI tooling entirely.
+  # Worth its own step rather than folding into `unit`: these are the tools that
+  # decide WHICH acceptance tests run and in WHICH lane, so a regression here is
+  # invisible until a lane silently runs the wrong package set. Mirrors
+  # `make test-scripts`.
+  scripts:
+    name: CI Tooling Tests
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      packages: ${{ steps.scope.outputs.packages }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Full history so merge-base against the PR base branch resolves.
-          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           cache: true
-      - id: scope
-        run: |
-          base="origin/${{ github.base_ref }}"
-          git fetch --no-tags origin "${{ github.base_ref }}" || true
-          pkgs="$(go run -tags acctargets ./scripts/acctargets "$base")"
-          echo "Acceptance scope: ${pkgs:-<none — no acceptance packages affected>}"
-          echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
+      - run: go mod download
+      - run: make test-scripts
 
-  # Run the (surgical) acceptance subset. Skipped entirely when the change set
-  # affects no acceptance package.
-  acceptance:
-    name: Acceptance
-    needs: plan-acc
-    if: needs.plan-acc.outputs.packages != ''
-    uses: ./.github/workflows/acceptance.yml
-    with:
-      packages: ${{ needs.plan-acc.outputs.packages }}
-    secrets: inherit
+# The acceptance jobs that used to live here — plan-acc, acceptance and
+# acceptance-account — are gone, and so is the reusable workflow they called.
+# .github/workflows/acceptance.yml is now a standalone product-lane pipeline with
+# its own pull_request, schedule and workflow_dispatch triggers, so it plans its
+# own scope and needs no caller. Two things went with them:
+#
+#   - `acceptance-account`, the duplicate caller that existed only because
+#     AccPreCheckAccount requires BOTH scope variables unset while AccPreCheck
+#     requires at least one set, and one env block cannot satisfy both. The lane
+#     matrix expresses that instead: the account lane IS the organization-scope
+#     run, so the `organization_scope` input and both `*-account` jobs are
+#     deleted.
+#
+#   - the `needs: unit` edge, which meant a PR that did not compile never
+#     reached the estate. acceptance.yml carries its own
+#     `go vet -tags acceptance ./...` guard in the plan job for the same effect,
+#     because a cross-workflow dependency cannot exist for a workflow that also
+#     runs on a schedule.

@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_jamf_protect_plans Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. The catalog reflects the most recent plans sync, not the live Protect instance — manage the registration with jamfplatform_pro_jamf_protect (which syncs on every apply) or trigger Sync Plans in the Jamf Pro UI to refresh it. The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Jamf Protect Deployments | `read:pro:jamf-protect-deployments` |
+  Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. The catalog reflects the most recent plans sync rather than the live Protect instance. Refresh it by managing the registration with jamfplatform_pro_jamf_protect (which syncs on every apply), or by triggering Sync Plans in the Jamf Pro UI. The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Jamf Protect deployment | Read | `jamf-protect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_protect_plans (Data Source)
 
-Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. The catalog reflects the most recent plans sync, not the live Protect instance — manage the registration with `jamfplatform_pro_jamf_protect` (which syncs on every apply) or trigger Sync Plans in the Jamf Pro UI to refresh it. The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.
+Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. The catalog reflects the most recent plans sync rather than the live Protect instance. Refresh it by managing the registration with `jamfplatform_pro_jamf_protect` (which syncs on every apply), or by triggering Sync Plans in the Jamf Pro UI. The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Jamf Protect Deployments | `read:pro:jamf-protect-deployments` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Jamf Protect deployment | Read | `jamf-protect-deployments` |
 
 ## Example Usage
 
@@ -70,7 +70,7 @@ output "protect_plan_profiles" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector (field name) passed through to the Jamf Pro API, e.g. `name` or `id`. The server validates the selector.
 
 Optional:

@@ -13,6 +13,11 @@
 // from the public jamf-cli GitHub releases (URL). Fixture paths are
 // resolved via fixturePath / fixtureSHA3 / downloadAndHashURL in
 // fixtures_acceptance_test.go.
+//
+// Every test that uploads a binary gates on testhelpers.RequireJCDSUploads:
+// without a Jamf Cloud distribution point the upload's verification poll can
+// never converge, so the test would spend the resource's full create timeout
+// before failing on something that is an estate condition, not a defect.
 
 package pkg_test
 
@@ -193,6 +198,7 @@ resource "jamfplatform_pro_package" "test" {
 // metadata-only step (no re-upload).
 func TestAccResource_ProPackage_LocalUploadCreateAndUpdate(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-package-local-" + suffix
 	fileName := name + ".pkg"
@@ -264,6 +270,7 @@ func TestAccResource_ProPackage_LocalUploadCreateAndUpdate(t *testing.T) {
 // exercised in TestAccResource_ProPackage_URLStreamingUpload below.
 func TestAccResource_ProPackage_URLUploadCreateAndUpdate(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-package-url-" + suffix
 	fileName := name + ".pkg"
@@ -313,6 +320,7 @@ func TestAccResource_ProPackage_URLUploadCreateAndUpdate(t *testing.T) {
 // the inline tee.
 func TestAccResource_ProPackage_URLStreamingUploadCreateAndUpdate(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-package-stream-" + suffix
 	fileName := name + ".pkg"
@@ -354,6 +362,7 @@ func TestAccResource_ProPackage_URLStreamingUploadCreateAndUpdate(t *testing.T) 
 // streaming test above.
 func TestAccResource_ProPackage_MixedSourceSwap(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-package-mixed-" + suffix
 	fileName := name + ".pkg"
@@ -481,6 +490,7 @@ func TestAccResource_ProPackage_FSDPUserSuppliedHashes(t *testing.T) {
 // the test does not depend on a real .plist on disk.
 func TestAccResource_ProPackage_ManifestLifecycle(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-package-manifest-" + suffix
 	fileName := name + ".pkg"

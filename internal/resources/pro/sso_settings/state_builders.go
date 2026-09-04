@@ -50,7 +50,7 @@ func assignSsoSettingsResourceModel(ctx context.Context, state *SsoSettingsResou
 		// Echo-back stub from SAML-only mode: if user did not author the
 		// block AND we are in pure SAML mode AND UserMapping is the stub
 		// default we injected, leave state nil.
-		if state.OidcSettings == nil && s.ConfigurationType == configurationTypeSAML && o.UserMapping.ValueString() == "EMAIL" &&
+		if state.OidcSettings == nil && s.ConfigurationType == configurationTypeSAML && o.UserMapping.ValueString() == pro.OidcSettingsUserMappingEmail &&
 			o.JamfIDAuthenticationEnabled.IsNull() && o.UsernameAttributeClaimMapping.IsNull() {
 			state.OidcSettings = nil
 		} else {

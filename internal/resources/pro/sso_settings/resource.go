@@ -80,9 +80,11 @@ func (r *SsoSettingsResource) IdentitySchema(ctx context.Context, req resource.I
 // Schema returns the resource schema.
 func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
-			"**Manage SSO all-or-nothing** — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.\n\n" +
-			"**Cross-field requirements** (enforced at plan time):\n" +
+		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
+			"### Manage SSO all-or-nothing\n\n" +
+			"This resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.\n\n" +
+			"### Cross-field requirements\n\n" +
+			"All of these are enforced at plan time.\n\n" +
 			"- `configuration_type = \"SAML\"` requires the `saml_settings` block.\n" +
 			"- `configuration_type = \"OIDC\"` requires the `oidc_settings` block and forbids `saml_settings` (Jamf Pro ignores SAML configuration in pure OIDC mode).\n" +
 			"- `configuration_type = \"OIDC_WITH_SAML\"` requires both `saml_settings` and `oidc_settings`.\n" +
@@ -92,9 +94,12 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 			"- `saml_settings.user_attribute_enabled = true` requires `user_attribute_name`.\n" +
 			"- `group_enrollment_access_enabled = true` together with `sso_for_enrollment_enabled = true` requires `group_enrollment_access_name`.\n" +
 			"- `signing_certificate.setup_type = \"UPLOADED\"` requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`.\n\n" +
-			"**Account-Driven Enrollment dependency** — `enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.\n\n" +
-			"**Concurrency** — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.\n\n" +
-			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.\n\n" +
+			"### Account-Driven Enrollment dependency\n\n" +
+			"`enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro rejects the apply with a field-named error if the prerequisite is missing.\n\n" +
+			"### Concurrency\n\n" +
+			"Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.\n\n" +
+			"### Destroy\n\n" +
+			"`terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.\n\n" +
 			"Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -264,7 +269,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"token_expiration_disabled": schema.BoolAttribute{
-						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.",
+						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -279,7 +284,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"user_attribute_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.",
+						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -344,10 +349,10 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 func signingCertificateResourceSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "Embedded signing certificate sub-block. Three modes selected by `setup_type`:\n" +
-			"- `NONE` — no certificate configured. Setting `setup_type = \"NONE\"` (or removing the block) deletes any existing certificate on the tenant.\n" +
-			"- `GENERATED` — Jamf Pro generates a self-signed certificate. Re-applying with the same `setup_type = \"GENERATED\"` is a no-op (the provider skips the regenerate call so subsequent applies do not churn the certificate).\n" +
-			"- `UPLOADED` — user-supplied PKCS12 or JKS keystore. Requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`. `key` is the case-sensitive alias inside the keystore; enumerate aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.\n\n" +
-			"`keystore_password` and `password` are both `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next Update to re-send the value.",
+			"- `NONE`: no certificate configured. Setting `setup_type = \"NONE\"` (or removing the block) deletes any existing certificate on the tenant.\n" +
+			"- `GENERATED`: Jamf Pro generates a self-signed certificate. Re-applying with the same `setup_type = \"GENERATED\"` is a no-op, since the provider skips the regenerate step so subsequent applies do not churn the certificate.\n" +
+			"- `UPLOADED`: user-supplied PKCS12 or JKS keystore. Requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`. `key` is the case-sensitive alias inside the keystore; enumerate aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.\n\n" +
+			"`keystore_password` and `password` are both `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next update to re-send the value.",
 		Optional: true,
 		Attributes: map[string]schema.Attribute{
 			"setup_type": schema.StringAttribute{
@@ -382,7 +387,7 @@ func signingCertificateResourceSchema() schema.SingleNestedAttribute {
 				Computed:            true,
 			},
 			"keystore_password": schema.StringAttribute{
-				MarkdownDescription: "Keystore (file) password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.",
+				MarkdownDescription: "Keystore (file) password. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Pair with `keystore_password_wo_version`, the rotation companion; bump that integer to re-send.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,

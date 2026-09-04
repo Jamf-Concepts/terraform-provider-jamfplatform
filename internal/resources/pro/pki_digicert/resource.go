@@ -73,8 +73,9 @@ func (r *DigicertResource) Schema(ctx context.Context, req resource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro DigiCert Trust Lifecycle Manager integration (Settings → Global → PKI certificates → Certificate Authorities). " +
 			"DigiCert TLM is an external certificate authority Jamf Pro uses to issue certificates referenced by configuration profiles.\n\n" +
-			"**Client certificate:** the certificate (a `.p12`/`.pfx` keystore) authenticates Jamf Pro to DigiCert One. It is supplied through the `client_certificate` block as `data_wo` (base64 of the keystore — use `filebase64(\"cert.p12\")`) plus `password_wo`; both are `WriteOnly` and never persisted in Terraform state, and Jamf Pro never returns them on read. " +
-			"DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump `client_certificate.wo_version` (editing `data_wo`/`password_wo` without bumping the version is intentionally a no-op). " +
+			"### Client certificate\n\n" +
+			"The certificate, a `.p12`/`.pfx` keystore, authenticates Jamf Pro to DigiCert One. Supply it through the `client_certificate` block as `data_wo` (base64 of the keystore: use `filebase64(\"cert.p12\")`) plus `password_wo`. Both are `WriteOnly`, never persisted in Terraform state, and never returned by Jamf Pro on read. " +
+			"DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump `client_certificate.wo_version`. Editing `data_wo`/`password_wo` without bumping the version is deliberately a no-op. " +
 			"Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only `client_certificate_details` block.\n\n" +
 			"Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -86,11 +87,11 @@ func (r *DigicertResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name for the Integration\"** in the Jamf Pro admin UI. A friendly name for this DigiCert integration. Required — Jamf Pro mandates it on create.",
+				MarkdownDescription: "**\"Display Name for the Integration\"** in the Jamf Pro admin UI. A friendly name for this DigiCert integration. Jamf Pro requires it on create.",
 				Required:            true,
 			},
 			"host_name": schema.StringAttribute{
-				MarkdownDescription: "**\"DigiCert One Host Name\"** in the Jamf Pro admin UI. The DigiCert One host (e.g. `one.digicert.com`). Required — Jamf Pro mandates it on create.",
+				MarkdownDescription: "**\"DigiCert One Host Name\"** in the Jamf Pro admin UI. The DigiCert One host (e.g. `one.digicert.com`). Jamf Pro requires it on create.",
 				Required:            true,
 			},
 			"revocation_enabled": schema.BoolAttribute{
@@ -102,27 +103,27 @@ func (r *DigicertResource) Schema(ctx context.Context, req resource.SchemaReques
 				},
 			},
 			"client_certificate": schema.SingleNestedAttribute{
-				MarkdownDescription: "The client certificate (`.p12`/`.pfx` keystore) Jamf Pro uses to authenticate to DigiCert One. Optional — omit the whole block to leave the stored certificate untouched. DigiCert treats the certificate as all-or-nothing; the provider re-sends it only on create (when the block is set) or when `wo_version` changes.",
+				MarkdownDescription: "The client certificate (`.p12`/`.pfx` keystore) Jamf Pro uses to authenticate to DigiCert One. Omit the whole block to leave the stored certificate untouched. DigiCert treats the certificate as all-or-nothing; the provider re-sends it only on create (when the block is set) or when `wo_version` changes.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"data_wo": schema.StringAttribute{
-						MarkdownDescription: "The base64-encoded certificate keystore (`.p12`/`.pfx`). Supply with `filebase64(\"cert.p12\")`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Pair with `wo_version` to rotate.",
+						MarkdownDescription: "The base64-encoded certificate keystore (`.p12`/`.pfx`). Supply with `filebase64(\"cert.p12\")`. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Pair with `wo_version` to rotate.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
 					},
 					"password_wo": schema.StringAttribute{
-						MarkdownDescription: "The password protecting the certificate keystore. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `wo_version` to rotate.",
+						MarkdownDescription: "The password protecting the certificate keystore. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `wo_version` to rotate.",
 						Optional:            true,
 						Sensitive:           true,
 						WriteOnly:           true,
 					},
 					"filename": schema.StringAttribute{
-						MarkdownDescription: "The certificate keystore filename (e.g. `client.p12`). Required when the `client_certificate` block is set — Jamf Pro uses the extension (`.p12`/`.pfx`) to detect the certificate format and rejects an upload without it.",
+						MarkdownDescription: "The certificate keystore filename (e.g. `client.p12`). Required when the `client_certificate` block is set. Jamf Pro reads the certificate format from the extension (`.p12`/`.pfx`) and rejects an upload without it.",
 						Required:            true,
 					},
 					"wo_version": schema.Int64Attribute{
-						MarkdownDescription: "Rotation trigger for the `WriteOnly` certificate fields. Bump this integer (any change) to force the next update to re-send the full certificate (`data_wo` + `password_wo` + `filename`) to Jamf Pro. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored certificate alone\" — the provider omits the certificate from the next update so Jamf Pro retains the existing value. Editing `data_wo`/`password_wo` without bumping `wo_version` is intentionally a no-op.",
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` certificate fields. Bump this integer (any change) to force the next update to re-send the full certificate (`data_wo` + `password_wo` + `filename`) to Jamf Pro. Initial create should set `wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored certificate alone\": the provider omits the certificate from the next update, so Jamf Pro retains the existing value. Editing `data_wo`/`password_wo` without bumping `wo_version` is deliberately a no-op.",
 						Optional:            true,
 					},
 				},

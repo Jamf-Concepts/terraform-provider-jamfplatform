@@ -51,22 +51,22 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 		"automatic_download": schema.StringAttribute{
 			MarkdownDescription: "Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 		},
 		"automatic_install_os_updates": schema.StringAttribute{
 			MarkdownDescription: "Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 		},
 		"automatic_install_security_updates": schema.StringAttribute{
 			MarkdownDescription: "Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 		},
 		"beta_program_enrollment": schema.StringAttribute{
 			MarkdownDescription: "Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 		},
 		"deferral_combined_period_days": schema.Int64Attribute{
 			MarkdownDescription: "Number of days to defer combined updates. Range: `1`-`90`.",
@@ -103,27 +103,27 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 		"recommended_cadence": schema.StringAttribute{
 			MarkdownDescription: "Recommended update cadence policy. Valid values: `All`, `Oldest`, `Newest`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("All", "Oldest", "Newest")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.RecommendedCadenceValueValues()...)},
 		},
 		"beta_require_program_token": schema.StringAttribute{
-			MarkdownDescription: "Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.",
+			MarkdownDescription: "Required beta program token (1–1000 characters). Must be specified with `beta_require_program_description`.",
 			Optional:            true,
 		},
 		"beta_require_program_description": schema.StringAttribute{
-			MarkdownDescription: "Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.",
+			MarkdownDescription: "Required beta program description (1–1000 characters). Must be specified with `beta_require_program_token`.",
 			Optional:            true,
 		},
 		"beta_offer_programs": schema.SetNestedAttribute{
-			MarkdownDescription: "Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each).",
+			MarkdownDescription: "Beta programs to offer (max 100). Each program must have a token and description (1–1000 characters each).",
 			Optional:            true,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"token": schema.StringAttribute{
-						MarkdownDescription: "Beta program token (1-1000 characters).",
+						MarkdownDescription: "Beta program token (1–1000 characters).",
 						Required:            true,
 					},
 					"description": schema.StringAttribute{
-						MarkdownDescription: "Beta program description (1-1000 characters).",
+						MarkdownDescription: "Beta program description (1–1000 characters).",
 						Required:            true,
 					},
 				},
@@ -172,9 +172,9 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 	cfg.AllowStandardUserOSUpdates = buildOptionallyEnabled(c.AllowStandardUserOSUpdates, false)
 
 	cfg.AutomaticActions = &blueprints.AutomaticActions{
-		Download:              buildAutomaticAction(c.AutomaticDownload, "Allowed"),
-		InstallOSUpdates:      buildAutomaticAction(c.AutomaticInstallOSUpdates, "Allowed"),
-		InstallSecurityUpdate: buildAutomaticAction(c.AutomaticInstallSecurityUpdate, "Allowed"),
+		Download:              buildAutomaticAction(c.AutomaticDownload, blueprints.AutomaticActionValueAllowed),
+		InstallOSUpdates:      buildAutomaticAction(c.AutomaticInstallOSUpdates, blueprints.AutomaticActionValueAllowed),
+		InstallSecurityUpdate: buildAutomaticAction(c.AutomaticInstallSecurityUpdate, blueprints.AutomaticActionValueAllowed),
 	}
 
 	hasBetaSettings := helpers.IsConfiguredValue(c.BetaProgramEnrollment) ||
@@ -224,7 +224,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 		EnableRollback: buildOptionallyEnabled(c.RapidSecurityResponseRollbackEnabled, false),
 	}
 
-	cadenceValue := "All"
+	cadenceValue := blueprints.RecommendedCadenceValueAll
 	if helpers.IsConfiguredValue(c.RecommendedCadence) {
 		cadenceValue = c.RecommendedCadence.ValueString()
 	}

@@ -36,7 +36,7 @@ func (a *ShutdownAction) Metadata(ctx context.Context, req action.MetadataReques
 
 func (a *ShutdownAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Requests that a device shut down. Requires **Device Management Actions API access**." + shutdownDevicePrivileges,
+		MarkdownDescription: "Requests that a device shut down. Requires **Device Management Actions API** access." + shutdownDevicePrivileges,
 		Attributes:          deviceTargetAttributes(),
 	}
 }

@@ -52,7 +52,7 @@ func readSourceStrings(ctx context.Context, req planmodifier.StringRequest, sour
 type resetStringIfSourceChanged struct{ sources []path.Expression }
 
 func (m resetStringIfSourceChanged) Description(_ context.Context) string {
-	return "Carry prior state forward when the watched source attribute is unchanged; otherwise leave Unknown so the server can populate."
+	return "Carry prior state forward when the watched source attribute is unchanged; otherwise leave it Unknown for the service to populate."
 }
 
 func (m resetStringIfSourceChanged) MarkdownDescription(ctx context.Context) string {

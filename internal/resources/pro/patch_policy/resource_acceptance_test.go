@@ -366,8 +366,19 @@ func TestAccDataSource_ProPatchPolicy_ByID(t *testing.T) {
 }
 
 // TestAccListResource_ProPatchPolicy_Basic exercises the list resource via the
-// `terraform query` workflow. The classic list endpoint surfaces the policy
-// display name, so DisplayName / the filter match on the name.
+// `terraform query` workflow. The Pro v2 collection surfaces the policy display
+// name, so DisplayName / the filter match on the name.
+//
+// It is also the only check on the assumption the enumeration rests on: that a
+// Pro v2 patch policy id addresses the same policy on the ProClassic by-id path.
+// `include_resource = true` hydrates each result through the classic read using
+// the v2 id, and a mismatch drops the policy from the result set entirely rather
+// than returning it with null attributes, so it is the ExpectResourceKnownValues
+// lookup itself — finding no result under the expected display name — that fails
+// the step. Both assertions below read the hydrated resource rather than the
+// enumeration, so either one catches that; target_version is asserted alongside
+// the name to cover flattenGeneral's mapping of a classic-only field, not
+// because it pins the id equality independently.
 func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -414,6 +425,7 @@ func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							{Path: tfjsonpath.New("target_version"), KnownValue: knownvalue.StringExact(accTitleVersion)},
 						},
 					),
 				},

@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_user_extension_attribute Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:user-extension-attributes` |
-  | `delete:pro:user-extension-attributes` |
-  | `read:pro:user-extension-attributes` |
-  | `update:pro:user-extension-attributes` |
+  Manages a Jamf Pro user extension attribute, a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes screen. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | User extension attributes | Create, Read, Update, Delete | `user-extension-attributes` |
 ---
 
 # jamfplatform_pro_user_extension_attribute (Resource)
 
-Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).
+Manages a Jamf Pro user extension attribute, a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes screen. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:user-extension-attributes` |
-| `delete:pro:user-extension-attributes` |
-| `read:pro:user-extension-attributes` |
-| `update:pro:user-extension-attributes` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | User extension attributes | Create, Read, Update, Delete | `user-extension-attributes` |
 
 ## Example Usage
 
@@ -57,7 +51,7 @@ resource "jamfplatform_pro_user_extension_attribute" "cost_center" {
 
 - `data_type` (String) **"Data Type"** in the Jamf Pro admin UI. Type of data collected: `String`, `Integer`, or `Date` (date values use the `YYYY-MM-DD hh:mm:ss` format).
 - `input_type` (String) **"Input Type"** in the Jamf Pro admin UI. How the attribute value is populated: `Text Field` or `Pop-up Menu` (of `popup_menu_choices`). User EAs do not support script or directory-service-mapped input types.
-- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Extension attribute display name. Must be unique within the tenant.
+- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Must be unique within the tenant.
 
 ### Optional
 

@@ -120,6 +120,7 @@ Each of these has been paid for late at least once. The right-hand column is wha
 | Enum vocabulary from the SDK's `*Values()` helper | at schema time | a restated list that drifts from the API |
 | `make generate` | after the **last** HCL edit | ships a stale, sometimes invalid, inlined example |
 | Description jargon grep | before the PR | wire vocabulary published to the Terraform Registry |
+| Description prose gate (em dash, bold run-in label, stock clause) | before the PR | generated-sounding docs on the Terraform Registry, and a de-slop sweep across every package later |
 | Plumbing (`GNUmakefile`, `.github/workflows/**`, `go.mod`, `scripts/acctargets/**`) in its own PR | from the start | `acctargets` widens CI to `./...` — the full serial suite on the shared tenant |
 
 ---
@@ -127,6 +128,22 @@ Each of these has been paid for late at least once. The right-hand column is wha
 ## 4. Guard-rails (DON'T)
 
 - **Don't** invent SDK functions, fields, or enum values. Stop and ask; fix upstream.
+- **Don't** write a string literal where the SDK generates a constant — **check each value
+  individually, not the set**. Covers schema value enums (build the `OneOf` validator *and* the
+  documented list from `*Values()`) *and* the error codes in `mappings.go` (alias
+  `securitycloud.ApiErrorItemCodeNotEntitled`, don't retype `"NOT_ENTITLED"`). A generated set
+  can carry the generic codes while carrying none of your construct's, so "the SDK has none of
+  these" is a claim to verify per code — it has been wrong twice, and a comment asserting it
+  hid the defect both times. A deliberate subset keeps its curated list but uses SDK constants
+  as the elements. Pin it with an `enum_literals_test.go` calling
+  `internal/common/enumguard` — it parses the package's own `const`/`var`/`:=` declarations and
+  inlined `OneOf` sets, so a `var validFoos = []string{…}` cannot slip past. Copy
+  `internal/resources/pro/ebook/enum_literals_test.go`, or
+  `pro/macos_configuration_profile/enum_literals_test.go` if you need exemptions. `Absent` means
+  the SDK carries no constant (checked against `Covered`, so a later SDK release that adds it
+  fails); `Ignore` means a different vocabulary shares the spelling (not checked). Getting that
+  pair the wrong way round reports a promotion that never happened.
+  ([STYLE_GUIDE §Enum values and error codes come from the SDK](../../../STYLE_GUIDE.md#enum-values-and-error-codes-come-from-the-sdk-not-from-literals))
 - **Don't** ship `*[]any` or other under-specified SDK types.
 - **Don't** copy a wire-shape assumption from another construct — even in the same namespace.
   Probe afresh.
@@ -135,6 +152,11 @@ Each of these has been paid for late at least once. The right-hand column is wha
 - **Don't** put wire vocabulary in `MarkdownDescription` — no API/endpoint/SDK/HTTP-verb/status-code
   language ([STYLE_GUIDE §User-facing descriptions are UI-aligned](../../../STYLE_GUIDE.md#user-facing-descriptions-are-ui-aligned-not-wire-aligned)).
   Wire facts belong in Go comments and the `crud.go` annotation block.
+- **Don't** glue a description together with em dashes, open a paragraph with a bolded run-in
+  label (`**Omit = preserve** — …`), or repeat another package's stock clause word for word.
+  One em dash per description at most, and only for a real interruption
+  ([STYLE_GUIDE §Description and example prose](../../../STYLE_GUIDE.md#description-and-example-prose-the-terse-reference-voice)).
+  The same voice governs the `#` comments in `examples/`.
 - **Don't** put comments inside function bodies or type definitions (STYLE_GUIDE:11). A schema
   is built inside a function body — so the wire-name mapping table goes in the **package doc
   comment**, not beside each attribute.

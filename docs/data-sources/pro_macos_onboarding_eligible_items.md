@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_macos_onboarding_eligible_items Data Source - terr
 subcategory: ""
 description: |-
   Returns the Self Service objects eligible to be referenced from jamfplatform_pro_macos_onboarding.onboarding_items, for the given entity_type. Use the returned id as entity_id, paired with the matching self_service_entity_type (policies → OS_X_POLICY, configuration_profiles → OS_X_CONFIG_PROFILE, apps → OS_X_MAC_APP / OS_X_APP_INSTALLER).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Onboarding configuration | Read | `onboarding` |
 ---
 
 # jamfplatform_pro_macos_onboarding_eligible_items (Data Source)
 
 Returns the Self Service objects eligible to be referenced from `jamfplatform_pro_macos_onboarding.onboarding_items`, for the given `entity_type`. Use the returned `id` as `entity_id`, paired with the matching `self_service_entity_type` (`policies` → `OS_X_POLICY`, `configuration_profiles` → `OS_X_CONFIG_PROFILE`, `apps` → `OS_X_MAC_APP` / `OS_X_APP_INSTALLER`).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Onboarding configuration | Read | `onboarding` |
 
 ## Example Usage
 
@@ -57,7 +57,7 @@ output "eligible_policy_ids" {
 
 Read-Only:
 
-- `id` (String) Object ID — use as `entity_id` in an onboarding item.
+- `id` (String) Object ID. Use it as the `entity_id` of an onboarding item.
 - `name` (String) Object display name.
 - `scope_description` (String) Human-readable scope summary.
 - `site_description` (String) Site summary.

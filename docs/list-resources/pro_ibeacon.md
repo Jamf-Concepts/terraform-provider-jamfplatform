@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_ibeacon List Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Lists Jamf Pro iBeacons. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:ibeacon` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | iBeacon regions | Read | `ibeacon` |
 ---
 
 # jamfplatform_pro_ibeacon (List Resource)
 
 Lists Jamf Pro iBeacons. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:ibeacon` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | iBeacon regions | Read | `ibeacon` |
 
 ## Example Usage
 

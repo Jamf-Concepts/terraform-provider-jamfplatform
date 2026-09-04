@@ -230,11 +230,6 @@ func (d *BenchmarkDataSource) Schema(ctx context.Context, req datasource.SchemaR
 					},
 				},
 			},
-			"target_device_group": schema.StringAttribute{
-				MarkdownDescription: "**Deprecated** — use `target_device_groups`. First device group ID returned by the API, kept for backwards compatibility.",
-				DeprecationMessage:  "Use target_device_groups instead.",
-				Computed:            true,
-			},
 			"target_device_groups": schema.SetAttribute{
 				MarkdownDescription: "All device group Platform IDs targeted by this benchmark.",
 				ElementType:         types.StringType,

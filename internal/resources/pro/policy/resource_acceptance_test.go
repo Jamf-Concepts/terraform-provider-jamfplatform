@@ -803,10 +803,16 @@ resource "jamfplatform_pro_policy" "test" {
 // Import-state round-trip is not asserted (per
 // state_builders.assignPolicyResourceModel, optional sub-blocks are only
 // populated on Read when already managed by the caller).
+//
+// Two tenant prerequisites, in this order. The package fixture uploads its
+// binary, which only converges on a JCDS-backed tenant, so RequireJCDSUploads
+// runs first: a tenant this test is going to skip on never has its principal-DP
+// flag flipped and restored for nothing. Then, as in
+// PackageConfigurationDistributionPoint, the "default" distribution_point
+// reference requires a principal DP on the tenant.
 func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	// See PackageConfigurationDistributionPoint: the "default" distribution_point
-	// reference requires a principal DP on the tenant.
+	testhelpers.RequireJCDSUploads(t)
 	testhelpers.EnsurePrincipalCloudDistributionPoint(t)
 	suffix := testhelpers.RunSuffix()
 	policyName := "tf-acc-policy-pkgcfg-pkgs-" + suffix

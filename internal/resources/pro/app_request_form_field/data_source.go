@@ -45,7 +45,7 @@ func (d *AppRequestFormFieldDataSource) Metadata(ctx context.Context, req dataso
 // Schema returns the data source schema.
 func (d *AppRequestFormFieldDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro App Request form field by ID or by title. Exactly one of `id` or `title` must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error — use `id` to disambiguate." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro App Request form field by ID or by title. Exactly one of `id` or `title` must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error. Use `id` to disambiguate." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App Request form field ID. Mutually exclusive with `title`.",

@@ -5,6 +5,7 @@ package dns_zone
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 )
@@ -13,13 +14,16 @@ import (
 // endpoints. Wire-probed against production EU on 2026-08-27; each one is
 // translated into a diagnostic attached to the attribute that caused it, because
 // the raw message names the code and not the fix.
+// Every code this resource translates is in the SDK's generated
+// `ApiErrorItemCode` enum, which the DNS namespace declares in its spec schema,
+// so all six are taken from there rather than restated as literals.
 const (
-	codeDomainConflict         = "DOMAIN_CONFLICT"
-	codeGatewayNotFound        = "GATEWAY_NOT_FOUND"
-	codeNameServerIPRestricted = "NAMESERVER_IP_RESTRICTED"
-	codeNameServerIPOutOfRange = "NAMESERVER_IP_OUT_OF_RANGE"
-	codeListSizeExceeded       = "LIST_SIZE_EXCEEDED"
-	codeNotEntitled            = "NOT_ENTITLED"
+	codeDomainConflict         = securitycloud.ApiErrorItemCodeDomainConflict
+	codeGatewayNotFound        = securitycloud.ApiErrorItemCodeGatewayNotFound
+	codeNameServerIPRestricted = securitycloud.ApiErrorItemCodeNameserverIpRestricted
+	codeNameServerIPOutOfRange = securitycloud.ApiErrorItemCodeNameserverIpOutOfRange
+	codeListSizeExceeded       = securitycloud.ApiErrorItemCodeListSizeExceeded
+	codeNotEntitled            = securitycloud.ApiErrorItemCodeNotEntitled
 )
 
 // appendWriteDiagnostics turns a create/update failure into the most specific
@@ -28,10 +32,10 @@ const (
 // The codes worth translating are the ones whose cause is not the field the
 // server names. GATEWAY_NOT_FOUND is the clearest case: the request that fails
 // is a zone write, but the thing that does not exist is a gateway, so the
-// diagnostic has to point at `name_servers` — a zone cannot be created before
-// the gateway its name servers are reachable through. NOT_ENTITLED is the other
-// one worth naming: the credentials are valid and the tenant simply does not
-// have the surface, which is invisible in a bare 403.
+// diagnostic has to point at `authoritative_name_servers` — a zone cannot be
+// created before the gateway its name servers are reachable through.
+// NOT_ENTITLED is the other one worth naming: the credentials are valid and the
+// tenant simply does not have the surface, which is invisible in a bare 403.
 func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
@@ -67,9 +71,9 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 		case codeListSizeExceeded:
 			diags.AddError(
 				"DNS zone collection size out of range",
-				"A collection on this zone is outside the size Jamf Security Cloud accepts: `domains` takes 1 to 100 "+
-					"entries and `name_servers` takes 1 to 20. There is also a per-tenant cap on the number of "+
-					"zones. Reported by Jamf Security Cloud: "+detail.Description,
+				"A collection on this zone is outside the size Jamf Security Cloud accepts: `domains` takes 1 to "+
+					"100 entries and `authoritative_name_servers` takes 1 to 20. There is also a per-tenant cap "+
+					"on the number of zones. Reported by Jamf Security Cloud: "+detail.Description,
 			)
 		case codeNotEntitled:
 			diags.AddError(

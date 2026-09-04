@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -75,7 +74,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
 // into the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "read:pro:managed-software-updates") {
+	if !permissions.Renders(resourcePrivileges, "managed-software-updates:read") {
 		t.Fatalf("resourcePrivileges did not render the managed-software-updates privileges:\n%s", resourcePrivileges)
 	}
 }

@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_mobile_device_prestage_enrollment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Mobile Device PreStage Enrollment — the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record exposed at Devices → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Mobile Device PreStage Enrollments | `create:pro:mobile-device-prestage-enrollments` |
-  | Delete Mobile Device PreStage Enrollments | `delete:pro:mobile-device-prestage-enrollments` |
-  | Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
-  | Update Mobile Device PreStage Enrollments | `update:pro:mobile-device-prestage-enrollments` |
+  Manages a Jamf Pro mobile device PreStage enrollment, the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record at Devices → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 ---
 
 # jamfplatform_pro_mobile_device_prestage_enrollment (Resource)
 
-Manages a Jamf Pro Mobile Device PreStage Enrollment — the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record exposed at *Devices → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
+Manages a Jamf Pro mobile device PreStage enrollment, the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record at *Devices → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Mobile Device PreStage Enrollments | `create:pro:mobile-device-prestage-enrollments` |
-| Delete Mobile Device PreStage Enrollments | `delete:pro:mobile-device-prestage-enrollments` |
-| Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
-| Update Mobile Device PreStage Enrollments | `update:pro:mobile-device-prestage-enrollments` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 
 ## Example Usage
 
@@ -115,17 +109,17 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 ### Required
 
 - `device_enrollment_program_instance_id` (String) ID of the Automated Device Enrollment (ADE) instance that backs this PreStage. Required.
-- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Required. Must not be blank.
-- `timezone` (String) **"Time Zone"** in the Jamf Pro admin UI (e.g. `"America/Chicago"`). Required by the Jamf Pro API — must be a valid IANA time-zone identifier and may not be empty.
+- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Required, and must not be blank.
+- `timezone` (String) **"Time Zone"** in the Jamf Pro admin UI (e.g. `"America/Chicago"`). Required. Must be a valid IANA time-zone identifier, and may not be empty.
 
 ### Optional
 
 - `allow_pairing` (Boolean) **"Allow Pairing"** in the Jamf Pro admin UI.
-- `anchor_certificates` (List of String) Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format; Jamf Pro rejects malformed entries by silently discarding the entire change — the provider catches this and surfaces a hard error.
+- `anchor_certificates` (List of String) Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format. Jamf Pro rejects a malformed entry by silently discarding the whole change; the provider catches that and raises a hard error.
 - `authentication_prompt` (String) **"Authentication Prompt"** message shown when `require_authentication = true`.
 - `auto_advance_setup` (Boolean) **"Auto Advance Setup"** (tvOS) in the Jamf Pro admin UI.
 - `configure_device_before_setup_assistant` (Boolean) **"Configure device before Setup Assistant"** in the Jamf Pro admin UI.
-- `default_prestage` (Boolean) When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first — and where both are managed by Terraform, make the release land before the claim (apply it on its own, or add a `depends_on` from this resource to the one giving up the default).
+- `default_prestage` (Boolean) When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first. Where both are managed by Terraform, make the release land before the claim: apply it on its own, or add a `depends_on` from this resource to the one giving up the default.
 - `department` (String) **"Department"** label shown during Setup Assistant. Free-form text; *not* the department ID (`location_information.department_id`).
 - `do_not_use_profile_from_backup` (Boolean) **"Do not use profile from backup"** in the Jamf Pro admin UI.
 - `enable_device_based_activation_lock` (Boolean) **"Enable Device-Based Activation Lock"** in the Jamf Pro admin UI.
@@ -137,33 +131,33 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `keep_existing_location_information` (Boolean) **"Keep Existing Location Information"** in the Jamf Pro admin UI.
 - `keep_existing_site_membership` (Boolean) **"Keep Existing Site Membership"** in the Jamf Pro admin UI.
 - `language` (String) Default Setup Assistant language (ISO-639 code, e.g. `"en"`). Invalid values are silently coerced to empty by Jamf Pro.
-- `location_information` (Attributes) **"User and Location Information"** in the Jamf Pro admin UI. Supply the block (even empty: `location_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--location_information))
+- `location_information` (Attributes) **"User and Location Information"** in the Jamf Pro admin UI. Supply the block, even empty (`location_information = {}`), to manage this section. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--location_information))
 - `mandatory` (Boolean) **"Make MDM Profile Mandatory"** in the Jamf Pro admin UI.
 - `maximum_shared_accounts` (Number) **"Number of users"** for Shared iPad.
 - `mdm_removable` (Boolean) **"Allow MDM Profile Removal"** in the Jamf Pro admin UI.
 - `minimum_os_specific_version_ios` (String) Specific minimum iOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ios = "MINIMUM_OS_SPECIFIC_VERSION"`.
 - `minimum_os_specific_version_ipad` (String) Specific minimum iPadOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ipad = "MINIMUM_OS_SPECIFIC_VERSION"`.
-- `multi_user` (Boolean) **"Enable Shared iPad"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true` — Jamf Pro rejects Shared iPad otherwise (`prevent_activation_lock` with a hard error; `supervised` by silently disabling Shared iPad).
-- `names` (Attributes) **"Mobile device names"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how Jamf Pro's admin UI decides not to show the naming payload at all: set at least one field below for naming to take effect. (see [below for nested schema](#nestedatt--names))
+- `multi_user` (Boolean) **"Enable Shared iPad"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true`. Jamf Pro rejects Shared iPad otherwise: `prevent_activation_lock` fails with a hard error, and `supervised` silently disables Shared iPad.
+- `names` (Attributes) **"Mobile device names"** in the Jamf Pro admin UI. Supply the block, even empty (`names = {}`), to manage device naming. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how the Jamf Pro admin UI decides not to show naming at all. Set at least one field below for naming to take effect. (see [below for nested schema](#nestedatt--names))
 - `preserve_managed_apps` (Boolean) **"Preserve Managed Apps"** in the Jamf Pro admin UI.
 - `prestage_minimum_os_target_version_type_ios` (String) Minimum-iOS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version_ios`.
 - `prestage_minimum_os_target_version_type_ipad` (String) Minimum-iPadOS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version_ipad`.
 - `prevent_activation_lock` (Boolean) **"Prevent user from enabling Activation Lock"** in the Jamf Pro admin UI.
-- `purchasing_information` (Attributes) **"Purchasing Information"** in the Jamf Pro admin UI. Supply the block (even empty: `purchasing_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--purchasing_information))
+- `purchasing_information` (Attributes) **"Purchasing Information"** in the Jamf Pro admin UI. Supply the block, even empty (`purchasing_information = {}`), to manage this section. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--purchasing_information))
 - `region` (String) Default Setup Assistant region (ISO-3166 code, e.g. `"US"`). Invalid values are silently coerced to empty by Jamf Pro.
 - `require_authentication` (Boolean) **"Require Authentication"** in the Jamf Pro admin UI.
 - `rts_config_profile_id` (String) Return to Service configuration profile ID. Sentinel `"-1"` = none.
 - `rts_enabled` (Boolean) **"Return to Service"** enabled toggle.
 - `scope_serial_numbers` (Set of String) Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. The full set is rewritten on every change. Jamf Pro enforces single-PreStage-per-serial: assigning a serial that is currently scoped to a different PreStage is rejected with `ALREADY_SCOPED` and there is no transparent reassignment. To move a serial between PreStages, first remove it from the holding PreStage. A serial that does not exist on the ADE token is rejected with `DEVICE_DOES_NOT_EXIST_ON_TOKEN`.
 - `send_timezone` (Boolean) **"Send Time Zone"** in the Jamf Pro admin UI.
-- `skip_setup_items` (Attributes) Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane; `true` skips the pane. Supply the block (even empty: `skip_setup_items = {}`) to manage this section — omitting it produces drift on the next refresh. (see [below for nested schema](#nestedatt--skip_setup_items))
+- `skip_setup_items` (Attributes) Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane; `true` skips the pane. Supply the block, even empty (`skip_setup_items = {}`), to manage this section. Omitting it produces drift on the next refresh. (see [below for nested schema](#nestedatt--skip_setup_items))
 - `supervised` (Boolean) **"Supervised"** in the Jamf Pro admin UI.
 - `support_email_address` (String) **"Support Email Address"** in the Jamf Pro admin UI.
 - `support_phone_number` (String) **"Support Phone Number"** in the Jamf Pro admin UI.
-- `temporary_session_only` (Boolean) **"Temporary Session Only"** shared-iPad storage mode. Mutually exclusive with `use_storage_quota_size` — Jamf Pro forces `use_storage_quota_size` to `false` when this is `true`.
-- `temporary_session_timeout` (Number) **"Temporary Session Timeout"** (minutes). Jamf Pro silently nulls values below the UI minimum of 30 when enforcement is on.
+- `temporary_session_only` (Boolean) **"Temporary Session Only"** shared-iPad storage mode. Mutually exclusive with `use_storage_quota_size`: Jamf Pro forces `use_storage_quota_size` to `false` when this is `true`.
+- `temporary_session_timeout` (Number) **"Temporary Session Timeout"** (minutes). With enforcement on, Jamf Pro silently discards a value below the UI minimum of 30.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `use_storage_quota_size` (Boolean) **"Use Storage Quota Size"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only` — Jamf Pro forces this to `false` when `temporary_session_only = true`.
+- `use_storage_quota_size` (Boolean) **"Use Storage Quota Size"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only`: Jamf Pro forces this to `false` when `temporary_session_only = true`.
 - `user_session_timeout` (Number) **"User Session Timeout"** (minutes).
 
 ### Read-Only
@@ -171,7 +165,7 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `id` (String) Mobile device PreStage enrollment ID assigned by Jamf Pro.
 - `profile_uuid` (String) MDM profile UUID assigned by Jamf Pro; not user-settable. Populates asynchronously after create.
 - `site_id` (String) Jamf Pro site ID that owns this PreStage. Returned by Jamf Pro; not user-settable on this resource. Use `enrollment_site_id` to drive site assignment for devices enrolled through this PreStage. Jamf Pro reports `"-1"` when no site is set.
-- `storage_quota_size_megabytes` (Number) **"Storage Quota Size"** (megabytes) for Shared iPad. Read-only: Jamf Pro recalculates this server-side on every change, so it is not settable from Terraform — set it in the Jamf Pro admin UI. Reflects the value Jamf Pro reports.
+- `storage_quota_size_megabytes` (Number) **"Storage Quota Size"** (megabytes) for Shared iPad. Read-only, because Jamf Pro recalculates it on every change. Set it in the Jamf Pro admin UI; this attribute reflects the value Jamf Pro reports.
 
 <a id="nestedatt--location_information"></a>
 ### Nested Schema for `location_information`
@@ -209,8 +203,8 @@ Required:
 
 Read-Only:
 
-- `id` (String) Server-assigned name ID. `"-1"` is sent for a new entry.
-- `used` (Boolean) Whether this name has been consumed by an enrolled device. Server-managed.
+- `id` (String) Name ID assigned by Jamf Pro. Supply `"-1"` for a new entry.
+- `used` (Boolean) Whether this name has been consumed by an enrolled device. Returned by Jamf Pro; not user-settable.
 
 
 

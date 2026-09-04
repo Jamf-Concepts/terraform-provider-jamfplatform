@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -89,7 +88,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:mobile-device-applications") {
+	if !permissions.Renders(resourcePrivileges, "applications:create") {
 		t.Fatalf("resourcePrivileges did not render the mobile-device-applications privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -113,7 +112,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:mobile-device-applications") {
+	if !permissions.Renders(dataSourcePrivileges, "applications:read") {
 		t.Fatalf("dataSourcePrivileges did not render the mobile-device-applications privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -138,7 +137,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:mobile-device-applications") {
+	if !permissions.Renders(listResourcePrivileges, "applications:read") {
 		t.Fatalf("listResourcePrivileges did not render the mobile-device-applications privileges:\n%s", listResourcePrivileges)
 	}
 }

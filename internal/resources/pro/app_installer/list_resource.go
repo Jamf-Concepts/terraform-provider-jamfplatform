@@ -99,7 +99,7 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)
 	defer cancel()
 
-	entries, err := r.client.ListAppInstallerDeploymentsV1(listCtx)
+	entries, err := r.client.ListAppInstallerDeploymentsV1(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic("Unable to list App Installer deployments", err.Error()),
@@ -181,6 +181,6 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 }
 
 // appInstallerListItemName is the name accessor passed to filters.ApplyClassicFilter.
-func appInstallerListItemName(e pro.AppInstallerDeploymentListEntry) string {
+func appInstallerListItemName(e pro.AppTitleDeploymentSummary) string {
 	return e.Name
 }

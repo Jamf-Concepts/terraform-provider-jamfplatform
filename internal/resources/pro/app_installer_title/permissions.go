@@ -16,6 +16,7 @@ import (
 // stays in sync with data_source.go and with the SDK privilege registry.
 var dataSourceSDKMethods = []string{
 	"GetAppInstallerTitleV1",
+	"ListAppInstallerTitleVersionsV1",
 }
 
 // dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown

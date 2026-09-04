@@ -3,6 +3,8 @@
 
 package mobile_device_configuration_profile
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+
 // Level field wire/UI mappings. The Jamf Pro admin UI dropdown for the
 // "Level" field offers `Device Level` and `User Level`. The classic API
 // wire is asymmetric: write `Device` / `User`, read `System` / `User`.
@@ -15,12 +17,17 @@ package mobile_device_configuration_profile
 //   - send `<level>Device Level</level>` (long form) → reads `System` (accepted but use short form).
 //   - send `<level>User Level</level>` (long form) → reads `System` (WRONG — defaults!).
 const (
-	levelUIDevice        = "Device Level"
-	levelUIUser          = "User Level"
-	levelWireWriteDevice = "Device" // accepted wire-write value for Device Level
-	levelWireWriteUser   = "User"   // accepted wire-write value for User Level
-	levelWireReadDevice  = "System" // wire-read form for Device Level
-	levelWireReadUser    = "User"   // wire-read form for User Level (symmetric)
+	levelUIDevice = "Device Level"
+	levelUIUser   = "User Level"
+	// proclassic.MobileDeviceConfigurationProfileGeneralLevel generates the
+	// read-side pair (System / User). "Device" is the write-side spelling for
+	// Device Level and has no constant; the User Level spelling is symmetric
+	// across write and read, so both of its uses alias the same constant.
+	levelWireWriteDevice = "Device"                                                    // accepted wire-write value for Device Level
+	levelWireWriteUser   = proclassic.MobileDeviceConfigurationProfileGeneralLevelUser // accepted wire-write value for User Level
+
+	levelWireReadDevice = proclassic.MobileDeviceConfigurationProfileGeneralLevelSystem // wire-read form for Device Level
+	levelWireReadUser   = proclassic.MobileDeviceConfigurationProfileGeneralLevelUser   // wire-read form for User Level (symmetric)
 )
 
 // levelToWireWrite translates the TF/UI-facing value into the Classic API write value.
@@ -48,10 +55,12 @@ func levelFromWireRead(wireValue string) string {
 }
 
 // Distribution method wire values are symmetric — the admin UI labels match
-// the wire spellings exactly.
+// the wire spellings exactly. The spec generates this vocabulary under the
+// field name deploymentMethod rather than distributionMethod, so the constants
+// carry the SDK's DeploymentMethod prefix.
 const (
-	distributionMethodInstallAutomatically = "Install Automatically"
-	distributionMethodMakeAvailableInSS    = "Make Available in Self Service"
+	distributionMethodInstallAutomatically = proclassic.MobileDeviceConfigurationProfileGeneralDeploymentMethodInstallAutomatically
+	distributionMethodMakeAvailableInSS    = proclassic.MobileDeviceConfigurationProfileGeneralDeploymentMethodMakeAvailableInSelfService
 )
 
 var validDistributionMethods = []string{

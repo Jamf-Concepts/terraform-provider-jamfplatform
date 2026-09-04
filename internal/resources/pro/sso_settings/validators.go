@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // Attribute-level validators for SSO settings cross-field rules. Each
@@ -294,7 +296,7 @@ func (idpProviderTypeOtherValidator) ValidateString(ctx context.Context, req val
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
-	if req.ConfigValue.ValueString() != "OTHER" {
+	if req.ConfigValue.ValueString() != pro.SamlSettingsIdpProviderTypeOther {
 		return
 	}
 	parent := req.Path.ParentPath()

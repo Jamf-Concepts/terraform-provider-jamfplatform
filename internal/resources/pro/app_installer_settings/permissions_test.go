@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -99,10 +98,10 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestPrivileges_Rendered guards that the tables actually rendered into the
 // descriptions (catches an empty/parse-skipped registry).
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:mac-applications") {
+	if !permissions.Renders(resourcePrivileges, "applications:update") {
 		t.Fatalf("resourcePrivileges did not render the App Installer privileges:\n%s", resourcePrivileges)
 	}
-	if !strings.Contains(dataSourcePrivileges, "read:pro:mac-applications") {
+	if !permissions.Renders(dataSourcePrivileges, "applications:read") {
 		t.Fatalf("dataSourcePrivileges did not render the App Installer privileges:\n%s", dataSourcePrivileges)
 	}
 }

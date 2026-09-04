@@ -20,7 +20,7 @@ var resourceSDKMethods = []string{
 	"DeleteBenchmark",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the benchmark resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(compliancebenchmarks.Privileges, resourceSDKMethods...)
 
@@ -32,7 +32,7 @@ var dataSourceSDKMethods = []string{
 	"GetBenchmark",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the benchmark data source.
 var dataSourcePrivileges = permissions.Section(compliancebenchmarks.Privileges, dataSourceSDKMethods...)
 
@@ -43,6 +43,6 @@ var listResourceSDKMethods = []string{
 	"GetBenchmark",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the benchmark list resource.
 var listResourcePrivileges = permissions.Section(compliancebenchmarks.Privileges, listResourceSDKMethods...)

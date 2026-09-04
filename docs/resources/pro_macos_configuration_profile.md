@@ -3,55 +3,61 @@
 page_title: "jamfplatform_pro_macos_configuration_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a macOS configuration profile in Jamf Pro. The general.payloads attribute carries the raw .mobileconfig plist XML for the configuration that the profile delivers to enrolled Macs.
-  Payload diff handling — Jamf Pro normalises every uploaded payload server-side: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those server-side normalisations from terraform plan so applies stay quiet when nothing meaningful has changed, and surfaces real drift in two cases:
-  You edited the payload in Terraform — plan shows the change and apply pushes it.Someone edited the profile in the Jamf Pro admin UI — plan shows the drift on the next refresh so you can either bring the change back into your Terraform config or apply to reassert the Terraform-managed value.
-  A small set of profile-level fields (PayloadDisplayName, PayloadIdentifier, PayloadUUID, PayloadOrganization, PayloadDescription, PayloadEnabled) are managed entirely by Jamf Pro — any value you supply for them inside payloads is replaced on the server, so the provider ignores them in the diff. Use general.name, general.description, and the other top-level attributes to control the equivalent fields.
-  Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). all_computers and all_jss_users conflict with their per-ID siblings.
-  Profile identity on update — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
-  Characters Jamf Pro cannot store — in most payload types & and < come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. Write line breaks as &#13;; an "Application & Custom Settings" payload stores all of these faithfully. Rather than alter a payload silently the provider refuses it — on create, on edit, and on import — naming the offending value.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:macos-configuration-profiles` |
-  | `delete:pro:macos-configuration-profiles` |
-  | `read:pro:macos-configuration-profiles` |
-  | `update:pro:macos-configuration-profiles` |
+  Manages a macOS configuration profile in Jamf Pro. The general.payloads attribute carries the raw .mobileconfig plist XML for the configuration the profile delivers to enrolled Macs.
+  Payload diff handling
+  Jamf Pro normalises every uploaded payload: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those normalisations from terraform plan, so applies stay quiet when nothing meaningful has changed. Real drift still surfaces in two cases:
+  You edited the payload in Terraform. plan shows the change and apply pushes it.Someone edited the profile in the Jamf Pro admin UI. plan shows the drift on the next refresh, so you can either bring the change back into your Terraform config or apply to reassert the Terraform-managed value.
+  A small set of profile-level fields (PayloadDisplayName, PayloadIdentifier, PayloadUUID, PayloadOrganization, PayloadDescription, PayloadEnabled) is managed entirely by Jamf Pro. Any value you supply for them inside payloads is replaced, so the provider ignores them in the diff. Use general.name, general.description and the other top-level attributes to control the equivalent fields.
+  Scope
+  Scope blocks mirror jamfplatform_pro_policy. Targets, limitations and exclusions all carry flat sets of Jamf Pro IDs, or directory-service names where appropriate. all_computers and all_jss_users conflict with their per-ID siblings.
+  Profile identity on update
+  On update the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every payload it sends back to Jamf Pro, so the profile's identity stays stable across applies. Without that, every update would look like a brand-new profile to enrolled Macs and macOS would treat it as a fresh installation.
+  Characters Jamf Pro cannot store
+  In most payload types & and < come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. Write line breaks as &#13;. An "Application & Custom Settings" payload stores all of these faithfully. Rather than alter a payload silently, the provider refuses it on create, on edit and on import, naming the offending value.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Configuration profiles | Create, Read, Update, Delete | `configuration-profiles` |
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Resource)
 
-Manages a macOS configuration profile in Jamf Pro. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML for the configuration that the profile delivers to enrolled Macs.
+Manages a macOS configuration profile in Jamf Pro. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML for the configuration the profile delivers to enrolled Macs.
 
-**Payload diff handling** — Jamf Pro normalises every uploaded payload server-side: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those server-side normalisations from `terraform plan` so applies stay quiet when nothing meaningful has changed, and surfaces real drift in two cases:
+### Payload diff handling
 
-  - **You edited the payload in Terraform** — `plan` shows the change and `apply` pushes it.
-  - **Someone edited the profile in the Jamf Pro admin UI** — `plan` shows the drift on the next refresh so you can either bring the change back into your Terraform config or `apply` to reassert the Terraform-managed value.
+Jamf Pro normalises every uploaded payload: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those normalisations from `terraform plan`, so applies stay quiet when nothing meaningful has changed. Real drift still surfaces in two cases:
 
-A small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, `PayloadUUID`, `PayloadOrganization`, `PayloadDescription`, `PayloadEnabled`) are managed entirely by Jamf Pro — any value you supply for them inside `payloads` is replaced on the server, so the provider ignores them in the diff. Use `general.name`, `general.description`, and the other top-level attributes to control the equivalent fields.
+  - You edited the payload in Terraform. `plan` shows the change and `apply` pushes it.
+  - Someone edited the profile in the Jamf Pro admin UI. `plan` shows the drift on the next refresh, so you can either bring the change back into your Terraform config or `apply` to reassert the Terraform-managed value.
 
-**Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). `all_computers` and `all_jss_users` conflict with their per-ID siblings.
+A small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, `PayloadUUID`, `PayloadOrganization`, `PayloadDescription`, `PayloadEnabled`) is managed entirely by Jamf Pro. Any value you supply for them inside `payloads` is replaced, so the provider ignores them in the diff. Use `general.name`, `general.description` and the other top-level attributes to control the equivalent fields.
 
-**Profile identity on update** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
+### Scope
 
-**Characters Jamf Pro cannot store** — in most payload types `&` and `<` come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. Write line breaks as `&#13;`; an "Application & Custom Settings" payload stores all of these faithfully. Rather than alter a payload silently the provider refuses it — on create, on edit, and on import — naming the offending value.
+Scope blocks mirror `jamfplatform_pro_policy`. Targets, limitations and exclusions all carry flat sets of Jamf Pro IDs, or directory-service names where appropriate. `all_computers` and `all_jss_users` conflict with their per-ID siblings.
 
-**Required Jamf privileges**
+### Profile identity on update
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+On update the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro, so the profile's identity stays stable across applies. Without that, every update would look like a brand-new profile to enrolled Macs and macOS would treat it as a fresh installation.
 
-| Required privilege |
-|---|
-| `create:pro:macos-configuration-profiles` |
-| `delete:pro:macos-configuration-profiles` |
-| `read:pro:macos-configuration-profiles` |
-| `update:pro:macos-configuration-profiles` |
+### Characters Jamf Pro cannot store
+
+In most payload types `&` and `<` come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. Write line breaks as `&#13;`. An "Application & Custom Settings" payload stores all of these faithfully. Rather than alter a payload silently, the provider refuses it on create, on edit and on import, naming the offending value.
+
+**Required Jamf permissions**
+
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Configuration profiles | Create, Read, Update, Delete | `configuration-profiles` |
 
 ## Example Usage
 
 ```terraform
-# Minimal macOS configuration profile — name + payload only.
+# Minimal macOS configuration profile: name + payload only.
 resource "jamfplatform_pro_macos_configuration_profile" "minimal" {
   general = {
     name     = "Minimal Notifications Profile"
@@ -129,8 +135,8 @@ resource "jamfplatform_pro_macos_configuration_profile" "self_service" {
 
 ### Optional
 
-- `scope` (Attributes) Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. `all_computers = true` forbids per-computer / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
-- `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"` — for `Install Automatically` profiles Jamf Pro still stores these values but they are not shown to users.
+- `scope` (Attributes) Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. `all_computers = true` forbids the per-computer, per-group, per-building and per-department targets. `all_jss_users = true` forbids the per-user and per-user-group targets. `user_ids` and `user_group_ids` map to the admin UI's "Users" and "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
+- `self_service` (Attributes) Self Service integration. Meaningful only when `general.distribution_method = "Make Available in Self Service"`. For `Install Automatically` profiles Jamf Pro still stores these values, but users never see them.
 
 Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the profile becomes available. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -145,7 +151,7 @@ Pair `display_notifications` with `notification_location` to control whether and
 Required:
 
 - `name` (String) Display name of the profile. Must be unique within the tenant. This value is also used as the profile's display name inside the `.mobileconfig` payload, so any name you set inside `payloads` is overridden.
-- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. Must be a complete plist document — a bare `<dict>` fragment is rejected by Jamf Pro. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.
+- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. Must be a complete plist document; Jamf Pro rejects a bare dictionary fragment. See the resource description for how the provider handles diffs against Jamf Pro's own normalisations, and for the characters Jamf Pro cannot store inside a payload value.
 
 Optional:
 
@@ -153,9 +159,9 @@ Optional:
 - `description` (String) Free-text description shown in the Jamf Pro admin UI.
 - `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile under the Self Service tab so users install it manually.
 - `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Computer Level` (default) or `User Level`.
-- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). **Note**: Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only — once you set it, subsequent refreshes will not snap it back to a default. Set this attribute explicitly to control redeployment behaviour on update.
+- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default. Set it explicitly to control redeployment behaviour on update.
 - `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site".
-- `user_removable` (Boolean) Whether end users can remove the profile from System Settings. Defaults to `false`. Independent of the Self Service `removal_disallowed` setting — the two only interact for Self Service profiles.
+- `user_removable` (Boolean) Whether end users can remove the profile from System Settings. Defaults to `false`. Independent of the Self Service `removal_disallowed` setting; the two interact only for Self Service profiles.
 
 Read-Only:
 
@@ -172,7 +178,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) The audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -231,7 +237,7 @@ Optional:
 - `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.
 - `notification_message` (String) Notification body text. Displays in Self Service only.
 - `notification_subject` (String) Notification subject line.
-- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. The `With Authorization` mode additionally requires an authorization password, which the macOS resource does not currently expose — open an issue if you need it.
+- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. `With Authorization` also needs an authorization password, which this resource does not yet expose. Open an issue if you need it.
 - `self_service_description` (String) Description shown in Self Service. Markdown supported.
 - `self_service_display_name` (String) Display name shown in Self Service. Defaults to the profile name when blank. Requires Self Service 10.0.0+.
 

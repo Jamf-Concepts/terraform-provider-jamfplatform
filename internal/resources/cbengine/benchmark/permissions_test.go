@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
@@ -90,7 +89,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "compliance-benchmarks:create") {
+	if !permissions.Renders(resourcePrivileges, "compliance-benchmarks:create") {
 		t.Fatalf("resourcePrivileges did not render the compliance-benchmarks privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -114,7 +113,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "compliance-benchmarks:read") {
+	if !permissions.Renders(dataSourcePrivileges, "compliance-benchmarks:read") {
 		t.Fatalf("dataSourcePrivileges did not render the compliance-benchmarks privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -138,7 +137,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "compliance-benchmarks:read") {
+	if !permissions.Renders(listResourcePrivileges, "compliance-benchmarks:read") {
 		t.Fatalf("listResourcePrivileges did not render the compliance-benchmarks privileges:\n%s", listResourcePrivileges)
 	}
 }

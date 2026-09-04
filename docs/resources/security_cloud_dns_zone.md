@@ -3,34 +3,31 @@
 page_title: "jamfplatform_security_cloud_dns_zone Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains are resolved through authoritative name servers of your choice instead of public DNS — Jamf calls this "split-brain DNS", and a custom DNS zone is required before enterprise apps on internal private networks become reachable over ZTNA.
+  Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains are resolved through authoritative name servers of your choice instead of public DNS. That arrangement is "split-brain DNS", and a custom DNS zone is required before enterprise apps on internal private networks become reachable over ZTNA.
   Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:create` |
-  | `ztna:delete` |
-  | `ztna:read` |
-  | `ztna:update` |
+  See the Jamf Security Cloud guide ../guides/security-cloud for the rules a name server address has to satisfy, how to choose the gateway each one is reached through, and why the gateway has to exist before the zone that names it.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
 ---
 
 # jamfplatform_security_cloud_dns_zone (Resource)
 
-Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains are resolved through authoritative name servers of your choice instead of public DNS — Jamf calls this "split-brain DNS", and a custom DNS zone is required before enterprise apps on internal private networks become reachable over ZTNA.
+Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains are resolved through authoritative name servers of your choice instead of public DNS. That arrangement is "split-brain DNS", and a custom DNS zone is required before enterprise apps on internal private networks become reachable over ZTNA.
 
 Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.
 
-**Required Jamf privileges**
+See the [Jamf Security Cloud guide](../guides/security-cloud) for the rules a name server address has to satisfy, how to choose the gateway each one is reached through, and why the gateway has to exist before the zone that names it.
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+**Required Jamf permissions**
 
-| Required privilege |
-|---|
-| `ztna:create` |
-| `ztna:delete` |
-| `ztna:read` |
-| `ztna:update` |
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
 
 ## Example Usage
 
@@ -115,8 +112,8 @@ variable "security_cloud_tenant_id" {
 
 ### Required
 
-- `authoritative_name_servers` (Attributes Set) **"Authoritative name servers"** in the Jamf Security Cloud admin UI — the name servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server must be reachable via the gateway it is paired with. (see [below for nested schema](#nestedatt--authoritative_name_servers))
-- `domains` (Set of String) **"Domains"** in the Jamf Security Cloud admin UI — the domains that match this zone. Subdomains take a wildcard, and the parent domain must be listed explicitly alongside it: `company.com` covers only the parent domain and `*.company.com` covers only the subdomains. Between 1 and 100 entries. A domain already claimed by another zone is rejected.
+- `authoritative_name_servers` (Attributes Set) **"Authoritative name servers"** in the Jamf Security Cloud admin UI: the name servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server must be reachable via the gateway it is paired with. (see [below for nested schema](#nestedatt--authoritative_name_servers))
+- `domains` (Set of String) **"Domains"** in the Jamf Security Cloud admin UI: the domains that match this zone. Subdomains take a wildcard, and the parent domain must be listed explicitly alongside it: `company.com` covers only the parent domain and `*.company.com` covers only the subdomains. Between 1 and 100 entries. A domain already claimed by another zone is rejected.
 - `name` (String) **"Zone name"** in the Jamf Security Cloud admin UI. Up to 100 characters. Zone names are not required to be unique, so prefer the zone ID when referencing a zone elsewhere.
 
 ### Optional
@@ -132,7 +129,7 @@ variable "security_cloud_tenant_id" {
 
 Required:
 
-- `gateway_id` (String) **"Reachable via"** in the Jamf Security Cloud admin UI — the ID of the gateway this name server is reachable through. Accepts a Jamf-managed shared gateway ("Nearest Data Center" or one of the shared IP pools) or one of your own ZTNA gateways. The gateway must already exist: a zone referencing an unknown gateway is refused.
+- `gateway_id` (String) **"Reachable via"** in the Jamf Security Cloud admin UI: the ID of the gateway this name server is reachable through. Accepts a Jamf-managed shared gateway ("Nearest Data Center" or one of the shared IP pools) or one of your own ZTNA gateways. The gateway must already exist: a zone referencing an unknown gateway is refused.
 - `ip_address` (String) **"Name server IP address"** in the Jamf Security Cloud admin UI. An IPv4 address in dotted-quad form; IPv6 is not accepted. Each IP address may appear only once in a zone, even when paired with different gateways. Jamf Security Cloud also refuses reserved ranges such as private and loopback addresses.
 
 

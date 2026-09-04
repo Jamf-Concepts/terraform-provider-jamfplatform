@@ -75,7 +75,7 @@ func (r *ReturnToServiceResource) IdentitySchema(ctx context.Context, req resour
 // Schema returns the Terraform schema for the Return to Service resource.
 func (r *ReturnToServiceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro Return to Service configuration, which pairs a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it rejoin a network and re-enrol into Jamf Pro without manual setup." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Return to Service configuration ID assigned by Jamf Pro.",

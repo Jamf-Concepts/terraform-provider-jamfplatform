@@ -3,29 +3,38 @@
 page_title: "jamfplatform_pro_sso_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro Single Sign-On (SSO) settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded signing_certificate sub-block that manages the SAML signing keystore as a single resource.
-  Manage SSO all-or-nothing — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
-  Cross-field requirements (enforced at plan time):
+  Manages Jamf Pro Single Sign-On (SSO) settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded signing_certificate sub-block that manages the SAML signing keystore as a single resource.
+  Manage SSO all-or-nothing
+  This resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
+  Cross-field requirements
+  All of these are enforced at plan time.
   configuration_type = "SAML" requires the saml_settings block.configuration_type = "OIDC" requires the oidc_settings block and forbids saml_settings (Jamf Pro ignores SAML configuration in pure OIDC mode).configuration_type = "OIDC_WITH_SAML" requires both saml_settings and oidc_settings.saml_settings.entity_id and saml_settings.group_attribute_name must be non-empty whenever SAML is part of the configuration.saml_settings.metadata_source = "URL" requires idp_url and forbids federation_metadata_file / metadata_file_name; = "FILE" is the inverse.saml_settings.idp_provider_type = "OTHER" requires other_provider_type_name.saml_settings.user_attribute_enabled = true requires user_attribute_name.group_enrollment_access_enabled = true together with sso_for_enrollment_enabled = true requires group_enrollment_access_name.signing_certificate.setup_type = "UPLOADED" requires type, key, keystore_file, keystore_file_name, keystore_password, and password.
-  Account-Driven Enrollment dependency — enrollment_sso_for_account_driven_enrollment_enabled = true requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.
-  Concurrency — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.
-  Destroy — terraform destroy removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set sso_enabled = false explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
+  Account-Driven Enrollment dependency
+  enrollment_sso_for_account_driven_enrollment_enabled = true requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro rejects the apply with a field-named error if the prerequisite is missing.
+  Concurrency
+  Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.
+  Destroy
+  terraform destroy removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set sso_enabled = false explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
   Import with terraform import jamfplatform_pro_sso_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read SSO Settings | `read:pro:sso-settings` |
-  | Update SSO Settings | `update:pro:sso-settings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 ---
 
 # jamfplatform_pro_sso_settings (Resource)
 
-Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.
+Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.
 
-**Manage SSO all-or-nothing** — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
+### Manage SSO all-or-nothing
 
-**Cross-field requirements** (enforced at plan time):
+This resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
+
+### Cross-field requirements
+
+All of these are enforced at plan time.
+
 - `configuration_type = "SAML"` requires the `saml_settings` block.
 - `configuration_type = "OIDC"` requires the `oidc_settings` block and forbids `saml_settings` (Jamf Pro ignores SAML configuration in pure OIDC mode).
 - `configuration_type = "OIDC_WITH_SAML"` requires both `saml_settings` and `oidc_settings`.
@@ -36,27 +45,32 @@ Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → 
 - `group_enrollment_access_enabled = true` together with `sso_for_enrollment_enabled = true` requires `group_enrollment_access_name`.
 - `signing_certificate.setup_type = "UPLOADED"` requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`.
 
-**Account-Driven Enrollment dependency** — `enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.
+### Account-Driven Enrollment dependency
 
-**Concurrency** — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.
+`enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro rejects the apply with a field-named error if the prerequisite is missing.
 
-**Destroy** — `terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
+### Concurrency
+
+Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.
+
+### Destroy
+
+`terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
 
 Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read SSO Settings | `read:pro:sso-settings` |
-| Update SSO Settings | `update:pro:sso-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 
 ## Example Usage
 
 ```terraform
-# Pure OIDC, SSO disabled — minimal scaffolding.
+# Pure OIDC, SSO disabled: minimal scaffolding.
 resource "jamfplatform_pro_sso_settings" "oidc_disabled" {
   sso_enabled                                          = false
   sso_bypass_allowed                                   = false
@@ -119,7 +133,7 @@ resource "jamfplatform_pro_sso_settings" "saml_file" {
 }
 
 # SAML + uploaded signing keystore. `keystore_password` and `password` are
-# WriteOnly — bump `_wo_version` to rotate.
+# WriteOnly. Bump `_wo_version` to rotate.
 resource "jamfplatform_pro_sso_settings" "saml_uploaded_cert" {
   sso_enabled                                          = true
   sso_bypass_allowed                                   = true
@@ -181,11 +195,11 @@ variable "sso_key_password" {
 - `oidc_settings` (Attributes) OIDC configuration. Required when `configuration_type` is `OIDC` or `OIDC_WITH_SAML`. May be omitted in pure SAML mode. (see [below for nested schema](#nestedatt--oidc_settings))
 - `saml_settings` (Attributes) SAML configuration. Required when `configuration_type` is `SAML` or `OIDC_WITH_SAML`. Must be omitted in pure OIDC mode. (see [below for nested schema](#nestedatt--saml_settings))
 - `signing_certificate` (Attributes) Embedded signing certificate sub-block. Three modes selected by `setup_type`:
-- `NONE` — no certificate configured. Setting `setup_type = "NONE"` (or removing the block) deletes any existing certificate on the tenant.
-- `GENERATED` — Jamf Pro generates a self-signed certificate. Re-applying with the same `setup_type = "GENERATED"` is a no-op (the provider skips the regenerate call so subsequent applies do not churn the certificate).
-- `UPLOADED` — user-supplied PKCS12 or JKS keystore. Requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`. `key` is the case-sensitive alias inside the keystore; enumerate aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.
+- `NONE`: no certificate configured. Setting `setup_type = "NONE"` (or removing the block) deletes any existing certificate on the tenant.
+- `GENERATED`: Jamf Pro generates a self-signed certificate. Re-applying with the same `setup_type = "GENERATED"` is a no-op, since the provider skips the regenerate step so subsequent applies do not churn the certificate.
+- `UPLOADED`: user-supplied PKCS12 or JKS keystore. Requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`. `key` is the case-sensitive alias inside the keystore; enumerate aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.
 
-`keystore_password` and `password` are both `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next Update to re-send the value. (see [below for nested schema](#nestedatt--signing_certificate))
+`keystore_password` and `password` are both `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next update to re-send the value. (see [below for nested schema](#nestedatt--signing_certificate))
 - `sso_bypass_allowed` (Boolean) Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
 - `sso_enabled` (Boolean) Whether SSO is enabled on the tenant.
 - `sso_for_enrollment_enabled` (Boolean) Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
@@ -233,8 +247,8 @@ Optional:
 - `metadata_source` (String) How Jamf Pro obtains IdP SAML metadata. `URL` (Jamf Pro fetches metadata from `idp_url`) or `FILE` (raw base64 supplied in `federation_metadata_file`). The two branches are mutually exclusive.
 - `other_provider_type_name` (String) Display name for the IdP when `idp_provider_type = "OTHER"`.
 - `session_timeout` (Number) SAML session timeout in minutes. Upper bound: 35,791,393. Stored value is preserved even when `token_expiration_disabled = true`.
-- `token_expiration_disabled` (Boolean) Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.
-- `user_attribute_enabled` (Boolean) Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.
+- `token_expiration_disabled` (Boolean) Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.
+- `user_attribute_enabled` (Boolean) Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.
 - `user_attribute_name` (String) Name of the SAML attribute carrying the username. Required when `user_attribute_enabled = true`.
 - `user_mapping` (String) How SAML attributes map to Jamf Pro users. One of `USERNAME` or `EMAIL`.
 
@@ -251,7 +265,7 @@ Optional:
 - `key` (String) Alias inside the keystore that selects the private key and certificate to use. Case-sensitive. Required when `setup_type = "UPLOADED"`; set by Jamf Pro for `"GENERATED"`. Discover aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.
 - `keystore_file` (String, Sensitive) Raw base64 of the keystore file (`.p12` or `.jks`). Idiomatic usage: `filebase64("jamf-saml.p12")`. Required when `setup_type = "UPLOADED"`.
 - `keystore_file_name` (String) Display filename for the keystore. Required when `setup_type = "UPLOADED"`; set by Jamf Pro for `"GENERATED"`.
-- `keystore_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Keystore (file) password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.
+- `keystore_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Keystore (file) password. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Pair with `keystore_password_wo_version`, the rotation companion; bump that integer to re-send.
 - `keystore_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `keystore_password`. Bump this integer to force re-sending the current value on the next Update.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Private-key password (the password used to encrypt the key entry inside the keystore). `WriteOnly`. Pair with `password_wo_version` (the rotation companion); bump that integer to re-send.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer to force re-sending the current value on the next Update.

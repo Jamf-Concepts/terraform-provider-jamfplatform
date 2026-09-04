@@ -5,13 +5,17 @@ package patch_policy
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -19,9 +23,15 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// defaultListTimeout caps how long the list operation will wait on the classic
-// /patchpolicies endpoint. The list resource schema does not expose a
-// user-overridable timeout, so this is a fixed safety bound.
+// defaultListTimeout caps how long the list operation will wait on the Pro v2
+// patch-policies collection. It is a budget for the whole sweep, not for one
+// request: the SDK pages the collection in full, so the round-trip count is a
+// function of tenant size rather than fixed at one as it was on the classic
+// collection this replaced. The page size is 2000, so a tenant needs more than
+// 2000 patch policies before a second request is issued at all, and 90s stays
+// generous well past that; revisit the constant if that ceiling is ever crossed
+// in practice. The list resource schema does not expose a user-overridable
+// timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
 
 // defaultItemReadTimeout bounds each per-item GET issued when IncludeResource is
@@ -38,13 +48,19 @@ func NewPatchPolicyListResource() list.ListResource {
 	return &PatchPolicyListResource{}
 }
 
-// PatchPolicyListResource implements Terraform query list support. Classic
-// /patchpolicies accepts no query parameters, so the optional `filter` block is
-// applied client-side via filters.ApplyClassicFilter after the full list is
-// fetched. Unlike patch software titles, the list response carries a display
-// name, so the filter matches the policy name.
+// PatchPolicyListResource implements Terraform query list support. Enumeration
+// runs on the Pro v2 patch-policies collection; per-item hydration stays on the
+// ProClassic by-ID read, which is the only surface carrying a policy's scope and
+// user-interaction sections.
+//
+// The optional `filter` block is applied client-side via
+// filters.ApplyClassicFilter after the full list is fetched: v2 accepts an RSQL
+// query on `policyName`, but RSQL string comparison is case-sensitive and this
+// resource's contract is a case-insensitive substring, so filtering server-side
+// would silently narrow it.
 type PatchPolicyListResource struct {
-	client *proclassic.Client
+	client    *proclassic.Client
+	proClient *pro.Client
 }
 
 // Metadata sets the list resource type name.
@@ -52,15 +68,21 @@ func (r *PatchPolicyListResource) Metadata(ctx context.Context, req resource.Met
 	resp.TypeName = req.ProviderTypeName + "_pro_patch_policy"
 }
 
-// Configure wires the Jamf ProClassic client into the list resource via the shared
-// providerdata.ConfigureProClassic helper.
+// Configure wires both clients this list resource spans: the Pro client for the
+// v2 enumeration and the ProClassic client for the per-item read.
 func (r *PatchPolicyListResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_policy")
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_policy")
+	resp.Diagnostics.Append(proDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	r.client = client
+	r.proClient = proClient
 }
 
 // ListResourceConfigSchema describes the supported list filters.
@@ -75,14 +97,26 @@ func (r *PatchPolicyListResource) ListResourceConfigSchema(ctx context.Context, 
 
 // List executes the query and streams patch policy identities back to Terraform.
 //
-// The classic /patchpolicies list endpoint returns only id+name per item, so
-// when IncludeResource is requested (config generation) each policy is fetched
-// individually and hydrated through the shared Read state-builder with
-// includeUnmanaged=true, populating every wire-present section (general, scope,
-// user_interaction) so the generated config is complete rather than
-// identity-only.
+// The Pro v2 collection returns a summary view per policy (id, name, target
+// version, deployment method, deployment counts) and no scope or
+// user-interaction sections, so when IncludeResource is requested (config
+// generation) each policy is fetched individually through the ProClassic by-ID
+// read and hydrated through the shared Read state-builder with
+// includeUnmanaged=true, populating every wire-present section so the generated
+// config is complete rather than identity-only.
+//
+// A policy the v2 collection enumerated but the classic read cannot return is
+// dropped from the result set, because a result carrying no resource body
+// generates no configuration and the framework additionally reports it as a
+// provider bug. The drop is reported: every skipped policy is collected and one
+// trailing diagnostics-only result carries a warning naming them, so a
+// generated configuration is never silently short of the collection. That
+// matters more here than it did on the classic collection, because enumeration
+// and hydration no longer share an id space by construction — the v2 id is
+// taken on the wire-confirmed equality with the classic by-id path, and this
+// warning is what surfaces a policy where that equality does not hold.
 func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
-	if r.client == nil {
+	if r.client == nil || r.proClient == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				"Unconfigured Provider",
@@ -102,21 +136,12 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)
 	defer cancel()
 
-	// NOTE: only the *list* endpoints carry the SDK Deprecated marker (the spec
-	// points at /v2/patch-policies for listing); the by-ID CRUD funcs this
-	// resource otherwise uses are not deprecated. The classic list remains the
-	// only functional list surface, so it is intentionally used here.
-	resp, err := r.client.ListPatchPolicies(listCtx) //nolint:staticcheck // SA1019: classic /patchpolicies list intentionally used; only list endpoints are spec-deprecated
+	items, err := r.proClient.ListPatchPoliciesV2(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic("Unable to list Jamf Pro patch policies", err.Error()),
 		})
 		return
-	}
-
-	items := []proclassic.IDName{}
-	if resp != nil {
-		items = resp.PatchPolicies
 	}
 
 	filter := filters.ClassicFilterModel{}
@@ -131,6 +156,7 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 	}
 
 	results := make([]list.ListResult, 0, maxResults)
+	var skipped []skippedPatchPolicy
 
 	for _, s := range items {
 		if int64(len(results)) >= maxResults {
@@ -138,9 +164,9 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = helpers.DerefString(s.Name)
+		result.DisplayName = s.PolicyName
 
-		id := helpers.StringValueFromIntPtr(s.ID)
+		id := types.StringValue(s.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, patchPolicyIdentityModel{ID: id})...)
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
@@ -155,6 +181,11 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 				tflog.Warn(ctx, "Skipping Jamf Pro patch policy from generated config after per-item read failure", map[string]any{
 					"id":    id.ValueString(),
 					"error": err.Error(),
+				})
+				skipped = append(skipped, skippedPatchPolicy{
+					id:   id.ValueString(),
+					name: s.PolicyName,
+					err:  err,
 				})
 				continue
 			}
@@ -177,9 +208,10 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 		"name_substring": filter.NameSubstring.ValueString(),
 		"limit":          req.Limit,
 		"returned":       len(results),
+		"skipped":        len(skipped),
 	})
 
-	if len(results) == 0 {
+	if len(results) == 0 && len(skipped) == 0 {
 		stream.Results = list.NoListResults
 		return
 	}
@@ -190,10 +222,44 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 				return
 			}
 		}
+		if len(skipped) > 0 {
+			push(list.ListResult{
+				Diagnostics: diag.Diagnostics{
+					diag.NewWarningDiagnostic(
+						"Some Jamf Pro patch policies were left out of the results",
+						skippedPatchPoliciesWarningDetail(skipped),
+					),
+				},
+			})
+		}
 	}
 }
 
+// skippedPatchPolicy records a policy the Pro v2 collection enumerated but the
+// ProClassic by-id read could not return, so the omission can be reported once
+// at the end of the stream rather than per item.
+type skippedPatchPolicy struct {
+	id   string
+	name string
+	err  error
+}
+
+// skippedPatchPoliciesWarningDetail is the operator-facing detail for the
+// trailing warning. It names every skipped policy with the error that skipped
+// it, and points at the likeliest cause: the results are enumerated on Pro v2
+// and read back on ProClassic, so an id the classic path does not recognise is
+// the one failure a Terraform-visible message has to explain.
+func skippedPatchPoliciesWarningDetail(skipped []skippedPatchPolicy) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d patch policy/policies were listed by the Jamf Pro patch-policies collection but could not be read individually, so they carry no configuration and are not in the results:\n", len(skipped))
+	for _, s := range skipped {
+		fmt.Fprintf(&b, "  - %s (id %s): %s\n", s.name, s.id, s.err)
+	}
+	b.WriteString("\nEach policy is enumerated on the Pro v2 collection and read back on the ProClassic by-id path. Check that the API integration holds the patch-policies read permission, and that the policy still exists — a policy deleted between the two calls reports the same way.")
+	return b.String()
+}
+
 // patchPolicyName is the name accessor passed to filters.ApplyClassicFilter.
-func patchPolicyName(s proclassic.IDName) string {
-	return helpers.DerefString(s.Name)
+func patchPolicyName(s pro.PatchPolicyListView) string {
+	return s.PolicyName
 }

@@ -71,7 +71,7 @@ func (r *SelfServiceMacosSettingsResource) IdentitySchema(ctx context.Context, r
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Self Service settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Self Service settings are one record per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -120,8 +120,8 @@ func (r *SelfServiceMacosSettingsResource) ModifyPlan(ctx context.Context, req r
 // user-declared) "Saml" that the server will coerce away because login_method is planned
 // "NotRequired".
 func predictAuthTypeUnknown(loginMethod, plannedAuthType, configAuthType types.String) bool {
-	return !loginMethod.IsNull() && !loginMethod.IsUnknown() && loginMethod.ValueString() == "NotRequired" &&
-		!plannedAuthType.IsNull() && !plannedAuthType.IsUnknown() && plannedAuthType.ValueString() == "Saml" &&
+	return !loginMethod.IsNull() && !loginMethod.IsUnknown() && loginMethod.ValueString() == pro.SelfServiceLoginSettingsUserLoginLevelNotRequired &&
+		!plannedAuthType.IsNull() && !plannedAuthType.IsUnknown() && plannedAuthType.ValueString() == pro.SelfServiceLoginSettingsAuthTypeSaml &&
 		configAuthType.IsNull()
 }
 
@@ -129,10 +129,10 @@ func predictAuthTypeUnknown(loginMethod, plannedAuthType, configAuthType types.S
 func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Self Service for macOS app settings (Settings > Self Service > macOS). " +
-			"Singleton — one record per tenant. " +
-			"**Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: " +
+			"One record per tenant. " +
+			"A field you omit keeps its current Jamf Pro value, including on the first apply: " +
 			"this resource adopts the existing settings and only changes the fields you declare. " +
-			"`default_home_category_id` only applies when `default_landing_page = \"BROWSE\"` — under any other landing " +
+			"`default_home_category_id` only applies when `default_landing_page = \"BROWSE\"`. Under any other landing " +
 			"page Jamf Pro silently resets it to `-1` (All Items), so the provider rejects that combination at plan time. " +
 			"Import with `terraform import jamfplatform_pro_self_service_macos_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -156,7 +156,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			"install_location": schema.StringAttribute{
 				MarkdownDescription: "Path at which the Self Service app is installed (\"Install location\"), e.g. `/Applications`. " +
 					"The app filename (\"/ Self Service.app\") is appended by Jamf Pro and is not part of this value. " +
-					"Stored verbatim — no leading slash is added for you. " +
+					"Stored verbatim; no leading slash is added for you. " +
 					"Required to be non-empty when `install_automatically` is `true`. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
@@ -166,19 +166,19 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				},
 			},
 			"login_method": schema.StringAttribute{
-				MarkdownDescription: "Self Service user login behavior — the UI's \"Enable Self Service user login\" checkbox and " +
-					"\"Login method\" dropdown map to this single value. " +
-					"`NotRequired` — user login is disabled; `Anonymous` — users may log in to view items available to them " +
-					"(login optional); `Required` — users must log in. " +
+				MarkdownDescription: "Self Service user login behavior. The UI's \"Enable Self Service user login\" checkbox and " +
+					"\"Login method\" dropdown both map to this single value. " +
+					"`NotRequired` disables user login. `Anonymous` makes login optional: users may log in to view items " +
+					"available to them. `Required` forces users to log in. " +
 					"Setting `NotRequired` while the authentication type is `Saml` makes Jamf Pro revert it to `Basic` " +
 					"and disable \"Single Sign-On for Self Service for macOS\" in the tenant's Single Sign-On settings " +
-					"(`jamfplatform_pro_sso_settings.sso_for_macos_self_service_enabled`) — the one write on this page " +
+					"(`jamfplatform_pro_sso_settings.sso_for_macos_self_service_enabled`), the one write on this page " +
 					"that reaches outside it. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("NotRequired", "Anonymous", "Required"),
+					stringvalidator.OneOf(pro.SelfServiceLoginSettingsUserLoginLevelValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -186,17 +186,17 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			},
 			"authentication_type": schema.StringAttribute{
 				MarkdownDescription: "Login type used when asking users to log in (\"Authentication type\"). " +
-					"`Basic` — Directory Service account or Jamf Pro user account; `Saml` — Single Sign-On. " +
+					"`Basic` is a Directory Service account or Jamf Pro user account. `Saml` is Single Sign-On. " +
 					"Setting `Saml` requires \"Single Sign-On for Self Service for macOS\" to be enabled in the tenant's " +
 					"Single Sign-On settings (`jamfplatform_pro_sso_settings` attribute `sso_for_macos_self_service_enabled`); " +
 					"Jamf Pro otherwise rejects the write (PREREQUISITE_NOT_MET). " +
-					"Requires `login_method` `Anonymous` or `Required` — disabling user login makes the server revert this " +
-					"to `Basic` **and switch that Single Sign-On toggle off** (wire-probed; see `login_method`). " +
+					"Requires `login_method` `Anonymous` or `Required`. Disabling user login makes Jamf Pro revert this " +
+					"to `Basic` **and switch that Single Sign-On toggle off** (see `login_method`). " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Basic", "Saml"),
+					stringvalidator.OneOf(pro.SelfServiceLoginSettingsAuthTypeValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -250,12 +250,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(
-						pro.SelfServiceInteractionSettingsDefaultLandingPageHome,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageBrowse,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageHistory,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageNotifications,
-					),
+					stringvalidator.OneOf(pro.SelfServiceInteractionSettingsDefaultLandingPageValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -264,7 +259,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			"default_home_category_id": schema.Int64Attribute{
 				MarkdownDescription: "ID of the category shown when `default_landing_page = \"BROWSE\"` (Landing page > Browse > " +
 					"\"Category\"). `-1` means All Items. Reference a category with `jamfplatform_pro_category`. " +
-					"Only applies under `BROWSE` — with any other landing page Jamf Pro silently resets the value to `-1`, " +
+					"Only applies under `BROWSE`: with any other landing page Jamf Pro silently resets the value to `-1`, " +
 					"so a value other than `-1` requires `default_landing_page = \"BROWSE\"` to be declared alongside it. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,

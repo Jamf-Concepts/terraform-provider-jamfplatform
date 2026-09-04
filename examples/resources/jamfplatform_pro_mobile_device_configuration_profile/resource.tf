@@ -1,4 +1,4 @@
-# Minimal mobile device configuration profile — name + payload only.
+# Minimal mobile device configuration profile: name + payload only.
 resource "jamfplatform_pro_mobile_device_configuration_profile" "minimal" {
   general = {
     name     = "Minimal Restrictions Profile"

@@ -98,7 +98,7 @@ func MobileScopeAttributes(opts MobileScopeOptions) map[string]schema.Attribute 
 
 	return map[string]schema.Attribute{
 		"targets": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs.",
+			MarkdownDescription: "The audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs.",
 			Optional:            true,
 			Attributes:          targets,
 		},

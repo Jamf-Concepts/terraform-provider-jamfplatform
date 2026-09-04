@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_configuration_profile Data Source - 
 subcategory: ""
 description: |-
   Look up a mobile device configuration profile by ID or by exact name. Exactly one of id or name must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the jamfplatform_pro_mobile_device_configuration_profile resource.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:ios-configuration-profiles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Configuration profiles | Read | `configuration-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (Data Source)
 
 Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the `jamfplatform_pro_mobile_device_configuration_profile` resource.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:ios-configuration-profiles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Configuration profiles | Read | `configuration-profiles` |
 
 ## Example Usage
 
@@ -56,7 +56,7 @@ output "category_name" {
 - `category_name` (String) Category display name.
 - `description` (String) Profile description.
 - `distribution_method` (String) How the profile reaches devices.
-- `level` (String) Delivery level — `Device Level` or `User Level`.
+- `level` (String) Delivery level. Either `Device Level` or `User Level`.
 - `redeploy_days_before_certificate_expires` (Number) Days before certificate expiry to trigger redeployment.
 - `redeploy_on_update` (String) Re-deploy policy on update.
 - `site_id` (String) Site ID. `-1` means no site.

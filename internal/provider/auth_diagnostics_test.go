@@ -15,7 +15,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
 
-const testBaseURL = "https://us.apigw.jamf.com"
+const testBaseURL = "https://us.api.jamfcloud.com"
 
 // stubEgressIP swaps the egress lookup for the duration of a test so the blocked
 // branch is exercised without touching the network.
@@ -196,5 +196,119 @@ func TestValidateCredentials_JSONRejectionHasNoSentinel(t *testing.T) {
 	stubEgressIP(t, "203.0.113.10")
 	if summary, _ := authFailureDiagnostic(server.URL, err); summary != "Authentication Failed" {
 		t.Errorf("summary = %q, want the credential-failure summary", summary)
+	}
+}
+
+// End-to-end guard on the 404 branch, and the reason it exists: the SDK raises
+// the same sentinel here as it does for a network block, so without the status
+// check this renders as "contact Jamf Support about a WAF" for what is a typo in
+// base_url. Wire shape taken from the GA gateway, which answers a 404 with
+// "404 page not found" as plain text.
+func TestValidateCredentials_NotFoundBlamesBaseURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("404 page not found\n"))
+	}))
+	t.Cleanup(server.Close)
+
+	client := jamfplatform.NewClient(server.URL+"/api", "test-id", "test-secret")
+	err := client.ValidateCredentials(context.Background())
+	if err == nil {
+		t.Fatal("ValidateCredentials succeeded against a 404")
+	}
+
+	stubEgressIP(t, "203.0.113.10")
+	summary, detail := authFailureDiagnostic(server.URL+"/api", err)
+
+	if summary != "Jamf Platform Base URL Not Found" {
+		t.Fatalf("summary = %q, want the base-URL summary", summary)
+	}
+	if !strings.Contains(detail, "api.jamfcloud.com") {
+		t.Errorf("detail should name the GA gateway roots, got:\n%s", detail)
+	}
+	if !strings.Contains(detail, server.URL+"/api") {
+		t.Errorf("detail should echo the configured base URL, got:\n%s", detail)
+	}
+	// The two diagnostics this one is carved out of. Either wording appearing here
+	// means the branch has collapsed back into them.
+	if strings.Contains(detail, "Egress IP") || strings.Contains(detail, "Jamf Support") {
+		t.Errorf("a wrong base URL must not raise the network-block support block, got:\n%s", detail)
+	}
+	if strings.Contains(detail, "verify your credentials") {
+		t.Errorf("a wrong base URL must not blame the credentials, got:\n%s", detail)
+	}
+}
+
+// A 404 whose body is JSON is Jamf reporting something about the request, not
+// the gateway failing to route it, so it must stay a credential failure.
+func TestAuthFailureDiagnostic_JSONNotFoundIsNotABaseURLProblem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"invalid_client"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := jamfplatform.NewClient(server.URL, "test-id", "test-secret")
+	err := client.ValidateCredentials(context.Background())
+	if err == nil {
+		t.Fatal("ValidateCredentials succeeded against a JSON 404")
+	}
+
+	stubEgressIP(t, "203.0.113.10")
+	if summary, _ := authFailureDiagnostic(server.URL, err); summary != "Authentication Failed" {
+		t.Errorf("summary = %q, want the credential-failure summary for a JSON 404", summary)
+	}
+}
+
+// The network-block branch must keep its own status codes. A 403 from a WAF is
+// the canonical block and must not be captured by the 404 carve-out.
+func TestAuthFailureDiagnostic_NonNotFoundSentinelStaysBlocked(t *testing.T) {
+	stubEgressIP(t, "203.0.113.10")
+
+	err := fmt.Errorf("%w: 403 Forbidden <html>nginx</html>", jamfplatform.ErrUnexpectedResponse)
+	if summary, _ := authFailureDiagnostic(testBaseURL, err); summary != "Jamf Platform API Request Blocked" {
+		t.Errorf("summary = %q, want the blocked-request summary", summary)
+	}
+}
+
+func TestBaseURLPathWarning(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		warn    bool
+	}{
+		{"GA gateway root", "https://eu.api.jamfcloud.com", false},
+		{"GA gateway root with trailing slash", "https://eu.api.jamfcloud.com/", false},
+		{"retired gateway root", "https://us.apigw.jamf.com", false},
+		{"GA gateway with the dropped /api segment", "https://eu.api.jamfcloud.com/api", true},
+		{"retired gateway with /api", "https://us.apigw.jamf.com/api/", true},
+		{"staging host with /api", "https://us.stage.apigw.jamfnebula.com/api", true},
+		// A caller's own reverse proxy mounting Jamf beneath a prefix is supported
+		// by the SDK, so the host is what decides — not the presence of a path.
+		{"customer reverse proxy with a prefix", "https://gateway.internal.example.com/jamf", false},
+		{"customer reverse proxy at root", "https://gateway.internal.example.com", false},
+		{"port does not defeat the host match", "https://eu.api.jamfcloud.com:8443/api", true},
+		{"host case does not defeat the match", "https://EU.API.JAMFCLOUD.COM/api", true},
+		{"unparseable input stays silent", "://nonsense", false},
+		{"empty input stays silent", "", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			summary, detail := baseURLPathWarning(test.baseURL)
+			if test.warn {
+				if summary == "" {
+					t.Fatalf("baseURLPathWarning(%q) stayed silent, want a warning", test.baseURL)
+				}
+				if !strings.Contains(detail, "/auth/token") {
+					t.Errorf("detail should name the endpoint that will 404, got:\n%s", detail)
+				}
+				return
+			}
+			if summary != "" {
+				t.Fatalf("baseURLPathWarning(%q) warned %q, want silence", test.baseURL, summary)
+			}
+		})
 	}
 }

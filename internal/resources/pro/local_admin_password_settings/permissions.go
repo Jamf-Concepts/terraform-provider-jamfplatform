@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the LAPS settings resource's CRUD
 // path calls. It mirrors the "SDK endpoints used" block in crud.go and drives
-// the "Required Jamf privileges" table appended to the resource
+// the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry.
@@ -20,7 +20,7 @@ var resourceSDKMethods = []string{
 	"UpdateLocalAdminPasswordSettingsV2",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the LAPS settings resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -31,7 +31,7 @@ var dataSourceSDKMethods = []string{
 	"GetLocalAdminPasswordSettingsV2",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the LAPS settings data source, appended to its
 // MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)

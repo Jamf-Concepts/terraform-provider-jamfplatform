@@ -8,8 +8,9 @@ output "device_group_example_by_id" {
 
 # `jamf_pro_id` is the numeric Jamf Pro classic ID resolved from the Pro
 # /v2/groups endpoint. Use it from classic-API scope blocks (policies,
-# configuration profiles, restricted software). Null when the API client lacks
-# the `Read Groups` privilege.
+# configuration profiles, restricted software). Null when the API integration
+# lacks the Inventory → Device groups → Read permission in Jamf Account (API
+# capability `device-groups:read`).
 output "device_group_example_jamf_pro_id" {
   value = data.jamfplatform_device_group.example_by_id.jamf_pro_id
 }

@@ -443,8 +443,56 @@ func mixedFormGatewaysConfig(suffix, tenantID string) string {
 // Expected-error patterns for the plan- and apply-time refusals. Terraform wraps
 // diagnostic text at roughly 80 columns, so each pattern matches a short phrase
 // that cannot be split across a line break.
+// TestAccDataSource_SecurityCloudZtnaGroupedGateway_EmptyIDRefused pins the guard for the
+// selector mistake ExactlyOneOf cannot catch.
+//
+// A set-but-empty `id` counts as configured, so `id = var.x` with an unset variable
+// satisfies the config validator and then falls through to whichever lookup is
+// left. Without the guard the name branch runs with a null name, and the operator
+// gets an SDK-internal string about an attribute they never set.
+func TestAccDataSource_SecurityCloudZtnaGroupedGateway_EmptyIDRefused(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_ztna_grouped_gateway" "empty_id" {
+						id = ""
+					}
+				`,
+				ExpectError: regexpEmptyID,
+			},
+		},
+	})
+}
+
+// TestAccDataSource_SecurityCloudZtnaGroupedGateway_NameNotFoundIsWritten pins that a name
+// matching nothing produces a written diagnostic rather than the resolver's
+// synthetic 404 body, which reads as an internal error and names no remedy.
+func TestAccDataSource_SecurityCloudZtnaGroupedGateway_NameNotFoundIsWritten(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_ztna_grouped_gateway" "missing" {
+						name = "tf-acc-no-such-ztna_grouped_gateway-zzz"
+					}
+				`,
+				ExpectError: regexpNameNotFound,
+			},
+		},
+	})
+}
+
 var (
 	regexpMixedForms            = regexp.MustCompile(`Member gateways have different forms`)
 	regexpInvalidAttributeValue = regexp.MustCompile(`Invalid Attribute Value Match`)
 	regexpTooFewMembers         = regexp.MustCompile(`Invalid Attribute Value`)
+	regexpEmptyID               = regexp.MustCompile(`ID is empty`)
+	regexpNameNotFound          = regexp.MustCompile(`on this tenant is named`)
 )

@@ -3,33 +3,33 @@
 page_title: "jamfplatform_pro_gsx_connection_settings Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Push Certificates | `read:pro:gsx-connection` |
-  | Read GSX Connection | `read:pro:push-certificates` |
+  Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). One record per tenant. Jamf Pro never returns the token or keystore secrets, so they are not exposed here.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | APNS certificate | Read | `push-certificates` |
+  | Infrastructure | Apple GSX connection | Read | `gsx-connection` |
 ---
 
 # jamfplatform_pro_gsx_connection_settings (Data Source)
 
-Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
+Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). One record per tenant. Jamf Pro never returns the token or keystore secrets, so they are not exposed here.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Push Certificates | `read:pro:gsx-connection` |
-| Read GSX Connection | `read:pro:push-certificates` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | APNS certificate | Read | `push-certificates` |
+| Infrastructure | Apple GSX connection | Read | `gsx-connection` |
 
 ## Example Usage
 
 ```terraform
 # Read the current Jamf Pro GSX Connection settings. The token and keystore
-# secrets are never returned by the API and are not exposed here.
+# secrets are never returned by Jamf Pro and are not exposed here.
 data "jamfplatform_pro_gsx_connection_settings" "current" {}
 
 output "gsx_enabled" {

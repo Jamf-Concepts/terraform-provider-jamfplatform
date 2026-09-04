@@ -7,7 +7,6 @@ package automated_device_enrollment_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -24,11 +23,11 @@ import (
 // jamfplatform_pro_automated_device_enrollment list resource via the
 // `terraform query` workflow. The Pro `/v1/device-enrollments` list endpoint
 // returns the full instance shape per row, so include_resource = true does
-// not trigger an N+1 follow-up GET. Gated on JAMFPLATFORM_ADE_TOKEN to keep
+// not trigger an N+1 follow-up GET. Gated on JAMFPLATFORM_ACC_PRO_DEP_TOKEN to keep
 // CI deterministic — provisioning the source resource needs a real
 // Apple-issued server token.
 func TestAccListResource_ProAutomatedDeviceEnrollment_Basic(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping ADE list resource acceptance test", adeTokenEnvVar)
 	}

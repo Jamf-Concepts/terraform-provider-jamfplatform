@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_scripts Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Search Jamf Pro scripts using optional RSQL filters.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Scripts | `read:pro:scripts` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Scripts | Read | `scripts` |
 ---
 
 # jamfplatform_pro_scripts (Data Source)
 
 Search Jamf Pro scripts using optional RSQL filters.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Scripts | `read:pro:scripts` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Scripts | Read | `scripts` |
 
 ## Example Usage
 
@@ -67,7 +67,7 @@ output "before_run_scripts" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `info`, `notes`, `priority`, `categoryId`, `categoryName`, `parameter4`, `parameter5`, `parameter6`, `parameter7`, `parameter8`, `parameter9`, `parameter10`, `parameter11`, `osRequirements`, `scriptContents`.
 
 Optional:

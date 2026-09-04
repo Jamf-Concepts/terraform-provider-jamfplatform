@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_computer_prestage_enrollment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at Settings → Computer Management → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
-  | Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
-  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
-  | Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
+  Manages a Jamf Pro Computer PreStage Enrollment: the macOS Automated Device Enrollment (ADE) record exposed at Settings → Computer Management → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource. Serial numbers must exist on the underlying ADE token, or Jamf Pro rejects the assignment.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Resource)
 
-Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
+Manages a Jamf Pro Computer PreStage Enrollment: the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource. Serial numbers must exist on the underlying ADE token, or Jamf Pro rejects the assignment.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
-| Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
-| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
-| Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 
 ## Example Usage
 
@@ -80,7 +74,7 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
 
 - `auto_advance_setup` (Boolean) **"Auto Advance Setup"** in the Jamf Pro admin UI.
 - `device_enrollment_program_instance_id` (String) ID of the Automated Device Enrollment (ADE) instance that backs this PreStage. Required.
-- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Required. Must not be blank.
+- `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Must not be blank.
 - `enable_device_based_activation_lock` (Boolean) **"Enable Device-Based Activation Lock"** in the Jamf Pro admin UI.
 - `install_profiles_during_setup` (Boolean) When `true`, Jamf Pro installs the configuration profiles listed in `prestage_installed_profile_ids` during Setup Assistant.
 - `keep_existing_location_information` (Boolean) **"Keep Existing Location Information"** in the Jamf Pro admin UI.
@@ -94,32 +88,32 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `account_settings` (Attributes) **"Account Settings"** in the Jamf Pro admin UI. Supply the block (even empty: `account_settings = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true` — Jamf Pro rejects mixed states. (see [below for nested schema](#nestedatt--account_settings))
-- `anchor_certificates` (List of String) Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format; Jamf Pro rejects malformed entries by silently discarding the entire change — the provider catches this and surfaces a hard error.
+- `account_settings` (Attributes) **"Account Settings"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `account_settings = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true`; Jamf Pro rejects mixed states. (see [below for nested schema](#nestedatt--account_settings))
+- `anchor_certificates` (List of String) Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format. Jamf Pro rejects malformed entries by silently discarding the whole change; the provider catches that and surfaces a hard error.
 - `authentication_prompt` (String) **"Authentication Prompt"** message shown when `require_authentication = true`.
 - `custom_package_distribution_point_id` (String) Distribution point ID used to serve `custom_package_ids`. Sentinels: `"-1"` = none, `"-2"` = cloud distribution point, positive integer = specific DP ID.
 - `custom_package_ids` (Set of String) Set of custom package IDs to install during Setup Assistant. Paired with `custom_package_distribution_point_id`.
 - `default_prestage` (Boolean) When true, this PreStage becomes the tenant default. Jamf Pro enforces at most one default PreStage; setting this to `true` may cause another PreStage to be silently demoted.
-- `department` (String) **"Department"** label shown during Setup Assistant. Free-form text; *not* the department ID (`location_information.department_id`).
+- `department` (String) **"Department"** label shown during Setup Assistant. Free-form text, *not* the department ID (`location_information.department_id`).
 - `enable_recovery_lock` (Boolean) **"Enable Recovery Lock"** in the Jamf Pro admin UI.
-- `enrollment_customization_id` (String) Enrollment customization ID to apply during Setup Assistant. Sentinel `"0"` = no customization (note: `"0"`, not `"-1"`).
+- `enrollment_customization_id` (String) Enrollment customization ID to apply during Setup Assistant. Sentinel `"0"` = no customization; it is `"0"`, not `"-1"`.
 - `enrollment_site_id` (String) Site ID applied to devices enrolled through this PreStage. Sentinel `"-1"` = no site.
 - `language` (String) Default Setup Assistant language (ISO-639 code, e.g. `"en"`).
-- `location_information` (Attributes) **"User and Location Information"** in the Jamf Pro admin UI. Supply the block (even empty: `location_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--location_information))
+- `location_information` (Attributes) **"User and Location Information"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `location_information = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--location_information))
 - `minimum_os_specific_version` (String) Specific minimum macOS version (e.g. `"14.5"`). Used only when `prestage_minimum_os_target_version_type = "MINIMUM_OS_SPECIFIC_VERSION"`.
-- `platform_sso_app_bundle_id` (String) Bundle identifier of the **unattended** Platform SSO application (e.g. `"com.okta.mobile"`). Mutually exclusive with `psso_config_profile_id` (attended Platform SSO).
+- `platform_sso_app_bundle_id` (String) Bundle identifier of the unattended Platform SSO application, for example `"com.okta.mobile"`. Mutually exclusive with `psso_config_profile_id`, which configures attended Platform SSO.
 - `prestage_installed_profile_ids` (Set of String) Set of configuration profile IDs to install during Setup Assistant when `install_profiles_during_setup = true`.
 - `prestage_minimum_os_target_version_type` (String) Minimum-OS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version`.
-- `psso_config_profile_id` (String) Configuration profile ID for **attended** Platform SSO. Mutually exclusive with `platform_sso_app_bundle_id` (unattended Platform SSO), and incompatible with an enrollment customization (`enrollment_customization_id` must be `"0"`). Sentinel `"-1"` = none.
+- `psso_config_profile_id` (String) Configuration profile ID for attended Platform SSO. Mutually exclusive with `platform_sso_app_bundle_id`, which configures unattended Platform SSO. Incompatible with an enrollment customization, so `enrollment_customization_id` must be `"0"`. Sentinel `"-1"` means none.
 - `psso_enabled` (Boolean) Whether Platform SSO is enabled for this PreStage.
-- `purchasing_information` (Attributes) **"Purchasing Information"** in the Jamf Pro admin UI. Supply the block (even empty: `purchasing_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--purchasing_information))
+- `purchasing_information` (Attributes) **"Purchasing Information"** in the Jamf Pro admin UI. Supply the block to manage this section, even empty as `purchasing_information = {}`. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--purchasing_information))
 - `recovery_lock_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Recovery Lock plaintext password. Only meaningful when `recovery_lock_password_type = "MANUAL"` AND `enable_recovery_lock = true`. WriteOnly: the value is sent to Jamf Pro but never persisted in Terraform state. Bump `recovery_lock_password_wo_version` to force the provider to re-send the current value.
 - `recovery_lock_password_type` (String) How the Recovery Lock password is provisioned. `"MANUAL"` = supply `recovery_lock_password`; `"RANDOM"` = Jamf Pro generates per-device passwords.
 - `recovery_lock_password_wo_version` (Number) Rotation trigger for the WriteOnly `recovery_lock_password`. Bump to force the provider to re-send the current password value.
 - `region` (String) Default Setup Assistant region (ISO-3166 code, e.g. `"US"`).
 - `rotate_recovery_lock_password` (Boolean) **"Rotate Recovery Lock Password"** in the Jamf Pro admin UI.
 - `scope_serial_numbers` (Set of String) Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. The full set is rewritten on every change. Jamf Pro enforces single-PreStage-per-serial: assigning a serial that is currently scoped to a different PreStage is rejected with a scope-conflict error and there is no transparent reassignment. To move a serial between PreStages, first remove it from the holding PreStage (e.g. in the same `terraform apply` with an explicit `depends_on` ordering or in two separate applies).
-- `skip_setup_items` (Attributes) Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane shown in the Jamf Pro admin UI's *Skip Setup Items* checklist; `true` skips the pane. Supply the block (even empty: `skip_setup_items = {}`) to manage this section — omitting it produces drift on the next refresh. (see [below for nested schema](#nestedatt--skip_setup_items))
+- `skip_setup_items` (Attributes) Setup Assistant panes to skip during enrolment. Each attribute corresponds to a pane in the Jamf Pro admin UI's *Skip Setup Items* checklist, and `true` skips that pane. Supply the block to manage this section, even empty as `skip_setup_items = {}`. Omitting it produces drift on the next refresh. (see [below for nested schema](#nestedatt--skip_setup_items))
 - `support_email_address` (String) **"Support Email Address"** in the Jamf Pro admin UI.
 - `support_phone_number` (String) **"Support Phone Number"** in the Jamf Pro admin UI.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

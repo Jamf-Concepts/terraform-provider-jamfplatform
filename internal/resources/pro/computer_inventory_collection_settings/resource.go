@@ -70,7 +70,7 @@ func (r *ComputerInventoryCollectionSettingsResource) IdentitySchema(ctx context
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — computer inventory collection settings are one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Computer inventory collection settings are one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -103,8 +103,8 @@ func optionalComputedBoolValidated(desc string, validators ...validator.Bool) sc
 func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). " +
-			"Singleton — one record per tenant. Backed by the V2 API. " +
-			"`application_search_paths` covers custom **application** search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to `APP`). " +
+			"One record per tenant. " +
+			"`application_search_paths` covers custom application search paths only. Jamf Pro does not expose Fonts or Plug-ins custom paths here, and the scope is fixed to `APP`. " +
 			"Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -135,7 +135,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context
 
 			// Read-only server-managed preference (no admin-UI control)
 			"include_software_id": schema.BoolAttribute{
-				MarkdownDescription: "Whether the inventory submission includes a software identifier. Server-managed; exposed read-only.",
+				MarkdownDescription: "Whether the inventory submission includes a software identifier. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
@@ -143,9 +143,9 @@ func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context
 			},
 
 			"application_search_paths": schema.SetAttribute{
-				MarkdownDescription: "Custom **application** search paths used when collecting applications (Software → Applications → Custom Search Paths). " +
-					"Built-in paths (e.g. `/Applications/`, `/System/Applications/`) are managed by Jamf Pro and are not included here. " +
-					"Changing an entry replaces it (the API has no path-update endpoint). " +
+				MarkdownDescription: "Custom application search paths used when collecting applications (Software → Applications → Custom Search Paths). " +
+					"Built-in paths such as `/Applications/` and `/System/Applications/` are managed by Jamf Pro and are not included here. " +
+					"Changing an entry replaces it, because Jamf Pro cannot update a path in place. " +
 					"Omit the attribute to leave the tenant's custom paths unmanaged; set it to `[]` to remove all custom application paths.",
 				ElementType: types.StringType,
 				Optional:    true,

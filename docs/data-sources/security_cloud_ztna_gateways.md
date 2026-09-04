@@ -3,25 +3,25 @@
 page_title: "jamfplatform_security_cloud_ztna_gateways Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Jamf's own shared gateways are a separate catalogue, read with jamfplatform_security_cloud_ztna_shared_gateways.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments. Filter the result in Terraform. Shared gateways are a separate catalogue, read with jamfplatform_security_cloud_ztna_shared_gateways.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_gateways (Data Source)
 
-Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments — filter the result in Terraform. Jamf's own shared gateways are a separate catalogue, read with `jamfplatform_security_cloud_ztna_shared_gateways`.
+Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this data source takes no search arguments. Filter the result in Terraform. Shared gateways are a separate catalogue, read with `jamfplatform_security_cloud_ztna_shared_gateways`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 
@@ -73,7 +73,7 @@ Optional:
 Read-Only:
 
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--gateways--contact))
-- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway.
+- `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf Security Cloud provisioned for a dedicated internet gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway.
 - `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
@@ -123,7 +123,7 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_domain_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf Security Cloud presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
 
 
@@ -155,5 +155,5 @@ Read-Only:
 
 Read-Only:
 
-- `state` (String) Overall gateway state.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the gateway is not enabled.
 - `tunnel_state` (String) IPsec tunnel health.

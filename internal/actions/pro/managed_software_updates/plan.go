@@ -36,27 +36,30 @@ var _ action.Action = (*PlanAction)(nil)
 var _ action.ActionWithConfigure = (*PlanAction)(nil)
 var _ action.ActionWithConfigValidators = (*PlanAction)(nil)
 
-// Write-accepted enum subsets (wire-probed 2026-06-13). UNKNOWN is excluded from both:
-// versionType=UNKNOWN is wire-rejected (400) and updateAction=UNKNOWN is degenerate.
+// Write-accepted enum subsets (wire-probed 2026-06-13), keyed on the
+// PlanConfigurationPost vocabularies — the type this action actually posts.
+//
+// updateActions and versionTypes are deliberately narrower than the generated
+// sets, which each also carry UNKNOWN: versionType=UNKNOWN is wire-rejected
+// (400) and updateAction=UNKNOWN is degenerate. The sets are curated; the
+// spellings are the SDK's. objectTypes matches its generated set exactly, so it
+// calls the helper.
 var (
 	updateActions = []string{
-		"DOWNLOAD_ONLY",
-		"DOWNLOAD_INSTALL",
-		"DOWNLOAD_INSTALL_ALLOW_DEFERRAL",
-		"DOWNLOAD_INSTALL_RESTART",
-		"DOWNLOAD_INSTALL_SCHEDULE",
+		pro.PlanConfigurationPostUpdateActionDownloadOnly,
+		pro.PlanConfigurationPostUpdateActionDownloadInstall,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallAllowDeferral,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallRestart,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallSchedule,
 	}
 	versionTypes = []string{
-		"LATEST_MAJOR",
-		"LATEST_MINOR",
-		"LATEST_ANY",
-		"SPECIFIC_VERSION",
-		"CUSTOM_VERSION",
+		pro.PlanConfigurationPostVersionTypeLatestMajor,
+		pro.PlanConfigurationPostVersionTypeLatestMinor,
+		pro.PlanConfigurationPostVersionTypeLatestAny,
+		pro.PlanConfigurationPostVersionTypeSpecificVersion,
+		pro.PlanConfigurationPostVersionTypeCustomVersion,
 	}
-	objectTypes = []string{
-		"COMPUTER_GROUP",
-		"MOBILE_DEVICE_GROUP",
-	}
+	objectTypes = pro.PlanGroupPostObjectTypeValues()
 )
 
 // PlanAction submits a Managed Software Updates plan targeting a group.
@@ -111,9 +114,9 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 				MarkdownDescription: "The install action to take. One of: " +
 					"`DOWNLOAD_ONLY` (download to devices only), " +
 					"`DOWNLOAD_INSTALL` (download and install), " +
-					"`DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer — see `max_deferrals`), " +
+					"`DOWNLOAD_INSTALL_ALLOW_DEFERRAL` (download, install, and allow the user to defer; see `max_deferrals`), " +
 					"`DOWNLOAD_INSTALL_RESTART` (download, install, and restart), " +
-					"`DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install — see `force_install_local_date_time`).",
+					"`DOWNLOAD_INSTALL_SCHEDULE` (download and schedule the install; see `force_install_local_date_time`).",
 				Validators: []validator.String{
 					stringvalidator.OneOf(updateActions...),
 				},
@@ -124,8 +127,8 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 					"`LATEST_ANY` (latest version each device is eligible for), " +
 					"`LATEST_MAJOR` (latest major version), " +
 					"`LATEST_MINOR` (latest minor version), " +
-					"`SPECIFIC_VERSION` (a specific OS version — set `specific_version`), " +
-					"`CUSTOM_VERSION` (a custom OS version — set `specific_version`).",
+					"`SPECIFIC_VERSION` (a specific OS version; set `specific_version`), " +
+					"`CUSTOM_VERSION` (a custom OS version; set `specific_version`).",
 				Validators: []validator.String{
 					stringvalidator.OneOf(versionTypes...),
 				},
@@ -140,7 +143,7 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 			"build_version": actionschema.StringAttribute{
 				Optional: true,
 				MarkdownDescription: "A specific OS build to enforce, paired with `specific_version`. " +
-					"Only valid when `version_type` is `CUSTOM_VERSION` — Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.",
+					"Only valid when `version_type` is `CUSTOM_VERSION`. Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},

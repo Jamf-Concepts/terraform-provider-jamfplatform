@@ -3,8 +3,8 @@ data "jamfplatform_pro_supervision_identity" "by_id" {
   id = "1"
 }
 
-# Or look up by display name. Display names are not required to be unique; this
-# errors if more than one identity shares the name — use id to disambiguate.
+# Or look up by display name. Display names are not required to be unique. This
+# errors if more than one identity shares the name; use id to disambiguate.
 data "jamfplatform_pro_supervision_identity" "by_name" {
   display_name = "Apple Configurator Identity"
 }

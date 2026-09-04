@@ -3,27 +3,25 @@
 page_title: "jamfplatform_pro_self_service_plus_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service | `read:pro:self-service` |
-  | Update Self Service | `update:pro:self-service` |
+  Manages Jamf Pro Self Service Plus settings. One record per tenant. Import with terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read, Update | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_plus_settings (Resource)
 
-Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`.
+Manages Jamf Pro Self Service Plus settings. One record per tenant. Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service | `read:pro:self-service` |
-| Update Self Service | `update:pro:self-service` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read, Update | `self-service` |
 
 ## Example Usage
 

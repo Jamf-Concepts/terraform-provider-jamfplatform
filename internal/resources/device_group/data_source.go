@@ -45,7 +45,7 @@ func (d *DeviceGroupDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema sets the Terraform schema for the data source.
 func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access." + dataSourcePrivileges,
+		MarkdownDescription: "Looks up a Jamf device group by ID. Requires **Device Group Inventory API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Device group Platform ID to query.",
@@ -54,7 +54,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 			"jamf_pro_id": schema.StringAttribute{
 				// Wire source: pro/v2 groups lookup, bridging the Platform group UUID to
 				// the numeric Jamf Pro ID that scope blocks require.
-				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
+				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group: policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
 				Computed:            true,
 			},
 			"name": schema.StringAttribute{
@@ -83,7 +83,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				ElementType:         types.StringType,
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Smart-group criteria returned by the API.",
+				MarkdownDescription: "Smart-group criteria returned by the platform.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

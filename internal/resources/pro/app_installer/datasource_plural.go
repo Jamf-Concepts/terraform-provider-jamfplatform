@@ -145,7 +145,7 @@ func (d *AppInstallersDataSource) Read(ctx context.Context, req datasource.ReadR
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	entries, err := d.client.ListAppInstallerDeploymentsV1(readCtx)
+	entries, err := d.client.ListAppInstallerDeploymentsV1(readCtx, nil, "")
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list App Installer deployments", err.Error())
 		return
@@ -162,7 +162,7 @@ func (d *AppInstallersDataSource) Read(ctx context.Context, req datasource.ReadR
 // model, keeping only deployments whose name contains nameSubstring
 // (case-insensitive) when set. The slice is always non-nil so an empty result
 // serialises as an empty list.
-func FilterAndMapDeployments(entries []pro.AppInstallerDeploymentListEntry, nameSubstring types.String) []DeploymentModel {
+func FilterAndMapDeployments(entries []pro.AppTitleDeploymentSummary, nameSubstring types.String) []DeploymentModel {
 	out := make([]DeploymentModel, 0, len(entries))
 	substr := ""
 	if helpers.IsConfiguredValue(nameSubstring) {
@@ -178,7 +178,7 @@ func FilterAndMapDeployments(entries []pro.AppInstallerDeploymentListEntry, name
 }
 
 // mapDeployment projects one expanded list entry into the model.
-func mapDeployment(e pro.AppInstallerDeploymentListEntry) DeploymentModel {
+func mapDeployment(e pro.AppTitleDeploymentSummary) DeploymentModel {
 	m := DeploymentModel{
 		ID:             types.StringValue(e.ID),
 		Name:           types.StringValue(e.Name),
@@ -189,9 +189,9 @@ func mapDeployment(e pro.AppInstallerDeploymentListEntry) DeploymentModel {
 	if e.App != nil {
 		m.App = &AppModel{
 			ID:                  types.StringValue(e.App.ID),
-			BundleID:            types.StringValue(e.App.BundleID),
-			IconURL:             types.StringValue(e.App.IconURL),
-			LatestVersion:       types.StringValue(e.App.LatestVersion),
+			BundleID:            helpers.StringPointerValueOrNull(e.App.BundleID),
+			IconURL:             helpers.StringPointerValueOrNull(e.App.IconURL),
+			LatestVersion:       helpers.StringPointerValueOrNull(e.App.LatestVersion),
 			SelectedVersion:     types.StringValue(e.App.SelectedVersion),
 			DeployedVersion:     types.StringValue(e.App.DeployedVersion),
 			MediaSourceType:     types.StringValue(e.App.MediaSourceType),
@@ -199,9 +199,15 @@ func mapDeployment(e pro.AppInstallerDeploymentListEntry) DeploymentModel {
 			VersionRemoved:      types.BoolValue(e.App.VersionRemoved),
 		}
 	}
-	m.Site = mapNamedRef(e.Site)
-	m.Category = mapNamedRef(e.Category)
-	m.SmartGroup = mapNamedRef(e.SmartGroup)
+	if e.Site != nil {
+		m.Site = namedRef(e.Site.ID, e.Site.Name)
+	}
+	if e.Category != nil {
+		m.Category = namedRef(e.Category.ID, e.Category.Name)
+	}
+	if e.SmartGroup != nil {
+		m.SmartGroup = namedRef(e.SmartGroup.ID, e.SmartGroup.Name)
+	}
 	if e.ComputerStatuses != nil {
 		m.ComputerStatuses = &ComputerStatusesModel{
 			Available:   types.Int64Value(int64(e.ComputerStatuses.Available)),
@@ -214,13 +220,14 @@ func mapDeployment(e pro.AppInstallerDeploymentListEntry) DeploymentModel {
 	return m
 }
 
-// mapNamedRef projects an SDK *AppInstallerNamedRef into the model, nil → nil.
-func mapNamedRef(r *pro.AppInstallerNamedRef) *NamedRefModel {
-	if r == nil {
-		return nil
-	}
+// namedRef projects one of the list entry's site/category/smart-group
+// references into the model. Jamf Pro declares each reference's ID as always
+// present and its name as nullable, and documents null as either "no assignment"
+// or "no permission to read that object" — indistinguishable from here — so a
+// missing name stays null in state rather than becoming an empty string.
+func namedRef(id string, name *string) *NamedRefModel {
 	return &NamedRefModel{
-		ID:   types.StringValue(r.ID),
-		Name: types.StringValue(r.Name),
+		ID:   types.StringValue(id),
+		Name: helpers.StringPointerValueOrNull(name),
 	}
 }

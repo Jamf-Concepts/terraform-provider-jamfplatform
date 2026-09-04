@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_app_installer_titles Data Source - terraform-provi
 subcategory: ""
 description: |-
   Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional name_substring to narrow the result; matching is case-insensitive and applied after the full catalog is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Mac Applications | `read:pro:mac-applications` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Read | `applications` |
 ---
 
 # jamfplatform_pro_app_installer_titles (Data Source)
 
 Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full catalog is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Mac Applications | `read:pro:mac-applications` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Read | `applications` |
 
 ## Example Usage
 
@@ -30,13 +30,13 @@ The Jamf Platform API integration used by the provider must be granted the follo
 data "jamfplatform_pro_app_installer_titles" "all" {}
 
 # Narrow the catalog by a case-insensitive name substring.
-data "jamfplatform_pro_app_installer_titles" "editors" {
-  name_substring = "Editor"
+data "jamfplatform_pro_app_installer_titles" "jamf" {
+  name_substring = "Jamf"
 }
 
 # Resolve a single title's name to pass to an App Installer's app_title_name.
-output "first_editor_title_name" {
-  value = data.jamfplatform_pro_app_installer_titles.editors.titles[0].title_name
+output "first_jamf_title_name" {
+  value = data.jamfplatform_pro_app_installer_titles.jamf.titles[0].title_name
 }
 ```
 
@@ -50,38 +50,17 @@ output "first_editor_title_name" {
 ### Read-Only
 
 - `id` (String) Internal identifier for this data source read.
-- `titles` (Attributes List) Catalog titles, optionally narrowed by `name_substring`. (see [below for nested schema](#nestedatt--titles))
+- `titles` (Attributes List) Catalog titles, optionally narrowed by `name_substring`. The catalog endpoint returns a summary of each title; read `jamfplatform_pro_app_installer_title` for a title's package metadata. (see [below for nested schema](#nestedatt--titles))
 
 <a id="nestedatt--titles"></a>
 ### Nested Schema for `titles`
 
 Read-Only:
 
-- `architecture` (String) Supported CPU architecture (e.g. `x86_64`, `arm64`, `universal`).
-- `availability_date` (String) Date the current version became available in the catalog.
 - `bundle_id` (String) Primary application bundle identifier.
 - `icon_url` (String) URL of the title icon.
 - `id` (String) Catalog title ID.
-- `installer_package_hash` (String) Hash of the installer package.
-- `installer_package_hash_type` (String) Algorithm used for the installer package hash (e.g. `SHA_256`).
-- `language` (String) Title language.
-- `launch_daemon_included` (Boolean) Whether the title bundles a launch daemon.
-- `minimum_os_version` (String) Minimum macOS version required to install the title.
-- `notification_available` (Boolean) Whether the title supports end-user install notifications.
-- `original_media_sources` (Attributes List) Original media sources Jamf used to build the title's installer package. (see [below for nested schema](#nestedatt--titles--original_media_sources))
-- `package_signing_identity` (String) Signing identity of the installer package.
+- `installation_path_shared` (Boolean) Whether another title may install to the same path as this one.
 - `publisher` (String) Title publisher.
-- `short_version` (String) Current published short version string.
-- `size_in_bytes` (Number) Installer package size in bytes.
-- `suppress_auto_update` (Boolean) Whether the title suppresses its built-in auto-update mechanism when managed by Jamf.
 - `title_name` (String) Title display name.
 - `version` (String) Current published version.
-
-<a id="nestedatt--titles--original_media_sources"></a>
-### Nested Schema for `titles.original_media_sources`
-
-Read-Only:
-
-- `hash` (String) Media source hash.
-- `hash_type` (String) Media source hash algorithm.
-- `url` (String) Media source URL.

@@ -7,8 +7,8 @@ resource "jamfplatform_pro_restricted_software" "minimal" {
   }
 }
 
-# Kill the process on sight, notify admins, and show a message — scoped to every
-# computer with a couple of local users excluded.
+# Kill the process on sight, notify admins, and show a message. Scoped to every
+# computer, with a couple of local users excluded.
 resource "jamfplatform_pro_restricted_software" "block_chess" {
   general = {
     name                                 = "Block Chess"
@@ -26,7 +26,7 @@ resource "jamfplatform_pro_restricted_software" "block_chess" {
     }
 
     exclusions = {
-      # Free-text local usernames — not Jamf Pro object IDs.
+      # Free-text local usernames, not Jamf Pro object IDs.
       directory_service_or_local_user_names = ["labadmin", "kiosk"]
     }
   }

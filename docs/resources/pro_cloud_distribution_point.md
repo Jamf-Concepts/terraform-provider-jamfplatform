@@ -3,38 +3,36 @@
 page_title: "jamfplatform_pro_cloud_distribution_point Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (cdn_type); destroying it disables the cloud distribution point (resets the tenant to NONE). Warning: destroying this resource — or changing cdn_type, which forces replacement — disables the Jamf Cloud distribution point and permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud. This cannot be undone. JAMF_CLOUD (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (AMAZON_S3, AKAMAI, RACKSPACE_CLOUD_FILES) require the credential / endpoint fields and are not acceptance-tested by the provider. Import with terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
-  | Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
+  Manages the Jamf Pro cloud distribution point. One record per tenant. Configuring this resource enables the selected content delivery network (cdn_type); destroying it disables the cloud distribution point and resets the tenant to NONE. Destroying this resource disables the Jamf Cloud distribution point and permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud. Changing cdn_type forces replacement and has the same effect. Neither can be undone. JAMF_CLOUD (Jamf Cloud Distribution Service, or JCDS) needs no credentials. The other types (AMAZON_S3, AKAMAI, RACKSPACE_CLOUD_FILES) require the credential and endpoint fields, and the provider does not acceptance-test them. Import with terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Cloud Distribution Point | Read, Update | `cloud-distribution-point` |
 ---
 
 # jamfplatform_pro_cloud_distribution_point (Resource)
 
-Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point (resets the tenant to `NONE`). **Warning:** destroying this resource — or changing `cdn_type`, which forces replacement — disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. This cannot be undone. `JAMF_CLOUD` (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential / endpoint fields and are **not** acceptance-tested by the provider. Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`.
+Manages the Jamf Pro cloud distribution point. One record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point and resets the tenant to `NONE`. Destroying this resource disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. Changing `cdn_type` forces replacement and has the same effect. Neither can be undone. `JAMF_CLOUD` (Jamf Cloud Distribution Service, or JCDS) needs no credentials. The other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential and endpoint fields, and the provider does not acceptance-test them. Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
-| Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Cloud Distribution Point | Read, Update | `cloud-distribution-point` |
 
 ## Example Usage
 
 ```terraform
-# Jamf Cloud Distribution Service (JCDS) — no credentials required.
+# Jamf Cloud Distribution Service (JCDS). No credentials required.
 resource "jamfplatform_pro_cloud_distribution_point" "this" {
   cdn_type = "JAMF_CLOUD"
   master   = false
 }
 
-# Amazon Web Services (S3 + CloudFront signed URLs) — credentials required.
+# Amazon Web Services (S3 + CloudFront signed URLs). Credentials required.
 # username = Access Key ID, password = Secret access key (WriteOnly).
 # private_key is the CloudFront signing key, required when require_signed_urls = true.
 #
@@ -48,7 +46,7 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 #   expiration_seconds  = 3600
 # }
 
-# Akamai — username/password plus upload, directory, and download endpoints.
+# Akamai: username/password plus upload, directory, and download endpoints.
 #
 # resource "jamfplatform_pro_cloud_distribution_point" "akamai" {
 #   cdn_type     = "AKAMAI"
@@ -65,7 +63,7 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 
 ### Required
 
-- `cdn_type` (String) Content delivery network type. One of `JAMF_CLOUD` (Jamf Cloud Distribution Service), `AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`. Changing this forces replacement: the existing cloud distribution point is deleted (tenant returns to `NONE`) and a new one created. (`NONE` is the disabled state reached by destroying the resource — it is not a settable value.)
+- `cdn_type` (String) Content delivery network type. One of `JAMF_CLOUD` (Jamf Cloud Distribution Service), `AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`. Changing this forces replacement: the existing cloud distribution point is deleted, the tenant returns to `NONE`, and a new one is created. `NONE` is the disabled state reached by destroying the resource, not a settable value.
 
 ### Optional
 
@@ -76,8 +74,8 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 - `expiration_seconds` (Number) AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1.
 - `key_pair_id` (String) AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled.
 - `master` (Boolean) Whether this is the master (primary) distribution point.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Connection password / secret key for non-JCDS types. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned by the API. Keep it in configuration: it is re-sent on every apply. (The endpoint has no field-omission support for this value, so there is no `_wo_version` rotation companion — see the resource documentation.)
-- `private_key` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = "AMAZON_S3"` and `require_signed_urls = true`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64("cloudfront-key.pem")`.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Connection password or secret key for the non-JCDS types. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Keep it in configuration, because it is re-sent on every apply. Jamf Pro will not accept a write that omits the value, so there is no `_wo_version` rotation companion. See the resource documentation.
+- `private_key` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = "AMAZON_S3"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64("cloudfront-key.pem")`.
 - `require_signed_urls` (Boolean) Whether downloads require AWS CloudFront signed URLs. Used by `AMAZON_S3`; enabling it makes `private_key` required.
 - `secondary_auth_required` (Boolean) Whether secondary authentication is required for downloads.
 - `secondary_auth_time_to_live` (Number) Secondary authentication token time-to-live in seconds. Must be at least 1.
@@ -88,9 +86,9 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 ### Read-Only
 
 - `cdn_url` (String) CDN URL. Returned by Jamf Pro; not user-settable.
-- `has_connection_succeeded` (Boolean) Whether the most recent connection test against the distribution point succeeded. Computed — reflects live status and is re-evaluated on every apply.
+- `has_connection_succeeded` (Boolean) Whether the most recent connection test against the distribution point succeeded. Read-only. Reflects live status, and is re-evaluated on every apply.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `inventory_id` (String) Server-allocated inventory identifier for the distribution point. Computed and **not stable** — a new identifier is allocated whenever the cloud distribution point is recreated.
+- `inventory_id` (String) Inventory identifier for the distribution point. Returned by Jamf Pro; not user-settable. It is **not stable**: a new identifier is allocated whenever the cloud distribution point is recreated.
 - `message` (String) Human-readable connection status message from the server. Computed.
 - `secondary_auth_status_code` (Number) Secondary authentication status code returned by the server. Computed.
 

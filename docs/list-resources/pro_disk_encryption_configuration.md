@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_disk_encryption_configuration List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro disk encryption configurations. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — setting include_resource = true fetches the full record for each item.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:disk-encryption-configurations` |
+  Lists Jamf Pro disk encryption configurations. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. By default each row returns id and name. Set include_resource = true to fetch the full record for each item.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Disk encryption | Read | `disk-encryption-configurations` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (List Resource)
 
-Lists Jamf Pro disk encryption configurations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item.
+Lists Jamf Pro disk encryption configurations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. By default each row returns `id` and `name`. Set `include_resource = true` to fetch the full record for each item.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:disk-encryption-configurations` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Disk encryption | Read | `disk-encryption-configurations` |
 
 ## Example Usage
 

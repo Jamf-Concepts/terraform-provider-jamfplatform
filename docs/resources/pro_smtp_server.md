@@ -3,27 +3,25 @@
 page_title: "jamfplatform_pro_smtp_server Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server) — the outbound mail relay Jamf Pro uses to send notifications, enrollment invitations, and other email. Singleton — one record per tenant. authentication_type selects the authentication method and which blocks apply: NONE and BASIC use connection_settings (SMTP host/port/encryption); BASIC adds basic_auth_credentials; GRAPH_API uses graph_api_credentials (Microsoft Graph); GOOGLE_MAIL uses google_mail_credentials (Google Workspace). A plan-time validator enforces that the block matching authentication_type is present and the others absent. Full-replace — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching authentication_type clears the previous method's credentials. Plaintext secrets (basic_auth_credentials.password, graph_api_credentials.client_secret, google_mail_credentials.client_secret) are WriteOnly: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its *_wo_version rotation trigger. Google Workspace sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"); Terraform configures the client credentials but does not drive that grant — google_mail_credentials.authentications is read-only. Import with terraform import jamfplatform_pro_smtp_server.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read SMTP Server | `read:pro:smtp-server` |
-  | Update SMTP Server | `update:pro:smtp-server` |
+  Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server), the outbound mail relay Jamf Pro sends notifications, enrollment invitations and other email through. One record per tenant. authentication_type selects the authentication method and which blocks apply: NONE and BASIC use connection_settings (SMTP host/port/encryption); BASIC adds basic_auth_credentials; GRAPH_API uses graph_api_credentials (Microsoft Graph); GOOGLE_MAIL uses google_mail_credentials (Google Workspace). A plan-time validator enforces that the block matching authentication_type is present and the others absent. Every apply replaces the whole configuration. Omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching authentication_type clears the previous method's credentials. Plaintext secrets (basic_auth_credentials.password, graph_api_credentials.client_secret, google_mail_credentials.client_secret) are WriteOnly: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its *_wo_version rotation trigger. Google Workspace sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"). Terraform configures the client credentials but does not drive that grant, so google_mail_credentials.authentications is read-only. Import with terraform import jamfplatform_pro_smtp_server.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | SMTP | Read, Update | `smtp-server` |
 ---
 
 # jamfplatform_pro_smtp_server (Resource)
 
-Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server) — the outbound mail relay Jamf Pro uses to send notifications, enrollment invitations, and other email. Singleton — one record per tenant. `authentication_type` selects the authentication method and which blocks apply: `NONE` and `BASIC` use `connection_settings` (SMTP host/port/encryption); `BASIC` adds `basic_auth_credentials`; `GRAPH_API` uses `graph_api_credentials` (Microsoft Graph); `GOOGLE_MAIL` uses `google_mail_credentials` (Google Workspace). A plan-time validator enforces that the block matching `authentication_type` is present and the others absent. **Full-replace** — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. Plaintext secrets (`basic_auth_credentials.password`, `graph_api_credentials.client_secret`, `google_mail_credentials.client_secret`) are `WriteOnly`: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its `*_wo_version` rotation trigger. **Google Workspace** sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"); Terraform configures the client credentials but does not drive that grant — `google_mail_credentials.authentications` is read-only. Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`.
+Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server), the outbound mail relay Jamf Pro sends notifications, enrollment invitations and other email through. One record per tenant. `authentication_type` selects the authentication method and which blocks apply: `NONE` and `BASIC` use `connection_settings` (SMTP host/port/encryption); `BASIC` adds `basic_auth_credentials`; `GRAPH_API` uses `graph_api_credentials` (Microsoft Graph); `GOOGLE_MAIL` uses `google_mail_credentials` (Google Workspace). A plan-time validator enforces that the block matching `authentication_type` is present and the others absent. Every apply replaces the whole configuration. Omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. Plaintext secrets (`basic_auth_credentials.password`, `graph_api_credentials.client_secret`, `google_mail_credentials.client_secret`) are `WriteOnly`: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its `*_wo_version` rotation trigger. Google Workspace sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"). Terraform configures the client credentials but does not drive that grant, so `google_mail_credentials.authentications` is read-only. Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read SMTP Server | `read:pro:smtp-server` |
-| Update SMTP Server | `update:pro:smtp-server` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | SMTP | Read, Update | `smtp-server` |
 
 ## Example Usage
 
@@ -76,15 +74,15 @@ variable "smtp_password" {
 
 ### Required
 
-- `authentication_type` (String) **"Authentication method"** in the Jamf Pro admin UI. One of `NONE` (no authentication), `BASIC` (Basic Credentials — username + password), `GRAPH_API` (Microsoft Graph API), or `GOOGLE_MAIL` (Google Auth / Workspace). Selects which credential block is required.
+- `authentication_type` (String) **"Authentication method"** in the Jamf Pro admin UI. One of `NONE` (no authentication), `BASIC` (Basic Credentials: username and password), `GRAPH_API` (Microsoft Graph API), or `GOOGLE_MAIL` (Google Auth / Workspace). Selects which credential block is required.
 - `sender_settings` (Attributes) **"Configuration settings"** in the Jamf Pro admin UI. The sender identity applied to outbound mail. Required for every authentication method. (see [below for nested schema](#nestedatt--sender_settings))
 
 ### Optional
 
 - `basic_auth_credentials` (Attributes) Basic SMTP credentials. Required when `authentication_type = "BASIC"`; forbidden otherwise. (see [below for nested schema](#nestedatt--basic_auth_credentials))
-- `connection_settings` (Attributes) **"Authentication settings"** (Server and port / Encryption / Connection timeout) in the Jamf Pro admin UI. The SMTP relay connection. Required when `authentication_type` is `NONE` or `BASIC`; must be omitted for `GRAPH_API` and `GOOGLE_MAIL` (which connect over HTTP, not SMTP). (see [below for nested schema](#nestedatt--connection_settings))
+- `connection_settings` (Attributes) **"Authentication settings"** (Server and port / Encryption / Connection timeout) in the Jamf Pro admin UI. The SMTP relay connection. Required when `authentication_type` is `NONE` or `BASIC`; must be omitted for `GRAPH_API` and `GOOGLE_MAIL`, which connect over HTTP rather than SMTP. (see [below for nested schema](#nestedatt--connection_settings))
 - `enabled` (Boolean) Whether the SMTP server connection is enabled ("Use the switch to enable or disable the connection" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it.
-- `google_mail_credentials` (Attributes) Google Workspace (Google Auth) credentials. Required when `authentication_type = "GOOGLE_MAIL"`; forbidden otherwise. The sender Google accounts are linked out of band through the Jamf Pro admin UI's interactive Google OAuth grant — Terraform configures the client credentials only. (see [below for nested schema](#nestedatt--google_mail_credentials))
+- `google_mail_credentials` (Attributes) Google Workspace (Google Auth) credentials. Required when `authentication_type = "GOOGLE_MAIL"`; forbidden otherwise. The sender Google accounts are linked out of band through the Jamf Pro admin UI's interactive Google OAuth grant. Terraform configures the client credentials only. (see [below for nested schema](#nestedatt--google_mail_credentials))
 - `graph_api_credentials` (Attributes) Microsoft Graph API credentials. Required when `authentication_type = "GRAPH_API"`; forbidden otherwise. (see [below for nested schema](#nestedatt--graph_api_credentials))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -113,8 +111,8 @@ Required:
 
 Optional:
 
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. SMTP account password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to send the current `password` on the next apply; leaving it unset or unchanged signals "leave the stored value alone" — the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. SMTP account password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to send the current `password` on the next apply; leaving it unset or unchanged signals "leave the stored value alone": the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
 
 
 <a id="nestedatt--connection_settings"></a>
@@ -128,7 +126,7 @@ Required:
 
 Optional:
 
-- `connection_timeout` (Number) **"Connection timeout"** in the Jamf Pro admin UI, in seconds. Time to wait before a connection attempt fails. Defaults to `30`.
+- `connection_timeout` (Number) **"Connection timeout"** in the Jamf Pro admin UI. Seconds to wait before a connection attempt fails. Defaults to `30`.
 
 
 <a id="nestedatt--google_mail_credentials"></a>
@@ -140,8 +138,8 @@ Required:
 
 Optional:
 
-- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Pro admin UI. Google OAuth client secret. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
-- `client_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `client_secret`. Bump this integer (any change) to send the current `client_secret` on the next apply; leaving it unset or unchanged signals "leave the stored value alone" — the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
+- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Pro admin UI. Google OAuth client secret. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
+- `client_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `client_secret`. Bump this integer (any change) to send the current `client_secret` on the next apply; leaving it unset or unchanged signals "leave the stored value alone": the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
 
 Read-Only:
 
@@ -167,8 +165,8 @@ Required:
 
 Optional:
 
-- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Pro admin UI. Microsoft Entra application client secret. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
-- `client_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `client_secret`. Bump this integer (any change) to send the current `client_secret` on the next apply; leaving it unset or unchanged signals "leave the stored value alone" — the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
+- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Client secret"** in the Jamf Pro admin UI. Microsoft Entra application client secret. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Bump the companion `*_wo_version` to rotate the stored value.
+- `client_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `client_secret`. Bump this integer (any change) to send the current `client_secret` on the next apply; leaving it unset or unchanged signals "leave the stored value alone": the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.
 
 
 <a id="nestedatt--timeouts"></a>

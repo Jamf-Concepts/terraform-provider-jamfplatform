@@ -108,6 +108,23 @@ func TestRequireScope(t *testing.T) {
 			allowed:    []ScopeKind{ScopeEnvironment},
 		},
 		{
+			name:       "organization satisfies organization-only",
+			configured: ScopeOrganization,
+			allowed:    []ScopeKind{ScopeOrganization},
+		},
+		{
+			name:       "environment does not satisfy organization-only",
+			configured: ScopeEnvironment,
+			allowed:    []ScopeKind{ScopeOrganization},
+			wantError:  true,
+		},
+		{
+			name:       "tenant does not satisfy organization-only",
+			configured: ScopeTenant,
+			allowed:    []ScopeKind{ScopeOrganization},
+			wantError:  true,
+		},
+		{
 			name:       "an empty allowed set gates nothing",
 			configured: ScopeOrganization,
 		},
@@ -162,6 +179,60 @@ func TestRequireScope_DiagnosticIsActionable(t *testing.T) {
 	}
 	if strings.Contains(err.Detail(), "`tenant_id` in the provider block") {
 		t.Errorf("environment-only requirement should not suggest tenant_id: %s", err.Detail())
+	}
+}
+
+// TestRequireScope_OrganizationOnlyRemedyNamesTheEnvironment pins the remedy for
+// the organization-only allowed set, which the jamfplatform_account_* family is
+// the first to use. The scope is resolved from `JAMFPLATFORM_ENVIRONMENT_ID` /
+// `JAMFPLATFORM_TENANT_ID` whenever the provider block sets neither attribute,
+// with no warning on that path — so a remedy naming only the provider block
+// tells the most likely reader, a CI runner exporting the preferred environment
+// variable, to remove a line that is not in their configuration.
+func TestRequireScope_OrganizationOnlyRemedyNamesTheEnvironment(t *testing.T) {
+	for _, configured := range []ScopeKind{ScopeEnvironment, ScopeTenant} {
+		t.Run(configured.String(), func(t *testing.T) {
+			pd := &Data{scope: configured}
+			diags := pd.RequireScope("jamfplatform_account_sso_domain", ScopeOrganization)
+			if !diags.HasError() {
+				t.Fatalf("expected an error for a %s-scoped credential", configured)
+			}
+			detail := diags.Errors()[0].Detail()
+			for _, want := range []string{
+				"`environment_id`",
+				"`tenant_id`",
+				"`JAMFPLATFORM_ENVIRONMENT_ID`",
+				"`JAMFPLATFORM_TENANT_ID`",
+				"scoped from the access token alone",
+			} {
+				if !strings.Contains(detail, want) {
+					t.Errorf("detail does not mention %q: %s", want, detail)
+				}
+			}
+		})
+	}
+}
+
+// TestScopeDescriptionDoesNotAssertAnAttributeIsSet guards the other half of the
+// same argument: the description cannot claim `environment_id` or `tenant_id`
+// "is set", because the value may have come from the environment instead, and
+// nothing in the diagnostic can tell which source selected it.
+func TestScopeDescriptionDoesNotAssertAnAttributeIsSet(t *testing.T) {
+	tests := map[ScopeKind][]string{
+		ScopeEnvironment:  {"an environment-scoped integration", "`environment_id`", "`JAMFPLATFORM_ENVIRONMENT_ID`"},
+		ScopeTenant:       {"a tenant-scoped integration", "`tenant_id`", "`JAMFPLATFORM_TENANT_ID`"},
+		ScopeOrganization: {"an organization-scoped integration", "`environment_id`", "`tenant_id`", "`JAMFPLATFORM_*`"},
+	}
+	for kind, wants := range tests {
+		got := scopeDescription(kind)
+		for _, want := range wants {
+			if !strings.Contains(got, want) {
+				t.Errorf("scopeDescription(%v) = %q, want it to mention %q", kind, got, want)
+			}
+		}
+		if strings.Contains(got, "is set") {
+			t.Errorf("scopeDescription(%v) = %q, must not assert an attribute is set", kind, got)
+		}
 	}
 }
 

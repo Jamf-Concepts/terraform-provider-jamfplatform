@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_dock_item Data Source - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Look up a Jamf Pro dock item by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:dock-items` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Dock items | Read | `dock-items` |
 ---
 
 # jamfplatform_pro_dock_item (Data Source)
 
 Look up a Jamf Pro dock item by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:dock-items` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Dock items | Read | `dock-items` |
 
 ## Example Usage
 

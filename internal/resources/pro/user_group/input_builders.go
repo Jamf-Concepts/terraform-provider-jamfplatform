@@ -62,7 +62,7 @@ func buildCriteriaWrapper(criteria []UserGroupCriterionModel) *proclassic.UserGr
 		if !c.Priority.IsNull() && !c.Priority.IsUnknown() {
 			priority = int(c.Priority.ValueInt64())
 		}
-		andOr := "and"
+		andOr := proclassic.CriterionAndOrAnd
 		if !c.AndOr.IsNull() && !c.AndOr.IsUnknown() && c.AndOr.ValueString() != "" {
 			andOr = c.AndOr.ValueString()
 		}

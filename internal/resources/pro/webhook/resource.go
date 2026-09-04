@@ -91,7 +91,7 @@ func (r *WebhookResource) ConfigValidators(ctx context.Context) []resource.Confi
 // admin UI labels (STYLE_GUIDE §Attribute names mirror the admin UI).
 func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro webhook — the \"Webhooks\" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: \"Mutual TLS Authentication\" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro webhook (Settings → Global → Webhooks in the Jamf Pro admin UI). A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. \"Mutual TLS Authentication\" is deliberately unsupported: its certificate material is settable only through the legacy admin web UI, and no API reaches it." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Webhook ID assigned by Jamf Pro.",
@@ -99,7 +99,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Display name for the webhook.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Must not be empty.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
@@ -115,7 +115,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"authentication_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Authentication type\"** in the Jamf Pro admin UI. One of " + markdownValueList(webhookAuthTypes) + ": `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`), or `MTLS` (\"Mutual TLS Authentication\" — accepted so existing webhooks import, but the client certificate it needs can only be supplied through the Jamf Pro admin UI, so an MTLS webhook created here is inert until that certificate is added). Defaults to `NONE`; because this attribute is computed, switching authentication off again requires explicitly setting `authentication_type = \"NONE\"` (removing the attribute retains the last applied value).",
+				MarkdownDescription: "**\"Authentication type\"** in the Jamf Pro admin UI. One of " + markdownValueList(webhookAuthTypes) + ": `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`), or `MTLS` (\"Mutual TLS Authentication\"). `MTLS` is accepted so existing webhooks import, but the client certificate it needs can only be supplied through the Jamf Pro admin UI, so an MTLS webhook created here is inert until that certificate is added. Defaults to `NONE`. This attribute is computed, so switching authentication off again requires setting `authentication_type = \"NONE\"` explicitly; removing the attribute retains the last applied value.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -150,13 +150,13 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "**\"Password\"** (BASIC) / **\"Signing Secret\"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state** (Jamf returns a redaction sentinel on read). Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the server requires at least 16 characters.",
+				MarkdownDescription: "**\"Password\"** (BASIC) / **\"Signing Secret\"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state; Jamf Pro returns a redaction sentinel on read. Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the password must be at least 16 characters.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"password_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Initial create should set `password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored secret alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Set `password_wo_version = 1` on create. Leave it unset or unchanged to keep the stored secret: the provider omits the password from the next update, so Jamf Pro retains the existing value.",
 				Optional:            true,
 			},
 			"header": schema.StringAttribute{
@@ -179,13 +179,13 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"enable_display_fields_for_group_object": schema.BoolAttribute{
-				MarkdownDescription: "**\"Include Display Fields for the Group Object\"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. (The display field list itself is not settable via the API — see `display_fields`.)",
+				MarkdownDescription: "**\"Include Display Fields for the Group Object\"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. The display field list itself cannot be set here; see `display_fields`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — Jamf Pro rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.",
+				MarkdownDescription: "Read-only set of display field names included in the group-object payload. Terraform cannot set them: Jamf Pro rejects any populated display field, because the list is managed in the admin UI. This attribute reflects whatever the Jamf Pro UI configured.",
 				ElementType:         types.StringType,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},

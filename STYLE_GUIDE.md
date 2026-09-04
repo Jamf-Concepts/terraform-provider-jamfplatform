@@ -201,6 +201,131 @@ Two rules for these tables:
 - **Derive the documented value list from the same slice the `OneOf` validator uses** (a small `markdownValueList`-style helper), so the `MarkdownDescription` and the validator cannot drift apart — single source of truth, mirroring the version-const interpolation policy.
 - **Acceptance cannot verify the table.** Writing through the map and reading through its inverse round-trips *by construction*, so a wrong-but-consistent entry (`"30 days"` mapped to the wrong number) passes every unit and acceptance test silently. Anchor at least one entry to the live wire during the build, and **wire-probe the table by driving the actual admin UI** (set each preset in Jamf, GET the stored value) — the round-trip test is not a substitute. Flag any unverified entries in the PR.
 
+### Description and example prose: the terse-reference voice
+
+The section above governs *what* a description may say. This one governs *how* it reads. It
+applies to every `Description` / `MarkdownDescription` string in a schema — resource, data
+source, list resource, action, function, provider configuration — and equally to the `#`
+comments in `examples/**/*.tf`, which a user reads side by side with them on the Registry page.
+
+The voice is terse reference: short declarative sentences, the fact first and each quirk in a
+sentence of its own. Vary sentence length, so the text does not read as a template somebody
+filled in.
+
+Six habits account for most of the prose this provider has had to go back and rewrite. Do not
+start them again.
+
+- **One em dash per description at most, and only for a genuine interruption.** An em dash
+  gluing an appositive or a second clause onto a sentence is the strongest single signal that a
+  description was generated rather than written. `Manages Jamf Pro SMTP settings (Settings →
+  System → SMTP Server) — the outbound relay …` is a comma or a full stop wanting to happen.
+  Two in one description is one too many, and three is never right.
+- **No bolded run-in label opening a paragraph.** `**Omit = preserve** — each toggle you omit
+  keeps its current value` says no more than `A toggle you omit keeps its current Jamf Pro
+  value.`, in more words and in a textbook voice. Where a long resource description really does
+  change topic, use a `###` heading or a plain lead sentence. Two exceptions, both required
+  elsewhere in this guide: the bold quoted admin-UI label a renamed attribute must open with,
+  and `Requires **X API** access.`
+- **Do not repeat a stock clause verbatim across packages.** `Singleton — one record per
+  tenant.` stood identically in more than a hundred descriptions before a cleanup sweep.
+  `One record per tenant.` carries it, and the next resource need not phrase it the same way.
+- **En dash for numeric ranges** (`1–100`, `0–65535`); hyphen for everything else.
+- **No throat-clearing.** Delete `Note that`, `Note:`, `NOTE:`, `IMPORTANT:`, `simply`, `just`.
+  A description is already the place for the fact, so state it.
+- **No padding verbs.** `is used to select` is `selects`. `used for` either names the use or goes.
+
+Vocabulary that never earns its place in a description: *leverage, robust, seamless,
+comprehensive, ensure, facilitate, streamline, delve, crucial, foster, showcase, underscore,
+pivotal,* and *landscape* used figuratively. Nor do the rhetorical shapes that travel with them:
+`not X, but Y`, a reflexive stack of three adjectives, or a closing sentence that restates the
+description.
+
+**Write as Jamf, not about Jamf.** This provider is Jamf's own, so its user-facing text does
+not refer to Jamf in the third person, as a vendor the provider merely integrates with. Where a
+sentence names the actor in an exchange, name the product or the service: *Jamf Pro refuses the
+write*, *Jamf Account stores a claimed domain in lower case*, *Jamf Security Cloud enforces the
+reference on delete*, *the platform compares the settings*. A bare "Jamf" as the actor is both
+distancing and imprecise across five namespaces, and "Jamf's own", "the vendor" and "the API" are
+the same tic in plainer form. Three things the rule does not touch: **the server** where the
+server is one the reader runs (an LDAP directory, an SMTP relay, a distribution point, an external
+patch source), **the API integration**, which is the reader's own, and a deliberate
+product-versus-provider contrast, because "the deprecation is Jamf Pro's, not the provider's" is
+the distinction a reader needs rather than a distancing tic. Contributor-facing text — Go
+comments, this guide, `CONTRIBUTING.md` — is exempt.
+
+**Pre-PR grep gate.** Same spirit as the jargon grep above — run it over the diff, not the tree:
+
+```sh
+git diff -U0 main -- 'internal/*' 'examples/*' | grep -E '^\+' | \
+  grep -nE '—[^—]*—|\*\*[^*]+\*\*[[:space:]]*—|Singleton —|[0-9]-[0-9]|[Nn]ote that|NOTE:|IMPORTANT:| simply | just |is used to|leverage|robust|seamless|comprehensive|ensure|facilitate|Jamf.s |the API|the vendor|upstream'
+```
+
+A hit is not automatically a defect: one em dash carrying real emphasis, a hyphenated
+identifier, or `ensure` inside a quoted UI label will all match. Every hit does need a reason.
+
+### Enum values and error codes come from the SDK, not from literals
+
+**If the SDK generates a constant for a value, use the constant.** This applies provider-wide,
+to every namespace, and to two surfaces that are easy to treat as unrelated:
+
+- **Schema value enums.** Build *both* the `OneOf` validator and the documented value list from
+  the SDK's generated `*Values()` helper, so neither can drift from the other or from the API.
+- **Machine-readable error codes** used to translate a failure into a diagnostic. Alias the SDK
+  constant (`codeNotEntitled = securitycloud.ApiErrorItemCodeNotEntitled`), never restate the
+  string.
+
+Two shapes are legitimate and must not be "fixed" into the rule above:
+
+- **A deliberate subset.** Where a generated set is a superset of what one caller accepts — the
+  SDK says as much for `EmailMappingTypeValues()`, which spans every UEM vendor — keep the
+  hand-curated list, because the curation is the point. But its *elements* are still SDK
+  constants, not literals: the set is yours, the spellings are the SDK's.
+- **A genuinely absent constant.** Where the SDK documents a set but generates no helper, or
+  carries no constant for a code the wire sends, restate it in the package's `mappings.go` and
+  say *why* in a comment.
+
+That last exemption is where this rule keeps failing, so state the reason precisely. A comment
+claiming the SDK "carries none of these codes" must be true of **every** code beneath it. Jamf
+Security Cloud's `ApiErrorItemCode` is the DNS namespace's error schema and carries no
+group-specific code — but it does carry the generic `INVALID_FIELD` and `NOT_ENTITLED`, so a
+package restating those alongside its own codes is wrong in a way its own comment conceals.
+That exact defect shipped twice and was caught by review both times.
+
+**So do not rely on review for this — pin it with a test.** Every package that names an enum
+value or an error code carries an `enum_literals_test.go` calling `internal/common/enumguard`,
+which parses the package's own source and reports any string literal the package *declares* that
+the SDK's `*Values()` helpers already cover. Parsing the source rather than restating a list is
+what makes it self-maintaining: it fires both on a new literal that should have been an alias,
+and on a literal that a future SDK release promotes into the enum. References:
+`internal/resources/pro/ebook/enum_literals_test.go` (the plain shape) and
+`internal/resources/pro/macos_configuration_profile/enum_literals_test.go` (exemptions with
+per-value reasons).
+
+The walker covers package-level `const` **and** `var` declarations — including the elements of a
+slice or map composite literal and its keys — func-body short (`:=`) declarations, and the
+vocabulary inlined into a `stringvalidator.OneOf` / `OneOfCaseInsensitive` /
+`stringdefault.StaticString` call. A `const`-only parse is not enough, and that is not a
+hypothetical: almost every restated enum in this provider is a `var validFoos = []string{…}`
+feeding a `OneOf` validator, or is spelled out in the `OneOf` call itself, and a builder naming
+the one wire value it is about to send writes it as `v := "install"`. What the guard deliberately
+does **not** cover is a literal that is only *used* — compared against, returned, or passed as an
+argument to anything but those two framework calls. Reaching those would mean treating every
+string in the package as an enum reference, which fires on prose and on unrelated vocabularies
+that share a spelling; the line is declaration versus use. Auditing the use sites is a review's
+job, not the guard's.
+
+Two exemption maps, and the difference between them is load-bearing — a rollout defect turned on
+exactly this. `Absent` asserts the SDK carries **no** constant for the value, so it *is* checked
+against `Covered`: an SDK release that starts generating the value fails the test and tells you to
+alias it. `Ignore` asserts the value belongs to a **different** vocabulary that merely shares the
+spelling, which says nothing about the sets in `Covered`, so it is *not* checked. Filing a
+cross-vocabulary collision under `Absent` therefore reports a spurious promotion. Both maps take
+a per-value reason, for the same reason the comment rule above demands one. An entry no literal in
+the package uses is also a failure, as is a guard that asserts nothing (`Findings.Vacuous`) —
+whether because its whole `Covered` set is exempted, or because `Covered` is empty, which is what
+a package is left with when the SDK withdraws the only vocabulary it had. Both read as coverage
+while asserting nothing.
+
 ### Sets vs Lists
 
 - **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `raw_component`).
@@ -251,14 +376,14 @@ CRUD wiring:
 
 ### Server-minted secrets — `Computed + Sensitive` with a rotation trigger
 
-`WriteOnly` is for **user-supplied** secrets. A secret that **Jamf Pro generates and returns once** (e.g. an OAuth client secret from `jamfplatform_pro_api_client`) is the mirror case: it is an *output*, not an input, so WriteOnly does not apply, and an **ephemeral resource is the wrong tool** — ephemerals re-run `Open()` every apply, and a "generate credentials" endpoint that mints a fresh secret on every call (with no idempotent read-back) would therefore rotate the secret on *every* apply. There is no stable value to anchor an ephemeral to.
+`WriteOnly` is for **user-supplied** secrets. A secret that **Jamf Pro generates and returns once** (e.g. the Jamf-side public key minted by `jamfplatform_pro_pki_venafi`) is the mirror case: it is an *output*, not an input, so WriteOnly does not apply, and an **ephemeral resource is the wrong tool** — ephemerals re-run `Open()` every apply, and a "generate credentials" endpoint that mints a fresh secret on every call (with no idempotent read-back) would therefore rotate the secret on *every* apply. There is no stable value to anchor an ephemeral to.
 
-**Pattern (reference: `internal/resources/pro/api_client/`):**
+**Pattern (reference: `internal/resources/pro/pki_venafi/`):**
 
 - Model the secret as **`Computed + Sensitive`** (never `Optional`, never user-set) with `UseStateForUnknown` so it is sticky across plans. The value **is** written to the (Sensitive) state file — that is the unavoidable cost of making a server-minted secret consumable by downstream resources/outputs, and it is acceptable *only* because there is no read-back. Mirrors `aws_iam_access_key`, the VPP `serviceToken`, etc.
 - Drive generation **opt-in** via an `Optional` string trigger (e.g. `credential_rotation`, the same idiom as `_wo_version`). Generate on Create only when the trigger is set; re-mint on Update only when its value **changes** (compare `plan` vs `state`; a `null`/removed trigger leaves the stored secret alone). Keep the compare logic in a small testable helper.
-- **`ModifyPlan` must predict any server-side clearing of the secret.** If a sibling action revokes it server-side — for `api_client`, setting `enabled=false` revokes the credentials (`app_type`→`NONE`) — then on `Read` you null the secret when the server reports it gone, **and** in `ModifyPlan` you must `resp.Plan.SetAttribute(<secret>, types.StringNull())` whenever that condition is planned (here: `enabled` planned `false`). Otherwise the sticky `UseStateForUnknown` value is planned non-null but applied null → `Provider produced inconsistent result after apply`. Force the secret `Unknown` in `ModifyPlan` when the rotation trigger changes so Update re-mints it (attribute plan modifiers run *before* resource `ModifyPlan`, so the override wins).
-- Any precondition the generation endpoint enforces (here: rotation requires `enabled=true`) gets a **cross-field plan-time validator** — assert only when the gating attribute is *known* (skip when unknown on create; the create-path guard + the server's own error cover that case).
+- **`ModifyPlan` must predict any server-side clearing of the secret.** If a sibling attribute revokes it server-side — e.g. an `enabled=false` that also discards the stored credential — then on `Read` you null the secret when the server reports it gone, **and** in `ModifyPlan` you must `resp.Plan.SetAttribute(<secret>, types.StringNull())` whenever that condition is planned (here: `enabled` planned `false`). Otherwise the sticky `UseStateForUnknown` value is planned non-null but applied null → `Provider produced inconsistent result after apply`. Force the secret `Unknown` in `ModifyPlan` when the rotation trigger changes so Update re-mints it (attribute plan modifiers run *before* resource `ModifyPlan`, so the override wins).
+- Any precondition the generation endpoint enforces (e.g. rotation requiring the integration be enabled) gets a **cross-field plan-time validator** — assert only when the gating attribute is *known* (skip when unknown on create; the create-path guard + the server's own error cover that case).
 - Data sources / list resources **MUST NOT** expose the secret (the API never returns it). `ImportStateVerifyIgnore` must list the secret **and** the rotation trigger.
 
 ### Server-derived computed fields & `Optional+Computed` attributes
@@ -627,6 +752,84 @@ tf-acc-benchmark-all-rules
 tf-acc-bp-scope-passcode
 ```
 
+## Jamf Account Resource Naming
+
+Resources backed by the `account/` package of `jamfplatform-go-sdk` carry the
+`jamfplatform_account_` prefix. This is the provider's **organization-level** family: the
+objects a practitioner manages at *account.jamf.com → Organization*, above and across
+individual Jamf Pro, School, Protect and Security Cloud tenants.
+
+Three layers disagree about what to call this family, so the choice is recorded rather than
+inferred: the SDK package is `account`, the gateway prefix is `sso`, and the spec bundle is
+`account-sso`. The Terraform name follows the **product surface** a practitioner navigates —
+Jamf Account — because the gateway prefix is a routing artifact and because the family will
+grow past SSO (licensing, deal registrations, distributor operations all live in the same SDK
+package).
+
+### Rules
+
+1. **Terraform construct name**: `jamfplatform_account_<resource>`. The SSO constructs are
+   `jamfplatform_account_sso_connection` and `jamfplatform_account_sso_domain` — the `sso_`
+   qualifier comes from the UI section, because "connection" and "domain" are both ambiguous
+   on their own.
+2. **Do not confuse it with Jamf Pro's SSO.** `jamfplatform_pro_sso_settings` and
+   `jamfplatform_pro_sso_failover_url` configure a single Jamf Pro tenant's own SSO. They are
+   a different product, a different endpoint and a different scope. The prefix is what keeps
+   them apart, which is why the family is not named `jamfplatform_sso_*`.
+3. **Go package path**: `internal/resources/account/<resource>/` — flat, one leaf package per
+   construct family, folder name equal to the Terraform slug minus the `jamfplatform_account_`
+   prefix. Actions live under `internal/actions/account/<resource>/`, one package per resource
+   with a file per verb, as in `internal/actions/pro/mdm/`.
+4. **Organization scope only, via `providerdata.ConfigureAccount`.** Do not hand-roll
+   Configure and do not route through `ConfigurePro` — there is no customer-tenant version to
+   read, and an organization may hold no Jamf Pro tenant at all. The gate is
+   `ScopeOrganization` alone; see [§API integration scope](#api-integration-scope-every-construct-declares-which-scopes-reach-it).
+5. **No organization ID travels anywhere.** An organization-scoped integration authenticates
+   on client id and secret alone, and the gateway resolves the organization from the access
+   token; `/sso/v1` ignores `X-Environment-Id` and `X-Tenant-Id` when either is sent. There is
+   no `organization_id` provider attribute and no SDK `WithOrganizationID`. A
+   `X-Organization-Id` header does exist and is parsed by the gateway, but nothing needs to
+   send it.
+6. **US gateway only.** The namespace is absent from the EU gateway — a bogus route under
+   `/sso/v1` there returns the gateway's own bare `404 page not found`, versus
+   `403 BAD_PERMISSIONS` in US. Acceptance tests skip on a non-US base URL, and the
+   region limitation belongs in user-facing documentation.
+7. **Acceptance tests use `testhelpers.AccPreCheckAccount`, never `AccPreCheck`.** The latter
+   skips unless a scope variable is set, and this family requires both to be *unset* — so
+   routing these tests through it would skip every one of them while still reporting green.
+8. **Import by domain name is a sanctioned exception to [§Import format](#import-format).**
+   `jamfplatform_account_sso_domain` imports by name, not id, for two reasons that both have to
+   hold before an exception is granted: nothing in the API reads a domain by id (the per-id GET
+   is unrouted), and the id is **not stable** — removing and re-claiming a domain mints a new
+   one. Where an id is neither usable nor stable, the name is the primary key. Note the
+   acceptance harness defaults `ImportStateId` to the `id` attribute, which is exactly the value
+   `ImportState` rejects, so a name-imported construct must set `ImportStateId` explicitly.
+9. **Canonicalise by validator, not by plan modifier.** The server lower-cases a stored domain.
+   Because `domain` is `Required`, [§Plan-modifier rewrites are NOT a valid option for `Required`
+   attributes](#plan-modifier-rewrites-are-not-a-valid-option-for-required-attributes) rules out
+   rewriting the value, so strict acceptance plus a diagnostic naming the spelling to use is the
+   only correct option. Lookups stay case-insensitive so an import still forgives mixed case.
+
+### Jamf Account shapes that recur
+
+Wire-probed 2026-09-02 against two organization-scoped integrations.
+
+- **A collection may answer with either an envelope or a bare array.** The SDK's
+  `UnwrapResults` tolerates both, and its own tests pin both shapes after a period when the
+  account lists shipped broken for five days. Do not assume the declared envelope.
+- **No RSQL filter exists on any account collection GET**, so a list resource here is an
+  unfiltered stream — as in AI Governance.
+- **`403 BAD_PERMISSIONS` on a spec-advertised route means unrouted, not unprivileged**, the
+  same law as [§Jamf Security Cloud](#jamf-security-cloud-resource-naming). It is how the
+  absence of a per-id domain read and of any domain update was established. The one case where
+  it can be read as a genuine authorization refusal is when a *different* credential answers
+  `200` on the same URL in the same region — then the route is provably mapped.
+- **`errors[].field` is populated only for top-level required fields.** An invalid enum comes
+  back as `MALFORMED_REQUEST_BODY` with `field: null` and the offending value never named, and
+  a discriminator/payload mismatch is an unattributed `500`. So every enum, and every
+  discriminator-to-payload pairing, must be validated at plan time from the SDK's own
+  `*Values()` helpers — the server will not attribute the mistake for you.
+
 ## Jamf Security Cloud Resource Naming
 
 Resources backed by the `securitycloud/` package of `jamfplatform-go-sdk` carry the
@@ -662,8 +865,8 @@ artifacts that appear nowhere in the admin UI, so they are not part of the Terra
 
 ### Security Cloud shapes that recur
 
-Three patterns show up across the Security Cloud namespaces often enough to state once here
-rather than rediscover per resource. All three were wire-probed on 2026-08-27.
+These patterns show up across the Security Cloud namespaces often enough to state once here
+rather than rediscover per resource. Wire-probed on 2026-08-27 unless a later date is given.
 
 **A single-element array is a scalar.** Several fields are declared as arrays but rejected at
 any size but one — the IPsec cipher suites' `encryption`, `integrity` and `dhGroups`, and the
@@ -678,14 +881,35 @@ value list from the SDK's generated `*Values()` helper so they cannot drift from
 from the API. Where the SDK documents a set but generates no helper (grouped gateway's
 `recoveryDelayInSec`), restate it in the package's `enums.go` and say why in a comment.
 
-**Deleting a referenced object is a bare 409.** Jamf Security Cloud refuses to delete anything
-another object points at — a gateway named by a DNS zone's name server or by a grouped
-gateway's membership — with `409 CONFLICT` and no structured detail identifying the referrer.
-This is the Terraform destroy-ordering trap described in
+**Whether a referenced object can be deleted is per construct — probe it.** For *gateways*,
+Jamf Security Cloud refuses to delete anything another object points at — a gateway named by a
+DNS zone's name server or by a grouped gateway's membership — with `409 CONFLICT` and no
+structured detail identifying the referrer. That is the Terraform destroy-ordering trap
+described in
 [§Referenced-by-name dependencies](#referenced-by-name-dependencies--has_dependencies-on-delete):
 removing the reference *and* destroying the target in one apply lets Terraform sequence the
 destroy first. Translate the 409 into a diagnostic that names the possible referrers and says
 to split the applies, because the server will not.
+
+**Device groups behave the opposite way** (wire-probed 2026-08-29), which is why this is a
+probe and not a rule: deleting a group that a ZTNA app's `assignments.inclusions.groups` still
+names returns `204`, and the app is silently left at `allUsers: false` with an empty group list
+— a combination the API rejects on *write*. There is no 409 to translate and nothing for
+Terraform to sequence, so the hazard belongs in the resource's description rather than in a
+diagnostic. Do not carry either behaviour across from one construct to another; probe the
+delete of a referenced object per construct.
+
+**An unmapped route answers `403 BAD_PERMISSIONS`, not `404`** (wire-probed 2026-08-29). A
+`GET` on a deliberately bogus Security Cloud path returns exactly the body a genuinely
+unprivileged call does, so the status is ambiguous by construction and **must not be
+translated into a "grant this privilege" diagnostic** — it would be wrong half the time.
+Two consequences. First, when the bundled spec advertises an endpoint the gateway 403s on,
+that is evidence the route is unmapped rather than that a privilege is missing: confirm it by
+probing a bogus path with the same token, and by checking a sibling call under the same
+privilege still succeeds (`PUT /securitycloud/v2/groups/{id}` fails this way while
+`PUT /securitycloud/v1/groups/{id}` succeeds under the same `device-groups:update`). Second,
+this is *not* the entitlement failure: `403 NOT_ENTITLED` is a different code and does deserve
+its own named diagnostic.
 
 **A read-only status timestamp does not belong in the schema.** The gateway's
 `status.updatedAt` and the grouped gateway's `updatedAt` advance on every server-side
@@ -801,10 +1025,11 @@ if resp.Diagnostics.HasError() {
 
 - **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce environment-or-tenant for every `pro/` package and Pro action.
 - **Security Cloud constructs need no call site either** — `providerdata.ConfigureSecurityCloud` applies the same environment-or-tenant gate (see [§Jamf Security Cloud Resource Naming](#jamf-security-cloud-resource-naming)).
-- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`.
+- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`, except AI Governance, which declares `ScopeEnvironment` alone.
+- **Jamf Account constructs need no call site** — `providerdata.ConfigureAccount` applies a `ScopeOrganization`-only gate (see [§Jamf Account Resource Naming](#jamf-account-resource-naming)).
 - **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first.
 - **Do not gate in provider Configure instead.** The answer differs per API family — Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point those call sites simply drop `ScopeTenant` — and a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
-- Organization scope is rejected everywhere today. That is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure.
+- **Organization scope is not a rejected special case.** It is the only scope that reaches the `jamfplatform_account_*` family, and it is rejected everywhere else. That two-way enforcement is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure, in both directions.
 
 Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`. `providerdata.New` derives the scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
 
@@ -936,7 +1161,7 @@ The PR body closes the issue (`Closes #NNN`) and records the fast-track or slow-
 **While a migration is outstanding**, every call to a deprecated symbol carries a suppression naming the issue, so the reason survives without reading the tracker:
 
 ```go
-//nolint:staticcheck // SA1019: no v4 client generated yet — see #311
+//nolint:staticcheck // SA1019: no v4 client generated yet — see #NNN
 ```
 
 **Closing condition**: the issue closes only when no call site reaches the deprecated method *and* every `SA1019` suppression for that surface is gone — `grep -rn "SA1019" internal/` is the check. A migration that leaves suppressions behind is not finished, because the next audit cannot tell it from an un-started one.
@@ -1054,6 +1279,38 @@ Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the
 
 **Before opening the PR**: run `make fix fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
+### Tenant singletons with a real clear
+
+A third shape sits between [§Singleton resources](#singleton-resources) and ordinary CRUD: an object that exists **one per tenant with no identifier**, like a singleton, but whose `Delete` the API genuinely honours and whose **absence is observable**. Both Jamf Security Cloud custom DNS singletons are this shape — `jamfplatform_security_cloud_dns_search_domain` and `jamfplatform_security_cloud_dns_hostname_mappings`. Do not force one into §Singleton resources: its no-op `Delete` would leave `terraform destroy` silently not clearing tenant-wide configuration that the API is perfectly willing to clear.
+
+**Follow §Singleton resources for** the fixed `helpers.SingletonID`, the identity schema, the `id` attribute shape, the validated import identifier, and the defensive nil-client guards in every handler.
+
+**Diverge on exactly four points:**
+
+1. **`Delete` calls the clear endpoint for real.** Probe whether clearing an already-clear object is idempotent — both DNS endpoints answer `204` either way, so neither needs a not-found special case beyond the usual `helpers.IsNotFoundError` guard.
+2. **`CheckDestroy` is the ordinary contract** — assert the object is gone. The inverted singleton `CheckDestroy` (assert it still exists) would pass while the provider silently cleared nothing, which is the failure this shape most invites.
+3. **`Read` treats absence as deleted** and calls `resp.State.RemoveResource`. **How absence presents is per construct — probe it, do not inherit it.** The two DNS singletons disagree: an unset search domain is a `404` carrying `SEARCH_DOMAIN_NOT_SET`, while an empty hostname-mapping set is an ordinary `200` with `totalCount: 0`. One is caught by `helpers.IsNotFoundError`; the other has to be recognised from the payload.
+4. **`Delete` is unconditional — it clears whatever is stored, not only what this resource wrote.** The clear endpoints take no body and no precondition, so a value an administrator changed out of band since the last refresh is discarded without a diagnostic. It is reachable without any race: `terraform destroy -refresh=false` never looks, and an ordinary destroy whose refresh raced a change in the admin UI is the same outcome. **Probe whether the construct's clear is recoverable.** Where it is not — the stored value cannot be reconstructed from anything Terraform holds — read before clearing and refuse the delete when what is stored is not what state records, so the operator chooses rather than discovers. Where it is recoverable (both DNS singletons are: a search domain is one string and a mapping set is re-declarable), the unconditional clear is acceptable and this paragraph is the record of why.
+
+**`Create` refuses to clobber a value that already existed — and that is a narrower guarantee than it looks.** These endpoints are unconditional upserts that report no conflict, so nothing on the wire separates "creating the tenant's value" from "silently replacing what an administrator set by hand". `Create` therefore reads first and errors with the import command when a value already exists. That preflight read is why the resource's declared SDK methods include the read privilege; `permissions_test.go` catches it if the list is not updated.
+
+Be precise about what that buys. The preflight GET and the write are two unsynchronised requests against an endpoint with **no conditional-write primitive** — no ETag, no `If-Match`, no version field to make the write depend on what the read saw. So the preflight **reliably catches a value that existed before this apply started**, which is the case that actually happens in practice (an administrator configured the tenant by hand, and the operator needs to be told to import rather than overwrite). It **narrows but does not close** the window against a value written concurrently, and it is not an ordering barrier between writers. Two shapes stay reachable:
+
+- **Two blocks in one configuration.** Two instances of a one-per-tenant resource is legal HCL — Terraform's uniqueness is per type *and name*, not per type. With no dependency between them Terraform walks both concurrently at the default `-parallelism=10`, so both preflights can read "unset", both write, the last writer wins, and both land in state under the same fixed `helpers.SingletonID`. Every later plan then proposes an update on the loser, forever. If the walk happens to serialise instead, the second `Create` errors telling the operator to import a value its own sibling just wrote — confusing, but at least loud.
+- **Two workspaces, or two CI runs, in the same window.** Same mechanism across processes, and no in-process lock can help.
+
+**A resource cannot detect the duplicate-block case in code.** The framework gives a resource no way to see a sibling instance of itself: `ModifyPlan`, `ConfigValidators` and `ValidateConfig` each receive only the one instance's own configuration, and there is no provider-level hook that enumerates the instances of a type in a plan. So for a one-per-tenant construct **the schema description must carry the warning** — say in the resource's `MarkdownDescription` that the object is one per tenant, that declaring it twice (in one configuration or across workspaces) makes the instances fight, and that adopting an existing value means `terraform import`. Documentation is the only place the constraint can live; do not write a preflight that implies otherwise.
+
+A singular data source is worth providing, and **whether an empty result is an error is the wire's call, not a house style**: reading an unset search domain errors, because a data source silently yielding `""` would feed that into whatever referenced it; reading an empty mapping set returns an empty collection, because a `for` expression over it needs no special case.
+
+### Attribute defaults do not work inside `SetNestedAttribute`
+
+An attribute `Default` (`booldefault.StaticBool`, and by construction its siblings) placed on an attribute **nested inside a `SetNestedAttribute`** overrides a value the configuration set **explicitly**, producing a permanent no-op diff. Verified against a live tenant on 2026-08-29 on `security_cloud/dns_hostname_mappings`: with `Optional + Computed + booldefault.StaticBool(false)`, a configuration saying `connect_to_ztna = true` planned as `false`, so every plan after the first proposed the same change forever. **It reproduces with a single element**, so it is not the set-element correlation problem that usually explains this shape.
+
+Prefer **`Required`** for such an attribute. It removes the mechanism instead of working around it, and where the admin UI shows the control on every row — as it does for both traffic-vectoring checkboxes — every element genuinely has a value to state.
+
+Two things this does *not* say. An `Optional` attribute inside a `SetNestedAttribute` with **neither** `Computed` nor `Default` is unaffected, verified in the same session. And **no unit test catches this** — the schema builds, the state builders round-trip, and every assertion passes. Pin the shape instead: assert `Required` and `Default == nil` in `schema_test.go`, with the reason, so a well-meaning later change to `Optional + Default` fails at the gate rather than in a user's plan.
+
 ### Full-replace endpoints & shared backing stores
 
 Some Jamf Pro `PUT` endpoints are **full-replace**: any field omitted from the request body is reset to its server-side default, not left untouched. This is **not** discoverable from the SDK type or the OpenAPI spec — you **must** wire-probe it during the in-design phase. Probe: `GET` the object, `PUT` a body with one field changed and several others omitted, then `GET` again. If the omitted fields reverted to defaults, the endpoint is full-replace. Probe **both directions** (omit field A, then omit field B) — `/v4/enrollment` resets *every* omitted scalar. Record the finding in the spike doc and the `crud.go` annotation block.
@@ -1101,6 +1358,38 @@ Some pro settings endpoints update via **JSON merge-patch** (`Content-Type: appl
 - **Omitting a field preserves its server value** (merge-patch semantics) — so `Optional+Computed` is correct here, and the *opposite* of the full-replace bias toward `Required`. Build the payload by sending **only** the fields the user set: map each `Optional+Computed` attribute to a pointer that is `nil` when the planned value is null/unknown, so `omitempty` drops it and the merge-patch leaves the server value untouched. (Reference: `optBool` in `computer_inventory_collection_settings/input_builders.go`.)
 - **`204` means no echoed body**, so a `GET`-after-write is **mandatory** in both Create and Update to capture authoritative state (computed defaults, server coercions). This is the same GET-after the singleton convention already requires — but here it is load-bearing, not just future-proofing.
 - Probe whether the server **coerces dependent fields** (a parent toggle that disables child sub-options): see [§Cross-field validation](#cross-field-validation) for handling — a config validator, not a plan modifier. Reference: `jamfplatform_pro_computer_inventory_collection_settings`.
+
+#### Merge-patch merges *inside* a nested object, so a discriminated block must send explicit nulls
+
+Merge-patch does not replace a nested object; it merges into it, field by field. When a
+nested object is **discriminated** — one member selects which of its siblings are legal —
+that makes a change of discriminator unexpressible by omission, and both directions fail
+for opposite reasons. On `jamfplatform_security_cloud_ztna_app`'s `routing` block, whose
+`mode` decides whether a gateway and a resolution mode are required or forbidden:
+
+- switching to the mode that **forbids** the siblings, sending only the discriminator,
+  leaves the previous values merged in — and the server refuses the combination;
+- switching to the mode that **requires** them, sending only the discriminator and one
+  sibling, arrives missing the other — and the server refuses that too.
+
+Both draw the same opaque refusal (`400 [INVALID_FIELD] routing: Routing definition is not
+valid.`), so the failure looks like a validation bug rather than a serialisation one.
+
+Two consequences:
+
+- **Send the whole discriminated object on every write, with absent members as explicit
+  `null`s** — never a partial. This is the nested-object analogue of the always-emit rule
+  for classic wrappers and scalars above.
+- **A nil pointer with `,omitempty` cannot express `null`.** The SDK generator has a config
+  knob for exactly this: list the schema in `emitNullForOptional` (`tools/generate/config.json`)
+  and it drops `,omitempty` from that schema's pointer fields, so nil marshals as `null`.
+  Fixing this upstream is required — a provider-side workaround is not available, because
+  the generated `*PatchRequest` type is the method's parameter. Wire-probe that the create
+  path also accepts the explicit-null form before doing it; on this endpoint it does.
+
+Reference: `internal/resources/security_cloud/ztna_app/input_builders.go` (`routingToWire`),
+and `TestRoutingToWireEmitsExplicitNulls`, which asserts the marshalled JSON rather than the
+struct — the struct is identical either way and only the tag decides which body goes out.
 
 ### Classic XML `PUT` merge where *empty clears* (omit = retain)
 
@@ -1154,22 +1443,22 @@ The classic `<criterion>` element itself (smart groups + advanced searches) is s
 
 ### Referenced-by-name dependencies & `HAS_DEPENDENCIES` on delete
 
-Some Jamf Pro objects refuse deletion while another object references them — e.g. deleting a `jamfplatform_pro_api_role` still assigned to a `jamfplatform_pro_api_client` returns `406 HAS_DEPENDENCIES`. When a resource references another **by name** (e.g. `api_client.api_roles = [jamfplatform_pro_api_role.foo.display_name]`), be aware of two consequences:
+Some Jamf Pro objects refuse deletion while another object references them, returning `406 HAS_DEPENDENCIES`. The pattern was wire-derived from the API role / API client pair (deleting a role still assigned to a client), whose constructs were withdrawn at the Platform API GA — no shipped construct currently has this shape, but the rules below hold for the next one that does. When a resource references another **by name** (rather than by a `Computed` id), be aware of two consequences:
 
-- **Don't add a plan-time validator that checks the referenced name against a live server list.** A name interpolated from another resource created in the *same* apply is a *known* value at plan time (e.g. `display_name` is `Required`), so the validator can't skip it on unknown-grounds — yet the referenced object isn't on the server yet, so the lookup fails with a false "not found" plan error. This breaks the canonical compose pattern. Rely on Jamf Pro's clear apply-time error instead. (A live-list validator is still correct for values that are *not* produced by sibling resources — e.g. `api_role.privileges` against the fixed per-version privilege list.)
+- **Don't add a plan-time validator that checks the referenced name against a live server list.** A name interpolated from another resource created in the *same* apply is a *known* value at plan time (a `Required` display name, say), so the validator can't skip it on unknown-grounds — yet the referenced object isn't on the server yet, so the lookup fails with a false "not found" plan error. This breaks the canonical compose pattern. Rely on Jamf Pro's clear apply-time error instead. (A live-list validator is still correct for values that are *not* produced by sibling resources — e.g. a fixed per-version privilege list.)
 - **The delete-while-referenced 406 is a Terraform ordering gotcha, not a provider bug.** Removing the reference *and* destroying the referenced resource in one apply can let Terraform sequence the destroy before the dependent's update (the config dependency edge is gone in the new graph). Document the constraint in the referenced resource's `MarkdownDescription` ("remove it from the consumer first, in a separate apply"). In acceptance tests, exercise scope add/remove by keeping the referenced fixture **defined-but-unreferenced** when dropping it from the consumer, so no in-use object is destroyed mid-test.
 
 ### Referencing a server-managed catalog by name
 
-When a resource references a **server-managed catalog** object — one the user never creates, e.g. the App Installer title catalog — prefer exposing it **by name** with the ID `Computed`, rather than forcing the user to supply an opaque server ID:
+When a resource references a **server-managed catalog** object — one the user never creates, e.g. a title catalog the server publishes — prefer exposing it **by name** with the ID `Computed`, rather than forcing the user to supply an opaque server ID:
 
 - Expose `<thing>_name` as `Required`; keep `<thing>_id` `Computed` (plain `Computed`, no `UseStateForUnknown` — it is derived from the mutable name, so it must recompute when the name changes; see [§Server-derived computed fields](#server-derived-computed-fields--optionalcomputed-attributes)).
-- **Resolve name → ID at apply** (Create/Update) via the SDK's `Resolve…IDByName`; a miss is a clear "not in catalog" error.
+- **Resolve name → ID at apply** (Create/Update); a miss is a clear "not in catalog" error. Use the SDK's `Resolve…IDByName` where one exists; otherwise list the catalog through the service's own filter and decide the match in the provider (see `app_installer/name_lookup.go`).
 - **Read/import must reverse-resolve ID → name** from the catalog (the object's `GET` returns only the ID). Do **not** echo the configured name back from state — on import there is no prior config, so an echo yields an empty name and fails `ImportStateVerify`. Make the reverse-resolve best-effort: preserve the existing state value on a transient catalog error rather than failing the refresh.
-- **Safe only with an exact-match resolver.** A case-insensitive/fuzzy resolver would accept `"010 editor"`, store it, then reverse-resolve to the canonical `"Jamf Composer"` → perpetual diff. Confirm the SDK resolver matches exactly (the platform `ResolveByNameClientPaged` does — `v != name`); if it doesn't, fetch the canonical name after resolving and error when it differs from the user's input.
-- **Plan-time name validation IS appropriate here** — unlike the sibling-resource case above. A server catalog is never created in the same apply, so a best-effort live-list/`GET` check (warn on transport error, error on a genuine miss, skip null/unknown) fails fast without breaking compose. Mirror `api_role`'s privilege validator.
+- **Safe only with an exact-match resolver, and a service-side filter is not one.** A case-insensitive/fuzzy match would accept `"jamf composer"`, store it, then reverse-resolve to the canonical `"Jamf Composer"` → perpetual diff. Confirm the resolver matches exactly: the platform `ResolveByNameClientPaged` does (`v != name`), but Jamf Pro's own RSQL `name==`/`titleName==` filter does **not** — it is case-insensitive and treats `*` as a glob, wire-verified on both the App Installer catalog and its deployments. So a filter narrows the request only; decide the match on byte equality in the provider, and treat two objects sharing one exact name as an ambiguity error rather than an arbitrary pick.
+- **Plan-time name validation IS appropriate here** — unlike the sibling-resource case above. A server catalog is never created in the same apply, so a best-effort live-list/`GET` check (warn on transport error, error on a genuine miss, skip null/unknown) fails fast without breaking compose. Reference: `internal/resources/pro/app_request_settings/validators.go` (`validateAppStoreLocale`).
 
-Reference: `jamfplatform_pro_app_installer.app_title_name` → Computed `app_title_id`.
+Reference: `jamfplatform_pro_app_installer.app_title_name` → Computed `app_title_id`, resolved by `internal/resources/pro/app_installer/name_lookup.go`.
 
 ### Classic membership: author by username, mirror the resolved ID set as Computed
 

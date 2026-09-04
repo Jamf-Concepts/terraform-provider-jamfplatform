@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -86,7 +85,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:jamf-protect-settings") {
+	if !permissions.Renders(resourcePrivileges, "jamf-protect-deployments:update") {
 		t.Fatalf("resourcePrivileges did not render the Jamf Protect privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -108,7 +107,7 @@ func TestPluralDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestPluralDataSourcePrivileges_Rendered guards that the table actually
 // rendered into the data source description.
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:jamf-protect-deployments") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "jamf-protect-deployments:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the Jamf Protect plans privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }

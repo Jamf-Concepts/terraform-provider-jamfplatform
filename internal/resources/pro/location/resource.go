@@ -89,12 +89,12 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 		MarkdownDescription: "Manages a Jamf Pro Volume Purchasing (VPP) location. " +
 			"A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple " +
 			"School Manager Volume Purchasing account using a `.vpptoken` file (already " +
-			"base64-encoded by Apple — supply the file contents directly via " +
+			"base64-encoded by Apple, so supply the file contents directly via " +
 			"`file(\"/path/to/vpp.vpptoken\")`). On create the provider registers the " +
 			"location, immediately reclaims licenses to clear any client-context mismatch " +
 			"inherited from a previously shared token, then polls until Apple's content " +
 			"sync populates `last_sync_time` before committing the resource. The default " +
-			"create timeout is 30 minutes — increase via `timeouts { create = \"60m\" }` " +
+			"create timeout is 30 minutes; raise it with `timeouts { create = \"60m\" }` " +
 			"if your tenant has a large catalog." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -114,9 +114,9 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			"service_token": schema.StringAttribute{
 				MarkdownDescription: "Base64-encoded contents of the `.vpptoken` file downloaded from Apple " +
 					"Business Manager / Apple School Manager. The `.vpptoken` file is already a base64 string " +
-					"on disk — supply it directly via `file(\"/path/to/vpp.vpptoken\")`; do NOT base64-encode it " +
-					"again. `WriteOnly` — the value is sent to Jamf Pro on create and on token-rotating " +
-					"updates but **never persisted in Terraform state**. Jamf Pro never returns the token on " +
+					"on disk, so supply it directly via `file(\"/path/to/vpp.vpptoken\")`. Do not base64-encode " +
+					"it again. `WriteOnly`: the value is sent to Jamf Pro on create and on token-rotating " +
+					"updates, but is **never persisted in Terraform state**. Jamf Pro never returns the token on " +
 					"reads, so the only signal Terraform can use to rotate the stored token is the companion " +
 					"`service_token_wo_version` integer. The provider trims surrounding whitespace from the " +
 					"supplied string before sending (Apple's downloaded `.vpptoken` files often carry a " +
@@ -132,7 +132,7 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 				MarkdownDescription: "Rotation trigger for the `WriteOnly` `service_token`. Bump this integer " +
 					"(any change) to force an update that re-sends the current `service_token` to Jamf Pro. " +
 					"Initial create should set `service_token_wo_version = 1`. Required because " +
-					"`service_token` itself is Required — keeping the companion Required keeps the rotation " +
+					"`service_token` is itself Required: keeping the companion Required keeps the rotation " +
 					"signal explicit in config.",
 				Required: true,
 			},
@@ -168,7 +168,7 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro site ID to associate with this VPP location. Jamf Pro " +
 					"reports the sentinel `\"-1\"` when no site is set; the provider mirrors whatever Jamf Pro " +
-					"reports into state and does not apply a default — leave the attribute unset to let Jamf " +
+					"reports into state and does not apply a default. Leave the attribute unset to let Jamf " +
 					"Pro decide.",
 				Optional: true,
 				Computed: true,
@@ -251,7 +251,7 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			},
 			"client_context_mismatch": schema.BoolAttribute{
 				MarkdownDescription: "Whether Jamf Pro detected a client-context mismatch for this location. " +
-					"Should be `false` after a successful create — the provider always reclaims licenses " +
+					"Should be `false` after a successful create, because the provider reclaims licenses " +
 					"immediately after registering the location to clear residual mismatches inherited from a " +
 					"previously shared service token. Returned by Jamf Pro; not user-settable. Jamf Pro " +
 					"recomputes this value on every read so the attribute is shown as `(known after apply)` " +
@@ -260,8 +260,8 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			},
 			"content": schema.ListNestedAttribute{
 				MarkdownDescription: "Apple-returned purchased-content catalog for this location, one row per " +
-					"`adam_id`. Returned by Jamf Pro; not user-settable — consumers (e.g. mobile-device app / " +
-					"Mac app resources) can look up `license_count_total` / `license_count_in_use` for a given " +
+					"`adam_id`. Returned by Jamf Pro; not user-settable. Consumers such as the mobile device app " +
+					"and Mac app resources can look up `license_count_total` / `license_count_in_use` for a given " +
 					"`adam_id` to verify a license is available before assigning. The catalog mirrors the most " +
 					"recent Apple sync, which can update independently of Terraform applies, so the attribute " +
 					"is shown as `(known after apply)` on every update.",

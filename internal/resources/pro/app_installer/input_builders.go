@@ -10,7 +10,7 @@ import (
 )
 
 // buildAppInstallerInput projects a plan model into an SDK
-// *pro.AppInstallerDeploymentCreate suitable for both create and update. The two
+// *pro.AppTitleDeployment suitable for both create and update. The two
 // nested blocks are full-replace on the wire: a managed block emits every field;
 // an omitted (nil) block is left nil so the payload drops it. update_behavior is
 // server-required, so it is always set from the (known) plan value rather than
@@ -21,8 +21,8 @@ import (
 // populated until after the follow-up GET. selected_version is not emitted: the
 // server controls the version (it coerces any submitted value to the latest
 // available), so the field is Computed-only.
-func buildAppInstallerInput(plan AppInstallerResourceModel, appTitleID string) *pro.AppInstallerDeploymentCreate {
-	out := &pro.AppInstallerDeploymentCreate{
+func buildAppInstallerInput(plan AppInstallerResourceModel, appTitleID string) *pro.AppTitleDeployment {
+	out := &pro.AppTitleDeployment{
 		Name:                            plan.Name.ValueString(),
 		AppTitleID:                      appTitleID,
 		DeploymentType:                  plan.DeploymentType.ValueString(),
@@ -52,13 +52,13 @@ func buildAppInstallerInput(plan AppInstallerResourceModel, appTitleID string) *
 // never sent as a zero value — the server rejects a blank message string or a
 // non-positive interval/delay whenever the key is present, so zero-filling would
 // 400. Fields the user did set are sent and replace the server value.
-func buildNotificationSettings(m *NotificationSettingsModel) *pro.AppInstallerNotificationSettings {
-	return &pro.AppInstallerNotificationSettings{
+func buildNotificationSettings(m *NotificationSettingsModel) *pro.AppTitleDeploymentNotificationSettings {
+	return &pro.AppTitleDeploymentNotificationSettings{
 		NotificationMessage:  helpers.OptionalStringPointer(m.NotificationMessage),
-		NotificationInterval: optionalIntPointer(m.NotificationInterval),
+		NotificationInterval: optionalInt64Pointer(m.NotificationInterval),
 		DeadlineMessage:      helpers.OptionalStringPointer(m.DeadlineMessage),
-		Deadline:             optionalIntPointer(m.Deadline),
-		QuitDelay:            optionalIntPointer(m.QuitDelay),
+		Deadline:             optionalInt64Pointer(m.Deadline),
+		QuitDelay:            optionalInt64Pointer(m.QuitDelay),
 		CompleteMessage:      helpers.OptionalStringPointer(m.CompleteMessage),
 		Relaunch:             helpers.OptionalBoolPointer(m.Relaunch),
 		Suppress:             helpers.OptionalBoolPointer(m.Suppress),
@@ -70,16 +70,15 @@ func buildNotificationSettings(m *NotificationSettingsModel) *pro.AppInstallerNo
 // server-defaulted to false, so they are always emitted. categories is always
 // emitted as a slice — empty (not nil) when there are none — so clearing
 // categories is deterministic (the block is full-replace).
-func buildSelfServiceSettings(m *SelfServiceSettingsModel) *pro.AppInstallerSelfServiceSettings {
-	cats := make([]pro.SelfServiceCategory, 0, len(m.Categories))
+func buildSelfServiceSettings(m *SelfServiceSettingsModel) *pro.AppTitleDeploymentSelfServiceSettings {
+	cats := make([]pro.AppTitleDeploymentSelfServiceSettingsCategoriesItem, 0, len(m.Categories))
 	for _, c := range m.Categories {
-		id := c.CategoryID.ValueString()
-		cats = append(cats, pro.SelfServiceCategory{
-			ID:       &id,
+		cats = append(cats, pro.AppTitleDeploymentSelfServiceSettingsCategoriesItem{
+			ID:       c.CategoryID.ValueString(),
 			Featured: boolPointerOrFalse(c.Featured),
 		})
 	}
-	return &pro.AppInstallerSelfServiceSettings{
+	return &pro.AppTitleDeploymentSelfServiceSettings{
 		Description:                 helpers.OptionalStringPointer(m.Description),
 		ForceViewDescription:        boolPointerOrFalse(m.ForceViewDescription),
 		IncludeInComplianceCategory: boolPointerOrFalse(m.IncludeInComplianceCategory),

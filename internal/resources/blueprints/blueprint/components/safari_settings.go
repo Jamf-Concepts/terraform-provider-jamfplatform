@@ -39,7 +39,7 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 		"accept_cookies": schema.StringAttribute{
 			MarkdownDescription: "The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Never", "CurrentWebsite", "VisitedWebsites", "Always")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.AcceptCookiesValueValues()...)},
 		},
 		"allow_disabling_fraud_warning": schema.BoolAttribute{
 			MarkdownDescription: "If false, the system forces fraud warnings on in Safari.",
@@ -68,7 +68,7 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 		"new_tab_start_page_type": schema.StringAttribute{
 			MarkdownDescription: "Sets the start page type in Safari. Valid values are `Start`, `Home`, `Extension`.",
 			Optional:            true,
-			Validators:          []validator.String{stringvalidator.OneOf("Start", "Home", "Extension")},
+			Validators:          []validator.String{stringvalidator.OneOf(blueprints.NewTabStartPagePageTypeValues()...)},
 		},
 		"new_tab_start_page_homepage_url": schema.StringAttribute{
 			MarkdownDescription: "The URL of the homepage which needs to start with `https://` or `http://`. Required when page type is `Home`.",

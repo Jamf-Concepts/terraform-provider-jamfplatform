@@ -74,7 +74,8 @@ func (r *AppRequestFormFieldResource) Schema(ctx context.Context, req resource.S
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). " +
 			"Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by `priority`. " +
-			"Titles are not required to be unique." + resourcePrivileges,
+			"Titles are not required to be unique. " +
+			"A tenant must hold at least one form field before App Requests can be enabled (`jamfplatform_pro_app_request_settings`). Jamf Pro checks that only on the settings write, so removing the last field while App Requests are enabled succeeds and leaves the form empty." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App Request form field ID assigned by Jamf Pro.",

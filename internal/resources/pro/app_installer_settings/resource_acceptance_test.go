@@ -193,7 +193,7 @@ func TestAccResource_ProAppInstallerSettings_SplitOwnership(t *testing.T) {
 				t.Fatalf("out-of-band GET: %v", err)
 			}
 			if got.DeploymentProcessControls == nil {
-				got.DeploymentProcessControls = &pro.AppInstallerDeploymentProcessControls{}
+				got.DeploymentProcessControls = &pro.AppInstallersDeploymentProcessControls{}
 			}
 			got.DeploymentProcessControls.CommandsBatchSize = &batchSize
 			if _, err := c.UpdateAppInstallerGlobalSettingsV1(ctx, got); err != nil {

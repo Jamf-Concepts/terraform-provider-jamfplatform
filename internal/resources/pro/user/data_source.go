@@ -50,7 +50,7 @@ func (d *UserDataSource) Metadata(ctx context.Context, req datasource.MetadataRe
 // Schema returns the data source schema.
 func (d *UserDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro **inventory user** record (a person in *Users → User Inventory*) by ID or by exact username. Exactly one of `id` or `username` must be supplied. This is the user record that devices and groups are scoped against — it is **not** a Jamf Pro admin account (see `jamfplatform_pro_account` for those)." + dataSourcePrivileges,
+		MarkdownDescription: "Look up a Jamf Pro **inventory user** record (a person in *Users → User Inventory*) by ID or by exact username. Exactly one of `id` or `username` must be supplied. This is the user record that devices and groups are scoped against. It is **not** a Jamf Pro admin account; see `jamfplatform_pro_account` for those." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro user ID. Mutually exclusive with `username`.",

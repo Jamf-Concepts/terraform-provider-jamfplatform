@@ -8,7 +8,6 @@ package gsx_connection_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -29,12 +28,12 @@ import (
 // state — restore it manually afterward if needed. CheckDestroy verifies the singleton
 // record persists (Delete is state-only).
 const (
-	envGsxToken            = "JAMFPLATFORM_ACC_GSX_TOKEN"
-	envGsxKeystoreBase64   = "JAMFPLATFORM_ACC_GSX_KEYSTORE_BASE64"
-	envGsxKeystorePassword = "JAMFPLATFORM_ACC_GSX_KEYSTORE_PASSWORD"
-	envGsxUsername         = "JAMFPLATFORM_ACC_GSX_USERNAME"
-	envGsxServiceAccount   = "JAMFPLATFORM_ACC_GSX_SERVICE_ACCOUNT"
-	envGsxShipTo           = "JAMFPLATFORM_ACC_GSX_SHIP_TO" // optional
+	envGsxToken            = "JAMFPLATFORM_ACC_PRO_GSX_TOKEN"
+	envGsxKeystoreBase64   = "JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_BASE64"
+	envGsxKeystorePassword = "JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_PASSWORD"
+	envGsxUsername         = "JAMFPLATFORM_ACC_PRO_GSX_USERNAME"
+	envGsxServiceAccount   = "JAMFPLATFORM_ACC_PRO_GSX_SERVICE_ACCOUNT"
+	envGsxShipTo           = "JAMFPLATFORM_ACC_PRO_GSX_SHIP_TO" // optional
 )
 
 type gsxCreds struct {
@@ -46,12 +45,12 @@ type gsxCreds struct {
 func requireGsxCreds(t *testing.T) gsxCreds {
 	t.Helper()
 	c := gsxCreds{
-		token:            os.Getenv(envGsxToken),
-		keystoreB64:      os.Getenv(envGsxKeystoreBase64),
-		keystorePassword: os.Getenv(envGsxKeystorePassword),
-		username:         os.Getenv(envGsxUsername),
-		serviceAccount:   os.Getenv(envGsxServiceAccount),
-		shipTo:           os.Getenv(envGsxShipTo),
+		token:            testhelpers.AccEnv(envGsxToken),
+		keystoreB64:      testhelpers.AccEnv(envGsxKeystoreBase64),
+		keystorePassword: testhelpers.AccEnv(envGsxKeystorePassword),
+		username:         testhelpers.AccEnv(envGsxUsername),
+		serviceAccount:   testhelpers.AccEnv(envGsxServiceAccount),
+		shipTo:           testhelpers.AccEnv(envGsxShipTo),
 	}
 	if c.token == "" || c.keystoreB64 == "" || c.keystorePassword == "" || c.username == "" || c.serviceAccount == "" {
 		t.Skipf("skipping: set %s, %s, %s, %s, %s to a real Apple-registered GSX certificate/token/account to exercise GSX Connection write tests",

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_printer Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro printer by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:printers` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Printers | Read | `printers` |
 ---
 
 # jamfplatform_pro_printer (Data Source)
 
 Look up a Jamf Pro printer by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:printers` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Printers | Read | `printers` |
 
 ## Example Usage
 
@@ -63,7 +63,7 @@ output "printer_example_by_name" {
 - `notes` (String) Free-text notes.
 - `os_requirements` (String) Operating-system version requirement.
 - `ppd` (String) Short name of the PPD file.
-- `ppd_contents` (String) Inline contents of the PPD file. Trailing whitespace is semantically ignored — the server strips it on every round-trip.
+- `ppd_contents` (String) Inline contents of the PPD file. Trailing whitespace is semantically ignored, because Jamf Pro strips it on every round-trip.
 - `ppd_path` (String) Filesystem path to the PPD file.
 - `shared` (Boolean) Whether the printer is shared.
 - `uri` (String) Device URI of the printer.

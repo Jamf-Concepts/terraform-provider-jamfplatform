@@ -38,7 +38,7 @@ func (d *AppInstallerSettingsDataSource) Metadata(_ context.Context, req datasou
 // Schema returns the data source schema. All attributes are Computed.
 func (d *AppInstallerSettingsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro App Installer global settings. Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro App Installer global settings. These settings are one per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

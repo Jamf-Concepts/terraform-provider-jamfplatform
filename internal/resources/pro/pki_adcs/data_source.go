@@ -74,7 +74,7 @@ func (d *AdcsDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 				Required:            true,
 			},
 			"connector_mode": schema.StringAttribute{
-				MarkdownDescription: "AD CS connector mode — `INBOUND` or `OUTBOUND`.",
+				MarkdownDescription: "AD CS connector mode. Either `INBOUND` or `OUTBOUND`.",
 				Computed:            true,
 			},
 			"display_name": schema.StringAttribute{

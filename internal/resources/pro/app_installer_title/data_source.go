@@ -13,11 +13,13 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -52,6 +54,13 @@ func (d *AppInstallerTitleDataSource) Schema(ctx context.Context, req datasource
 	attrs["id"] = schema.StringAttribute{
 		MarkdownDescription: "Catalog title ID to look up.",
 		Required:            true,
+	}
+	attrs["version"] = schema.StringAttribute{
+		MarkdownDescription: "Title version to look up. Omit to read the title's current version, which is then returned here. " +
+			"Set it to read a historical version instead — the package hash, minimum OS version, availability date and signing identity all move between versions. " +
+			"Use the `jamfplatform_pro_app_installer_titles` data source to discover available titles; a version Jamf Pro no longer publishes is a not-found error.",
+		Optional: true,
+		Computed: true,
 	}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Looks up a single App Installer catalog title by ID. Titles are published by Jamf and cannot be created or modified; this data source surfaces a title's metadata so you can reference its `id` from `jamfplatform_pro_app_installer.app_title_id`." + dataSourcePrivileges,
@@ -90,10 +99,15 @@ func (d *AppInstallerTitleDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
+	version := ""
+	if helpers.IsConfiguredValue(data.Version) {
+		version = data.Version.ValueString()
+	}
+
 	readCtx, cancel := context.WithTimeout(ctx, defaultReadTimeout)
 	defer cancel()
 
-	got, err := d.client.GetAppInstallerTitleV1(readCtx, data.ID.ValueString())
+	got, err := d.client.GetAppInstallerTitleV1(readCtx, data.ID.ValueString(), version)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to find App Installer title", err.Error())
 		return
@@ -101,27 +115,41 @@ func (d *AppInstallerTitleDataSource) Read(ctx context.Context, req datasource.R
 
 	data = AssignTitleDataSource(got)
 
-	tflog.Trace(ctx, "read App Installer title data source", map[string]any{"id": data.ID.ValueString()})
+	// The version list is a second endpoint; the per-title GET does not carry it.
+	// A failure here is surfaced rather than swallowed: the attribute is Computed,
+	// so returning an empty list on error would be indistinguishable from a title
+	// that genuinely publishes no earlier versions, which is the common case.
+	versions, err := d.client.ListAppInstallerTitleVersionsV1(readCtx, data.ID.ValueString(), "")
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to list App Installer title versions", err.Error())
+		return
+	}
+	data.Versions = assignTitleVersions(versions)
+
+	tflog.Trace(ctx, "read App Installer title data source", map[string]any{"id": data.ID.ValueString(), "versions": len(data.Versions)})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// TitleDataSourceAttributes returns the shared Computed attribute map describing
-// an App Installer catalog title. Shared with the plural titles data source so
-// both surface an identical field set. The caller adds the lookup `id` shape and
-// any `timeouts` attribute appropriate to its construct.
+// TitleDataSourceAttributes returns the Computed attribute map describing one
+// App Installer catalog title in full, as the per-title endpoint returns it.
+// The caller adds the lookup `id` and `version` shapes. The plural data source
+// does not reuse this map: the catalog list endpoint returns only a seven-field
+// summary, which `TitleSummaryAttributes` describes.
 func TitleDataSourceAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"id":                          computedString("Catalog title ID."),
+		"version":                     computedString("Published version this title's metadata describes."),
 		"title_name":                  computedString("Title display name."),
 		"publisher":                   computedString("Title publisher."),
 		"bundle_id":                   computedString("Primary application bundle identifier."),
-		"version":                     computedString("Current published version."),
-		"short_version":               computedString("Current published short version string."),
+		"short_version":               computedString("Published short version string."),
 		"architecture":                computedString("Supported CPU architecture (e.g. `x86_64`, `arm64`, `universal`)."),
 		"minimum_os_version":          computedString("Minimum macOS version required to install the title."),
 		"language":                    computedString("Title language."),
-		"availability_date":           computedString("Date the current version became available in the catalog."),
+		"availability_date":           computedString("Date this version became available in the catalog."),
 		"icon_url":                    computedString("URL of the title icon."),
+		"media_source_type":           computedString("Where Jamf Pro downloads the installer from: `JAMF_SERVER` for a Jamf-hosted package, `EXTERNAL_URL` for the software vendor's own site."),
+		"installation_path_shared":    schema.BoolAttribute{MarkdownDescription: "Whether another title may install to the same path as this one.", Computed: true},
 		"size_in_bytes":               schema.Int64Attribute{MarkdownDescription: "Installer package size in bytes.", Computed: true},
 		"installer_package_hash":      computedString("Hash of the installer package."),
 		"installer_package_hash_type": computedString("Algorithm used for the installer package hash (e.g. `SHA_256`)."),
@@ -129,6 +157,22 @@ func TitleDataSourceAttributes() map[string]schema.Attribute {
 		"notification_available":      schema.BoolAttribute{MarkdownDescription: "Whether the title supports end-user install notifications.", Computed: true},
 		"package_signing_identity":    computedString("Signing identity of the installer package."),
 		"suppress_auto_update":        schema.BoolAttribute{MarkdownDescription: "Whether the title suppresses its built-in auto-update mechanism when managed by Jamf.", Computed: true},
+		"versions": schema.ListNestedAttribute{
+			MarkdownDescription: "Versions of this title Jamf Pro still publishes, oldest first, each usable as the `version` argument. " +
+				"Empty for a title whose older builds are no longer installable, which is most of them — an empty list is not a failed read.",
+			Computed: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"version":           computedString("Published version string."),
+					"media_source_type": computedString("Where Jamf Pro downloads this version from: `JAMF_SERVER` or `EXTERNAL_URL`."),
+				},
+			},
+		},
+		"original_terms_and_conditions": schema.ListAttribute{
+			MarkdownDescription: "URLs of the terms and conditions the software vendor publishes for this title. Empty when the vendor publishes none.",
+			Computed:            true,
+			ElementType:         types.StringType,
+		},
 		"original_media_sources": schema.ListNestedAttribute{
 			MarkdownDescription: "Original media sources Jamf used to build the title's installer package.",
 			Computed:            true,
@@ -143,8 +187,8 @@ func TitleDataSourceAttributes() map[string]schema.Attribute {
 	}
 }
 
-// AssignTitleDataSource maps an SDK title into the data source model.
-func AssignTitleDataSource(t *pro.AppInstallerTitle) AppInstallerTitleDataSourceModel {
+// AssignTitleDataSource maps the per-title SDK response into the data source model.
+func AssignTitleDataSource(t *pro.AppTitleDetails) AppInstallerTitleDataSourceModel {
 	out := AppInstallerTitleDataSourceModel{}
 	if t == nil {
 		return out
@@ -160,6 +204,8 @@ func AssignTitleDataSource(t *pro.AppInstallerTitle) AppInstallerTitleDataSource
 	out.Language = types.StringValue(t.Language)
 	out.AvailabilityDate = types.StringValue(t.AvailabilityDate)
 	out.IconURL = types.StringValue(t.IconURL)
+	out.MediaSourceType = types.StringValue(t.MediaSourceType)
+	out.InstallationPathShared = types.BoolValue(t.InstallationPathShared)
 	out.SizeInBytes = types.Int64Value(int64(t.SizeInBytes))
 	out.InstallerPackageHash = types.StringValue(t.InstallerPackageHash)
 	out.InstallerPackageHashType = types.StringValue(t.InstallerPackageHashType)
@@ -167,6 +213,7 @@ func AssignTitleDataSource(t *pro.AppInstallerTitle) AppInstallerTitleDataSource
 	out.NotificationAvailable = types.BoolValue(t.NotificationAvailable)
 	out.PackageSigningIdentity = types.StringValue(t.PackageSigningIdentity)
 	out.SuppressAutoUpdate = types.BoolValue(t.SuppressAutoUpdate)
+	out.OriginalTermsAndConditions = stringList(t.OriginalTermsAndConditions)
 	out.OriginalMediaSources = make([]OriginalMediaSourceModel, 0, len(t.OriginalMediaSources))
 	for _, m := range t.OriginalMediaSources {
 		out.OriginalMediaSources = append(out.OriginalMediaSources, OriginalMediaSourceModel{
@@ -176,6 +223,34 @@ func AssignTitleDataSource(t *pro.AppInstallerTitle) AppInstallerTitleDataSource
 		})
 	}
 	return out
+}
+
+// assignTitleVersions maps the version-list response into the model. The slice is
+// always non-nil so a title publishing no earlier versions serialises as an empty
+// list rather than null.
+func assignTitleVersions(r *pro.AppTitleVersionsResult) []TitleVersionModel {
+	out := []TitleVersionModel{}
+	if r == nil {
+		return out
+	}
+	for _, v := range r.Results {
+		out = append(out, TitleVersionModel{
+			Version:         helpers.StringPointerValueOrNull(v.Version),
+			MediaSourceType: types.StringValue(v.MediaSourceType),
+		})
+	}
+	return out
+}
+
+// stringList renders a server string slice as a types.List, always non-null so
+// a vendor that publishes no terms and conditions yields an empty list rather
+// than null.
+func stringList(in []string) types.List {
+	elems := make([]attr.Value, 0, len(in))
+	for _, v := range in {
+		elems = append(elems, types.StringValue(v))
+	}
+	return types.ListValueMust(types.StringType, elems)
 }
 
 // computedString returns a Computed-only StringAttribute for a server-derived

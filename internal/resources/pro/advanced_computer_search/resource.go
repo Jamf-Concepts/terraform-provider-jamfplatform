@@ -81,7 +81,7 @@ func (r *AdvancedComputerSearchResource) IdentitySchema(ctx context.Context, req
 // Schema returns the Terraform schema for the advanced computer search resource.
 func (r *AdvancedComputerSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced computer search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-computer result set is server-computed report data and is intentionally not modelled. Mirrors the Computers → Search Inventory → Advanced Computer Search UI." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro advanced computer search: a saved, criteria-driven inventory query with a configurable set of display columns. The matched-computer result set is report data Jamf Pro computes, and is intentionally not modelled. Mirrors the Computers → Search Inventory → Advanced Computer Search UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced computer search ID assigned by Jamf Pro.",
@@ -108,14 +108,14 @@ func (r *AdvancedComputerSearchResource) Schema(ctx context.Context, req resourc
 				Computed:            true,
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria.",
+				MarkdownDescription: "Ordered list of criteria Jamf Pro evaluates to populate the search. Order matters: Jamf Pro reads left to right, applying the supplied `and_or` joins and parentheses. Omit the attribute, or supply an empty list, for a search with no criteria.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: criteria.CriterionAttributes(ValidOperators),
 				},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Set of inventory column names to display in the search results (e.g. `Computer Name`, `Serial Number`, `Username`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit for no display columns.",
+				MarkdownDescription: "Set of inventory column names shown in the search results, for example `Computer Name`, `Serial Number`, `Username`. Order is not significant, because Jamf Pro returns the columns in its own canonical order. Omit for no display columns.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},

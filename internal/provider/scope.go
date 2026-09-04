@@ -21,10 +21,12 @@ import (
 // management* (neither attribute set — no scope header, the gateway resolves the
 // context from the access token). An integration targets exactly one, and the
 // SDK sends exactly one scope header, so there is no combination to support:
-// setting both is a configuration mistake, not a fallback chain. This provider
-// ships no construct reachable organization-scoped yet, which is why the
-// requirement is enforced per construct (see providerdata.RequireScope) instead
-// of by making one of these attributes required here.
+// setting both is a configuration mistake, not a fallback chain. Which scopes
+// reach a given construct differs per API family — Jamf Account is reachable
+// only organization-scoped, Jamf Pro under either environment or tenant — which
+// is why the requirement is enforced per construct (see
+// providerdata.RequireScope) instead of by making one of these attributes
+// required here.
 //
 // Precedence, and why:
 //

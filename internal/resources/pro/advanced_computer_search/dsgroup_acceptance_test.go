@@ -21,7 +21,7 @@ import (
 // Real group names are never committed — see memory: no real LDAP names in public
 // files. Stands up the shared Okta LDAP directory-service fixture (via the SDK, so
 // the directory exists before the pre-apply group resolve) and resolves
-// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
+// JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME against it.
 
 // TestAccResource_ACS_DSGroupCriteria authors a directory-service group criterion
 // by NAME, asserts state round-trips back to the NAME, and asserts swapping the

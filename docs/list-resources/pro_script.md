@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_script List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro scripts. Supply an optional filter block to narrow results — the supported selectors match the scripts data source.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Scripts | `read:pro:scripts` |
+  Lists Jamf Pro scripts. Supply an optional filter block to narrow results. The supported selectors match the scripts data source.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Scripts | Read | `scripts` |
 ---
 
 # jamfplatform_pro_script (List Resource)
 
-Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.
+Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results. The supported selectors match the scripts data source.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Scripts | `read:pro:scripts` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Scripts | Read | `scripts` |
 
 ## Example Usage
 
@@ -63,7 +63,7 @@ list "jamfplatform_pro_script" "scripts_by_name_prefix" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `info`, `notes`, `priority`, `categoryId`, `categoryName`, `parameter4`, `parameter5`, `parameter6`, `parameter7`, `parameter8`, `parameter9`, `parameter10`, `parameter11`, `osRequirements`, `scriptContents`.
 
 Optional:

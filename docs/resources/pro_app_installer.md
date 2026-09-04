@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_app_installer Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via app_title_name (list available titles with the jamfplatform_pro_app_installer_titles data source). update_behavior controls when updates apply (AUTOMATIC tracks the latest catalog version, MANUAL updates on your schedule); the version itself is always the latest available and is reported in selected_version. Setting category_id, site_id, or smart_group_id to -1 means "none".
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Mac Applications | `create:pro:mac-applications` |
-  | Delete Mac Applications | `delete:pro:mac-applications` |
-  | Read Mac Applications | `read:pro:mac-applications` |
-  | Update Mac Applications | `update:pro:mac-applications` |
+  Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via app_title_name (list available titles with the jamfplatform_pro_app_installer_titles data source). update_behavior controls when updates apply: AUTOMATIC tracks the latest catalog version, MANUAL pins the deployment to the version current when you set it, reported in selected_version. Setting category_id, site_id, or smart_group_id to -1 means "none".
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 ---
 
 # jamfplatform_pro_app_installer (Resource)
 
-Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). `update_behavior` controls when updates apply (`AUTOMATIC` tracks the latest catalog version, `MANUAL` updates on your schedule); the version itself is always the latest available and is reported in `selected_version`. Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means "none".
+Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). `update_behavior` controls when updates apply: `AUTOMATIC` tracks the latest catalog version, `MANUAL` pins the deployment to the version current when you set it, reported in `selected_version`. Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means "none".
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Mac Applications | `create:pro:mac-applications` |
-| Delete Mac Applications | `delete:pro:mac-applications` |
-| Read Mac Applications | `read:pro:mac-applications` |
-| Update Mac Applications | `update:pro:mac-applications` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 
 ## Example Usage
 
@@ -88,15 +82,15 @@ resource "jamfplatform_pro_app_installer" "self_service" {
 - `app_title_name` (String) Name of the App Catalog title to deploy, exactly as listed in the catalog (for example `Google Chrome`). List available titles with the `jamfplatform_pro_app_installer_titles` data source. The provider verifies the title exists at plan time and resolves it to `app_title_id`.
 - `deployment_type` (String) How the app is delivered. One of `INSTALL_AUTOMATICALLY` (push to all in-scope devices) or `SELF_SERVICE` (offered in Self Service).
 - `name` (String) Display name for the App Installer. Must not be blank.
-- `update_behavior` (String) How updates are applied. One of `AUTOMATIC` (always track the latest catalog version; `selected_version` is forced empty) or `MANUAL` (stay on the pinned `selected_version`).
+- `update_behavior` (String) How updates are applied. One of `AUTOMATIC`, which always tracks the latest catalog version and leaves `selected_version` empty, or `MANUAL`, which pins the deployment to one version — the current one at the point the behaviour is set, reported in `selected_version`.
 
 ### Optional
 
 - `category_id` (String) Jamf Pro category ID for the deployment. Use `-1` for no category.
 - `enabled` (Boolean) Whether the deployment is enabled. A deployment can only be enabled when `smart_group_id` is set to a real smart group (not `-1`).
-- `install_predefined_config_profiles` (Boolean) Whether Jamf installs the title's predefined configuration profiles alongside the app.
-- `notification_settings` (Attributes) End-user notification presentation (the "End user experience" tab). Supply the block to manage notifications; omit it to leave Jamf's defaults. Each field is independent — omit a field to keep Jamf's default for it. Message fields must not be blank, and the interval/delay values must be positive, when set. (see [below for nested schema](#nestedatt--notification_settings))
-- `self_service_settings` (Attributes) Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave Jamf's defaults. Every field is replaced on each apply, so set all fields you care about. Note Jamf accepts a Self Service block even for `INSTALL_AUTOMATICALLY` deployments. (see [below for nested schema](#nestedatt--self_service_settings))
+- `install_predefined_config_profiles` (Boolean) Whether Jamf Pro installs the title's predefined configuration profiles alongside the app.
+- `notification_settings` (Attributes) End-user notification presentation (the "End user experience" tab). Supply the block to manage notifications; omit it to leave the Jamf Pro defaults in place. Each field is independent: omit a field to keep its Jamf Pro default. Message fields must not be blank, and the interval and delay values must be positive, when set. (see [below for nested schema](#nestedatt--notification_settings))
+- `self_service_settings` (Attributes) Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Every field is replaced on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment. (see [below for nested schema](#nestedatt--self_service_settings))
 - `site_id` (String) Jamf Pro site ID scoping the deployment. Use `-1` for no site.
 - `smart_group_id` (String) Smart computer group ID scoping the deployment. Use `-1` for no smart group.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -107,7 +101,7 @@ resource "jamfplatform_pro_app_installer" "self_service" {
 - `app_title_id` (String) ID of the App Catalog title, resolved from `app_title_name`. Returned by Jamf Pro.
 - `id` (String) Deployment ID assigned by Jamf Pro.
 - `latest_available_version` (String) Latest version available for the title in the catalog. Returned by Jamf Pro; not user-settable.
-- `selected_version` (String) Version Jamf Pro has selected for the deployment. Always the latest available version; the version is not user-pinnable. Returned by Jamf Pro.
+- `selected_version` (String) Version the deployment installs while `update_behavior` is `MANUAL`, and empty while it is `AUTOMATIC`. Jamf Pro sets it to the version current when the behaviour is pinned, and advancing it afterwards is a Jamf Pro operation this resource does not expose — so the value tracks Jamf Pro rather than configuration. Returned by Jamf Pro.
 - `title_available_in_ais` (Boolean) Whether the title is available in the App Installers catalog. Returned by Jamf Pro; not user-settable.
 - `version_removed` (Boolean) Whether the pinned version has been removed from the catalog. Returned by Jamf Pro; not user-settable.
 
@@ -121,7 +115,7 @@ Optional:
 - `deadline_message` (String) Message shown as the install deadline approaches.
 - `notification_interval` (Number) Hours between repeat notifications.
 - `notification_message` (String) Message shown to the user when an install or update is available.
-- `quit_delay` (Number) Seconds the user is given to quit the app before the install proceeds.
+- `quit_delay` (Number) Minutes the user is given to quit the app before the install proceeds.
 - `relaunch` (Boolean) Whether to relaunch the app after the update.
 - `suppress` (Boolean) Whether to suppress end-user notifications entirely.
 

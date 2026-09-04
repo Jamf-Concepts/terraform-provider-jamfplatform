@@ -86,7 +86,7 @@ func (r *AccountResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the account resource.
 func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing `account_type` forces the account to be replaced." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro **administrator login account**: a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct, which holds end-user and device records. Assign a Custom privilege grid through the `privileges` block. Base account fields (username, full name, email, access level and so on) are updated in place. Changing `account_type` forces the account to be replaced." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Account ID assigned by Jamf Pro.",
@@ -105,7 +105,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"email_address": schema.StringAttribute{
-				MarkdownDescription: "Email address (UI \"Email Address\"). Must be unique across accounts — Jamf Pro rejects a duplicate on create.",
+				MarkdownDescription: "Email address (UI \"Email Address\"). Must be unique across accounts; Jamf Pro rejects a duplicate on create.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -128,7 +128,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"account_type": schema.StringAttribute{
-				MarkdownDescription: "Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces the account to be replaced.",
+				MarkdownDescription: "Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable, so changing it forces the account to be replaced.",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(accountTypeValues...)},
@@ -153,7 +153,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "Plaintext account password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value AND bump `password_wo_version`.",
+				MarkdownDescription: "Plaintext account password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value and bump `password_wo_version`.",
 				Optional:            true,
 				WriteOnly:           true,
 			},

@@ -13,7 +13,7 @@ import (
 // resource's CRUD and plan-time paths call. The CRUD path is split across
 // crud.go (provider discovery on import), crud_azure.go (Entra ID branch),
 // crud_google.go (Google Secure LDAP branch), and the keystore verify in
-// plan_modifiers.go. This list drives the "Required Jamf privileges" table
+// plan_modifiers.go. This list drives the "Required Jamf permissions" table
 // appended to the resource MarkdownDescription. permissions_test.go asserts it
 // stays in sync with the actual client.<Method> calls across those files and
 // with the SDK privilege registry.
@@ -30,7 +30,7 @@ var resourceSDKMethods = []string{
 	"VerifyLdapKeystoreV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the Cloud Identity Provider resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
@@ -42,7 +42,7 @@ var dataSourceSDKMethods = []string{
 	"ListCloudIdpV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the singular data source.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -52,7 +52,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListCloudIdpV1",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges"
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the plural data source.
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
 
@@ -62,6 +62,6 @@ var listResourceSDKMethods = []string{
 	"ListCloudIdpV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the list resource.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

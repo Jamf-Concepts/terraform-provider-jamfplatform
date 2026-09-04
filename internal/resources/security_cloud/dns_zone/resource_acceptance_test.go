@@ -551,9 +551,57 @@ func captureDNSZoneID(address string, into *string) resource.TestCheckFunc {
 // Expected-error patterns for the plan- and apply-time refusals. Terraform wraps
 // diagnostic text at roughly 80 columns, so each pattern matches a short phrase
 // that cannot be split across a line break.
+// TestAccDataSource_SecurityCloudDNSZone_EmptyIDRefused pins the guard for the
+// selector mistake ExactlyOneOf cannot catch.
+//
+// A set-but-empty `id` counts as configured, so `id = var.x` with an unset variable
+// satisfies the config validator and then falls through to whichever lookup is
+// left. Without the guard the name branch runs with a null name, and the operator
+// gets an SDK-internal string about an attribute they never set.
+func TestAccDataSource_SecurityCloudDNSZone_EmptyIDRefused(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_dns_zone" "empty_id" {
+						id = ""
+					}
+				`,
+				ExpectError: regexpEmptyID,
+			},
+		},
+	})
+}
+
+// TestAccDataSource_SecurityCloudDNSZone_NameNotFoundIsWritten pins that a name
+// matching nothing produces a written diagnostic rather than the resolver's
+// synthetic 404 body, which reads as an internal error and names no remedy.
+func TestAccDataSource_SecurityCloudDNSZone_NameNotFoundIsWritten(t *testing.T) {
+	testhelpers.AccPreCheckSecurityCloud(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					data "jamfplatform_security_cloud_dns_zone" "missing" {
+						name = "tf-acc-no-such-dns_zone-zzz"
+					}
+				`,
+				ExpectError: regexpNameNotFound,
+			},
+		},
+	})
+}
+
 var (
 	regexpDuplicateIP        = regexp.MustCompile(`Duplicate ip_address within set`)
 	regexpInvalidIP          = regexp.MustCompile(`Invalid IPv4 address`)
 	regexpGatewayNotFound    = regexp.MustCompile(`Referenced gateway not found`)
 	regexpExactlyOneSelector = regexp.MustCompile(`Exactly one of these attributes must be configured`)
+	regexpEmptyID            = regexp.MustCompile(`ID is empty`)
+	regexpNameNotFound       = regexp.MustCompile(`on this tenant is named`)
 )

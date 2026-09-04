@@ -58,7 +58,7 @@ func computedBool(desc string) schema.BoolAttribute {
 // Schema returns the data source schema.
 func (d *ComputerInventoryCollectionSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro computer inventory collection settings (V2). Singleton — one record per tenant." + dataSourcePrivileges,
+		MarkdownDescription: "Read the current Jamf Pro computer inventory collection settings. One record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

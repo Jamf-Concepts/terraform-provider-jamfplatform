@@ -79,7 +79,7 @@ func (r *AppInstallerSettingsResource) IdentitySchema(_ context.Context, _ resou
 // Schema returns the Terraform schema for the App Installer settings resource.
 func (r *AppInstallerSettingsResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro App Installer global settings. Singleton — one record per tenant.\n\n" +
+		MarkdownDescription: "Manages Jamf Pro App Installer global settings. These settings are one per tenant.\n\n" +
 			"Import with `terraform import jamfplatform_pro_app_installer_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -118,13 +118,13 @@ func (r *AppInstallerSettingsResource) Schema(ctx context.Context, _ resource.Sc
 						Validators: []validator.Set{
 							setvalidator.ValueStringsAre(
 								stringvalidator.OneOf(
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekMonday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekTuesday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekWednesday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekThursday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekFriday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekSaturday,
-									pro.AppInstallerDeploymentProcessControlsDaysOfWeekSunday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekMonday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekTuesday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekWednesday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekThursday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekFriday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekSaturday,
+									pro.AppInstallersDeploymentProcessControlsDaysOfWeekSunday,
 								),
 							),
 						},

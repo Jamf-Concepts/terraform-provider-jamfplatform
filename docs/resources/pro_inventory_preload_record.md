@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_inventory_preload_record Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (Settings > Global > Inventory Preload) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Inventory Preload Records | `create:pro:inventory-preload-records` |
-  | Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
-  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
-  | Update Inventory Preload Records | `update:pro:inventory-preload-records` |
+  Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (Settings > Global > Inventory Preload) manages these records by CSV upload; this resource manages them one at a time instead. Preloaded data is applied at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls; applying one does not remove it.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Inventory preload | Create, Read, Update, Delete | `inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (Resource)
 
-Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
+Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records by CSV upload; this resource manages them one at a time instead. Preloaded data is applied at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls; applying one does not remove it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Inventory Preload Records | `create:pro:inventory-preload-records` |
-| Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
-| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
-| Update Inventory Preload Records | `update:pro:inventory-preload-records` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Inventory preload | Create, Read, Update, Delete | `inventory-preload-records` |
 
 ## Example Usage
 
@@ -93,14 +87,14 @@ resource "jamfplatform_pro_inventory_preload_record" "tablet" {
 ### Required
 
 - `device_type` (String) Type of device the record applies to. Valid values: `Computer`, `Mobile Device`. Can be changed in place.
-- `serial_number` (String) Serial number of the device the record applies to. Jamf Pro enforces case-insensitive uniqueness across records — creating a second record whose serial number differs only in case fails — while the value itself is stored and returned exactly as entered. Can be changed in place.
+- `serial_number` (String) Serial number of the device the record applies to. Jamf Pro enforces case-insensitive uniqueness across records, so creating a second record whose serial number differs only in case fails. The value itself is stored and returned exactly as entered. Can be changed in place.
 
 ### Optional
 
 - `apple_care_id` (String) AppleCare ID for the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `asset_tag` (String) Asset tag for the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
-- `bar_code_1` (String) Bar code 1 for the device. Per Jamf documentation bar codes apply to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
-- `bar_code_2` (String) Bar code 2 for the device. Per Jamf documentation bar codes apply to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `bar_code_1` (String) Bar code 1 for the device. Documented as applying to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `bar_code_2` (String) Bar code 2 for the device. Documented as applying to computers only; the API does not enforce this. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `building` (String) Building the device is assigned to. Free text — Jamf Pro matches it against existing Building names at inventory-collection time and does not validate it when the record is written. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `department` (String) Department the device is assigned to. Free text — Jamf Pro matches it against existing Department names at inventory-collection time and does not validate it when the record is written. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `email_address` (String) Email address of the user assigned to the device. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.

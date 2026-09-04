@@ -1,5 +1,5 @@
 # Minimal App Store Mac app. name, version, and bundle_id are required and
-# stored verbatim — there is no App Store metadata resolution.
+# stored verbatim. There is no App Store metadata resolution.
 resource "jamfplatform_pro_mac_app_store_app" "minimal" {
   general = {
     name      = "iMovie"

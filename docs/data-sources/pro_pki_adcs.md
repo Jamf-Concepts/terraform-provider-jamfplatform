@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_pki_adcs Data Source - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read AD CS Settings | `read:pro:ad-cs-settings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | AD Certificate Services connector | Read | `ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Data Source)
 
 Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read AD CS Settings | `read:pro:ad-cs-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | AD Certificate Services connector | Read | `ad-cs-settings` |
 
 
 
@@ -43,7 +43,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 - `ca_name` (String) The Certificate Authority name.
 - `client_certificate_details` (Attributes) Metadata Jamf Pro parsed from the client certificate; `null` when none is configured. (see [below for nested schema](#nestedatt--client_certificate_details))
 - `connector_last_check_in` (String) Timestamp (RFC 3339) of the AD CS Connector's last check-in; `null` if it has never checked in.
-- `connector_mode` (String) AD CS connector mode — `INBOUND` or `OUTBOUND`.
+- `connector_mode` (String) AD CS connector mode. Either `INBOUND` or `OUTBOUND`.
 - `display_name` (String) Label for the integration.
 - `fqdn` (String) Fully-qualified domain name of the AD CS server.
 - `revocation_enabled` (Boolean) Whether certificate revocation is enabled.

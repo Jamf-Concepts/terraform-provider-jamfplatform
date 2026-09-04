@@ -8,6 +8,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // webhookTimeoutAttributeTypes defines the timeout attribute types for the
@@ -23,39 +25,53 @@ var webhookTimeoutAttributeTypes = map[string]attr.Type{
 
 // webhookEvents is the set of accepted <event> values (23). UI labels differ in
 // case (e.g. UI "ComputerCheckin" ⇒ wire "ComputerCheckIn").
+//
+// This is a superset of proclassic.WebhookEventValues(), which generates 18 of
+// the 23. The five below are absent from the spec and so have no constant to
+// alias; each was accepted by a live tenant during the wire probe
+// (WEBHOOK_SPIKE.md §3), which is why they are here at all. The absence is
+// asserted per value in TestEnumLiteralsComeFromTheSDK, so an SDK release that
+// starts generating any of them fails rather than leaving a literal behind:
+//
+//	ComputerPatchPolicyCompleted
+//	DeviceAddedToDEP
+//	DeviceRateLimited
+//	MobileDeviceInventoryCompleted
+//	SmartGroupUserMembershipChange
 var webhookEvents = []string{
-	"ComputerAdded",
-	"ComputerCheckIn",
-	"ComputerInventoryCompleted",
+	proclassic.WebhookEventComputerAdded,
+	proclassic.WebhookEventComputerCheckIn,
+	proclassic.WebhookEventComputerInventoryCompleted,
 	"ComputerPatchPolicyCompleted",
-	"ComputerPolicyFinished",
-	"ComputerPushCapabilityChanged",
+	proclassic.WebhookEventComputerPolicyFinished,
+	proclassic.WebhookEventComputerPushCapabilityChanged,
 	"DeviceAddedToDEP",
 	"DeviceRateLimited",
-	"JSSShutdown",
-	"JSSStartup",
-	"MobileDeviceCheckIn",
-	"MobileDeviceCommandCompleted",
-	"MobileDeviceEnrolled",
+	proclassic.WebhookEventJSSShutdown,
+	proclassic.WebhookEventJSSStartup,
+	proclassic.WebhookEventMobileDeviceCheckIn,
+	proclassic.WebhookEventMobileDeviceCommandCompleted,
+	proclassic.WebhookEventMobileDeviceEnrolled,
 	"MobileDeviceInventoryCompleted",
-	"MobileDevicePushSent",
-	"MobileDeviceUnEnrolled",
-	"PatchSoftwareTitleUpdated",
-	"PushSent",
-	"RestAPIOperation",
-	"SCEPChallenge",
-	"SmartGroupComputerMembershipChange",
-	"SmartGroupMobileDeviceMembershipChange",
+	proclassic.WebhookEventMobileDevicePushSent,
+	proclassic.WebhookEventMobileDeviceUnEnrolled,
+	proclassic.WebhookEventPatchSoftwareTitleUpdated,
+	proclassic.WebhookEventPushSent,
+	proclassic.WebhookEventRestAPIOperation,
+	proclassic.WebhookEventSCEPChallenge,
+	proclassic.WebhookEventSmartGroupComputerMembershipChange,
+	proclassic.WebhookEventSmartGroupMobileDeviceMembershipChange,
 	"SmartGroupUserMembershipChange",
 }
 
 // smartGroupEvents is the subset of webhookEvents for which <smart_group_id> is
 // meaningful. The server 409s when smart_group_id is supplied for any other
-// event, so the cross-field validator mirrors this set.
+// event, so the cross-field validator mirrors this set. The user-membership
+// event is one of the five the SDK does not generate.
 var smartGroupEvents = map[string]struct{}{
-	"SmartGroupComputerMembershipChange":     {},
-	"SmartGroupMobileDeviceMembershipChange": {},
-	"SmartGroupUserMembershipChange":         {},
+	proclassic.WebhookEventSmartGroupComputerMembershipChange:     {},
+	proclassic.WebhookEventSmartGroupMobileDeviceMembershipChange: {},
+	"SmartGroupUserMembershipChange":                              {},
 }
 
 // isSmartGroupEvent reports whether the event keys a smart group object and so
@@ -73,9 +89,14 @@ func isSmartGroupEvent(event string) bool {
 // validate. The client certificate MTLS relies on can only be supplied through
 // the Jamf Pro admin UI, so a webhook created here with MTLS is inert until that
 // certificate is added out of band.
+// proclassic.WebhookAuthenticationTypeValues() generates only NONE and BASIC;
+// HEADER, HASH_SIGNATURE and MTLS are absent from the spec and were established
+// by wire probe, so they have no constant to alias. The order is the one the
+// MarkdownDescription below reads in, so this stays an explicit slice rather
+// than a helper call.
 var webhookAuthTypes = []string{
-	"NONE",
-	"BASIC",
+	proclassic.WebhookAuthenticationTypeNone,
+	proclassic.WebhookAuthenticationTypeBasic,
 	"HEADER",
 	"HASH_SIGNATURE",
 	"MTLS",
@@ -95,20 +116,19 @@ func markdownValueList(vals []string) string {
 
 // webhookContentTypes is the accepted <content_type> set. The server silently
 // coerces any other value to text/xml, so the OneOf prevents that silent drift.
-var webhookContentTypes = []string{
-	"application/json",
-	"text/xml",
-}
+var webhookContentTypes = proclassic.WebhookContentTypeValues()
 
 // webhookHashAlgorithms is the accepted <hash_algorithm> set (HASH_SIGNATURE).
+// The spec does not model hash_algorithm at all — the field, and both values,
+// came out of the wire probe — so there is no generated vocabulary here.
 var webhookHashAlgorithms = []string{
 	"SHA256",
 	"SHA512",
 }
 
 const (
-	authTypeNone          = "NONE"
-	authTypeBasic         = "BASIC"
+	authTypeNone          = proclassic.WebhookAuthenticationTypeNone
+	authTypeBasic         = proclassic.WebhookAuthenticationTypeBasic
 	authTypeHeader        = "HEADER"
 	authTypeHashSignature = "HASH_SIGNATURE"
 )

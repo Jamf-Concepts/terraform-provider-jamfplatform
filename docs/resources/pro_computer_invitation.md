@@ -3,29 +3,25 @@
 page_title: "jamfplatform_pro_computer_invitation Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation cannot be updated in place — changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code. The plaintext ssh_password is a Terraform WriteOnly attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:computer-enrollment-invitations` |
-  | `delete:pro:computer-enrollment-invitations` |
-  | `read:pro:computer-enrollment-invitations` |
+  Manages a Jamf Pro computer enrollment invitation. A computer invitation is an enrollment token for the user-initiated enrollment of Mac computers, single-use or multiple-use, carrying an SSH management account to provision on the target machine and an expiration. The invitation cannot be updated in place: changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code. The plaintext ssh_password is a Terraform WriteOnly attribute, sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | Enrollment invitations | Create, Read, Delete | `enrollment-invitations` |
 ---
 
 # jamfplatform_pro_computer_invitation (Resource)
 
-Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
+Manages a Jamf Pro computer enrollment invitation. A computer invitation is an enrollment token for the user-initiated enrollment of Mac computers, single-use or multiple-use, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place**: changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute, sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:computer-enrollment-invitations` |
-| `delete:pro:computer-enrollment-invitations` |
-| `read:pro:computer-enrollment-invitations` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | Enrollment invitations | Create, Read, Delete | `enrollment-invitations` |
 
 ## Example Usage
 
@@ -80,14 +76,14 @@ resource "jamfplatform_pro_computer_invitation" "email" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `create_account_if_does_not_exist` (Boolean) Create the SSH management account on the enrolled computer if it does not already exist. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.
-- `enroll_into_site_id` (String) **"Site"** in the Jamf Pro admin UI — the site the enrolled computer is assigned to. Jamf Pro site ID; use `-1` for "None". Changing this forces replacement.
-- `expiration_date` (String) Invitation expiration. Either the literal `Unlimited` (never expires) or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` (e.g. `2026-12-31 23:59:00`), interpreted in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value so this does not surface as drift. Omit to let Jamf Pro assign the expiration (the assigned value is then reflected in state). Changing this forces replacement.
-- `hide_account` (Boolean) Hide the SSH management account from the macOS login window and Users & Groups. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.
-- `keep_existing_site_membership` (Boolean) The admin UI's "Use existing site membership, if applicable". When true, an enrolling computer that already belongs to a site keeps that membership. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.
-- `lock_down_ssh` (Boolean) Restrict SSH (Remote Login) access to the management account only on the enrolled computer. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.
-- `multiple_uses_allowed` (Boolean) Whether the invitation may be used to enrol more than one computer. Optional+Computed: the server defaults it when omitted. Changing this forces replacement.
-- `ssh_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password for the SSH management account. `WriteOnly` — sent to Jamf Pro when the invitation is created but **never persisted in Terraform state**. Jamf Pro does not return the plaintext on refresh, so the provider treats it as write-only. Pair with `ssh_password_wo_version`. Changing this forces replacement.
+- `create_account_if_does_not_exist` (Boolean) Create the SSH management account on the enrolled computer if it does not already exist. Jamf Pro applies a default when omitted. Changing this forces replacement.
+- `enroll_into_site_id` (String) **"Site"** in the Jamf Pro admin UI. The site the enrolled computer is assigned to, given as a Jamf Pro site ID. Use `-1` for "None". Changing this forces replacement.
+- `expiration_date` (String) Invitation expiration. Either the literal `Unlimited`, which never expires, or a wall-clock timestamp in the format `yyyy-MM-dd HH:mm:ss` such as `2026-12-31 23:59:00`, read in the Jamf Pro server's timezone. Jamf Pro may normalise a finite timestamp by up to a minute; the provider preserves your configured value, so that does not surface as drift. Omit the attribute to let Jamf Pro assign the expiration, which is then reflected in state. Changing this forces replacement.
+- `hide_account` (Boolean) Hide the SSH management account from the macOS login window and Users & Groups. Jamf Pro applies a default when omitted. Changing this forces replacement.
+- `keep_existing_site_membership` (Boolean) The admin UI's "Use existing site membership, if applicable". When true, an enrolling computer that already belongs to a site keeps that membership. Jamf Pro applies a default when omitted. Changing this forces replacement.
+- `lock_down_ssh` (Boolean) Restrict SSH (Remote Login) access to the management account only on the enrolled computer. Jamf Pro applies a default when omitted. Changing this forces replacement.
+- `multiple_uses_allowed` (Boolean) Whether the invitation may be used to enrol more than one computer. Jamf Pro applies a default when omitted. Changing this forces replacement.
+- `ssh_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password for the SSH management account. `WriteOnly`: sent to Jamf Pro when the invitation is created but **never persisted in Terraform state**. Jamf Pro does not return the plaintext on refresh, so the provider treats it as write-only. Pair it with `ssh_password_wo_version`. Changing this forces replacement.
 - `ssh_password_wo_version` (Number) Rotation companion for the `WriteOnly` `ssh_password`. Because this invitation cannot be updated in place, any change to this value (like any other attribute) forces a replace that re-sends the current `ssh_password`. Set it to `1` initially and bump it to rotate. Changing this forces replacement.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

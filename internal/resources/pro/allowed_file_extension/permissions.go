@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the allowed file extension resource's
 // CRUD path calls. It mirrors the "SDK endpoints used" block in crud.go and drives
-// the "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// the "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry. There is no
 // update write (the record has no PUT; Update only GETs), so no create/update method
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteAllowedFileExtensionByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section for
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the allowed file extension resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
@@ -33,7 +33,7 @@ var dataSourceSDKMethods = []string{
 	"GetAllowedFileExtensionByExtension",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the allowed file extension data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -42,6 +42,6 @@ var listResourceSDKMethods = []string{
 	"ListAllowedFileExtensions",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the allowed file extension list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

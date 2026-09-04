@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_package Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro package by ID or by exact display name. Exactly one of id or display_name must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Packages | `read:pro:packages` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Packages | Read | `packages` |
 ---
 
 # jamfplatform_pro_package (Data Source)
 
 Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Packages | `read:pro:packages` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Packages | Read | `packages` |
 
 ## Example Usage
 
@@ -66,7 +66,7 @@ data "jamfplatform_pro_package" "by_name" {
 - `notes` (String) Free-form notes field.
 - `os_requirements` (String) Operating system requirements (comma-separated).
 - `parent_package_id` (String) Parent package ID (`"-1"` for no parent).
-- `priority` (Number) Install priority (1-20).
+- `priority` (Number) Install priority (1–20).
 - `reboot_required` (Boolean) Requires restart flag.
 - `self_heal_notify` (Boolean) Self-healing notify flag.
 - `self_healing_action` (String) Self-healing action.

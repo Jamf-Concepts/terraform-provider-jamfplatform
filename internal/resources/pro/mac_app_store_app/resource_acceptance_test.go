@@ -13,7 +13,7 @@
 // site/scope "not site-enabled" 409 invariant. The ungated tests never set
 // vpp.assign_vpp_device_based_licenses = true (a non-VPP title 409s "App is
 // not available for device assignment"); the gated full-metadata test
-// (TestAccResource_ProMacApp_VPPFullMetadata) does, behind JAMFPLATFORM_VPP_TOKEN.
+// (TestAccResource_ProMacApp_VPPFullMetadata) does, behind JAMFPLATFORM_ACC_PRO_VPP_TOKEN.
 
 package mac_app_store_app_test
 
@@ -47,7 +47,7 @@ const macAppResourceAddr = "jamfplatform_pro_mac_app_store_app.test"
 // requires a real Apple Business Manager / Apple School Manager token whose
 // location owns device-assignable licenses for the test title (Jamf Parent).
 // Tokens MUST come from env — never commit token material.
-const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
+const vppTokenEnvVar = "JAMFPLATFORM_ACC_PRO_VPP_TOKEN"
 
 // testAccCheckMacAppDestroy verifies apps created during the test were destroyed.
 func testAccCheckMacAppDestroy(t *testing.T) resource.TestCheckFunc {
@@ -532,10 +532,10 @@ func macAppVPPDynamicConfig(token, suffix, buttonText string, assignDeviceLicens
 // true->false (wire-probed to round-trip), verifying the GET-after-Update path
 // on the vpp block.
 //
-// Gated on JAMFPLATFORM_VPP_TOKEN. Skipped if the token's location owns no
+// Gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN. Skipped if the token's location owns no
 // device-assignable Mac app (nothing to assign).
 func TestAccResource_ProMacApp_VPPFullMetadata(t *testing.T) {
-	token := os.Getenv(vppTokenEnvVar)
+	token := testhelpers.AccEnv(vppTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping full-metadata VPP acceptance test", vppTokenEnvVar)
 	}
@@ -825,7 +825,7 @@ func TestAccListResource_ProMacApp(t *testing.T) {
 
 // TestAccResource_ProMacApp_ScopeLdapGroup exercises a limitation that
 // references a real directory-service user group, which the server validates
-// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_LDAP_GROUP_NAME
+// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME
 // (a group the Okta directory actually has); also serves as the live check that the
 // plan-time DS-group preflight accepts a real group rather than rejecting it. The
 // directory must exist before plan, so the LDAP server is pre-created via the SDK.

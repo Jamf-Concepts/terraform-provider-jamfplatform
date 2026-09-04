@@ -4,24 +4,24 @@ page_title: "jamfplatform_device_erase Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Requests that a device erase its content and settings. Requires Device Management Actions API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `destructive-device-actions:execute` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device actions | Destructive device actions | Execute | `destructive-device-actions` |
 ---
 
 # jamfplatform_device_erase (Action)
 
-Requests that a device erase its content and settings. Requires **Device Management Actions API access**.
+Requests that a device erase its content and settings. Requires **Device Management Actions API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `destructive-device-actions:execute` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device actions | Destructive device actions | Execute | `destructive-device-actions` |
 
 ## Example Usage
 
@@ -50,4 +50,4 @@ action "jamfplatform_device_erase" "return_device_to_service" {
 - `pin` (String) The six-character PIN for Find My. Applies to computers only. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.
 - `preserve_data_plan` (Boolean) Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.
 - `return_to_service` (Boolean) The device will be returned to service after the erase is complete. Applies to mobile devices only.
-- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.
+- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API** access when set. Set exactly one of this or `device_id`.

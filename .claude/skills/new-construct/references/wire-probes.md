@@ -16,16 +16,16 @@ jamf-cli config list                                            # region + tenan
 
 # Pro: version segment in the path, scope in the header
 curl -s -H "Authorization: Bearer $TOK" -H "X-Tenant-Id: <tenant-id>" \
-  "https://<region>.apigw.jamf.com/api/pro/v1/<endpoint>"
+  "https://<region>.api.jamfcloud.com/pro/v1/<endpoint>"
 
 # ProClassic: no version segment, no JSSResource segment, and ask for JSON
 curl -s -H "Authorization: Bearer $TOK" -H "X-Tenant-Id: <tenant-id>" \
   -H "Accept: application/json" \
-  "https://<region>.apigw.jamf.com/api/proclassic/<classic-resource>"
+  "https://<region>.api.jamfcloud.com/proclassic/<classic-resource>"
 
 # Security Cloud: one unified prefix for all five namespaces
 curl -s -H "Authorization: Bearer $TOK" -H "X-Tenant-Id: <tenant-id>" \
-  "https://<region>.apigw.jamf.com/api/securitycloud/<endpoint>"
+  "https://<region>.api.jamfcloud.com/securitycloud/<endpoint>"
 ```
 
 `X-Environment-Id` substitutes for `X-Tenant-Id` under an environment-scoped integration —

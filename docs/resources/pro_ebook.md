@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_ebook Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro ebook (the classic /ebooks endpoint — the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at general.url) or an Apple Books title (an books.apple.com URL). For App-Store ebooks the server derives general.file_type and general.version from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus class_ids; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:ebooks` |
-  | `delete:pro:ebooks` |
-  | `read:pro:ebooks` |
-  | `update:pro:ebooks` |
+  Manages a Jamf Pro ebook (the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF, EPUB or iBook hosted at general.url) or an Apple Books title (a books.apple.com URL). For App Store ebooks Jamf Pro derives general.file_type and general.version from the URL, so leave them unset. Scope is the dual-target union of computers, mobile devices and users, plus class_ids; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | eBooks | Create, Read, Update, Delete | `ebooks` |
 ---
 
 # jamfplatform_pro_ebook (Resource)
 
-Manages a Jamf Pro ebook (the classic `/ebooks` endpoint — the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at `general.url`) or an Apple Books title (an `books.apple.com` URL). For App-Store ebooks the server derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services.
+Manages a Jamf Pro ebook (the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF, EPUB or iBook hosted at `general.url`) or an Apple Books title (a `books.apple.com` URL). For App Store ebooks Jamf Pro derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union of computers, mobile devices and users, plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:ebooks` |
-| `delete:pro:ebooks` |
-| `read:pro:ebooks` |
-| `update:pro:ebooks` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | eBooks | Create, Read, Update, Delete | `ebooks` |
 
 ## Example Usage
 
@@ -60,8 +54,8 @@ resource "jamfplatform_pro_ebook" "field_guide" {
   }
 }
 
-# App Store ebook — the server derives file_type and version from the Apple
-# Books URL, so leave them unset. Scoped to a specific class.
+# App Store ebook. Jamf Pro derives file_type and version from the Apple Books
+# URL, so leave them unset. Scoped to a specific class.
 resource "jamfplatform_pro_ebook" "swift_intro" {
   general = {
     name = "Intro to App Development with Swift"
@@ -85,7 +79,7 @@ resource "jamfplatform_pro_ebook" "swift_intro" {
 
 ### Optional
 
-- `scope` (Attributes) Ebook scope — the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Ebook scope: the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned. Declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, and updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -107,10 +101,10 @@ Optional:
 - `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
 - `deploy_as_managed` (Boolean) Make the ebook managed when possible (UI "Make eBook managed when possible").
 - `deployment_type` (String) Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`.
-- `file_type` (String) File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`); server-derived for an App-Store ebook (leave unset — the server resolves it from the Apple Books URL). No strict value validation is applied because the server canonicalises the casing.
+- `file_type` (String) File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing.
 - `free` (Boolean) Whether the ebook is free.
 - `site_id` (String) Jamf Pro site ID scoping the ebook. Use `-1` for "No site".
-- `version` (String) Ebook version. User-set for an in-house ebook; server-derived for an App-Store ebook.
+- `version` (String) Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook.
 
 Read-Only:
 
@@ -126,7 +120,7 @@ Optional:
 
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets — the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). (see [below for nested schema](#nestedatt--scope--targets))
+- `targets` (Attributes) Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`

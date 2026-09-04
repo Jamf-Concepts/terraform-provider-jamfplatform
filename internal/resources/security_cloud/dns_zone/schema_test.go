@@ -48,9 +48,9 @@ func TestDNSZoneResource_Schema(t *testing.T) {
 
 // TestDNSZoneResource_CollectionsAreSets pins the Set choice for both
 // collections. Jamf Security Cloud re-sorts `domains` on the wire, so a List
-// would fail "produced inconsistent result after apply"; `name_servers` carries
-// no ordering semantics, and the Set is what makes the per-IP uniqueness the
-// server enforces expressible at plan time.
+// would fail "produced inconsistent result after apply";
+// `authoritative_name_servers` carries no ordering semantics, and the Set is what
+// makes the per-IP uniqueness the server enforces expressible at plan time.
 func TestDNSZoneResource_CollectionsAreSets(t *testing.T) {
 	s := resourceSchema(t)
 
@@ -133,7 +133,7 @@ func TestDNSZoneDataSource_Schema(t *testing.T) {
 		t.Errorf("data source domains must be a ListAttribute, got %T", s.Attributes["domains"])
 	}
 	if _, ok := s.Attributes["authoritative_name_servers"].(dsschema.ListNestedAttribute); !ok {
-		t.Errorf("data source name_servers must be a ListNestedAttribute, got %T", s.Attributes["authoritative_name_servers"])
+		t.Errorf("data source authoritative_name_servers must be a ListNestedAttribute, got %T", s.Attributes["authoritative_name_servers"])
 	}
 }
 

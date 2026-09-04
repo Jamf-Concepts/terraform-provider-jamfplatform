@@ -6,7 +6,7 @@ list "jamfplatform_pro_app_installer" "all" {
 
   config {
     filter = {
-      name_substring = "Editor"
+      name_substring = "Chrome"
     }
   }
 }

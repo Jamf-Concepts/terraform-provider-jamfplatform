@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func sampleDeployment() *pro.AppInstallerDeployment {
-	return &pro.AppInstallerDeployment{
+func sampleDeployment() *pro.AppTitleDeploymentRead {
+	return &pro.AppTitleDeploymentRead{
 		ID:                              "177",
 		Name:                            "tf-acc-app-installer",
 		Enabled:                         true,
@@ -55,8 +55,8 @@ func TestAssignAppInstallerResourceModel_NestedBlocksGated(t *testing.T) {
 	// The server echoes both blocks populated; an unmanaged (nil) block in state
 	// must stay nil so the framework consistency check passes.
 	d := sampleDeployment()
-	d.NotificationSettings = &pro.AppInstallerNotificationSettings{NotificationMessage: new("hi")}
-	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Description: new("desc")}
+	d.NotificationSettings = &pro.AppTitleDeploymentNotificationSettings{NotificationMessage: new("hi")}
+	d.SelfServiceSettings = &pro.AppTitleDeploymentSelfServiceSettings{Description: new("desc")}
 
 	state := AppInstallerResourceModel{} // both blocks nil (unmanaged)
 	assignAppInstallerResourceModel(&state, d, false)
@@ -70,16 +70,16 @@ func TestAssignAppInstallerResourceModel_NestedBlocksGated(t *testing.T) {
 
 func TestAssignAppInstallerResourceModel_NestedBlocksManaged(t *testing.T) {
 	d := sampleDeployment()
-	d.NotificationSettings = &pro.AppInstallerNotificationSettings{
+	d.NotificationSettings = &pro.AppTitleDeploymentNotificationSettings{
 		NotificationMessage: new("hi"),
-		Deadline:            new(48),
+		Deadline:            new(int64(48)),
 		Suppress:            new(true),
 	}
-	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{
+	d.SelfServiceSettings = &pro.AppTitleDeploymentSelfServiceSettings{
 		Description:               new("desc"),
 		IncludeInFeaturedCategory: new(true),
-		Categories: &[]pro.SelfServiceCategory{
-			{ID: new("58"), Featured: new(true)},
+		Categories: &[]pro.AppTitleDeploymentSelfServiceSettingsCategoriesItem{
+			{ID: "58", Featured: new(true)},
 		},
 	}
 
@@ -126,7 +126,7 @@ func TestAssignAppInstallerResourceModel_CategoriesOmittedStaysNil(t *testing.T)
 	// categories. Synthesising an empty slice would trip the framework's
 	// "produced inconsistent result after apply" (plan null → apply empty set).
 	d := sampleDeployment()
-	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
+	d.SelfServiceSettings = &pro.AppTitleDeploymentSelfServiceSettings{Categories: nil}
 	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{}} // Categories nil
 	assignAppInstallerResourceModel(&state, d, false)
 	if state.SelfServiceSettings.Categories != nil {
@@ -138,7 +138,7 @@ func TestAssignAppInstallerResourceModel_CategoriesEmptyConfigStaysEmpty(t *test
 	// When the user supplied categories = [] (non-nil empty prior), the value
 	// round-trips as an empty (non-nil) slice — clearing is honoured.
 	d := sampleDeployment()
-	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
+	d.SelfServiceSettings = &pro.AppTitleDeploymentSelfServiceSettings{Categories: nil}
 	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{Categories: []SelfServiceCategoryModel{}}}
 	assignAppInstallerResourceModel(&state, d, false)
 	if state.SelfServiceSettings.Categories == nil {
@@ -157,11 +157,11 @@ func TestAssignAppInstallerResourceModel_CategoriesEmptyConfigStaysEmpty(t *test
 // scalar fields hydrate regardless.)
 func TestAssignAppInstallerResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
 	d := sampleDeployment()
-	d.NotificationSettings = &pro.AppInstallerNotificationSettings{
+	d.NotificationSettings = &pro.AppTitleDeploymentNotificationSettings{
 		NotificationMessage: new("hi"),
-		Deadline:            new(48),
+		Deadline:            new(int64(48)),
 	}
-	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{
+	d.SelfServiceSettings = &pro.AppTitleDeploymentSelfServiceSettings{
 		Description:               new("desc"),
 		IncludeInFeaturedCategory: new(true),
 	}

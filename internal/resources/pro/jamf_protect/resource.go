@@ -76,7 +76,7 @@ func (r *JamfProtectResource) IdentitySchema(ctx context.Context, req resource.I
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — a Jamf Pro tenant holds at most one Jamf Protect registration.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". A Jamf Pro tenant holds at most one Jamf Protect registration.",
 				RequiredForImport: true,
 			},
 		},
@@ -86,9 +86,9 @@ func (r *JamfProtectResource) IdentitySchema(ctx context.Context, req resource.I
 // Schema returns the Terraform schema for the Jamf Protect registration resource.
 func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. " +
-			"Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. " +
-			"**Unregistering note:** destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). " +
+		MarkdownDescription: "Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). One registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. " +
+			"Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place: Jamf Pro overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. " +
+			"Destroying this resource removes the registration only. Configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). " +
 			"Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -99,15 +99,15 @@ func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"api_url": schema.StringAttribute{
-				MarkdownDescription: "**\"Jamf Protect API URL\"** in the Jamf Pro admin UI. The Jamf Protect tenant's GraphQL API endpoint, e.g. `https://instance.protect.jamfcloud.com/graphql`. The server echoes it verbatim, so normal drift detection applies. Changing it triggers an in-place re-register.",
+				MarkdownDescription: "**\"Jamf Protect API URL\"** in the Jamf Pro admin UI. The Jamf Protect tenant's GraphQL API address, e.g. `https://instance.protect.jamfcloud.com/graphql`. Jamf Pro echoes it verbatim, so normal drift detection applies. Changing it triggers an in-place re-register.",
 				Required:            true,
 			},
 			"client_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Client ID\"** in the Jamf Pro admin UI. Jamf Protect API client identifier — create an API client in the Jamf Protect web console to obtain it. Changing it triggers an in-place re-register.",
+				MarkdownDescription: "**\"Client ID\"** in the Jamf Pro admin UI. Jamf Protect API client identifier. Create an API client in the Jamf Protect web console to obtain it. Changing it triggers an in-place re-register.",
 				Required:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Jamf Protect API client password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**, and the API never returns it. The only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger an in-place re-register carrying the current `password`).",
+				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Jamf Protect API client password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state, and never returned on read. Rotate the stored password by bumping the companion `password_wo_version` integer, which triggers an in-place re-register carrying the current `password`.",
 				Required:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -125,7 +125,7 @@ func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"registration_id": schema.StringAttribute{
-				MarkdownDescription: "Server-minted registration identifier. Returned by Jamf Pro; not user-settable. **Not stable** — a new identifier is minted on every re-register.",
+				MarkdownDescription: "Registration identifier assigned by Jamf Pro; not user-settable. Not stable: a new identifier is minted on every re-register.",
 				Computed:            true,
 			},
 			"api_client_name": schema.StringAttribute{
@@ -133,11 +133,11 @@ func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaReq
 				Computed:            true,
 			},
 			"platform_plan_sync": schema.BoolAttribute{
-				MarkdownDescription: "Whether platform plan sync is enabled. Read-only — the API rejects writes to this field and the admin UI has no control for it.",
+				MarkdownDescription: "Whether platform plan sync is enabled. Read-only: Jamf Pro rejects writes to this field and the admin UI has no control for it.",
 				Computed:            true,
 			},
 			"last_sync_time": schema.StringAttribute{
-				MarkdownDescription: "Timestamp of the most recent plans sync. Returned by Jamf Pro; volatile — it changes whenever a sync runs.",
+				MarkdownDescription: "Timestamp of the most recent plans sync. Returned by Jamf Pro; volatile, since it changes whenever a sync runs.",
 				Computed:            true,
 			},
 			"sync_status": schema.StringAttribute{

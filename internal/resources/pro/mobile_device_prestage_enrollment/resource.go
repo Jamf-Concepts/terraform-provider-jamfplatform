@@ -80,7 +80,7 @@ func (r *MobileDevicePrestageEnrollmentResource) IdentitySchema(ctx context.Cont
 // Schema returns the Terraform schema for the resource.
 func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro Mobile Device PreStage Enrollment — the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record exposed at *Devices → PreStage Enrollments* in the Jamf Pro admin UI. " +
+		MarkdownDescription: "Manages a Jamf Pro mobile device PreStage enrollment, the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record at *Devices → PreStage Enrollments* in the Jamf Pro admin UI. " +
 			"Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -91,7 +91,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 				},
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Required. Must not be blank.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Required, and must not be blank.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -120,7 +120,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			// actionable diagnostic, and ModifyPlan deliberately leaves this
 			// attribute alone (see the note there).
 			"default_prestage": schema.BoolAttribute{
-				MarkdownDescription: "When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first — and where both are managed by Terraform, make the release land before the claim (apply it on its own, or add a `depends_on` from this resource to the one giving up the default).",
+				MarkdownDescription: "When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first. Where both are managed by Terraform, make the release land before the claim: apply it on its own, or add a `depends_on` from this resource to the one giving up the default.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -133,7 +133,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			"keep_existing_site_membership":       optBool("**\"Keep Existing Site Membership\"** in the Jamf Pro admin UI."),
 			"keep_existing_location_information":  optBool("**\"Keep Existing Location Information\"** in the Jamf Pro admin UI."),
 			"multi_user": schema.BoolAttribute{
-				MarkdownDescription: "**\"Enable Shared iPad\"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true` — Jamf Pro rejects Shared iPad otherwise (`prevent_activation_lock` with a hard error; `supervised` by silently disabling Shared iPad).",
+				MarkdownDescription: "**\"Enable Shared iPad\"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true`. Jamf Pro rejects Shared iPad otherwise: `prevent_activation_lock` fails with a hard error, and `supervised` silently disables Shared iPad.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Bool{
@@ -145,7 +145,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 				},
 			},
 			"use_storage_quota_size": schema.BoolAttribute{
-				MarkdownDescription: "**\"Use Storage Quota Size\"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only` — Jamf Pro forces this to `false` when `temporary_session_only = true`.",
+				MarkdownDescription: "**\"Use Storage Quota Size\"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only`: Jamf Pro forces this to `false` when `temporary_session_only = true`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Bool{
@@ -155,7 +155,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"temporary_session_only":            optBool("**\"Temporary Session Only\"** shared-iPad storage mode. Mutually exclusive with `use_storage_quota_size` — Jamf Pro forces `use_storage_quota_size` to `false` when this is `true`."),
+			"temporary_session_only":            optBool("**\"Temporary Session Only\"** shared-iPad storage mode. Mutually exclusive with `use_storage_quota_size`: Jamf Pro forces `use_storage_quota_size` to `false` when this is `true`."),
 			"enforce_temporary_session_timeout": optBool("**\"Enforce Temporary Session Timeout\"** in the Jamf Pro admin UI."),
 			"enforce_user_session_timeout":      optBool("**\"Enforce User Session Timeout\"** in the Jamf Pro admin UI."),
 			"preserve_managed_apps":             optBool("**\"Preserve Managed Apps\"** in the Jamf Pro admin UI."),
@@ -176,7 +176,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 				// validators.IANATimeZone() (Go's embedded tzdata — see its doc
 				// comment for the wire-probe evidence on why tzdata, not the
 				// curated /v1/time-zones list, is the gate).
-				MarkdownDescription: "**\"Time Zone\"** in the Jamf Pro admin UI (e.g. `\"America/Chicago\"`). Required by the Jamf Pro API — must be a valid IANA time-zone identifier and may not be empty.",
+				MarkdownDescription: "**\"Time Zone\"** in the Jamf Pro admin UI (e.g. `\"America/Chicago\"`). Required. Must be a valid IANA time-zone identifier, and may not be empty.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -192,7 +192,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 
 			"maximum_shared_accounts": optInt64("**\"Number of users\"** for Shared iPad."),
 			"temporary_session_timeout": schema.Int64Attribute{
-				MarkdownDescription: "**\"Temporary Session Timeout\"** (minutes). Jamf Pro silently nulls values below the UI minimum of 30 when enforcement is on.",
+				MarkdownDescription: "**\"Temporary Session Timeout\"** (minutes). With enforcement on, Jamf Pro silently discards a value below the UI minimum of 30.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{
@@ -212,7 +212,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			// uses a separate legacy endpoint). The provider sends the §F3 POST
 			// floor on create and otherwise reflects the server value.
 			"storage_quota_size_megabytes": schema.Int64Attribute{
-				MarkdownDescription: "**\"Storage Quota Size\"** (megabytes) for Shared iPad. Read-only: Jamf Pro recalculates this server-side on every change, so it is not settable from Terraform — set it in the Jamf Pro admin UI. Reflects the value Jamf Pro reports.",
+				MarkdownDescription: "**\"Storage Quota Size\"** (megabytes) for Shared iPad. Read-only, because Jamf Pro recalculates it on every change. Set it in the Jamf Pro admin UI; this attribute reflects the value Jamf Pro reports.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
@@ -249,7 +249,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			// with empty errors[] on the wire). The update path detects this
 			// via a post-write diff and surfaces a hard error.
 			"anchor_certificates": schema.ListAttribute{
-				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format; Jamf Pro rejects malformed entries by silently discarding the entire change — the provider catches this and surfaces a hard error.",
+				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format. Jamf Pro rejects a malformed entry by silently discarding the whole change; the provider catches that and raises a hard error.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -361,7 +361,7 @@ func optInt64(md string) schema.Attribute {
 // Optional+Computed.
 func skipSetupItemsSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane; `true` skips the pane. Supply the block (even empty: `skip_setup_items = {}`) to manage this section — omitting it produces drift on the next refresh.",
+		MarkdownDescription: "Setup Assistant panes to skip during enrolment. Each attribute corresponds to a Setup Assistant pane; `true` skips the pane. Supply the block, even empty (`skip_setup_items = {}`), to manage this section. Omitting it produces drift on the next refresh.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"action_button":           optBool("**\"Action Button\"** pane."),
@@ -417,7 +417,7 @@ func skipSetupItemsSchema() schema.SingleNestedAttribute {
 // with no computer analog.
 func namesSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Mobile device names\"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how Jamf Pro's admin UI decides not to show the naming payload at all: set at least one field below for naming to take effect.",
+		MarkdownDescription: "**\"Mobile device names\"** in the Jamf Pro admin UI. Supply the block, even empty (`names = {}`), to manage device naming. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how the Jamf Pro admin UI decides not to show naming at all. Set at least one field below for naming to take effect.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"assign_names_using": schema.StringAttribute{
@@ -464,14 +464,14 @@ func namesSchema() schema.SingleNestedAttribute {
 							Required:            true,
 						},
 						"id": schema.StringAttribute{
-							MarkdownDescription: "Server-assigned name ID. `\"-1\"` is sent for a new entry.",
+							MarkdownDescription: "Name ID assigned by Jamf Pro. Supply `\"-1\"` for a new entry.",
 							Computed:            true,
 							PlanModifiers: []planmodifier.String{
 								stringplanmodifier.UseNonNullStateForUnknown(),
 							},
 						},
 						"used": schema.BoolAttribute{
-							MarkdownDescription: "Whether this name has been consumed by an enrolled device. Server-managed.",
+							MarkdownDescription: "Whether this name has been consumed by an enrolled device. Returned by Jamf Pro; not user-settable.",
 							Computed:            true,
 							PlanModifiers: []planmodifier.Bool{
 								boolplanmodifier.UseNonNullStateForUnknown(),
@@ -487,7 +487,7 @@ func namesSchema() schema.SingleNestedAttribute {
 // locationInformationSchema returns the User and Location Information block.
 func locationInformationSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"User and Location Information\"** in the Jamf Pro admin UI. Supply the block (even empty: `location_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block.",
+		MarkdownDescription: "**\"User and Location Information\"** in the Jamf Pro admin UI. Supply the block, even empty (`location_information = {}`), to manage this section. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"username":      optString("**\"Username\"** for the device record."),
@@ -505,7 +505,7 @@ func locationInformationSchema() schema.SingleNestedAttribute {
 // purchasingInformationSchema returns the Purchasing Information block.
 func purchasingInformationSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Purchasing Information\"** in the Jamf Pro admin UI. Supply the block (even empty: `purchasing_information = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block.",
+		MarkdownDescription: "**\"Purchasing Information\"** in the Jamf Pro admin UI. Supply the block, even empty (`purchasing_information = {}`), to manage this section. Omitting it produces drift on the next refresh, because Jamf Pro always returns a populated block.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"leased":             optBool("**\"Leased\"** in the Jamf Pro admin UI."),

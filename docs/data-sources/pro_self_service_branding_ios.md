@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_self_service_branding_ios Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Errors if no iOS branding is configured.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Errors if no iOS branding is configured.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_branding_ios (Data Source)
 
-Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Errors if no iOS branding is configured.
+Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Errors if no iOS branding is configured.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read | `self-service` |
 
 ## Example Usage
 
@@ -45,9 +45,9 @@ output "ios_main_header" {
 
 - `branding_name_color_code` (String) Hex colour of the Main Header text.
 - `header_background_color_code` (String) Hex colour of the header background.
-- `icon_id` (Number) UI: **Icon**. Branding image ID (separate store from `jamfplatform_pro_icon`).
+- `icon_id` (Number) **"Icon"** in the Jamf Pro admin UI. Branding image ID, from a store separate to `jamfplatform_pro_icon`.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
-- `main_header` (String) UI: **Main Header**.
+- `main_header` (String) **"Main Header"** in the Jamf Pro admin UI.
 - `menu_icon_color_code` (String) Hex colour of the menu icons.
 - `status_bar_text_color` (String) Status bar text appearance, `light` or `dark`.
 

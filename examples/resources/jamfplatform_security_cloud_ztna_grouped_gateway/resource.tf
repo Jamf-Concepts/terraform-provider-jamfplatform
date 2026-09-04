@@ -1,5 +1,5 @@
 # A grouped gateway is a routing and failover group over two or more of your own
-# dedicated gateways. Every member must be the same form — all IPSec, or all
+# dedicated gateways. Every member must be the same form: all IPSec, or all
 # internet.
 resource "jamfplatform_security_cloud_ztna_grouped_gateway" "eu" {
   name = "EU Egress"

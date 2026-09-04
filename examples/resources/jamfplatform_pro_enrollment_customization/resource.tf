@@ -1,4 +1,4 @@
-# Manages a Jamf Pro enrollment customization — the parent record carrying the
+# Manages a Jamf Pro enrollment customization: the parent record carrying the
 # branding palette plus any combination of text, LDAP, and SSO authentication
 # panes shown to users during enrollment.
 #
@@ -14,7 +14,7 @@ resource "jamfplatform_pro_enrollment_customization" "welcome" {
   description  = "Default enrollment experience for staff devices"
 
   # Either set icon_source (local path) OR branding_settings.icon_url
-  # (pre-uploaded URL) — not both. Leave both unset to skip the icon.
+  # (pre-uploaded URL), not both. Leave both unset to skip the icon.
   icon_source = "${path.module}/welcome.png"
 
   branding_settings = {

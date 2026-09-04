@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // installLocationRequiredValidator enforces, at plan time, the dependency Jamf Pro enforces
@@ -102,7 +104,7 @@ func (samlRequiresLoginValidator) ValidateResource(ctx context.Context, req reso
 		return
 	}
 
-	if authType.ValueString() == "Saml" && loginMethod.ValueString() == "NotRequired" {
+	if authType.ValueString() == pro.SelfServiceLoginSettingsAuthTypeSaml && loginMethod.ValueString() == pro.SelfServiceLoginSettingsUserLoginLevelNotRequired {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("authentication_type"),
 			"Single Sign-On requires user login",
@@ -150,7 +152,7 @@ func (categoryRequiresBrowseValidator) ValidateResource(ctx context.Context, req
 		return
 	}
 
-	if categoryID.ValueInt64() != -1 && landingPage.ValueString() != "BROWSE" {
+	if categoryID.ValueInt64() != -1 && landingPage.ValueString() != pro.SelfServiceInteractionSettingsDefaultLandingPageBrowse {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("default_home_category_id"),
 			"Default home category requires the Browse landing page",

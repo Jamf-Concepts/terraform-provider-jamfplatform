@@ -19,7 +19,7 @@ locals {
 }
 
 resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
-  # name_id and source_id are derived from the catalog lookup above — no magic
+  # name_id and source_id are derived from the catalog lookup above. No magic
   # numbers. source_id is numeric; the data source id is a string, so convert it.
   name      = local.catalog_entry.app_name
   name_id   = local.catalog_entry.name_id
@@ -30,9 +30,9 @@ resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
   web_notification   = true
   email_notification = false
 
-  # The server populates available_versions; assign packages to specific
-  # versions via version_packages so patch policies can target them. Only the
-  # versions you list are managed; removing a key clears that version's package.
+  # Jamf Pro populates available_versions; assign packages to specific versions
+  # via version_packages so patch policies can target them. Only the versions
+  # you list are managed; removing a key clears that version's package.
   version_packages = {
     "8.33.2.2" = jamfplatform_pro_package.work_8_33.id
   }

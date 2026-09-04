@@ -44,8 +44,15 @@ const (
 
 // AppInstallerResource implements the Terraform resource for Jamf Pro App
 // Installer deployments.
+//
+// titles is the provider-instance App Catalog snapshot, shared with every other
+// App Installer in the configuration. Both directions of the title name mapping go
+// through it — the plan-time and apply-time app_title_name resolution and the
+// app_title_id reverse-resolve on refresh — so a plan over N deployments reads the
+// catalog once rather than 2N times.
 type AppInstallerResource struct {
 	client *pro.Client
+	titles *providerdata.AppTitleCatalogCache
 }
 
 var (
@@ -81,7 +88,7 @@ func (r *AppInstallerResource) IdentitySchema(ctx context.Context, req resource.
 func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). " +
-			"`update_behavior` controls when updates apply (`AUTOMATIC` tracks the latest catalog version, `MANUAL` updates on your schedule); the version itself is always the latest available and is reported in `selected_version`. " +
+			"`update_behavior` controls when updates apply: `AUTOMATIC` tracks the latest catalog version, `MANUAL` pins the deployment to the version current when you set it, reported in `selected_version`. " +
 			"Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means \"none\"." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -123,27 +130,36 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				MarkdownDescription: "How the app is delivered. One of `INSTALL_AUTOMATICALLY` (push to all in-scope devices) or `SELF_SERVICE` (offered in Self Service).",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(deploymentTypeInstallAutomatically, deploymentTypeSelfService),
+					stringvalidator.OneOf(pro.AppTitleDeploymentDeploymentTypeValues()...),
 				},
 			},
 			"update_behavior": schema.StringAttribute{
-				MarkdownDescription: "How updates are applied. One of `AUTOMATIC` (always track the latest catalog version; `selected_version` is forced empty) or `MANUAL` (stay on the pinned `selected_version`).",
+				MarkdownDescription: "How updates are applied. One of `AUTOMATIC`, which always tracks the latest catalog version and leaves `selected_version` empty, or `MANUAL`, which pins the deployment to one version — the current one at the point the behaviour is set, reported in `selected_version`.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(updateBehaviorAutomatic, updateBehaviorManual),
+					stringvalidator.OneOf(pro.AppTitleDeploymentUpdateBehaviorValues()...),
 				},
 			},
 			"selected_version": schema.StringAttribute{
-				// Computed-only, permanently. Pinning a specific version is not a
-				// real feature: the server coerces any submitted value to the
-				// actual available catalog version (wire-probed: "1.0.0" → "15.3"),
-				// and the Jamf Pro UI exposes no version picker (only the
-				// Automatic/Manual update-behavior choice). It reads back as the
-				// latest available version, or "" while AUTOMATIC has not yet
-				// recorded one. No UseStateForUnknown: it is derived from the
-				// mutable app_title_name / update_behavior and must go Unknown when
-				// those change, or the post-apply consistency check trips.
-				MarkdownDescription: "Version Jamf Pro has selected for the deployment. Always the latest available version; the version is not user-pinnable. Returned by Jamf Pro.",
+				// Computed-only. The deployment write shape carries no version
+				// field at all, so neither Create nor Update can express one;
+				// Jamf Pro derives the value from update_behavior, answering ""
+				// under AUTOMATIC and the then-current version under MANUAL
+				// (wire-probed 2026-09-03 on a MANUAL create and on both
+				// transitions).
+				//
+				// Advancing a pinned version is a separate Jamf Pro operation,
+				// POST /deployments/{id}/version-update, which this resource does
+				// not call. It is forward-only: the same version is refused
+				// alongside an older one ("current version '11.31.1' cannot be
+				// updated to the new version '11.31.1'"), so a settable attribute
+				// backed by it could be advanced but never reverted — which is a
+				// design decision, not a mapping.
+				//
+				// No UseStateForUnknown: the value is derived from the mutable
+				// app_title_name / update_behavior and must go Unknown when those
+				// change, or the post-apply consistency check trips.
+				MarkdownDescription: "Version the deployment installs while `update_behavior` is `MANUAL`, and empty while it is `AUTOMATIC`. Jamf Pro sets it to the version current when the behaviour is pinned, and advancing it afterwards is a Jamf Pro operation this resource does not expose — so the value tracks Jamf Pro rather than configuration. Returned by Jamf Pro.",
 				Computed:            true,
 			},
 			"latest_available_version": schema.StringAttribute{
@@ -181,7 +197,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"install_predefined_config_profiles": schema.BoolAttribute{
-				MarkdownDescription: "Whether Jamf installs the title's predefined configuration profiles alongside the app.",
+				MarkdownDescription: "Whether Jamf Pro installs the title's predefined configuration profiles alongside the app.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -193,7 +209,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"notification_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "End-user notification presentation (the \"End user experience\" tab). Supply the block to manage notifications; omit it to leave Jamf's defaults. Each field is independent — omit a field to keep Jamf's default for it. Message fields must not be blank, and the interval/delay values must be positive, when set.",
+				MarkdownDescription: "End-user notification presentation (the \"End user experience\" tab). Supply the block to manage notifications; omit it to leave the Jamf Pro defaults in place. Each field is independent: omit a field to keep its Jamf Pro default. Message fields must not be blank, and the interval and delay values must be positive, when set.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"notification_message": schema.StringAttribute{
@@ -217,7 +233,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 						Validators:          []validator.Int64{int64validator.AtLeast(1)},
 					},
 					"quit_delay": schema.Int64Attribute{
-						MarkdownDescription: "Seconds the user is given to quit the app before the install proceeds.",
+						MarkdownDescription: "Minutes the user is given to quit the app before the install proceeds.",
 						Optional:            true,
 						Validators:          []validator.Int64{int64validator.AtLeast(1)},
 					},
@@ -237,7 +253,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				},
 			},
 			"self_service_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave Jamf's defaults. Every field is replaced on each apply, so set all fields you care about. Note Jamf accepts a Self Service block even for `INSTALL_AUTOMATICALLY` deployments.",
+				MarkdownDescription: "Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Every field is replaced on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"description": schema.StringAttribute{
@@ -294,7 +310,8 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 }
 
 // Configure wires the Jamf Pro client into the resource via the shared
-// providerdata.ConfigurePro helper.
+// providerdata.ConfigurePro helper, and takes the provider-instance App Catalog
+// title cache alongside it.
 func (r *AppInstallerResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_app_installer")
 	resp.Diagnostics.Append(diags...)
@@ -302,6 +319,7 @@ func (r *AppInstallerResource) Configure(ctx context.Context, req resource.Confi
 		return
 	}
 	r.client = client
+	r.titles = providerdata.ConfigureAppTitleCatalog(req.ProviderData, readAppTitleCatalog)
 }
 
 // ImportState handles import by the Jamf Pro deployment ID.
@@ -323,5 +341,5 @@ func (r *AppInstallerResource) ModifyPlan(ctx context.Context, req resource.Modi
 		return
 	}
 
-	resp.Diagnostics.Append(validateAppTitleName(ctx, r.client, plan.AppTitleName, path.Root("app_title_name"))...)
+	resp.Diagnostics.Append(validateAppTitleName(ctx, catalogOrNil(r.titles), plan.AppTitleName, path.Root("app_title_name"))...)
 }

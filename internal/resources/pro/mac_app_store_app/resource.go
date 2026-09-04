@@ -90,7 +90,7 @@ func (r *MacAppResource) IdentitySchema(ctx context.Context, req resource.Identi
 // attribute descriptions.
 func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the \"App Store App\" entry under the \"Mac Apps\" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro App Store Mac app, the \"App Store App\" entry under the \"Mac Apps\" sidebar. `general.name`, `general.version`, `general.bundle_id` and `general.url` are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID assigned by Jamf Pro.",
@@ -112,17 +112,17 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"version": schema.StringAttribute{
-						MarkdownDescription: "App version string. Stored verbatim — Jamf Pro does not resolve it from the App Store.",
+						MarkdownDescription: "App version string. Stored verbatim; Jamf Pro does not resolve it from the App Store.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"bundle_id": schema.StringAttribute{
-						MarkdownDescription: "App bundle identifier (e.g. `com.apple.iMovieApp`). Stored verbatim — Jamf Pro does not resolve it from the App Store.",
+						MarkdownDescription: "App bundle identifier (e.g. `com.apple.iMovieApp`). Stored verbatim; Jamf Pro does not resolve it from the App Store.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"url": schema.StringAttribute{
-						MarkdownDescription: "App Store (iTunes) URL. Required on create — the server rejects a POST without it. Stored verbatim as a string; it does not auto-populate name/version/bundle_id.",
+						MarkdownDescription: "App Store (iTunes) URL. Required on create: Jamf Pro rejects a create without it. Stored verbatim, and does not auto-populate `name`, `version` or `bundle_id`.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
@@ -162,7 +162,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are intentionally absent — the endpoint silently drops them.",
+				MarkdownDescription: "App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids` and `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations and exclusions are deliberately absent, because Jamf Pro silently drops them.",
 				Optional:            true,
 				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: false}),
 			},
@@ -179,7 +179,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					"notification_subject":            optComputedString("Notification subject line."),
 					"notification_message":            optComputedString("Notification body text."),
 					"self_service_icon": schema.SingleNestedAttribute{
-						MarkdownDescription: "Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported (Jamf re-encodes PNGs server-side, which would permadiff) — open an issue if you need it.",
+						MarkdownDescription: "Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported, because Jamf Pro re-encodes PNGs and the result would diff forever. Open an issue if you need it.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"id":  optComputedString("Icon ID assigned by Jamf Pro."),
@@ -201,7 +201,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"vpp": schema.SingleNestedAttribute{
-				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title — setting `assign_vpp_device_based_licenses = true` on a non-VPP app returns HTTP 409 \"App is not available for device assignment\". The license counts are server-computed.",
+				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, \"App is not available for device assignment\". The license counts are calculated by Jamf Pro.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"assign_vpp_device_based_licenses": optComputedBool("Assign VPP device-based licenses."),

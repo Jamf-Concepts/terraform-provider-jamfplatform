@@ -3,36 +3,34 @@
 page_title: "jamfplatform_pro_sso_failover_url Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages the Jamf Pro SSO failover URL — a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.
-  The URL is rotated by changing regeneration_trigger. Any change to that attribute causes the next Update to call the failover regenerate endpoint and replace the URL.
-  Destroy is state-only — terraform destroy removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).
+  Manages the Jamf Pro SSO failover URL, a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.
+  The URL is rotated by changing regeneration_trigger. Any change to that attribute makes the next apply regenerate the URL.
+  Destroy is state-only. terraform destroy removes the resource from Terraform state but leaves the failover URL live on the tenant, because Jamf Pro offers no way to clear or disable it.
   Import with terraform import jamfplatform_pro_sso_failover_url.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read SSO Settings | `read:pro:sso-settings` |
-  | Update SSO Settings | `update:pro:sso-settings` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 ---
 
 # jamfplatform_pro_sso_failover_url (Resource)
 
-Manages the Jamf Pro **SSO failover URL** — a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.
+Manages the Jamf Pro **SSO failover URL**, a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.
 
-The URL is rotated by changing `regeneration_trigger`. Any change to that attribute causes the next Update to call the failover regenerate endpoint and replace the URL.
+The URL is rotated by changing `regeneration_trigger`. Any change to that attribute makes the next apply regenerate the URL.
 
-**Destroy** is state-only — `terraform destroy` removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).
+Destroy is state-only. `terraform destroy` removes the resource from Terraform state but leaves the failover URL live on the tenant, because Jamf Pro offers no way to clear or disable it.
 
 Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read SSO Settings | `read:pro:sso-settings` |
-| Update SSO Settings | `update:pro:sso-settings` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 
 ## Example Usage
 
@@ -54,12 +52,12 @@ output "sso_failover_url" {
 
 ### Optional
 
-- `regeneration_trigger` (String) Rotation trigger. Set to any free-text value (e.g. a version label or timestamp); changing it on a subsequent apply calls the failover regenerate endpoint and produces a new `failover_url`. Optional — omit to leave the current URL untouched. Jamf Pro never returns this value, so it stays absent on read and an existing failover URL can be imported without supplying it.
+- `regeneration_trigger` (String) Rotation trigger. Set to any free-text value, such as a version label or timestamp; changing it on a subsequent apply produces a new `failover_url`. Omit it to leave the current URL untouched. Jamf Pro never returns this value, so it stays absent on read and an existing failover URL can be imported without supplying it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `failover_url` (String, Sensitive) Current failover URL. Treat as a credential — anyone holding the URL can bypass SSO to sign in.
+- `failover_url` (String, Sensitive) Current failover URL. Treat it as a credential: anyone holding the URL can bypass SSO to sign in.
 - `generation_time` (Number) Generation timestamp in Unix milliseconds.
 - `generation_time_utc` (String) Generation timestamp formatted as RFC3339 UTC.
 - `id` (String) Fixed singleton identifier. Always `singleton`.

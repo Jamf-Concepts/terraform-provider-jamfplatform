@@ -10,31 +10,41 @@ import (
 )
 
 // resourceSDKMethods lists the SDK methods the App Installer resource's CRUD
-// path calls. It mirrors the "SDK endpoints used" block in crud.go and drives
-// the "Required Jamf privileges" table appended to the resource
-// MarkdownDescription. permissions_test.go asserts this list stays in sync with
-// the actual client.<Method> calls in crud.go and with the SDK privilege
-// registry.
+// path reaches — the four deployment operations it calls directly, plus the one
+// catalog read it reaches through the package's own name-resolution helpers. Both
+// directions of the title name mapping answer from that single list
+// (resolveAppTitleID resolves app_title_name → id, titleNameForID reverse-resolves
+// the id back to the name), because the catalog snapshot is cached per provider
+// instance and carries both fields — so the resource issues no per-title GET. It
+// mirrors the "SDK endpoints used" block in crud.go and drives the "Required
+// Jamf privileges" table appended to the resource MarkdownDescription.
+// permissions_test.go asserts this list stays in sync with the SDK calls
+// reachable from crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
 	"CreateAppInstallerDeploymentV1",
 	"GetAppInstallerDeploymentV1",
 	"UpdateAppInstallerDeploymentV1",
 	"DeleteAppInstallerDeploymentV1",
+	"ListAppInstallerTitlesV1",
 }
 
 // resourcePrivileges is the rendered "Required Jamf privileges" Markdown
 // section for the App Installer resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
-// dataSourceSDKMethods lists the registry-tracked SDK methods the singular App
-// Installer data source calls. data_source.go also calls
-// ResolveAppInstallerDeploymentV1IDByName, but that resolver is a list-backed
-// convenience wrapper with no own privilege registry entry; it issues the same
-// read:pro:mac-applications request as the deployment GET, so the GET covers the
-// data source's privilege requirement. permissions_test.go filters the
-// discovered calls to registry-known methods before comparing.
+// dataSourceSDKMethods lists the SDK methods the singular App Installer data
+// source reaches. A lookup by id calls the deployment GET directly; a lookup by
+// name first goes through the package's own resolveDeploymentIDByName, which
+// lists the deployments and decides the match in the provider because Jamf Pro's
+// name filter is a case-insensitive glob (see name_lookup.go). Either way the
+// title name is reverse-resolved from its id by titleNameForID, out of the cached
+// title list rather than a per-title GET. All three are applications:read, so the
+// rendered table is unchanged by the two indirect reads, but they are declared here
+// so the list describes the requests the data source actually issues.
 var dataSourceSDKMethods = []string{
 	"GetAppInstallerDeploymentV1",
+	"ListAppInstallerDeploymentsV1",
+	"ListAppInstallerTitlesV1",
 }
 
 // dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown

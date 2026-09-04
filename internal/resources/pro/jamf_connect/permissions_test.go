@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -85,7 +84,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:jamf-connect-deployments") {
+	if !permissions.Renders(resourcePrivileges, "jamf-connect-deployments:update") {
 		t.Fatalf("resourcePrivileges did not render the Jamf Connect privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -107,7 +106,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered
 // into the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:jamf-connect-deployments") {
+	if !permissions.Renders(dataSourcePrivileges, "jamf-connect-deployments:read") {
 		t.Fatalf("dataSourcePrivileges did not render the Jamf Connect privileges:\n%s", dataSourcePrivileges)
 	}
 }

@@ -1,6 +1,6 @@
 # Manage the Self Service for macOS app settings (Settings > Self Service > macOS).
-# Singleton — one record per tenant; declare it once. Omitted fields keep their
-# current Jamf Pro value.
+# One record per tenant; declare it once. Omitted fields keep their current Jamf
+# Pro value.
 resource "jamfplatform_pro_category" "self_service_home" {
   name     = "Featured"
   priority = 9

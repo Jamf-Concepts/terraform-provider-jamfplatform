@@ -3,14 +3,18 @@
 
 package blueprint
 
-// Constants for blueprint deployment states.
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+
+// Constants for blueprint deployment states. The SDK also generates
+// OUT_OF_DATE, which nothing here compares against.
 const (
-	blueprintDeploymentStateDeployed    = "DEPLOYED"
-	blueprintDeploymentStateNotDeployed = "NOT_DEPLOYED"
+	blueprintDeploymentStateDeployed    = blueprints.DeploymentStateStateDeployed
+	blueprintDeploymentStateNotDeployed = blueprints.DeploymentStateStateNotDeployed
 )
 
 // stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations.
 var stronglyTypedComponentIdentifiers = map[string]struct{}{
+	"com.jamf.ai-governance":                   {},
 	"com.jamf.ddm.audio-accessory-settings":    {},
 	"com.jamf.ddm.custom-declarations":         {},
 	"com.jamf.ddm.disk-management":             {},
@@ -33,12 +37,12 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 // unrecognised or miscased key, a wrong value type, a missing required key, an out-of-range integer —
 // are named there, with the offending path and Apple's spelling, so they are summarised here rather
 // than enumerated. See internal/common/appleprofiles.
-const legacyPayloadSettingsBehaviour = "Jamf validates each payload against Apple's payload keys for its `payload_type`, " +
+const legacyPayloadSettingsBehaviour = "The platform validates each payload against Apple's payload keys for its `payload_type`, " +
 	"and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, " +
 	"or a missing required key is reported before an apply rather than failing one. " +
 	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
 	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
 	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +
-	"Values Jamf treats as credentials — a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` " +
-	"and `OuterIdentity` — are returned redacted, and the provider keeps what you wrote so the plan still settles; " +
+	"Values the platform treats as credentials (a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` " +
+	"and `OuterIdentity`) are returned redacted, and the provider keeps what you wrote so the plan still settles. " +
 	"an imported blueprint carries the redaction, because the real value cannot be read back."

@@ -24,9 +24,9 @@ const defaultPluralReadTimeout = 90 * time.Second
 // carries the full catalog; the optional `name_substring` narrows the result
 // client-side (the catalog endpoint has no server-side filter).
 type AppInstallerTitlesDataSourceModel struct {
-	ID            types.String                       `tfsdk:"id"`
-	NameSubstring types.String                       `tfsdk:"name_substring"`
-	Titles        []AppInstallerTitleDataSourceModel `tfsdk:"titles"`
+	ID            types.String                    `tfsdk:"id"`
+	NameSubstring types.String                    `tfsdk:"name_substring"`
+	Titles        []AppInstallerTitleSummaryModel `tfsdk:"titles"`
 }
 
 // AppInstallerTitlesDataSource implements the Terraform plural data source.
@@ -48,7 +48,6 @@ func (d *AppInstallerTitlesDataSource) Metadata(ctx context.Context, req datasou
 
 // Schema returns the data source schema.
 func (d *AppInstallerTitlesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	titleAttrs := TitleDataSourceAttributes()
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full catalog is fetched." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
@@ -61,10 +60,10 @@ func (d *AppInstallerTitlesDataSource) Schema(ctx context.Context, req datasourc
 				Optional:            true,
 			},
 			"titles": schema.ListNestedAttribute{
-				MarkdownDescription: "Catalog titles, optionally narrowed by `name_substring`.",
+				MarkdownDescription: "Catalog titles, optionally narrowed by `name_substring`. The catalog endpoint returns a summary of each title; read `jamfplatform_pro_app_installer_title` for a title's package metadata.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes: titleAttrs,
+					Attributes: TitleSummaryAttributes(),
 				},
 			},
 		},
@@ -100,7 +99,7 @@ func (d *AppInstallerTitlesDataSource) Read(ctx context.Context, req datasource.
 	readCtx, cancel := context.WithTimeout(ctx, defaultPluralReadTimeout)
 	defer cancel()
 
-	titles, err := d.client.ListAppInstallerTitlesV1(readCtx)
+	titles, err := d.client.ListAppInstallerTitlesV1(readCtx, nil, "")
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list App Installer titles", err.Error())
 		return
@@ -113,12 +112,32 @@ func (d *AppInstallerTitlesDataSource) Read(ctx context.Context, req datasource.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// FilterAndMapTitles maps every SDK title into the data source model, keeping
+// TitleSummaryAttributes returns the Computed attribute map describing one
+// title as the catalog list endpoint returns it — a seven-field summary, not
+// the full per-title shape.
+func TitleSummaryAttributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"id":                       computedString("Catalog title ID."),
+		"title_name":               computedString("Title display name."),
+		"publisher":                computedString("Title publisher."),
+		"bundle_id":                computedString("Primary application bundle identifier."),
+		"version":                  computedString("Current published version."),
+		"icon_url":                 computedString("URL of the title icon."),
+		"installation_path_shared": schema.BoolAttribute{MarkdownDescription: "Whether another title may install to the same path as this one.", Computed: true},
+	}
+}
+
+// FilterAndMapTitles maps every SDK title summary into the plural model, keeping
 // only titles whose name contains nameSubstring (case-insensitive) when that
 // filter is set. The slice is always non-nil so an empty result serialises as
 // an empty list, not null.
-func FilterAndMapTitles(titles []pro.AppInstallerTitle, nameSubstring types.String) []AppInstallerTitleDataSourceModel {
-	out := make([]AppInstallerTitleDataSourceModel, 0, len(titles))
+//
+// The narrowing stays client-side deliberately. Jamf Pro's own `titleName`
+// filter is a case-insensitive glob, so a substring would have to be sent as
+// `*x*` — which silently changes meaning for a substring containing `*`. The
+// whole catalog is a few hundred summaries.
+func FilterAndMapTitles(titles []pro.AppTitle, nameSubstring types.String) []AppInstallerTitleSummaryModel {
+	out := make([]AppInstallerTitleSummaryModel, 0, len(titles))
 	substr := ""
 	if helpers.IsConfiguredValue(nameSubstring) {
 		substr = strings.ToLower(nameSubstring.ValueString())
@@ -127,7 +146,20 @@ func FilterAndMapTitles(titles []pro.AppInstallerTitle, nameSubstring types.Stri
 		if substr != "" && !strings.Contains(strings.ToLower(titles[i].TitleName), substr) {
 			continue
 		}
-		out = append(out, AssignTitleDataSource(&titles[i]))
+		out = append(out, assignTitleSummary(titles[i]))
 	}
 	return out
+}
+
+// assignTitleSummary maps one SDK catalog summary into the plural model.
+func assignTitleSummary(t pro.AppTitle) AppInstallerTitleSummaryModel {
+	return AppInstallerTitleSummaryModel{
+		ID:                     types.StringValue(t.ID),
+		TitleName:              types.StringValue(t.TitleName),
+		Publisher:              types.StringValue(t.Publisher),
+		BundleID:               types.StringValue(t.BundleID),
+		Version:                types.StringValue(t.Version),
+		IconURL:                types.StringValue(t.IconURL),
+		InstallationPathShared: types.BoolValue(t.InstallationPathShared),
+	}
 }

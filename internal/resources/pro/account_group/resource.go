@@ -77,7 +77,7 @@ func (r *AccountGroupResource) IdentitySchema(ctx context.Context, req resource.
 // Schema returns the Terraform schema for the account group resource.
 func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records)." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro **administrator account group**: a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct, which groups end-user and device records." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Account group ID assigned by Jamf Pro.",

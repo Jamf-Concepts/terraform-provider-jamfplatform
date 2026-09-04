@@ -21,7 +21,7 @@ import (
 // that round-trip end to end. See the computer-search counterpart for rationale.
 // Stands up the shared Okta LDAP directory-service fixture (via the SDK, so the
 // directory exists before the pre-apply group resolve) and resolves
-// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
+// JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME against it.
 
 // TestAccResource_AMDS_DSGroupCriteria mirrors the computer-search test on the
 // mobile (Pro v1, types.List) surface.

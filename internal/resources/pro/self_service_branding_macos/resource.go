@@ -85,7 +85,7 @@ func (r *SelfServiceBrandingMacosResource) IdentitySchema(ctx context.Context, r
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — Self Service macOS branding is one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". Self Service macOS branding is one record per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -96,9 +96,9 @@ func (r *SelfServiceBrandingMacosResource) IdentitySchema(ctx context.Context, r
 func (r *SelfServiceBrandingMacosResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). " +
-			"Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). " +
+			"One configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it, and the Self Service app reverts to its default branding. " +
 			"All fields are optional; removing a field from configuration clears it on the tenant. " +
-			"Reference branding images by ID from `jamfplatform_pro_self_service_branding_image` (the branding image store is separate from `jamfplatform_pro_icon`). " +
+			"Reference branding images by ID from `jamfplatform_pro_self_service_branding_image`. That store is separate to `jamfplatform_pro_icon`. " +
 			"Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -109,37 +109,37 @@ func (r *SelfServiceBrandingMacosResource) Schema(ctx context.Context, req resou
 				},
 			},
 			"application_header": schema.StringAttribute{
-				MarkdownDescription: "UI: **Application Header**. Name displayed for the Self Service application in Finder, the Dock, and the menu bar. Omit to leave unset.",
+				MarkdownDescription: "**\"Application Header\"** in the Jamf Pro admin UI. Name displayed for the Self Service application in Finder, the Dock, and the menu bar. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"sidebar_heading": schema.StringAttribute{
-				MarkdownDescription: "UI: **Sidebar - Heading**. Heading shown in the Self Service sidebar. Omit to leave unset.",
+				MarkdownDescription: "**\"Sidebar - Heading\"** in the Jamf Pro admin UI. Heading shown in the Self Service sidebar. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"sidebar_subheading": schema.StringAttribute{
-				MarkdownDescription: "UI: **Sidebar - Subheading**. Subheading shown in the Self Service sidebar. Omit to leave unset.",
+				MarkdownDescription: "**\"Sidebar - Subheading\"** in the Jamf Pro admin UI. Subheading shown in the Self Service sidebar. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"home_page_heading": schema.StringAttribute{
-				MarkdownDescription: "UI: **Home page - Heading**. Heading shown on the Self Service home page. Omit to leave unset.",
+				MarkdownDescription: "**\"Home page - Heading\"** in the Jamf Pro admin UI. Heading shown on the Self Service home page. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"home_page_subheading": schema.StringAttribute{
-				MarkdownDescription: "UI: **Home page - Subheading**. Subheading shown on the Self Service home page. Omit to leave unset.",
+				MarkdownDescription: "**\"Home page - Subheading\"** in the Jamf Pro admin UI. Subheading shown on the Self Service home page. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"icon_id": schema.Int64Attribute{
-				MarkdownDescription: "UI: **Icon**. ID of the branding image shown on the Login screen and in Self Service (recommended 180×180 PNG/GIF). Use a `jamfplatform_pro_self_service_branding_image` ID — **not** a `jamfplatform_pro_icon` ID (separate stores). Omit to leave unset.",
+				MarkdownDescription: "**\"Icon\"** in the Jamf Pro admin UI. ID of the branding image shown on the Login screen and in Self Service (180×180 PNG/GIF recommended). Use a `jamfplatform_pro_self_service_branding_image` ID, **not** a `jamfplatform_pro_icon` ID; the two stores are separate. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.Int64{int64validator.AtLeast(1)},
 			},
 			"banner_image_id": schema.Int64Attribute{
-				MarkdownDescription: "UI: **Home page - Banner Image**. ID of the banner image shown across the top of Self Service (recommended 1500×235 PNG/GIF). Use a `jamfplatform_pro_self_service_branding_image` ID. Omit to leave unset.",
+				MarkdownDescription: "**\"Home page - Banner Image\"** in the Jamf Pro admin UI. ID of the banner image shown across the top of Self Service (1500×235 PNG/GIF recommended). Use a `jamfplatform_pro_self_service_branding_image` ID. Omit to leave unset.",
 				Optional:            true,
 				Validators:          []validator.Int64{int64validator.AtLeast(1)},
 			},

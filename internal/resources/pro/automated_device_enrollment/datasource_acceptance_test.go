@@ -7,7 +7,6 @@ package automated_device_enrollment_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -17,11 +16,11 @@ import (
 
 // TestAccDataSource_ProAutomatedDeviceEnrollment_ByID provisions an ADE
 // instance via the resource and reads it back through the singular data
-// source by ID. Gated on JAMFPLATFORM_ADE_TOKEN because the resource Create
+// source by ID. Gated on JAMFPLATFORM_ACC_PRO_DEP_TOKEN because the resource Create
 // requires a real Apple-issued server token; tokens MUST come from env, never
 // committed to fixtures.
 func TestAccDataSource_ProAutomatedDeviceEnrollment_ByID(t *testing.T) {
-	token := os.Getenv(adeTokenEnvVar)
+	token := testhelpers.AccEnv(adeTokenEnvVar)
 	if token == "" {
 		t.Skipf("%s not set; skipping ADE data source acceptance test", adeTokenEnvVar)
 	}

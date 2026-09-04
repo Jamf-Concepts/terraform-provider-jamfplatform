@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -118,25 +117,25 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // --- Render guards: the table actually rendered into each description. ---
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:user-groups") {
+	if !permissions.Renders(resourcePrivileges, "user-groups:create") {
 		t.Fatalf("resourcePrivileges did not render the user-groups privileges:\n%s", resourcePrivileges)
 	}
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:user-groups") {
+	if !permissions.Renders(dataSourcePrivileges, "user-groups:read") {
 		t.Fatalf("dataSourcePrivileges did not render the user-groups privileges:\n%s", dataSourcePrivileges)
 	}
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:user-groups") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "user-groups:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the user-groups privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:user-groups") {
+	if !permissions.Renders(listResourcePrivileges, "user-groups:read") {
 		t.Fatalf("listResourcePrivileges did not render the user-groups privileges:\n%s", listResourcePrivileges)
 	}
 }

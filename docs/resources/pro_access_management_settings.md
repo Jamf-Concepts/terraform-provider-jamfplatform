@@ -3,27 +3,25 @@
 page_title: "jamfplatform_pro_access_management_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro Access Management settings for Managed Apple Accounts (/v4/enrollment/access-management). Singleton — one record per tenant. When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. Omit = preserve — omitting automated_device_enrollment_server_uuid keeps the value currently set on the tenant (including on the first apply: this resource adopts the existing setting). To clear the setting, set automated_device_enrollment_server_uuid = "" — omitting it does not clear it. Import with terraform import jamfplatform_pro_access_management_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Access Management Setting Read | `read:pro:access-management-setting` |
-  | Access Management Setting Update | `update:pro:access-management-setting` |
+  Manages Jamf Pro Access Management settings for Managed Apple Accounts. One record per tenant. When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. Omitting automated_device_enrollment_server_uuid keeps the value currently set on the tenant, including on the first apply: this resource adopts the existing setting. To clear the setting, set automated_device_enrollment_server_uuid = "". Omitting it does not clear it. Import with terraform import jamfplatform_pro_access_management_settings.<name> singleton.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Access management | Read, Update | `access-management` |
 ---
 
 # jamfplatform_pro_access_management_settings (Resource)
 
-Manages Jamf Pro Access Management settings for Managed Apple Accounts (`/v4/enrollment/access-management`). Singleton — one record per tenant. When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. **Omit = preserve** — omitting `automated_device_enrollment_server_uuid` keeps the value currently set on the tenant (including on the first apply: this resource adopts the existing setting). **To clear the setting, set `automated_device_enrollment_server_uuid = ""`** — omitting it does not clear it. Import with `terraform import jamfplatform_pro_access_management_settings.<name> singleton`.
+Manages Jamf Pro Access Management settings for Managed Apple Accounts. One record per tenant. When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. Omitting `automated_device_enrollment_server_uuid` keeps the value currently set on the tenant, including on the first apply: this resource adopts the existing setting. To clear the setting, set `automated_device_enrollment_server_uuid = ""`. Omitting it does not clear it. Import with `terraform import jamfplatform_pro_access_management_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Access Management Setting Read | `read:pro:access-management-setting` |
-| Access Management Setting Update | `update:pro:access-management-setting` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Access management | Read, Update | `access-management` |
 
 ## Example Usage
 
@@ -52,7 +50,7 @@ resource "jamfplatform_pro_access_management_settings" "this" {
 
 ### Optional
 
-- `automated_device_enrollment_server_uuid` (String) Server UUID of the Automated Device Enrollment (ADE) server object Jamf Pro names in its Get Token response for Managed Apple Account access management. Copy this from an ADE instance — e.g. `jamfplatform_pro_automated_device_enrollment.<name>.server_uuid` — or from Settings > Automated Device Enrollment in the Jamf Pro web app. The server object must be associated with the same Apple Business Manager / Apple School Manager tenant the Managed Apple Accounts originate from. Omit to preserve the current value; set to `""` to clear it (no ADE server configured).
+- `automated_device_enrollment_server_uuid` (String) Server UUID of the Automated Device Enrollment (ADE) server object Jamf Pro names in its Get Token response for Managed Apple Account access management. Copy it from an ADE instance (`jamfplatform_pro_automated_device_enrollment.<name>.server_uuid`) or from Settings > Automated Device Enrollment in the Jamf Pro web app. The server object must be associated with the same Apple Business Manager / Apple School Manager tenant the Managed Apple Accounts originate from. Omit to preserve the current value; set to `""` to clear it (no ADE server configured).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

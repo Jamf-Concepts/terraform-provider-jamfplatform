@@ -1,7 +1,7 @@
-# Advanced Volume Purchasing Content search — a saved, criteria-driven query over
+# Advanced Volume Purchasing Content search: a saved, criteria-driven query over
 # Volume Purchasing (VPP) content with a configurable set of display columns.
 #
-# NOTE: criteria and display-field names use Jamf Pro's WIRE vocabulary, which
+# Criteria and display-field names use Jamf Pro's stored vocabulary, which
 # differs from the admin-UI labels:
 #   UI "Content Name"        -> "Name"
 #   UI "Price"               -> "Cost"
@@ -29,8 +29,8 @@ resource "jamfplatform_pro_advanced_volume_purchasing_content_search" "office_ap
     },
   ]
 
-  # The set of content columns shown in the results (wire names). Order is not
-  # significant — Jamf Pro returns the columns in its own canonical order and
+  # The set of content columns shown in the results (stored names). Order is not
+  # significant; Jamf Pro returns the columns in its own canonical order and
   # silently drops names it does not recognise.
   display_fields = ["Name", "Cost", "Total", "Used"]
 }

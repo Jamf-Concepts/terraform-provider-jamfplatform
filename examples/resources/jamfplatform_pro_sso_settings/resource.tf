@@ -1,4 +1,4 @@
-# Pure OIDC, SSO disabled — minimal scaffolding.
+# Pure OIDC, SSO disabled: minimal scaffolding.
 resource "jamfplatform_pro_sso_settings" "oidc_disabled" {
   sso_enabled                                          = false
   sso_bypass_allowed                                   = false
@@ -61,7 +61,7 @@ resource "jamfplatform_pro_sso_settings" "saml_file" {
 }
 
 # SAML + uploaded signing keystore. `keystore_password` and `password` are
-# WriteOnly — bump `_wo_version` to rotate.
+# WriteOnly. Bump `_wo_version` to rotate.
 resource "jamfplatform_pro_sso_settings" "saml_uploaded_cert" {
   sso_enabled                                          = true
   sso_bypass_allowed                                   = true

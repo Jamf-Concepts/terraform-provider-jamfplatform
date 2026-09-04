@@ -3,36 +3,30 @@
 page_title: "jamfplatform_pro_class Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro class — the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:classes` |
-  | `delete:pro:classes` |
-  | `read:pro:classes` |
-  | `update:pro:classes` |
+  Manages a Jamf Pro class: the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers by username, and student, teacher and mobile device groups by ID. Membership is authoritative, so each set is applied in full on every change. Classes synchronised from a roster in Apple School Manager are managed by that sync and should not be managed with this resource.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Classes | Create, Read, Update, Delete | `classes` |
 ---
 
 # jamfplatform_pro_class (Resource)
 
-Manages a Jamf Pro class — the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource.
+Manages a Jamf Pro class: the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers by username, and student, teacher and mobile device groups by ID. Membership is authoritative, so each set is applied in full on every change. Classes synchronised from a roster in Apple School Manager are managed by that sync and should not be managed with this resource.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:classes` |
-| `delete:pro:classes` |
-| `read:pro:classes` |
-| `update:pro:classes` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Classes | Create, Read, Update, Delete | `classes` |
 
 ## Example Usage
 
 ```terraform
-# A Jamf Pro class for Apple Classroom — groups students and teachers (by
+# A Jamf Pro class for Apple Classroom. It groups students and teachers (by
 # username) and student/teacher/mobile-device groups (by ID). Membership is
 # authoritative: each set is applied in full on every change, so removing an
 # entry removes the member and omitting a set leaves it empty.
@@ -70,17 +64,17 @@ resource "jamfplatform_pro_class" "all_year_9" {
 
 ### Required
 
-- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Display name for the class; must be unique within the tenant.
+- `name` (String) **"Display Name"** in the Jamf Pro admin UI. Must be unique within the tenant.
 
 ### Optional
 
-- `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description for the class.
-- `mobile_device_group_ids` (Set of String) **"Mobile Device Groups"** in the Jamf Pro admin UI. Jamf Pro mobile device group IDs (as strings) assigned to the class. Authoritative: the full set is applied on every change. Referenced IDs must already exist.
-- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the class. Use `-1` for "None" (the default).
-- `student_group_ids` (Set of String) **"Student Groups"** in the Jamf Pro admin UI. Jamf Pro user group IDs (as strings) assigned as student groups. Authoritative: the full set is applied on every change. Referenced IDs must already exist.
-- `students` (Set of String) **"Students"** in the Jamf Pro admin UI. Usernames of the students assigned to the class. Authoritative: the full set is applied on every change, so removing a username removes the member and omitting the attribute leaves the class with no students. Unrecognised usernames are created as Jamf Pro users.
-- `teacher_group_ids` (Set of String) **"Teacher Groups"** in the Jamf Pro admin UI. Jamf Pro user group IDs (as strings) assigned as teacher groups. Authoritative: the full set is applied on every change. Referenced IDs must already exist.
-- `teachers` (Set of String) **"Teachers"** in the Jamf Pro admin UI. Usernames of the teachers assigned to the class. Authoritative: the full set is applied on every change, so removing a username removes the member and omitting the attribute leaves the class with no teachers. Unrecognised usernames are created as Jamf Pro users.
+- `description` (String) **"Description"** in the Jamf Pro admin UI. Free-text description for the class.
+- `mobile_device_group_ids` (Set of String) **"Mobile Device Groups"** in the Jamf Pro admin UI. Jamf Pro mobile device group IDs, as strings, assigned to the class. The full set is applied on every change. Referenced IDs must already exist.
+- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Site ID scoping the class. Use `-1` for "None", the default.
+- `student_group_ids` (Set of String) **"Student Groups"** in the Jamf Pro admin UI. Jamf Pro user group IDs, as strings, assigned as student groups. The full set is applied on every change. Referenced IDs must already exist.
+- `students` (Set of String) **"Students"** in the Jamf Pro admin UI. Usernames of the students assigned to the class. The full set is applied on every change: removing a username removes the member, and omitting the attribute leaves the class with no students. Unrecognised usernames are created as Jamf Pro users.
+- `teacher_group_ids` (Set of String) **"Teacher Groups"** in the Jamf Pro admin UI. Jamf Pro user group IDs, as strings, assigned as teacher groups. The full set is applied on every change. Referenced IDs must already exist.
+- `teachers` (Set of String) **"Teachers"** in the Jamf Pro admin UI. Usernames of the teachers assigned to the class. The full set is applied on every change: removing a username removes the member, and omitting the attribute leaves the class with no teachers. Unrecognised usernames are created as Jamf Pro users.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

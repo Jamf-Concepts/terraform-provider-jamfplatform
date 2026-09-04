@@ -3,25 +3,25 @@
 page_title: "jamfplatform_devices Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  List Jamf devices via the Device Inventory API. Requires Device Inventory API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `devices:read` |
+  Lists Jamf devices from the device inventory. Requires Device Inventory API access.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Devices | Read | `devices` |
 ---
 
 # jamfplatform_devices (Data Source)
 
-List Jamf devices via the Device Inventory API. Requires **Device Inventory API** access.
+Lists Jamf devices from the device inventory. Requires **Device Inventory API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `devices:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Devices | Read | `devices` |
 
 ## Example Usage
 
@@ -74,7 +74,7 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as it must appear in the query (the provider will escape double quotes automatically).
 - `selector` (String) RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, `lastEnrollmentTime`.
 
 Optional:
@@ -98,7 +98,7 @@ Optional:
 
 Read-Only:
 
-- `enrollment_type` (String) Enrollment type reported by the API.
+- `enrollment_type` (String) Enrollment type reported by the platform.
 - `id` (String) Device UUID (Jamf Pro Management ID).
 - `last_check_in_time` (String) Timestamp of the last check-in in ISO 8601 format.
 - `last_enrollment_time` (String) Timestamp of the last enrollment in ISO 8601 format.

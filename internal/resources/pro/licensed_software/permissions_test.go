@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -111,16 +110,22 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 	assertMethodSets(t, "list_resource.go", listResourceSDKMethods)
 }
 
-// TestPrivileges_Rendered guards that each construct's table actually rendered
-// (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the licensed-software
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, got := range map[string]string{
-		"resource":     resourcePrivileges,
-		"dataSource":   dataSourcePrivileges,
-		"listResource": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "licensed-software:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "licensed-software:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "licensed-software:read"},
 	} {
-		if !strings.Contains(got, "pro:licensed-software") {
-			t.Fatalf("%sPrivileges did not render the licensed-software privileges:\n%s", name, got)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

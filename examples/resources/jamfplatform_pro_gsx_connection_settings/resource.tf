@@ -1,7 +1,7 @@
 # Jamf Pro GSX Connection settings (Settings > Global > GSX connection).
 #
 # Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty,
-# repair, and purchase-date lookups. Singleton — one record per tenant.
+# repair, and purchase-date lookups. One record per tenant.
 #
 # Requires a valid Apple-registered GSX certificate. Every apply re-validates
 # the certificate, token, and account against Apple's live GSX service.
@@ -9,7 +9,7 @@
 # The three secrets are `Required` + `WriteOnly`: sent to Jamf Pro on every
 # apply but never stored in Terraform state, and never returned on read. The
 # GSX API mandates them on every write, so they must always be present in
-# config — to rotate, change the value here.
+# config. Rotate by changing the value here.
 resource "jamfplatform_pro_gsx_connection_settings" "this" {
   enabled                = true
   username               = "gsx-admin@example.com"

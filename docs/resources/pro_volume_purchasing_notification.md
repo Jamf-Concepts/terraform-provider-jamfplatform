@@ -3,31 +3,25 @@
 page_title: "jamfplatform_pro_volume_purchasing_notification Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Volume Purchasing notification — the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
-  | Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
-  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
-  | Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
+  Manages a Volume Purchasing notification, configured on the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Resource)
 
-Manages a Volume Purchasing notification — the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.
+Manages a Volume Purchasing notification, configured on the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
-| Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
-| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
-| Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 
 ## Example Usage
 
@@ -40,8 +34,8 @@ resource "jamfplatform_pro_volume_purchasing_notification" "low_licenses" {
   enabled = true
 
   # Events that send the notification:
-  #   NO_MORE_LICENSES       — a location runs out of licenses
-  #   REMOVED_FROM_APP_STORE — an item is removed from the App Store
+  #   NO_MORE_LICENSES:       a location runs out of licenses
+  #   REMOVED_FROM_APP_STORE: an item is removed from the App Store
   triggers = ["NO_MORE_LICENSES", "REMOVED_FROM_APP_STORE"]
 
   # Volume Purchasing location IDs the notification covers

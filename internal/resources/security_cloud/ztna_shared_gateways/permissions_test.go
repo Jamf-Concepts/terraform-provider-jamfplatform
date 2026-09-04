@@ -6,7 +6,6 @@ package ztna_shared_gateways
 import (
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -48,7 +47,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "ztna:read") {
+	if !permissions.Renders(dataSourcePrivileges, "ztna:read") {
 		t.Fatalf("dataSourcePrivileges did not render the shared gateway privileges:\n%s", dataSourcePrivileges)
 	}
 }

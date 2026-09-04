@@ -77,7 +77,7 @@ func (r *CloudDistributionPointResource) IdentitySchema(ctx context.Context, req
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — the cloud distribution point is one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". The cloud distribution point is one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -87,9 +87,9 @@ func (r *CloudDistributionPointResource) IdentitySchema(ctx context.Context, req
 // Schema returns the Terraform schema for the cloud distribution point resource.
 func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point (resets the tenant to `NONE`). " +
-			"**Warning:** destroying this resource — or changing `cdn_type`, which forces replacement — disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. This cannot be undone. " +
-			"`JAMF_CLOUD` (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential / endpoint fields and are **not** acceptance-tested by the provider. " +
+		MarkdownDescription: "Manages the Jamf Pro cloud distribution point. One record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point and resets the tenant to `NONE`. " +
+			"Destroying this resource disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. Changing `cdn_type` forces replacement and has the same effect. Neither can be undone. " +
+			"`JAMF_CLOUD` (Jamf Cloud Distribution Service, or JCDS) needs no credentials. The other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential and endpoint fields, and the provider does not acceptance-test them. " +
 			"Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -100,7 +100,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"cdn_type": schema.StringAttribute{
-				MarkdownDescription: "Content delivery network type. One of `JAMF_CLOUD` (Jamf Cloud Distribution Service), `AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`. Changing this forces replacement: the existing cloud distribution point is deleted (tenant returns to `NONE`) and a new one created. (`NONE` is the disabled state reached by destroying the resource — it is not a settable value.)",
+				MarkdownDescription: "Content delivery network type. One of `JAMF_CLOUD` (Jamf Cloud Distribution Service), `AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`. Changing this forces replacement: the existing cloud distribution point is deleted, the tenant returns to `NONE`, and a new one is created. `NONE` is the disabled state reached by destroying the resource, not a settable value.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(validCdnTypes...),
@@ -126,7 +126,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "Connection password / secret key for non-JCDS types. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**, and never returned by the API. Keep it in configuration: it is re-sent on every apply. (The endpoint has no field-omission support for this value, so there is no `_wo_version` rotation companion — see the resource documentation.)",
+				MarkdownDescription: "Connection password or secret key for the non-JCDS types. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Keep it in configuration, because it is re-sent on every apply. Jamf Pro will not accept a write that omits the value, so there is no `_wo_version` rotation companion. See the resource documentation.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -179,7 +179,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"private_key": schema.StringAttribute{
-				MarkdownDescription: "Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = \"AMAZON_S3\"` and `require_signed_urls = true`. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64(\"cloudfront-key.pem\")`.",
+				MarkdownDescription: "Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = \"AMAZON_S3\"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64(\"cloudfront-key.pem\")`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -219,7 +219,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				Computed:            true,
 			},
 			"has_connection_succeeded": schema.BoolAttribute{
-				MarkdownDescription: "Whether the most recent connection test against the distribution point succeeded. Computed — reflects live status and is re-evaluated on every apply.",
+				MarkdownDescription: "Whether the most recent connection test against the distribution point succeeded. Read-only. Reflects live status, and is re-evaluated on every apply.",
 				Computed:            true,
 			},
 			"message": schema.StringAttribute{
@@ -227,7 +227,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				Computed:            true,
 			},
 			"inventory_id": schema.StringAttribute{
-				MarkdownDescription: "Server-allocated inventory identifier for the distribution point. Computed and **not stable** — a new identifier is allocated whenever the cloud distribution point is recreated.",
+				MarkdownDescription: "Inventory identifier for the distribution point. Returned by Jamf Pro; not user-settable. It is **not stable**: a new identifier is allocated whenever the cloud distribution point is recreated.",
 				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

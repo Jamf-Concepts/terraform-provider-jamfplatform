@@ -3,38 +3,33 @@
 page_title: "jamfplatform_pro_licensed_software Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro licensed software record — the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. software_definitions and licenses are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `create:pro:licensed-software` |
-  | `delete:pro:licensed-software` |
-  | `read:pro:licensed-software` |
-  | `update:pro:licensed-software` |
+  Manages a Jamf Pro licensed software record: the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. software_definitions and licenses are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Licensed software | Create, Read, Update, Delete | `licensed-software` |
 ---
 
 # jamfplatform_pro_licensed_software (Resource)
 
-Manages a Jamf Pro licensed software record — the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. `software_definitions` and `licenses` are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
+Manages a Jamf Pro licensed software record: the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. `software_definitions` and `licenses` are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `create:pro:licensed-software` |
-| `delete:pro:licensed-software` |
-| `read:pro:licensed-software` |
-| `update:pro:licensed-software` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Licensed software | Create, Read, Update, Delete | `licensed-software` |
 
 ## Example Usage
 
 ```terraform
 # Manage a Jamf Pro licensed software record. software_definitions and licenses
 # are ordered lists reconciled by position (the endpoint assigns no per-element
-# id). Legacy font / plug-in definition buckets are not supported by the API.
+# id). The Jamf Pro API does not support the legacy font / plug-in definition
+# buckets.
 resource "jamfplatform_pro_licensed_software" "example" {
   name                                    = "Acme Editor"
   publisher                               = "Acme Corp"

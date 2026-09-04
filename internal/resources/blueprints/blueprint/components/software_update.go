@@ -144,10 +144,10 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 	ignoreMajor := helpers.IsConfiguredValue(c.IgnoreMajorVersions) && c.IgnoreMajorVersions.ValueBool()
 
 	if isAutomatic {
-		config["enforcementType"] = "AUTOMATIC"
+		config["enforcementType"] = blueprints.SwUpdateConfigurationEnforcementTypeAutomatic
 
 		if ignoreMajor {
-			config["strategy"] = "SEMANTIC"
+			config["strategy"] = blueprints.SwUpdateAutomaticConfigurationStrategySemantic
 
 			minorRule := make(map[string]any)
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
@@ -163,7 +163,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 				}
 			}
 		} else {
-			config["strategy"] = "LATEST"
+			config["strategy"] = blueprints.SwUpdateAutomaticConfigurationStrategyLatest
 
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
 				config["deploymentTime"] = c.DeploymentTime.ValueString()
@@ -173,7 +173,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 			}
 		}
 	} else if isManual {
-		config["enforcementType"] = "MANUAL"
+		config["enforcementType"] = blueprints.SwUpdateConfigurationEnforcementTypeManual
 	}
 
 	if helpers.IsConfiguredValue(c.TargetOSVersion) {
@@ -212,16 +212,16 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(raw json.RawMessage) erro
 		if strategyStr, ok := strategyValue.(string); ok {
 			strategy = strategyStr
 			switch strategyStr {
-			case "SEMANTIC":
+			case blueprints.SwUpdateAutomaticConfigurationStrategySemantic:
 				c.IgnoreMajorVersions = types.BoolValue(true)
-			case "LATEST":
+			case blueprints.SwUpdateAutomaticConfigurationStrategyLatest:
 				c.IgnoreMajorVersions = types.BoolValue(false)
 			}
 		}
 	}
 
 	automaticFieldsDetected := false
-	useSemanticRules := strategy == "SEMANTIC"
+	useSemanticRules := strategy == blueprints.SwUpdateAutomaticConfigurationStrategySemantic
 
 	if useSemanticRules {
 		if rulesValue, exists := rawConfig["rules"]; exists {
@@ -286,9 +286,9 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(raw json.RawMessage) erro
 
 	if !helpers.IsConfiguredValue(c.EnforcementType) {
 		if helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime) {
-			c.EnforcementType = types.StringValue("MANUAL")
+			c.EnforcementType = types.StringValue(blueprints.SwUpdateConfigurationEnforcementTypeManual)
 		} else if automaticFieldsDetected {
-			c.EnforcementType = types.StringValue("AUTOMATIC")
+			c.EnforcementType = types.StringValue(blueprints.SwUpdateConfigurationEnforcementTypeAutomatic)
 		}
 	}
 

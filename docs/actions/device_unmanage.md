@@ -4,24 +4,24 @@ page_title: "jamfplatform_device_unmanage Action - terraform-provider-jamfplatfo
 subcategory: ""
 description: |-
   Removes remote management from a device. Requires Device Management Actions API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `destructive-device-actions:execute` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device actions | Destructive device actions | Execute | `destructive-device-actions` |
 ---
 
 # jamfplatform_device_unmanage (Action)
 
-Removes remote management from a device. Requires **Device Management Actions API access**.
+Removes remote management from a device. Requires **Device Management Actions API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `destructive-device-actions:execute` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device actions | Destructive device actions | Execute | `destructive-device-actions` |
 
 ## Example Usage
 
@@ -39,4 +39,4 @@ action "jamfplatform_device_unmanage" "retire_device" {
 ### Optional
 
 - `device_id` (String) Jamf Pro Management ID. Set exactly one of this or `serial_number`.
-- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.
+- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API** access when set. Set exactly one of this or `device_id`.

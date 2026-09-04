@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the computer invitation resource's
 // CRUD path calls. It mirrors the "SDK endpoints used" block in crud.go and
-// drives the "Required Jamf privileges" table appended to the resource
+// drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry. There is no update endpoint on /computerinvitations, so Update only
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteComputerInvitationByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the computer invitation resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
@@ -34,7 +34,7 @@ var dataSourceSDKMethods = []string{
 	"GetComputerInvitationByInvitation",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the computer invitation data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -46,6 +46,6 @@ var listResourceSDKMethods = []string{
 	"GetComputerInvitationByID",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the computer invitation list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

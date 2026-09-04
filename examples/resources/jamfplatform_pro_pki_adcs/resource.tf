@@ -1,7 +1,7 @@
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
-# AD CS (Active Directory Certificate Services) integration — INBOUND mode.
+# AD CS (Active Directory Certificate Services) integration: INBOUND mode.
 # Jamf Pro reaches an AD CS Connector at adcs_url, presenting a client
 # certificate (.pfx/.p12) and trusting a server certificate (.pem/.cer).
 #
@@ -35,27 +35,21 @@ variable "adcs_client_p12_password" {
   sensitive = true
 }
 
-# AD CS integration — OUTBOUND mode.
-# An AD CS Connector polls Jamf Pro using a Jamf Pro API client that holds the
-# "Read AD CS Certificate Jobs" and "Update AD CS Certificate Jobs" privileges.
-resource "jamfplatform_pro_api_role" "adcs" {
-  display_name = "AD CS Connector"
-  privileges = [
-    "Read AD CS Certificate Jobs",
-    "Update AD CS Certificate Jobs",
-  ]
+# The UUID of an existing Jamf Pro API client permitted to read and update AD CS
+# certificate jobs. Those are the privileges Jamf Pro called "Read AD CS
+# Certificate Jobs" and "Update AD CS Certificate Jobs" before the Platform API
+# GA, which this provider has no Jamf Account permission recorded for. API
+# clients and roles are created in Jamf Account, not by this provider.
+variable "adcs_api_client_id" {
+  type = string
 }
 
-resource "jamfplatform_pro_api_client" "adcs" {
-  display_name = "AD CS Connector"
-  api_roles    = [jamfplatform_pro_api_role.adcs.display_name]
-  enabled      = true
-}
-
+# AD CS integration: OUTBOUND mode.
+# An AD CS Connector polls Jamf Pro using the API client above.
 resource "jamfplatform_pro_pki_adcs" "outbound" {
   connector_mode = "OUTBOUND"
   display_name   = "AD CS — Outbound"
   ca_name        = "Example Issuing CA"
   fqdn           = "adcs.example.com"
-  api_client_id  = jamfplatform_pro_api_client.adcs.client_id
+  api_client_id  = var.adcs_api_client_id
 }

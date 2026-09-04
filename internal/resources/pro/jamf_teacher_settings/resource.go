@@ -83,9 +83,9 @@ func (r *JamfTeacherSettingsResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the resource schema.
 func (r *JamfTeacherSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages the Jamf Pro **Jamf Teacher** settings page (UI: Settings → Jamf apps → Jamf Teacher). Singleton — one record per tenant. These options control limited management of students' devices by the Jamf Teacher app.\n\n" +
-			"**Omit = preserve** — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. `timezone` must always be set — the Jamf Pro API requires it on every write.\n\n" +
-			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.\n\n" +
+		MarkdownDescription: "Manages the Jamf Pro **Jamf Teacher** settings page (UI: Settings → Jamf apps → Jamf Teacher). One record per tenant. These options control limited management of students' devices by the Jamf Teacher app.\n\n" +
+			"An optional attribute you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and changes only the attributes you declare. `timezone` must always be set, because Jamf Pro requires it on every write.\n\n" +
+			"`terraform destroy` removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.\n\n" +
 			"Import with `terraform import jamfplatform_pro_jamf_teacher_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -123,7 +123,7 @@ func (r *JamfTeacherSettingsResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"restrictions_end_time": schema.StringAttribute{
-				MarkdownDescription: "**\"Restrictions End Time\"** — time at which all restrictions set by Jamf Teacher are cleared from student devices, as a 24-hour `HH:MM:SS` time (e.g. `\"17:30:00\"`). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
+				MarkdownDescription: "**\"Restrictions End Time\"**. The time at which all restrictions set by Jamf Teacher are cleared from student devices, as a 24-hour `HH:MM:SS` time (e.g. `\"17:30:00\"`). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -135,7 +135,7 @@ func (r *JamfTeacherSettingsResource) Schema(ctx context.Context, req resource.S
 				// No bounds validator: the server enforces none (accepts -1, 0
 				// and values beyond the UI maximum — wire-probed 2026-06-10),
 				// so the UI range is documentation only.
-				MarkdownDescription: "**\"Maximum Restriction Time\"** — the longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.",
+				MarkdownDescription: "**\"Maximum Restriction Time\"**. The longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},

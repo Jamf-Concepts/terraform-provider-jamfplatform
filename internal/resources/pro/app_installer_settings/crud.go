@@ -5,7 +5,12 @@
 //   pro.GetAppInstallerGlobalSettingsV1
 //   pro.UpdateAppInstallerGlobalSettingsV1
 //
-// Status: current. Last reviewed 2026-06-14.
+// Status: current. Last reviewed 2026-09-03.
+//
+// The end-user-experience block is a required member of the request body, so it
+// has no omitted form: the "omit block = leave the server untouched" contract is
+// kept by passing the current server block through, not by dropping the key.
+// deploymentProcessControls is a pointer and does drop out when omitted.
 
 package app_installer_settings
 

@@ -4,26 +4,26 @@ page_title: "jamfplatform_pro_patch_external_source Data Source - terraform-prov
 subcategory: ""
 description: |-
   Look up a Jamf Pro patch external source by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:patch-external-source` |
-  | `read:pro:patch-management-software-titles` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | External patch sources | Read | `patch-external-source` |
+  | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_external_source (Data Source)
 
 Look up a Jamf Pro patch external source by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:patch-external-source` |
-| `read:pro:patch-management-software-titles` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | External patch sources | Read | `patch-external-source` |
+| App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 
 ## Example Usage
 

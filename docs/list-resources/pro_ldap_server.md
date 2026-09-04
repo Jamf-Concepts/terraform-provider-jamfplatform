@@ -3,25 +3,25 @@
 page_title: "jamfplatform_pro_ldap_server List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — set include_resource = true to fetch the full record for each item.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `read:pro:ldap-servers` |
+  Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. By default each row returns id and name. Set include_resource = true to fetch the full record for each item.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (List Resource)
 
-Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — set `include_resource = true` to fetch the full record for each item.
+Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. By default each row returns `id` and `name`. Set `include_resource = true` to fetch the full record for each item.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `read:pro:ldap-servers` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 
 ## Example Usage
 

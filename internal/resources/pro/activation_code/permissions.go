@@ -13,7 +13,7 @@ import (
 // path calls. Read calls GetActivationCode directly; Create/Update funnel
 // through applyActivationCode (helpers.go), which calls UpdateActivationCode
 // then GetActivationCode to read back the authoritative state. It drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go + helpers.go and with the SDK privilege
 // registry.
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"UpdateActivationCode",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the activation code resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
@@ -34,7 +34,7 @@ var dataSourceSDKMethods = []string{
 	"GetActivationCode",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the activation code data source, appended to its
 // MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)

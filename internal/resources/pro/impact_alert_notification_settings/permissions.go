@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the Impact Alert Notification settings
 // resource's CRUD path calls. It mirrors the "SDK endpoints used" block in crud.go
-// and drives the "Required Jamf privileges" table appended to the resource
+// and drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with the
 // actual client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -19,7 +19,7 @@ var resourceSDKMethods = []string{
 	"UpdateImpactAlertNotificationSettingsV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section for
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the Impact Alert Notification settings resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -29,6 +29,6 @@ var dataSourceSDKMethods = []string{
 	"GetImpactAlertNotificationSettingsV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the Impact Alert Notification settings data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)

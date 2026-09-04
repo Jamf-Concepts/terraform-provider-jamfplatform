@@ -63,7 +63,7 @@ func (r *ActivationCodeResource) IdentitySchema(ctx context.Context, req resourc
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
 			"id": identityschema.StringAttribute{
-				Description:       "Fixed singleton identifier. Always \"singleton\" — the activation code is one-per-tenant.",
+				Description:       "Fixed singleton identifier. Always \"singleton\". The activation code is one per tenant.",
 				RequiredForImport: true,
 			},
 		},
@@ -74,7 +74,7 @@ func (r *ActivationCodeResource) IdentitySchema(ctx context.Context, req resourc
 func (r *ActivationCodeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). " +
-			"Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. " +
+			"One record per tenant. The activation code is a license secret, and an invalid code can disable the tenant. " +
 			"Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -90,7 +90,7 @@ func (r *ActivationCodeResource) Schema(ctx context.Context, req resource.Schema
 			},
 			"code": schema.StringAttribute{
 				MarkdownDescription: "The Jamf Pro activation code (license key). Treated as sensitive. " +
-					"Changing this to an invalid value can disable the tenant — handle with care.",
+					"Changing this to an invalid value can disable the tenant, so handle with care.",
 				Required:  true,
 				Sensitive: true,
 			},

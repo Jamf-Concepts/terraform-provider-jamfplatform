@@ -162,7 +162,7 @@ func TestBuildAppInstallerInput_CategoriesPopulated(t *testing.T) {
 	if len(cats) != 2 {
 		t.Fatalf("expected 2 categories, got %d", len(cats))
 	}
-	if cats[0].ID == nil || *cats[0].ID != "58" || cats[0].Featured == nil || !*cats[0].Featured {
+	if cats[0].ID != "58" || cats[0].Featured == nil || !*cats[0].Featured {
 		t.Errorf("category 0 mismatch: %+v", cats[0])
 	}
 	if cats[1].Featured == nil || *cats[1].Featured {

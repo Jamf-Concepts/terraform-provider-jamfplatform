@@ -37,15 +37,16 @@ import (
 // needed. Matches every other settings sibling.
 const minJamfProVersion = ""
 
-// Wire enum values for file_sharing_connection_type and https_security_type.
-// Sourced from the API, not the admin-UI labels.
+// Wire enum values for file_sharing_connection_type and https_security_type,
+// aliased from the SDK's generated vocabularies rather than restated, so a spec
+// change reaches them. These are the API's spellings, not the admin-UI labels.
 const (
-	connectionTypeAFP  = "AFP"
-	connectionTypeSMB  = "SMB"
-	connectionTypeNone = "NONE"
+	connectionTypeAFP  = pro.DistributionPointFileSharingConnectionTypeAfp
+	connectionTypeSMB  = pro.DistributionPointFileSharingConnectionTypeSmb
+	connectionTypeNone = pro.DistributionPointFileSharingConnectionTypeNone
 
-	httpsSecurityUsernamePassword = "USERNAME_PASSWORD"
-	httpsSecurityNone             = "NONE"
+	httpsSecurityUsernamePassword = pro.DistributionPointHttpsSecurityTypeUsernamePassword
+	httpsSecurityNone             = pro.DistributionPointHttpsSecurityTypeNone
 
 	// Failover (backup_distribution_point_id) sentinels. A real failover is the
 	// id of another file share distribution point (a positive integer); the two
@@ -101,7 +102,7 @@ func (r *FileShareDistributionPointResource) IdentitySchema(ctx context.Context,
 // Schema returns the Terraform schema for the resource.
 func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro file share distribution point — an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use `jamfplatform_pro_cloud_distribution_point`. The three plaintext passwords (`read_write_password`, `read_only_password`, `https_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro but never stored in state. Pair each with its `*_wo_version` companion to rotate the stored password: bump the integer to force an update that re-sends the current password." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro file share distribution point: an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use `jamfplatform_pro_cloud_distribution_point`. The three plaintext passwords (`read_write_password`, `read_only_password`, `https_password`) are Terraform `WriteOnly` attributes, sent to Jamf Pro but never stored in state. Pair each with its `*_wo_version` companion to rotate the stored password: bump the integer to force an update that re-sends the current password." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Distribution point ID assigned by Jamf Pro.",
@@ -125,14 +126,14 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"file_sharing_connection_type": schema.StringAttribute{
-				MarkdownDescription: "File sharing protocol the distribution point uses (the **Protocol** field). One of `AFP`, `SMB`, or `NONE`. Use `NONE` for a distribution point that serves packages over HTTPS only — in that case `https_enabled` must be `true`.",
+				MarkdownDescription: "File sharing protocol the distribution point uses (the **Protocol** field). One of `AFP`, `SMB`, or `NONE`. Use `NONE` for a distribution point that serves packages over HTTPS only; `https_enabled` must then be `true`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(connectionTypeAFP, connectionTypeSMB, connectionTypeNone),
 				},
 			},
 			"principal": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time — designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one.",
+				MarkdownDescription: "Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time. Designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -140,7 +141,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"backup_distribution_point_id": schema.StringAttribute{
-				MarkdownDescription: "Failover distribution point (the **Failover distribution point** option). Set to `-1` for none, `-2` for the Jamf Cloud distribution point, or the ID of another file share distribution point — reference one with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`.",
+				MarkdownDescription: "Failover distribution point (the **Failover distribution point** option). Set to `-1` for none, `-2` for the Jamf Cloud distribution point, or the ID of another file share distribution point, which you can reference with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -148,7 +149,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"enable_load_balancing": schema.BoolAttribute{
-				MarkdownDescription: "Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point — not when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`).",
+				MarkdownDescription: "Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point. Load sharing does not apply when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -188,7 +189,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"read_write_password": schema.StringAttribute{
-				MarkdownDescription: "Password for the read/write account (the **Read/Write Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_write_password_wo_version`.",
+				MarkdownDescription: "Password for the read/write account (the **Read/Write Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_write_password_wo_version`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -206,7 +207,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"read_only_password": schema.StringAttribute{
-				MarkdownDescription: "Password for the read-only account (the **Read-only Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_only_password_wo_version`.",
+				MarkdownDescription: "Password for the read-only account (the **Read-only Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Rotate it by bumping `read_only_password_wo_version`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -259,7 +260,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"https_password": schema.StringAttribute{
-				MarkdownDescription: "Password for the HTTPS account (the **HTTPS Account** password). `WriteOnly` — sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`. Rotate it by bumping `https_password_wo_version`.",
+				MarkdownDescription: "Password for the HTTPS account (the **HTTPS Account** password). `WriteOnly`: sent to Jamf Pro but never stored in Terraform state. Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`. Rotate it by bumping `https_password_wo_version`.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,

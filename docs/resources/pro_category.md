@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_category Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Categories | `create:pro:categories` |
-  | Delete Categories | `delete:pro:categories` |
-  | Read Categories | `read:pro:categories` |
-  | Update Categories | `update:pro:categories` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Categories | Create, Read, Update, Delete | `categories` |
 ---
 
 # jamfplatform_pro_category (Resource)
 
 Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Categories | `create:pro:categories` |
-| Delete Categories | `delete:pro:categories` |
-| Read Categories | `read:pro:categories` |
-| Update Categories | `update:pro:categories` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Categories | Create, Read, Update, Delete | `categories` |
 
 ## Example Usage
 

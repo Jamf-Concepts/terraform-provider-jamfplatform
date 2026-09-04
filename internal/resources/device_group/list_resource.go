@@ -153,7 +153,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 				return
 			}
 
-			manageMembers := strings.EqualFold(detail.GroupType, "STATIC")
+			manageMembers := strings.EqualFold(detail.GroupType, devicegroups.GroupTypeV1Static)
 			var members []string
 			if manageMembers {
 				members, err = r.client.ListDeviceGroupMembers(ctx, detail.ID)

@@ -1,146 +1,586 @@
-name: Acceptance (reusable)
+name: Acceptance Tests
 
-# Reusable acceptance-test runner. Callers pass the package set to test:
-#   - "./..."            the full suite (scheduled run)
-#   - "<imp> <imp> ..."  a surgical subset (PR run, scoped by scripts/acctargets)
+# Product-lane acceptance pipeline: plan the scope, split it into per-product
+# lanes, run each lane against its OWN credential set, then report through a
+# single gate. Ported from jamfplatform-go-sdk so the two repos' secrets and
+# workflows line up; the divergences are called out where they happen.
 #
-# Both callers use `secrets: inherit`, so the tenant credentials and fixture
-# secrets below resolve from the repo/org/environment secret stores without
-# having to be re-declared per caller.
+# It replaces a reusable workflow with two callers (acceptance.yml consumed by
+# integration-tests.yml and acceptance-full.yml) and one `acceptance-tenant`
+# concurrency group that serialised everything. Under that shape a 38-test Jamf
+# Account run queued behind a ~2.5 h Pro suite it shared no fixture with, and the
+# Jamf Account family needed a duplicate caller job because its scope
+# preconditions are the inverse of every other family's. The lane matrix makes
+# both go away: the account lane IS the organization-scope run.
+#
+# .github/acceptance-lanes.json owns the lane table and is the single source of
+# truth; scripts/acclanes builds the matrix from it; and
+# internal/conformance/acc_lanes_test.go proves the package partition agrees with
+# the precheck each test actually calls, in `make test`, with no credentials.
 
 on:
-  workflow_call:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
     inputs:
-      packages:
-        description: 'Space-separated package import paths, or "./..." for the full suite.'
-        required: true
-        type: string
+      full:
+        description: "Run the full suite instead of the change-scoped subset"
+        type: boolean
+        default: true
+  schedule:
+    # 02:00 UTC daily. Cron has no timezone; adjust if the estate has a
+    # maintenance window. This is the repo's existing cadence, carried over from
+    # the deleted acceptance-full.yml — the SDK runs weekdays at 06:00, and the
+    # difference is deliberate rather than an oversight.
+    - cron: "0 2 * * *"
 
 permissions:
   contents: read
+  # The superseded check reads the PR's current head SHA.
+  pull-requests: read
+
+# NO workflow-level concurrency, deliberately. A workflow-level group with
+# cancel-in-progress: true is the usual way to supersede a PR's earlier run, and
+# it is wrong for this suite: it cancels the whole run INCLUDING a running
+# acceptance job, and the job-level cancel-in-progress: false below cannot
+# prevent that — that setting only governs contention between different runs for
+# the same lane group.
+#
+# Cancelling mid-suite orphans estate state. This suite's cleanup lives in
+# CheckDestroy and t.Cleanup handlers; a cancel SIGKILLs `go test` and none of
+# them run, leaving real objects behind on a shared estate. That litter is not
+# free — duplicate names later collide (device groups 422, benchmarks 409), and
+# some objects cannot be deleted at all, so the cost of one cancelled run is paid
+# by every run after it.
+#
+# So a RUNNING suite is never cancelled: a superseded run queues. What stops that
+# turning into hours of estate time on obsolete commits is the "Skip if
+# superseded" guard in the acceptance job, which lets a queued run for a stale
+# commit exit in seconds once it reaches the front. Cancellation is applied only
+# to the plan job, which is cheap and touches nothing.
+#
+# The queue is ONE DEEP, and that is GitHub's rule rather than a choice made
+# here: a concurrency group admits one pending job, so when a third run arrives
+# the already-pending one is cancelled — before it starts, so it orphans nothing,
+# but also before "Skip if superseded" can run and report why. That lane then
+# reports `cancelled`, which acceptance-gate translates into its own message
+# rather than "one or more lanes failed": a lane that never ran is not a
+# regression, and the two must not read alike.
 
 jobs:
-  acceptance:
-    name: Acceptance Tests
+  # Decide which acceptance tests this run needs, and split them into lanes.
+  # PRs get the change-scoped subset (scripts/acctargets); the scheduled run and
+  # workflow_dispatch default to the full suite so nothing hides behind scoping
+  # forever. Scoping can be overridden per-PR with the `full-acceptance` label.
+  plan:
+    name: Plan Acceptance Scope
     runs-on: ubuntu-latest
-    # Serialise across ALL PRs, branches, and the scheduled run: the suite
-    # mutates a single shared Jamf tenant, so only one acceptance run may
-    # execute at a time. The group is a constant (NOT github.ref) so any second
-    # run shares it and waits for the in-progress run instead of running
-    # alongside it. cancel-in-progress: false never kills a running suite — the
-    # newcomer queues until it finishes.
+    timeout-minutes: 15
+    # Safe to cancel: this job only reads git, compiles, and computes a package
+    # list, so superseding it wastes nothing and leaves no state behind.
     concurrency:
-      group: acceptance-tenant
-      cancel-in-progress: false
-    # No job timeout-minutes: serial (-p=1) tenant suites can exceed an hour;
-    # rely on the GitHub default 6h job ceiling. Per-package limit is enforced
-    # by `go test -timeout` below (matches `make testacc`).
-    environment: acceptance
+      group: acceptance-plan-${{ github.ref }}
+      cancel-in-progress: true
+    # NO_SECRETS is job-level so the two steps that read it cannot drift apart.
+    # Two run classes structurally cannot read this repo's credentials: a
+    # pull_request from a FORK, and one raised by DEPENDABOT (a Dependabot run
+    # sees Dependabot secrets, not Actions or environment secrets). Every
+    # secrets[...] in the acceptance job would then resolve to the empty string
+    # while JAMFPLATFORM_ACC_REQUIRE stayed set, so the require gate would fail
+    # every lane for a reason the contributor cannot fix — and Dependabot always
+    # reaches the FULL suite, because go.mod/go.sum and .github/workflows/** are
+    # both `fileGlobal` in scripts/acctargets.
+    #
+    # The guard belongs on THIS job and not on the acceptance job: gating that
+    # one leaves needs.acceptance.result == 'skipped' with a non-empty scope,
+    # which acceptance-gate deliberately treats as "the matrix did not start"
+    # and fails. Emptying the SCOPE instead routes through the gate's own
+    # no-work branch, which is what this condition actually is.
+    env:
+      NO_SECRETS: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]') }}
+    outputs:
+      scope: ${{ steps.scope.outputs.packages }}
+      matrix: ${{ steps.lanes.outputs.matrix }}
+      lanes: ${{ steps.lanes.outputs.summary }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so the merge base against the PR base branch resolves.
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: "go.mod"
           cache: true
+      - run: go mod download
+
+      # The one guard this workflow needs that the old shape got for free. The
+      # deleted caller job hung off `needs: unit` in integration-tests.yml, so a
+      # PR that did not compile never reached the estate. This workflow is
+      # independent of that one — which is the point, it must run on a schedule
+      # too — so the cheapest equivalent lives here: compile the tagged suite
+      # before spending estate time on it. `go vet` rather than `go test -run
+      # XXX`, because vet type-checks every package and costs seconds.
+      - name: Acceptance suite compiles
+        run: go vet -tags acceptance ./...
+
+      - name: Compute scope
+        id: scope
+        env:
+          # Scheduled runs are the backstop and always run everything. Manual
+          # runs default to full but can opt into scoping. A PR can opt out of
+          # scoping with the `full-acceptance` label.
+          FORCE_FULL: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full) || contains(github.event.pull_request.labels.*.name, 'full-acceptance') }}
+          BASE_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$NO_SECRETS" = "true" ]; then
+            echo "packages=" >> "$GITHUB_OUTPUT"
+            echo "Acceptance not run: this run cannot read the estate credentials (fork or Dependabot pull request)."
+            exit 0
+          fi
+          if [ "$FORCE_FULL" = "true" ]; then
+            echo "packages=./..." >> "$GITHUB_OUTPUT"
+            echo "Full suite (event=${{ github.event_name }})."
+            exit 0
+          fi
+          git fetch --no-tags origin "+refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}"
+          packages="$(go run -tags acctargets ./scripts/acctargets "origin/${BASE_BRANCH}")"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "Scope: ${packages:-<none — no acceptance packages affected>}"
+
+      # Split the scope into product lanes. account, securitycloud, aigovernance
+      # and the environment-scoped platform surfaces use different credentials or
+      # different entitlement declarations from pro, and share no fixtures with
+      # it, so they need not queue behind it.
+      #
+      # The default lane is "everything unclaimed", which is a partition of a
+      # real package list rather than a complement of the named lanes' prefixes —
+      # so a new family cannot silently join pro without the conformance test
+      # noticing that its precheck disagrees with pro's credential set.
+      - name: Compute lanes
+        id: lanes
+        env:
+          SCOPE: ${{ steps.scope.outputs.packages }}
+        run: |
+          set -euo pipefail
+          matrix="$(go run -tags acclanes ./scripts/acclanes -scope "$SCOPE")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          summary="$(printf '%s' "$matrix" | jq -r 'map("\(.lane) (\(.count))") | join(", ")')"
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+          echo "Lanes: ${summary:-none}"
+
+      - name: Scope summary
+        # SCOPE goes through the environment rather than being interpolated into
+        # the script: it is a space-separated list of paths from a tool's stdout.
+        env:
+          SCOPE: ${{ steps.scope.outputs.packages }}
+          LANES: ${{ steps.lanes.outputs.summary }}
+        run: |
+          {
+            echo "## Acceptance scope"
+            echo
+            case "$SCOPE" in
+              ./...) echo "Full suite." ;;
+              "")    if [ "$NO_SECRETS" = "true" ]; then
+                       echo "**Acceptance was not run.** A fork or Dependabot pull request cannot read the"
+                       echo "estate credentials, so every lane would fail for a missing secret rather than"
+                       echo "for anything in the change. Acceptance runs when this lands on a branch of"
+                       echo "this repository, or on the nightly schedule."
+                     else
+                       echo "No acceptance-relevant changes — suite skipped."
+                     fi ;;
+              *)     echo "Change-scoped subset:"
+                     echo
+                     echo '```'
+                     echo "$SCOPE" | tr ' ' '\n'
+                     echo '```' ;;
+            esac
+            echo
+            echo "**Lanes:** ${LANES:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  acceptance:
+    name: Acceptance (${{ matrix.lane }})
+    needs: plan
+    if: needs.plan.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    environment: acceptance
+    # The lane's ceiling comes from the lane table, and `go test -timeout` below
+    # is NOT a substitute for it: that flag is per TEST BINARY, and `go test`
+    # builds one per package, so at the pro lane's 110 packages a wedged package
+    # panics at 120 m and `go test` carries on to the next — bounding one
+    # package and never the lane. Left to GitHub's 6 h default, a single wedged
+    # package would burn six runner-hours AND hold acceptance-lane-pro for all
+    # six of them, evicting queued runs on unrelated PRs; and with
+    # fail-fast: false the other five lanes keep running to their own ceilings.
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      # One job per product lane. fail-fast off: a credential problem in one
+      # product must not cancel another product's evidence, which is the whole
+      # reason for splitting.
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.matrix) }}
+    # Job-level: serialise each lane against ITSELF across all PRs, branches and
+    # the scheduled run, while letting different lanes overlap. Previously one
+    # `acceptance-tenant` group serialised everything, which is right for the
+    # ~110 packages that mutate a shared Jamf Pro estate and pointless for the 22
+    # that do not.
+    #
+    # Per-lane rather than keyed on matrix.lock, because two runs of the SAME
+    # non-pro lane still race each other's fixtures: PR A and PR B both creating
+    # Security Cloud device groups is a collision even though neither touches
+    # Pro. The group is a constant per lane (NOT github.ref) so the second run
+    # queues instead of racing, and cancel-in-progress: false never kills a
+    # running suite. Same-PR supersede is handled by the "Skip if superseded"
+    # step below, not by a workflow-level concurrency group — this workflow
+    # deliberately has none, for the reason set out at the top of the file.
+    concurrency:
+      group: acceptance-lane-${{ matrix.lane }}
+      cancel-in-progress: false
+    steps:
+      # Queued-but-obsolete runs exit here instead of spending estate time on a
+      # commit nobody is waiting for. This is the half of "supersede" that is
+      # safe: it declines to START work, where cancel-in-progress would abort
+      # work already holding estate fixtures.
+      #
+      # FIRST step, deliberately, and the setup below is gated on it. The guard
+      # needs nothing but `gh api` and GH_TOKEN, both present on a bare runner,
+      # while the four steps it used to sit behind cost a checkout, a
+      # setup-terraform, a `go mod download` and a setup-go cache restore of
+      # roughly 3 GB (measured: 1.6 GB GOCACHE + 1.5 GB GOMODCACHE after a
+      # tagged acceptance build). A step that exists to decline work must not
+      # pay for the work first, and every lane of every superseded run paid it.
+      #
+      # Only meaningful for pull_request. The scheduled run and workflow_dispatch
+      # have no newer head to be superseded by, so they always proceed.
+      - name: Skip if superseded
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          RAN_FOR: ${{ github.event.pull_request.head.sha }}
+          LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          head="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" -q .head.sha)"
+          if [ "$head" != "$RAN_FOR" ]; then
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            echo "This run is for ${RAN_FOR}, but the PR head is now ${head}. Skipping."
+            {
+              echo "## Acceptance — lane \`${LANE}\` skipped"
+              echo
+              echo "Superseded: queued for \`${RAN_FOR:0:8}\`, PR head is now \`${head:0:8}\`."
+              echo "A running suite is never cancelled, so obsolete runs decline to start rather than"
+              echo "aborting mid-test and orphaning estate fixtures."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.guard.outputs.superseded != 'true'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.guard.outputs.superseded != 'true'
+        with:
+          go-version-file: "go.mod"
+          cache: true
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        if: steps.guard.outputs.superseded != 'true'
         with:
           terraform_version: "1.15.*"
           terraform_wrapper: false
       - run: go mod download
-        # -p=1 keeps tenant-stateful suites serial. Every gated env var below is
-        # sourced from a GitHub secret; when a secret is unset the value is empty
-        # and the corresponding suite self-skips (t.Skip) rather than failing.
-        # Source of truth: Getenv/LookupEnv sweep of internal/** (re-run before edits).
+        if: steps.guard.outputs.superseded != 'true'
+
       - name: Acceptance tests
-        id: acc
+        if: steps.guard.outputs.superseded != 'true'
         run: |
           set -o pipefail
-          echo "Scope: ${{ inputs.packages }}"
-          go test -v -cover -count=1 -tags=acceptance -timeout=120m -p=1 ${{ inputs.packages }} 2>&1 | tee test-output.log
+          echo "Lane ${LANE}: ${COUNT} package(s), credentials=${CREDENTIALS}, require=${JAMFPLATFORM_ACC_REQUIRE}, estate-lock=${LOCK}"
+          echo "Packages: ${PACKAGES}"
+          # -p=1 on EVERY lane, not only the locked one. matrix.lock invites the
+          # opposite reading, and it is informational — it says which lane owns
+          # the shared Jamf Pro tenant, which is what the concurrency group and
+          # the summary report. Raising -p for the unlocked lanes is not free:
+          # securitycloud's 13 packages carry server-enforced cross-references
+          # (a DNS zone naming a ZTNA gateway), where a concurrent delete is a
+          # 409, so the parallelism would have to be decided per lane on wire
+          # behaviour rather than on `lock`. -p also gates BUILD actions, so this
+          # serialises the compile too — measured at ~140 s per pro run against
+          # a ~2.5 h suite, which is not worth trading estate determinism for.
+          # tee so the summary step can
+          # classify results without re-running anything; pipefail keeps the
+          # job's status as go test's, not tee's.
+          # shellcheck disable=SC2086  # PACKAGES is a deliberate word list
+          go test -v -cover -count=1 -tags=acceptance -timeout=120m -p=1 ${PACKAGES} 2>&1 \
+            | tee test-output.log
         env:
           TF_ACC: "1"
+          PACKAGES: ${{ matrix.packages }}
+          LANE: ${{ matrix.lane }}
+          COUNT: ${{ matrix.count }}
+          LOCK: ${{ matrix.lock }}
+          CREDENTIALS: ${{ matrix.credentials }}
+          # Each lane requires only its OWN credential set, so a missing
+          # organization secret fails the account lane and leaves the others
+          # reporting real results. Absence is fatal rather than a skip: a
+          # pipeline that wires a secret and then skips prints `ok` having
+          # asserted nothing. Taken from matrix.require, never hard-coded — a
+          # literal here would make every lane demand one lane's credentials.
+          JAMFPLATFORM_ACC_REQUIRE: ${{ matrix.require }}
 
-          # --- Core credentials (required; suites hard-skip without these) ---
-          JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
-          JAMFPLATFORM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
-          JAMFPLATFORM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-          JAMFPLATFORM_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ENVIRONMENT_ID }}
-          JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
+          # ---------------------------------------------------------------
+          # Credentials — and the ONE deliberate divergence from
+          # jamfplatform-go-sdk.
+          #
+          # The GitHub secrets carry the SDK's aligned names,
+          # JAMFPLATFORM_ACC_<SCOPE>_<FIELD>, so one secret value can serve both
+          # repos. The env vars they are mapped ONTO are the provider's own
+          # configuration: JAMFPLATFORM_BASE_URL, _CLIENT_ID, _CLIENT_SECRET,
+          # _TENANT_ID and _ENVIRONMENT_ID are read by the provider schema at
+          # Configure and are documented for users, so they are public API and
+          # cannot be renamed. The alignment therefore happens at the SECRET
+          # layer, and this mapping is where the two schemes meet. Without this
+          # comment a reader will "fix" it in one direction or the other.
+          #
+          # The credential set is chosen per lane by DYNAMIC secret indexing
+          # rather than an `&&`/`||` chain on matrix.credentials. That is not a
+          # style preference: in a chain like
+          #   matrix.x == 'A' && secrets.A_URL || secrets.B_URL
+          # an UNSET secrets.A_URL is falsy, so lane A silently falls through to
+          # product B's credentials and runs its whole suite against the wrong
+          # estate — while every var is populated, so the require gate sees
+          # nothing wrong. Indexing yields the empty string instead, and
+          # JAMFPLATFORM_ACC_REQUIRE then fails the lane by name.
+          # ---------------------------------------------------------------
+          JAMFPLATFORM_BASE_URL: ${{ secrets[format('{0}_BASE_URL', matrix.secret_prefix)] }}
+          JAMFPLATFORM_CLIENT_ID: ${{ secrets[format('{0}_CLIENT_ID', matrix.secret_prefix)] }}
+          JAMFPLATFORM_CLIENT_SECRET: ${{ secrets[format('{0}_CLIENT_SECRET', matrix.secret_prefix)] }}
 
-          # --- Automated Device Enrollment ---
-          JAMFPLATFORM_ADE_TOKEN: ${{ secrets.JAMFPLATFORM_ADE_TOKEN }}
-          JAMFPLATFORM_ADE_SERIAL: ${{ secrets.JAMFPLATFORM_ADE_SERIAL }}
-          JAMFPLATFORM_ADE_SERIAL2: ${{ secrets.JAMFPLATFORM_ADE_SERIAL2 }}
-          JAMFPLATFORM_ADE_MOBILE_SERIAL: ${{ secrets.JAMFPLATFORM_ADE_MOBILE_SERIAL }}
-          JAMFPLATFORM_ADE_MOBILE_SERIALS: ${{ secrets.JAMFPLATFORM_ADE_MOBILE_SERIALS }}
+          # The scope header. Exactly one of these may carry a value, and the
+          # organization lane must carry NEITHER — an organization-scoped
+          # integration sends no scope header, and AccPreCheckAccount skips (or,
+          # under its require token, fails) the moment it sees one set, while
+          # AccPreCheck skips unless one IS set. Those two cannot hold in one env
+          # block, which is exactly what the deleted `organization_scope`
+          # workflow input was working around; the lane matrix expresses it
+          # instead.
+          #
+          # These two are the ONE place dynamic indexing cannot be used, and the
+          # reason is worth stating because the symmetry is inviting: both the
+          # environment and the tenant credential set store their scope value
+          # under `<prefix>_ID`, so `secrets[format('{0}_ID', …)]` would resolve
+          # BOTH lines to the same value in either lane. The provider refuses a
+          # request carrying two scopes (Conflicting API Integration Scope) and so
+          # does the suite's own client, so the pro lane would fail every test for
+          # a configuration reason.
+          #
+          # A conditional keyed on matrix.credentials is correct here precisely
+          # because its fall-through is the EMPTY STRING rather than another
+          # product's secret: an unset secret yields "", which is what unset
+          # should mean, and JAMFPLATFORM_ACC_REQUIRE then fails the lane by name.
+          # That is the opposite of the hazard described above, where the
+          # fall-through was a different credential.
+          JAMFPLATFORM_ENVIRONMENT_ID: ${{ (matrix.credentials == 'ENVIRONMENT' && secrets.JAMFPLATFORM_ACC_ENVIRONMENT_ID) || '' }}
+          JAMFPLATFORM_TENANT_ID: ${{ (matrix.credentials == 'PRO_TENANT' && secrets.JAMFPLATFORM_ACC_PRO_TENANT_ID) || '' }}
 
-          # --- Acceptance fixtures (existing tenant objects referenced by tests) ---
-          JAMFPLATFORM_ACC_COMPUTER_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_COMPUTER_SERIAL }}
-          JAMFPLATFORM_ACC_MOBILE_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_MOBILE_SERIAL }}
-          JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP: ${{ secrets.JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP }}
+          # --- Entitlement declarations -----------------------------------
+          # Not credentials: a valid estate can hold Jamf Pro and not hold
+          # Security Cloud or AI Governance, so the suite requires the operator
+          # to DECLARE the entitlement rather than infer it from a read — an
+          # empty policy list is indistinguishable from an unentitled tenant.
+          # Each must EQUAL the scope actually configured, which is what makes
+          # the declaration load-bearing: a stale value from another estate skips
+          # rather than green-lighting a run against the wrong one.
+          #
+          # Deliberately separate secrets rather than copies of the scope lines
+          # above. Writing the scope value inline here would satisfy the equality
+          # check by construction and thereby assert an entitlement nobody
+          # verified, turning a clean skip on a Pro-only estate into a suite of
+          # failures.
+          #
+          # These sit in the securitycloud and aigovernance lanes' `require`
+          # tokens (see .github/acceptance-lanes.json), so a missing one fails
+          # its lane instead of skipping it. The AI Governance declaration is
+          # here for a specific reason: it was read by 18 tests and referenced by
+          # NO workflow at all, so all 18 skipped green on every run for the life
+          # of the previous file.
+          JAMFPLATFORM_ACC_SECURITYCLOUD_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_ENVIRONMENT_ID }}
+          JAMFPLATFORM_ACC_AIGOVERNANCE_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ACC_AIGOVERNANCE_ENVIRONMENT_ID }}
+          # The operator's declaration that the organization credentials really
+          # are organization-scoped. Nothing can be compared against it — an
+          # organization request carries no scope header, so no JAMFPLATFORM_*
+          # variable holds the organization — which is exactly why it is
+          # required: without it, a Pro-only credential set with both scope
+          # variables blank looks identical to a real organization integration
+          # and fails deep in an apply. The SDK has no equivalent, its
+          # organization client needing no ID by design, so this line is
+          # provider-only.
+          JAMFPLATFORM_ACC_ORGANIZATION_DECLARED_ID: ${{ secrets.JAMFPLATFORM_ACC_ORGANIZATION_DECLARED_ID }}
 
-          # --- Real LDAP / cloud-IdP directory fixture (group-scoped & DS-group
-          #     suites bootstrap a directory, then resolve a real group/user
-          #     against it). Replaced the former *_CRITERIA_DS_GROUP* /
-          #     *_ENROLLMENT_* / *_VPP_DS_GROUP fixtures. ---
-          JAMFPLATFORM_ACC_LDAP_GROUP_NAME: ${{ secrets.JAMFPLATFORM_ACC_LDAP_GROUP_NAME }}
-          JAMFPLATFORM_ACC_LDAP_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_LDAP_USERNAME }}
-          JAMFPLATFORM_ACC_LDAP_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_LDAP_PASSWORD }}
+          # --- Jamf Security Cloud: dedicated tenant credential ------------
+          # Deliberately NOT wired — but wired HERE rather than only mentioned,
+          # so enabling it is uncommenting four lines.
+          #
+          # The environment credential reaches /securitycloud (wire-verified
+          # 2026-09-03: categories and dns/zones both 200), so a dedicated
+          # credential is redundant for almost the whole lane. The exception is
+          # the ZTNA gateway family: its creates require tenantIds, which is
+          # FIXTURE DATA rather than a scope header — the list of tenants a
+          # gateway grants access to — and no API exposes an environment's
+          # tenants, so an environment-scoped run cannot supply one and those
+          # tests skip. Wiring these switches the securitycloud lane to that
+          # tenant, which is also the only way to restore that coverage.
+          # JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_ID }}
+          # JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_BASE_URL: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_BASE_URL }}
+          # JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_CLIENT_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_CLIENT_ID }}
+          # JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_TENANT_CLIENT_SECRET }}
 
-          # --- Secrets, tokens & PKCS#12 blobs (base64) ---
-          JAMFPLATFORM_VPP_TOKEN: ${{ secrets.JAMFPLATFORM_VPP_TOKEN }}
-          JAMFPLATFORM_ACC_SMTP_GOOGLE: ${{ secrets.JAMFPLATFORM_ACC_SMTP_GOOGLE }}
-          JAMFPLATFORM_ACC_SELF_SERVICE_SAML: ${{ secrets.JAMFPLATFORM_ACC_SELF_SERVICE_SAML }}
-          JAMFPLATFORM_ACC_SSO_IDP_URL: ${{ secrets.JAMFPLATFORM_ACC_SSO_IDP_URL }}
-          JAMFPLATFORM_ACC_SSO_METADATA_BASE64: ${{ secrets.JAMFPLATFORM_ACC_SSO_METADATA_BASE64 }}
-          JAMFPLATFORM_ACC_SUPERVISION_P12_BASE64: ${{ secrets.JAMFPLATFORM_ACC_SUPERVISION_P12_BASE64 }}
-          JAMFPLATFORM_ACC_SUPERVISION_P12_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_SUPERVISION_P12_PASSWORD }}
+          # --- Jamf Security Cloud fixtures --------------------------------
+          # UEM Connect runs a real connection test on create, so a placeholder
+          # fails the apply: there is no way to exercise that form without
+          # working Jamf Pro credentials for the target instance.
+          # UEM_PRO_TENANT_ID is the SDK's own name for this exact fixture, so
+          # one secret serves both repos.
+          JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_PRO_TENANT_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_PRO_TENANT_ID }}
+          JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_SERVER_URL: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_SERVER_URL }}
+          JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_ID }}
+          JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_UEM_CLIENT_SECRET }}
+          JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_CODE: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_CODE }}
+          JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_MOBILE_GROUP_ID: ${{ secrets.JAMFPLATFORM_ACC_SECURITYCLOUD_ACTIVATION_PROFILE_MOBILE_GROUP_ID }}
 
-          # --- GSX (Global Service Exchange) connection ---
-          JAMFPLATFORM_ACC_GSX_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_ACC_GSX_KEYSTORE_BASE64 }}
-          JAMFPLATFORM_ACC_GSX_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_GSX_KEYSTORE_PASSWORD }}
-          JAMFPLATFORM_ACC_GSX_SERVICE_ACCOUNT: ${{ secrets.JAMFPLATFORM_ACC_GSX_SERVICE_ACCOUNT }}
-          JAMFPLATFORM_ACC_GSX_SHIP_TO: ${{ secrets.JAMFPLATFORM_ACC_GSX_SHIP_TO }}
-          JAMFPLATFORM_ACC_GSX_TOKEN: ${{ secrets.JAMFPLATFORM_ACC_GSX_TOKEN }}
-          JAMFPLATFORM_ACC_GSX_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_GSX_USERNAME }}
+          # --- Jamf Account SSO domain fixtures ----------------------------
+          # Both optional; each covers a verification outcome the suite cannot
+          # manufacture. The verified domain must be one the operator really
+          # owns; the unverifiable one is a throwaway `.example`. The first-time
+          # unverified→verified transition is untestable by design — the
+          # verification key is reissued on every claim, so a DNS record
+          # published for an earlier claim is stale against a new one, and
+          # automating it would require the suite to write DNS.
+          JAMFPLATFORM_ACC_ORGANIZATION_SSO_VERIFIED_DOMAIN: ${{ secrets.JAMFPLATFORM_ACC_ORGANIZATION_SSO_VERIFIED_DOMAIN }}
+          JAMFPLATFORM_ACC_ORGANIZATION_SSO_UNVERIFIABLE_DOMAIN: ${{ secrets.JAMFPLATFORM_ACC_ORGANIZATION_SSO_UNVERIFIABLE_DOMAIN }}
 
-          # --- Google Cloud Identity Provider (Secure LDAP); the *_ROTATED pair is
-          #     optional and only guards the wo_version cert-rotation regression ---
-          JAMFPLATFORM_GOOGLE_DOMAIN_NAME: ${{ secrets.JAMFPLATFORM_GOOGLE_DOMAIN_NAME }}
-          JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64 }}
-          JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD }}
-          JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64_ROTATED: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64_ROTATED }}
-          JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD_ROTATED: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD_ROTATED }}
+          # --- Jamf Pro: Automated Device Enrollment -----------------------
+          # DEP rather than ADE in the name because that is what the SDK calls
+          # the same secret; see internal/testhelpers/accrequire/env.go.
+          JAMFPLATFORM_ACC_PRO_DEP_TOKEN: ${{ secrets.JAMFPLATFORM_ACC_PRO_DEP_TOKEN }}
+          JAMFPLATFORM_ACC_PRO_DEP_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_PRO_DEP_SERIAL }}
+          JAMFPLATFORM_ACC_PRO_DEP_SERIAL2: ${{ secrets.JAMFPLATFORM_ACC_PRO_DEP_SERIAL2 }}
+          JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIAL }}
+          JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS: ${{ secrets.JAMFPLATFORM_ACC_PRO_DEP_MOBILE_SERIALS }}
 
-          # --- Jamf Protect (separate product credentials) ---
-          JAMFPLATFORM_PROTECT_URL: ${{ secrets.JAMFPLATFORM_PROTECT_URL }}
-          JAMFPLATFORM_PROTECT_CLIENT_ID: ${{ secrets.JAMFPLATFORM_PROTECT_CLIENT_ID }}
-          JAMFPLATFORM_PROTECT_PASSWORD: ${{ secrets.JAMFPLATFORM_PROTECT_PASSWORD }}
+          # --- Jamf Pro: Volume Purchasing ---------------------------------
+          JAMFPLATFORM_ACC_PRO_VPP_TOKEN: ${{ secrets.JAMFPLATFORM_ACC_PRO_VPP_TOKEN }}
 
-          # --- Destructive opt-ins (tests that mutate/erase tenant state stay
-          #     skipped unless explicitly enabled) ---
-          JAMFPLATFORM_ACC_DESTRUCTIVE: ${{ secrets.JAMFPLATFORM_ACC_DESTRUCTIVE }}
-          JAMFPLATFORM_ACC_CDP_DESTRUCTIVE: ${{ secrets.JAMFPLATFORM_ACC_CDP_DESTRUCTIVE }}
+          # --- Jamf Pro: Jamf Protect deployment ---------------------------
+          # A Protect API credential used BY a Jamf Pro test, which is why it is
+          # filed under the pro product rather than the planned `protect` lane.
+          JAMFPLATFORM_ACC_PRO_PROTECT_URL: ${{ secrets.JAMFPLATFORM_ACC_PRO_PROTECT_URL }}
+          JAMFPLATFORM_ACC_PRO_PROTECT_CLIENT_ID: ${{ secrets.JAMFPLATFORM_ACC_PRO_PROTECT_CLIENT_ID }}
+          JAMFPLATFORM_ACC_PRO_PROTECT_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_PRO_PROTECT_PASSWORD }}
+          JAMFPLATFORM_ACC_PRO_PROTECT_DEPLOYMENT_ID: ${{ secrets.JAMFPLATFORM_ACC_PRO_PROTECT_DEPLOYMENT_ID }}
 
-          # --- Tuning ---
-          JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS: ${{ secrets.JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS }}
+          # --- Jamf Pro: existing estate objects the suite references -------
+          JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL }}
+          JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL_2: ${{ secrets.JAMFPLATFORM_ACC_PRO_COMPUTER_SERIAL_2 }}
+          JAMFPLATFORM_ACC_PRO_MDPP_UUID_LOOKUP: ${{ secrets.JAMFPLATFORM_ACC_PRO_MDPP_UUID_LOOKUP }}
+          # An AD CS OUTBOUND job needs a pre-existing Jamf Pro API client, and
+          # the provider can no longer create one: the API-client and API-role
+          # endpoints were withdrawn at the Platform API GA, so clients are
+          # created in Jamf Account.
+          JAMFPLATFORM_ACC_PRO_ADCS_API_CLIENT_ID: ${{ secrets.JAMFPLATFORM_ACC_PRO_ADCS_API_CLIENT_ID }}
 
-      # Surface which acceptance suites actually ran, failed, or self-skipped, so
-      # an env-gated suite that never executes (missing secret) is visible
-      # instead of vanishing into a green check, and a failure is nameable from
-      # the summary without opening the raw log. Counts top-level TestAcc*
-      # results only.
-      - name: Gated suite summary
-        if: always()
+          # --- Jamf Pro: real directory-service fixture --------------------
+          # The group-scoped and DS-group suites bootstrap a directory, then
+          # resolve a real group and user against it.
+          JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME: ${{ secrets.JAMFPLATFORM_ACC_PRO_LDAP_GROUP_NAME }}
+          JAMFPLATFORM_ACC_PRO_LDAP_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_PRO_LDAP_USERNAME }}
+          JAMFPLATFORM_ACC_PRO_LDAP_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_PRO_LDAP_PASSWORD }}
+
+          # --- Jamf Pro: SSO, Self Service and SMTP material ---------------
+          # These are JAMF PRO's SSO settings, not Jamf Account's — read by
+          # pro/sso_settings and pro/enrollment_customization. Jamf Account's SSO
+          # fixtures are the ACC_ORGANIZATION_SSO_* pair above, and the two must
+          # not be conflated: different objects, different scopes.
+          JAMFPLATFORM_ACC_PRO_SSO_IDP_URL: ${{ secrets.JAMFPLATFORM_ACC_PRO_SSO_IDP_URL }}
+          JAMFPLATFORM_ACC_PRO_SSO_METADATA_BASE64: ${{ secrets.JAMFPLATFORM_ACC_PRO_SSO_METADATA_BASE64 }}
+          JAMFPLATFORM_ACC_PRO_SELF_SERVICE_SAML: ${{ secrets.JAMFPLATFORM_ACC_PRO_SELF_SERVICE_SAML }}
+          JAMFPLATFORM_ACC_PRO_SMTP_GOOGLE: ${{ secrets.JAMFPLATFORM_ACC_PRO_SMTP_GOOGLE }}
+
+          # --- Jamf Pro: PKCS#12 supervision identity ----------------------
+          JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_BASE64: ${{ secrets.JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_BASE64 }}
+          JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_PRO_SUPERVISION_P12_PASSWORD }}
+
+          # --- Jamf Pro: Global Service Exchange ---------------------------
+          JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_BASE64 }}
+          JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_KEYSTORE_PASSWORD }}
+          JAMFPLATFORM_ACC_PRO_GSX_SERVICE_ACCOUNT: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_SERVICE_ACCOUNT }}
+          JAMFPLATFORM_ACC_PRO_GSX_SHIP_TO: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_SHIP_TO }}
+          JAMFPLATFORM_ACC_PRO_GSX_TOKEN: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_TOKEN }}
+          JAMFPLATFORM_ACC_PRO_GSX_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_PRO_GSX_USERNAME }}
+
+          # --- Jamf Pro: Google Secure LDAP cloud identity provider --------
+          # The *_ROTATED pair is optional and guards only the WriteOnly
+          # cert-rotation regression.
+          JAMFPLATFORM_ACC_PRO_GOOGLE_DOMAIN_NAME: ${{ secrets.JAMFPLATFORM_ACC_PRO_GOOGLE_DOMAIN_NAME }}
+          JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64 }}
+          JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD }}
+          JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64_ROTATED: ${{ secrets.JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_BASE64_ROTATED }}
+          JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD_ROTATED: ${{ secrets.JAMFPLATFORM_ACC_PRO_GOOGLE_KEYSTORE_PASSWORD_ROTATED }}
+
+          # --- Write gates: repository VARIABLES, not secrets ---------------
+          # A destructive gate is a boolean with nothing to hide, and a secret
+          # masks its value in the logs — turning "1" into "***" everywhere it
+          # appears. Unset, a variable expands to the empty string and the test
+          # skips itself, so wiring it here is inert until someone sets it in the
+          # UI. The suffix is the SDK's _WRITE_OK rather than this repo's former
+          # _DESTRUCTIVE.
+          #
+          # This one is NOT enabled by default: deleting a cloud distribution
+          # point wipes its hosted content, which is not recoverable from a test
+          # run.
+          JAMFPLATFORM_ACC_PRO_CDP_WRITE_OK: ${{ vars.JAMFPLATFORM_ACC_PRO_CDP_WRITE_OK }}
+
+      # Surface what this lane actually ran, failed or self-skipped, and FAIL the
+      # job when a lane planned packages and executed no tests — a missing
+      # fixture, an unset write gate, or a package whose every test skipped.
+      # `go test` over a package whose tests all skip exits 0, so without this
+      # the lane would report green having asserted nothing. A failure is also
+      # nameable from the summary without opening the raw log. Counts top-level
+      # TestAcc* results only; subtests are indented and excluded.
+      #
+      # A skip is worth reading here even though JAMFPLATFORM_ACC_REQUIRE makes a
+      # missing CREDENTIAL fatal: the remaining skips are the deliberate ones,
+      # the write-gate opt-ins and the fixture-dependent tests, and a sudden
+      # change in that count is how you notice a fixture disappeared.
+      - name: Lane summary
+        if: always() && steps.guard.outputs.superseded != 'true'
+        env:
+          LANE: ${{ matrix.lane }}
+          COUNT: ${{ matrix.count }}
+          LOCK: ${{ matrix.lock }}
+          REQUIRE: ${{ matrix.require }}
+          CREDENTIALS: ${{ matrix.credentials }}
+          DECLARES: ${{ matrix.declares }}
         run: |
           log=test-output.log
           {
-            echo "## Acceptance suite summary"
+            echo "## Acceptance — lane \`${LANE}\`"
             echo
-            echo "**Scope:** \`${{ inputs.packages }}\`"
+            echo "**Planned:** ${COUNT} package(s) · **Credentials:** \`${CREDENTIALS}\` · **Require:** \`${REQUIRE}\` · **Estate lock:** ${LOCK}"
+            if [ -n "${DECLARES}" ]; then
+              echo
+              echo "**Declarations:** \`${DECLARES}\`"
+            fi
             echo
             if [ ! -s "$log" ]; then
-              echo "_No test output captured (job failed before tests ran)._"
+              echo "_No test output captured (the job failed before tests ran)._"
               exit 0
             fi
             pass=$(grep -cE '^--- PASS: TestAcc[^/]+\(' "$log" || true)
@@ -148,10 +588,24 @@ jobs:
             skip=$(grep -cE '^--- SKIP: TestAcc[^/]+\(' "$log" || true)
             echo "**Ran:** ${pass:-0} passed, ${fail:-0} failed · **Skipped:** ${skip:-0}"
             echo
+            # A lane that planned N packages and ran no tests is the failure mode
+            # the lane split exists to make visible, so say so rather than
+            # leaving a reader to compare two numbers.
+            if [ "$(( ${pass:-0} + ${fail:-0} + ${skip:-0} ))" -eq 0 ]; then
+              echo "> [!WARNING]"
+              echo "> This lane executed **no** tests despite planning ${COUNT} package(s)."
+              echo
+              # Everything above is already appended to $GITHUB_STEP_SUMMARY, so
+              # exiting here keeps the banner and still fails the job — which is
+              # what acceptance-gate needs, since needs.acceptance.result cannot
+              # otherwise tell "ran and passed" from "ran nothing".
+              echo "Lane ${LANE} ran zero tests across its planned ${COUNT} package(s)." >&2
+              exit 1
+            fi
             if [ "${fail:-0}" -gt 0 ]; then
-              # Open by default: a failure is the one thing nobody should have
-              # to click to see.
-              echo "<details open><summary>Failed suites (${fail})</summary>"
+              # Open by default: a failure is the one thing nobody should have to
+              # click to see.
+              echo "<details open><summary>Failed (${fail})</summary>"
               echo
               echo '```'
               grep -E '^--- FAIL: TestAcc[^/]+\(' "$log" | sed -E 's/^--- FAIL: //' | sort -u || true
@@ -160,11 +614,66 @@ jobs:
               echo "</details>"
               echo
             fi
-            echo "<details><summary>Skipped suites (gate unset)</summary>"
-            echo
-            echo '```'
-            grep -E '^--- SKIP: TestAcc[^/]+\(' "$log" | sed -E 's/^--- SKIP: //' | sort -u || true
-            echo '```'
-            echo
-            echo "</details>"
+            if [ "${skip:-0}" -gt 0 ]; then
+              echo "<details><summary>Skipped (${skip}) — write-gate opt-ins and absent fixtures</summary>"
+              echo
+              echo '```'
+              grep -E '^--- SKIP: TestAcc[^/]+\(' "$log" | sed -E 's/^--- SKIP: //' | sort -u || true
+              echo '```'
+              echo
+              echo "</details>"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # A single required check for branch protection. Without it the protected-branch
+  # config would have to list every lane by name and be edited whenever a lane is
+  # added — and a lane that failed to start would look like a check that simply
+  # was not required. `if: always()` so this runs even when a lane fails, and the
+  # result is ASSERTED rather than inferred: needs.<job>.result is 'skipped' when
+  # the matrix was empty, which is a pass only because an empty scope means there
+  # was nothing to run.
+  acceptance-gate:
+    name: Acceptance
+    needs: [plan, acceptance]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        env:
+          PLAN: ${{ needs.plan.result }}
+          LANES: ${{ needs.acceptance.result }}
+          SUMMARY: ${{ needs.plan.outputs.lanes }}
+          SCOPE: ${{ needs.plan.outputs.scope }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Acceptance"
+            echo
+            echo "- scope: \`${SCOPE:-<none>}\`"
+            echo "- lanes: ${SUMMARY:-none}"
+            echo "- plan: $PLAN"
+            echo "- lanes result: $LANES"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$PLAN" != "success" ]; then
+            echo "plan job did not succeed ($PLAN)"; exit 1
+          fi
+          case "$LANES" in
+            success) echo "all lanes passed" ;;
+            cancelled)
+              # A concurrency group admits one PENDING job, so a third run for
+              # the same lane cancels the already-pending one — before it starts,
+              # so nothing was orphaned, but also before "Skip if superseded"
+              # could report why. Nothing ran and nothing was asserted, which is
+              # not the same as a lane that ran and failed; say which, so a red
+              # check on an unexecuted suite is not read as a regression.
+              echo "a lane was cancelled while queued behind another run of the same lane, so no tests ran. Re-run this workflow once the in-progress lane finishes."
+              exit 1 ;;
+            skipped)
+              if [ -z "$SCOPE" ]; then
+                echo "no acceptance-relevant changes; nothing to run"
+              else
+                echo "lanes were skipped but scope was '$SCOPE' — the matrix did not start"; exit 1
+              fi ;;
+            *) echo "one or more lanes failed ($LANES)"; exit 1 ;;
+          esac

@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the user-initiated enrollment
 // settings resource's CRUD path calls across crud.go, access_groups.go, and
-// messaging_languages.go. It drives the "Required Jamf privileges" table
+// messaging_languages.go. It drives the "Required Jamf permissions" table
 // appended to the resource MarkdownDescription. permissions_test.go asserts
 // this list stays in sync with the actual client.<Method> calls in those files
 // and with the SDK privilege registry.
@@ -29,7 +29,7 @@ var resourceSDKMethods = []string{
 	"DeleteEnrollmentLanguageV3",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user-initiated enrollment settings resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
@@ -43,7 +43,7 @@ var dataSourceSDKMethods = []string{
 	"ListEnrollmentLanguagesV3",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user-initiated enrollment settings data source, appended to
 // its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)

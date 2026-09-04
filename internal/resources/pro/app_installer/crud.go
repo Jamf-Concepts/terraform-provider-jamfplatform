@@ -6,11 +6,10 @@
 //   pro.GetAppInstallerDeploymentV1    (GET  /v1/app-installers/deployments/{id})
 //   pro.UpdateAppInstallerDeploymentV1 (PUT  /v1/app-installers/deployments/{id})
 //   pro.DeleteAppInstallerDeploymentV1 (DELETE)
-//   pro.ListAppInstallerDeploymentsV1          (list resource / plural data source)
-//   pro.ResolveAppInstallerTitleV1IDByName     (app_title_name → id, plan-time + apply)
-//   pro.GetAppInstallerTitleV1                 (app_title_id → name reverse-resolve on read)
+//   pro.ListAppInstallerTitlesV1       (whole catalog: name → id and id → name, cached)
+//   pro.ListAppInstallerDeploymentsV1  (list resource / plural data source / name lookup)
 //
-// Status: current. Last reviewed 2026-06-01.
+// Status: current. Last reviewed 2026-09-03.
 //
 // Create returns only {href,id}; state is built from a follow-up GET (mirrors
 // blueprint / user_initiated_enrollment_settings). The notificationSettings and
@@ -18,9 +17,12 @@
 // the request body is reset to the server default — so the input builder always
 // emits a complete block when one is managed. The catalog title is referenced by
 // name: Create/Update resolve app_title_name → id, and Read reverse-resolves the
-// id back to the name (the GET returns only the id). selected_version is
-// Computed-only — the server controls the version (it coerces any submitted value
-// to the latest available).
+// id back to the name (the GET returns only the id). Both directions answer from
+// one unfiltered catalog list cached per provider instance, and the forward match
+// is decided on byte equality because Jamf Pro's own name filter is a
+// case-insensitive glob — see name_lookup.go. selected_version is
+// Computed-only: the server derives it from update_behavior, answering "" while
+// the behaviour is AUTOMATIC and the current version once it is MANUAL.
 
 package app_installer
 
@@ -52,7 +54,7 @@ func (r *AppInstallerResource) Create(ctx context.Context, req resource.CreateRe
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	appTitleID, titleDiags := resolveAppTitleID(createCtx, r.client, plan.AppTitleName.ValueString())
+	appTitleID, titleDiags := resolveAppTitleID(createCtx, catalogOrNil(r.titles), plan.AppTitleName.ValueString())
 	resp.Diagnostics.Append(titleDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -160,11 +162,24 @@ func (r *AppInstallerResource) Read(ctx context.Context, req resource.ReadReques
 	assignAppInstallerResourceModel(&state, got, firstHydration)
 
 	// Reverse-resolve app_title_id → app_title_name. The deployment GET returns
-	// only the ID; on import there is no prior config to echo, so the name must
-	// be looked up from the catalog (best-effort: a transient catalog error
-	// preserves any existing state value rather than failing the refresh).
-	if name, ok := titleNameForID(readCtx, r.client, state.AppTitleID.ValueString()); ok {
+	// only the ID, so the name has to come from the cached catalog snapshot, and
+	// the two Read paths need opposite failure handling. A routine refresh keeps the name
+	// already in state rather than failing over a transient catalog error. An
+	// import has no such value to keep, and app_title_name is Required, so a
+	// failed lookup there would write null into a Required attribute with no
+	// diagnostic — reporting a successful import that later surfaces as an
+	// unexplained in-place update and fails ImportStateVerify. So a failed
+	// lookup is an error on the import path only.
+	if name, ok := titleNameForID(readCtx, catalogOrNil(r.titles), state.AppTitleID.ValueString()); ok {
 		state.AppTitleName = types.StringValue(name)
+	} else if firstHydration {
+		resp.Diagnostics.AddError(
+			"Unable to resolve the App Catalog title name",
+			fmt.Sprintf("Importing this deployment needs app_title_id %q resolved to its App Catalog title name, and the catalog lookup failed. "+
+				"Retry once the catalog is reachable; if the title has been withdrawn from the App Catalog, the deployment cannot be managed by title name.",
+				state.AppTitleID.ValueString()),
+		)
+		return
 	}
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, appInstallerIdentityModel{ID: state.ID})...)
@@ -192,7 +207,7 @@ func (r *AppInstallerResource) Update(ctx context.Context, req resource.UpdateRe
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	appTitleID, titleDiags := resolveAppTitleID(updateCtx, r.client, plan.AppTitleName.ValueString())
+	appTitleID, titleDiags := resolveAppTitleID(updateCtx, catalogOrNil(r.titles), plan.AppTitleName.ValueString())
 	resp.Diagnostics.Append(titleDiags...)
 	if resp.Diagnostics.HasError() {
 		return
