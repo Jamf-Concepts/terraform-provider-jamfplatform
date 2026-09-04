@@ -4,14 +4,12 @@
 // SDK endpoints used:
 //   securitycloud.CreateDeviceGroupV1
 //   securitycloud.GetDeviceGroupV1
-//   securitycloud.UpdateDeviceGroupV1
+//   securitycloud.UpdateDeviceGroupV2
 //   securitycloud.DeleteDeviceGroupV1
 //   securitycloud.ListDeviceGroupsV2 (data sources, list resource, and the
 //                                     singular data source's name lookup)
 //
 // Deliberately not used:
-//   securitycloud.ListDeviceGroupsV1   deprecated in the spec (deprecation-date
-//                                      2026-08-12); content identical to V2.
 //   securitycloud.ResolveDeviceGroupV2ByName
 //                                      cannot express the built-in group. Where
 //                                      the match is the implicit "Default Group",
@@ -22,18 +20,10 @@
 //                                      reach its own id-less refusal. The name
 //                                      lookup matches over ListDeviceGroupsV2
 //                                      locally instead — see groupsNamedExactly.
-//   securitycloud.UpdateDeviceGroupV2  the spec's nominated successor to the
-//                                      deprecated V1 update, but the gateway does
-//                                      not route PUT /v2/groups/{id} — 403, same
-//                                      body as a deliberately bogus path, under
-//                                      the privilege that makes V1 succeed.
-//                                      Re-verified 2026-08-29. Raised upstream, so
-//                                      Update still calls the deprecated V1 with a
-//                                      staticcheck suppression.
 //   securitycloud.ApplyDeviceGroupV*   generated name-keyed upsert; Terraform owns
 //                                      the create-versus-update decision.
 //
-// Status: current. Last reviewed 2026-08-29.
+// Status: current. Last reviewed 2026-09-04.
 
 package device_group
 
@@ -200,27 +190,18 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 
 // Update renames a Jamf Security Cloud device group.
 //
-// A rename is the only update this resource can make. The PUT echoes the stored
-// object, but state is taken from a fresh read for the same reason Create does it.
+// A rename is the only update this resource can make, and state comes from a
+// fresh read afterwards for the same reason Create does it.
 //
-// UpdateDeviceGroupV1 is called despite being marked deprecated in the spec
-// (deprecation-date 2026-08-25), because its nominated successor does not exist on
-// the wire. STYLE_GUIDE §Deprecated with no generated successor says to verify the
-// successor before concluding anything, so it was verified twice against the EU
-// sandbox on 2026-08-29: PUT /securitycloud/v2/groups/{id} answers 403
-// BAD_PERMISSIONS through both curl and the SDK, using the same token and the same
-// device-groups:update privilege that makes the v1 PUT return 200. A control probe
-// on a deliberately bogus path returns the identical body, which is what
-// identifies it as an unrouted endpoint rather than a privilege gap; PATCH is not
-// served at either version either. Raised upstream.
-//
-// Revisit when the v2 route starts answering, but note the swap is not call-for-call:
-// the request body is identical (*UpdateGroupRequest both sides), yet v1 answers 200
-// with the stored object and v2 answers 204 with none, so the SDK generates
-// `UpdateDeviceGroupV2(ctx, id, req) error` against v1's `(*Group, error)`. The call
-// site below discards the object already, so the change is to
-// `if err := r.client.UpdateDeviceGroupV2(...)` plus dropping this suppression — the
-// arity differs and the current line will not compile as-is.
+// The write goes to PUT /securitycloud/v2/groups/{id}, which answers 204 with no
+// body, so that read-back is the only source of the stored name — unlike the v1
+// PUT this used to call, which echoed the stored object. That route was
+// unrouted when this resource shipped — 403 BAD_PERMISSIONS through both curl and
+// the SDK, indistinguishable from a bogus path — and Update called the deprecated
+// v1 PUT under a staticcheck suppression while the defect was open. It was fixed on
+// 2026-09-04 and SDK v0.22.0 withdrew both v1 write paths with the spec, so the
+// suppression and the fallback are gone. POST and GET/DELETE by id remain at v1;
+// only the list and the update moved.
 func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DeviceGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -241,8 +222,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	//nolint:staticcheck // SA1019: the v2 successor is unrouted — see the doc comment above.
-	if _, err := r.client.UpdateDeviceGroupV1(updateCtx, plan.ID.ValueString(), buildGroupUpdateInput(plan)); err != nil {
+	if err := r.client.UpdateDeviceGroupV2(updateCtx, plan.ID.ValueString(), buildGroupUpdateInput(plan)); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
 			resp.Diagnostics.AddError("Error updating Jamf Security Cloud device group", err.Error())
 		}
