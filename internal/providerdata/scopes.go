@@ -140,41 +140,42 @@ type widening struct {
 // working configurations. The SDK test above fails the day the withdrawal
 // reaches the gateway, and is where that news will arrive first.
 //
-// Blueprints and Compliance Benchmarks are deliberately ABSENT, and theirs is
-// the one family set in this file resting on a spec declaration with no wire
-// evidence either way. Read the whole of it before adding them back.
+// Blueprints and Compliance Benchmarks are deliberately ABSENT, and the reason
+// is an observation of Jamf Account rather than a status code. Read the whole of
+// it before adding them back.
 //
-// Their specs withdrew tenant on the same build, and two DIFFERENT
-// tenant-scoped credentials are refused 403 BAD_PERMISSIONS on both — the SDK's
-// on 2026-09-04 and this repo's pro-tenant acceptance credential, first on
-// 2026-09-03 in .github/acceptance-lanes.json's evidence field and re-probed
-// 2026-09-04. Those 403s classify nothing, by the law stated three paragraphs
-// up: a Platform 403 BAD_PERMISSIONS is what an unmapped route answers and also
-// what a privilege gap answers, and two credentials that both lack the
-// capability tell those apart no better than one does. Classifying it needs an
-// unrouted control in the same namespace, of the kind the device-actions entry
-// carries, and neither family has been probed with one.
+// Their specs withdrew tenant on the same build, and two DIFFERENT tenant-scoped
+// credentials are refused 403 BAD_PERMISSIONS on both — the SDK's on 2026-09-04
+// and this repo's pro-tenant acceptance credential, first on 2026-09-03 in
+// .github/acceptance-lanes.json's evidence field and re-probed 2026-09-04. Those
+// 403s classify nothing, by the law stated three paragraphs up: a Platform 403
+// BAD_PERMISSIONS is what an unmapped route answers and also what a privilege
+// gap answers, and two credentials that both lack the capability tell those
+// apart no better than one does. Neither family has been probed with an unrouted
+// control of the kind the device-actions entry carries, so on the wire alone the
+// question is still open.
 //
-// So the narrowing rests on the spec withdrawal alone, plus environment-only for
-// exactly these two having been this repo's recorded GA decision before the spec
-// said so. It is asserted elsewhere that these capabilities cannot be GRANTED to
-// a tenant-scoped integration in Jamf Account at all, which would settle the
-// question outright — but that assertion is INFERRED from the same 403s rather
-// than observed. No dated observation of Jamf Account's permission picker exists
-// anywhere in this repository: no date, no capability slug, no procedure. And
-// the lane table's evidence field, which is where the inference is recorded,
-// names securitycloud in the identical 403 list while SecurityCloudScopes stays
-// environment-and-tenant — a list that includes a family nobody narrowed cannot
-// be the discriminator for the two who were.
+// It is not decided on the wire. Jamf Account's permission picker does not offer
+// the blueprints or compliance-benchmarks capabilities at all when the
+// integration being created is tenant-scoped — observed directly in the picker
+// by the operator of this repository's acceptance estate on 2026-09-04. No
+// tenant credential can therefore ever hold them, whatever the gateway is doing
+// with the route, which is what makes the narrowing correct rather than merely
+// spec-compliant: there is no configuration a practitioner could write that the
+// refusal takes away. It also explains the 403s without needing them to
+// classify anything, since a credential that cannot be granted a capability
+// answers exactly as an unmapped route does.
 //
-// What would settle it is a dated observation of the permission picker for a
-// tenant-scoped integration, naming the capability slug it does or does not
-// offer; record it here and the narrowing stops being an inference. Until then
-// the honest reading is that the narrowing follows the spec and the wire has not
-// been asked, and the cost of being wrong is bounded and loud: a tenant-scoped
-// operator gets a named diagnostic at Configure — verified live, in 0.25s, where
-// the same run previously spent 134 seconds applying before a 403 — instead of
-// an opaque failure mid-apply, and the remedy is one evidenced entry below.
+// Two things follow that are easy to get wrong. The observation is of the
+// PICKER, not of a request, so it is falsified by Jamf changing what the picker
+// offers and not by the gateway starting to serve either route — a 200 from
+// either would mean the picker has changed, and the entry to re-check is this
+// one rather than the widenings below. And it does not transfer: the lane
+// table's evidence field names securitycloud in the identical 403 list while
+// SecurityCloudScopes stays environment-and-tenant, because Security Cloud's
+// capabilities ARE offered to a tenant-scoped integration. A shared 403 grouped
+// those three families together and the picker separates them, which is the
+// whole reason this paragraph exists.
 //
 // AI Governance needs no entry either and never had one: it is environment-only
 // in the spec, refused 403 under tenant scope on the same probe, and was already

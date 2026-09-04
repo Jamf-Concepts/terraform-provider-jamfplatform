@@ -127,7 +127,7 @@ func (d *Data) RequireScope(resourceType string, allowed ...ScopeKind) diag.Diag
 	diags.AddError(
 		fmt.Sprintf("Unsupported API Integration Scope for %s", resourceType),
 		fmt.Sprintf("%s requires %s, but this provider is configured with %s.\n\n%s",
-			resourceType, scopeRequirement(allowed), scopeDescription(d.scope), scopeRemedy(allowed)),
+			resourceType, scopeRequirement(allowed), scopeDescription(d.scope), scopeRemedy(d.scope, allowed)),
 	)
 	return diags
 }
@@ -179,14 +179,27 @@ func scopeDescription(k ScopeKind) string {
 	}
 }
 
-// scopeRemedy says which attribute to set, and warns that the choice is not free
-// — the header has to match the scope the API integration was created against.
+// scopeRemedy says how to get from the configured scope to an accepted one, and
+// warns that the choice is not free: the header has to match the scope the API
+// integration was created against.
 //
-// The organization-only branch names the two environment variables as well as
-// the two attributes, for the reason given on scopeDescription: a scope set in
-// the environment is invisible in the provider block, so telling the operator to
-// remove an attribute they never wrote leaves the diagnostic unactionable.
-func scopeRemedy(allowed []ScopeKind) string {
+// It takes the configured kind as well as the allowed set because naming only
+// what to add is not actionable. Every reader of this diagnostic is, by
+// construction, carrying a scope the construct refuses, so the input that
+// selected it is already set — and `environment_id` and `tenant_id` are mutually
+// exclusive, so an operator who follows "set `environment_id`" literally trades
+// this error for `Conflicting API Integration Scope` on the next plan. Naming
+// the swap costs one clause and saves a whole cycle.
+//
+// The swap is named as a replacement rather than an addition only when the
+// configured scope has an attribute to remove. An organization-scoped provider
+// has neither set, so there the instruction really is just to set one.
+//
+// Both branches name the environment variables alongside the attributes, for the
+// reason given on scopeDescription: a scope set in the environment is invisible
+// in the provider block, so telling the operator to remove an attribute they
+// never wrote leaves the diagnostic unactionable.
+func scopeRemedy(configured ScopeKind, allowed []ScopeKind) string {
 	attrs := make([]string, 0, len(allowed))
 	for _, k := range allowed {
 		switch k {
@@ -199,15 +212,35 @@ func scopeRemedy(allowed []ScopeKind) string {
 	if len(attrs) == 0 {
 		return "Unset both scope inputs so requests are scoped from the access token alone: remove `environment_id` " +
 			"and `tenant_id` from the provider block, and unset `JAMFPLATFORM_ENVIRONMENT_ID` and " +
-			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope."
+			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope. Note that unsetting " +
+			"them does not convert the integration: reaching this family needs an integration created with " +
+			"Organization management scope, and because that scope reaches nothing else, it belongs in its own " +
+			"aliased provider block rather than replacing the one the rest of the configuration uses."
 	}
-	return fmt.Sprintf(
-		"Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable. "+
-			"The scope must match the one the API integration was created with: an integration targets a platform environment or a single "+
-			"tenant, and crossing over is refused with 403 OWNERSHIP_FORBIDDEN even when both IDs belong to the same customer — so this is a "+
-			"choice between two integrations, not two IDs for one.",
-		joinOr(attrs),
-	)
+	action := fmt.Sprintf("Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable.", joinOr(attrs))
+	if remove := scopeAttribute(configured); remove != "" {
+		action = fmt.Sprintf(
+			"Replace %s with %s in the provider block, or swap the matching `JAMFPLATFORM_*` environment "+
+				"variable. Set only one: the two are mutually exclusive, so adding %s while %s is still set "+
+				"is refused separately.",
+			remove, joinOr(attrs), joinOr(attrs), remove)
+	}
+	return action + " The scope must match the one the API integration was created with: an integration targets a " +
+		"platform environment or a single tenant, and crossing over is refused with 403 OWNERSHIP_FORBIDDEN even " +
+		"when both IDs belong to the same customer — so this is a choice between two integrations, not two IDs for one."
+}
+
+// scopeAttribute names the provider-block attribute that selects a scope, and
+// returns "" for organization scope, which no attribute selects.
+func scopeAttribute(k ScopeKind) string {
+	switch k {
+	case ScopeEnvironment:
+		return "`environment_id`"
+	case ScopeTenant:
+		return "`tenant_id`"
+	default:
+		return ""
+	}
 }
 
 // joinOr renders a list as "a", "a or b", or "a, b or c".
