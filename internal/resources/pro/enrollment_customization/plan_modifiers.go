@@ -5,9 +5,7 @@ package enrollment_customization
 
 import (
 	"context"
-	"io"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -28,10 +26,12 @@ import (
 // Where the hash comes from depends on the source, because the two differ in
 // whether two reads of the same source answer with the same bytes:
 //
-//   - A create leaves icon_source_hash Unknown and reads nothing. Create hashes
-//     the exact bytes it uploads, so a source that answers two reads
-//     differently can no longer plan one value and apply another (issue #373,
-//     reproduced on this resource on 2026-09-04).
+//   - A create leaves icon_source_hash Unknown. Create hashes the exact bytes
+//     it uploads, so a source that answers two reads differently can no longer
+//     plan one value and apply another (issue #373, reproduced on this resource
+//     on 2026-09-04). A local path is still opened and hashed here and the hash
+//     discarded, so an unreadable one fails at plan rather than part-way
+//     through an apply.
 //   - A local path on an existing customization is read and hashed here, and a
 //     differing hash re-uploads. Local bytes are stable, so the operator sees
 //     the re-upload in terraform plan.
@@ -60,6 +60,19 @@ func (r *EnrollmentCustomizationResource) ModifyPlan(ctx context.Context, req re
 		return
 	}
 
+	source := plan.IconSource.ValueString()
+	localSource := !files.URLSource(source)
+
+	var hash string
+	if localSource {
+		hashed, err := files.HashLocalSource(ctx, source)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading enrollment customization icon source during plan", err.Error())
+			return
+		}
+		hash = hashed
+	}
+
 	if req.State.Raw.IsNull() {
 		return
 	}
@@ -70,47 +83,18 @@ func (r *EnrollmentCustomizationResource) ModifyPlan(ctx context.Context, req re
 		return
 	}
 
-	source := plan.IconSource.ValueString()
-
-	if files.URLSource(source) {
-		if source == state.IconSource.ValueString() {
+	if localSource {
+		if hash == state.IconSourceHash.ValueString() {
 			return
 		}
 		planIconUpload(ctx, resp)
 		return
 	}
 
-	hash, hashDiags := hashLocalIconSource(ctx, source)
-	resp.Diagnostics.Append(hashDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if hash == state.IconSourceHash.ValueString() {
+	if source == state.IconSource.ValueString() {
 		return
 	}
 	planIconUpload(ctx, resp)
-}
-
-// hashLocalIconSource reads a local icon file and returns the canonical hash of
-// its bytes. Only local paths reach it: a URL is read during apply, where the
-// bytes that are hashed are the bytes that are uploaded.
-func hashLocalIconSource(ctx context.Context, src string) (string, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	file, _, cleanup, err := files.OpenUploadSource(ctx, src, files.DefaultMaxBytes)
-	if err != nil {
-		diags.AddError("Error opening enrollment customization icon source during plan", err.Error())
-		return "", diags
-	}
-	defer cleanup()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		diags.AddError("Error reading enrollment customization icon source during plan", err.Error())
-		return "", diags
-	}
-
-	return files.ComputeContentSHA256(data), diags
 }
 
 // planIconUpload marks the two values an upload settles as unresolved, which is

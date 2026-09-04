@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
@@ -178,12 +179,20 @@ func TestAccResource_ProSelfServiceBrandingImage(t *testing.T) {
 				// url has no metadata GET to recover it, so neither round-trips
 				// and a full verify would assert nothing useful.
 				ImportStateVerify: false,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					// The imported hash comes from the downloaded bytes, and this
-					// store returns them as they were sent, so it must equal the
-					// hash of the file that was uploaded.
-					resource.TestCheckResourceAttr(imageResourceAddress, "source_hash", bannerHash),
-				),
+				// The imported hash comes from the downloaded bytes, and this
+				// store returns them as they were sent, so it must equal the
+				// hash of the file that was uploaded. An import step never reads
+				// Check or ConfigStateChecks, so the assertion has to be an
+				// ImportStateCheck to run at all.
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported state, got %d", len(states))
+					}
+					if got := states[0].Attributes["source_hash"]; got != bannerHash {
+						return fmt.Errorf("imported source_hash = %q, want the uploaded file's %q", got, bannerHash)
+					}
+					return nil
+				},
 			},
 		},
 	})

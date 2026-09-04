@@ -184,10 +184,12 @@ func (r *SelfServiceBrandingImageResource) Configure(ctx context.Context, req re
 // Where the hash comes from depends on the source, because the two differ in
 // whether two reads of the same source answer with the same bytes:
 //
-//   - A create leaves source_hash Unknown and reads nothing. Create computes
-//     the hash from the exact bytes it uploads, so a source that answers two
-//     reads differently can no longer plan one value and apply another
-//     (issue #373, reproduced on this resource on 2026-09-04).
+//   - A create leaves source_hash Unknown. Create computes the hash from the
+//     exact bytes it uploads, so a source that answers two reads differently
+//     can no longer plan one value and apply another (issue #373, reproduced on
+//     this resource on 2026-09-04). A local path is still opened and hashed
+//     here and the hash discarded, so an unreadable one fails at plan rather
+//     than part-way through an apply.
 //   - A local path on an existing image is read and hashed here, and a
 //     differing hash replaces the resource. Local bytes are stable, so the
 //     operator sees the replacement in terraform plan.
@@ -213,6 +215,19 @@ func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req r
 		return
 	}
 
+	source := plan.ImageFileSource.ValueString()
+	localSource := !files.URLSource(source)
+
+	var hash string
+	if localSource {
+		hashed, err := files.HashLocalSource(ctx, source)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading branding image source during plan", err.Error())
+			return
+		}
+		hash = hashed
+	}
+
 	if req.State.Raw.IsNull() {
 		return
 	}
@@ -223,25 +238,18 @@ func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req r
 		return
 	}
 
-	source := plan.ImageFileSource.ValueString()
-
-	if files.URLSource(source) {
-		if source == state.ImageFileSource.ValueString() {
+	if localSource {
+		if hash == state.SourceHash.ValueString() {
 			return
 		}
-		planImageReplacement(ctx, resp, &plan, path.Root("image_file_source"))
+		planImageReplacement(ctx, resp, &plan, path.Root("source_hash"))
 		return
 	}
 
-	hash, hashDiags := hashLocalImageSource(ctx, source)
-	resp.Diagnostics.Append(hashDiags...)
-	if resp.Diagnostics.HasError() {
+	if source == state.ImageFileSource.ValueString() {
 		return
 	}
-	if hash == state.SourceHash.ValueString() {
-		return
-	}
-	planImageReplacement(ctx, resp, &plan, path.Root("source_hash"))
+	planImageReplacement(ctx, resp, &plan, path.Root("image_file_source"))
 }
 
 // ImportState handles import by the Jamf Pro branding image ID.

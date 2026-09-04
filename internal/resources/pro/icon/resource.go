@@ -163,10 +163,11 @@ func (r *IconResource) Configure(ctx context.Context, req resource.ConfigureRequ
 // Where the hash comes from depends on the source, because the two differ in
 // whether two reads of the same source answer with the same bytes:
 //
-//   - A create leaves source_hash Unknown and reads nothing. Create computes
-//     the hash from the exact bytes it uploads, so a source that answers two
-//     reads differently can no longer plan one value and apply another
-//     (issue #373).
+//   - A create leaves source_hash Unknown. Create computes the hash from the
+//     exact bytes it uploads, so a source that answers two reads differently
+//     can no longer plan one value and apply another (issue #373). A local path
+//     is still opened and hashed here and the hash discarded, so an unreadable
+//     one fails at plan rather than part-way through an apply.
 //   - A local path on an existing icon is read and hashed here, and a differing
 //     hash replaces the resource. Local bytes are stable, so the operator sees
 //     the replacement in terraform plan.
@@ -193,6 +194,19 @@ func (r *IconResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		return
 	}
 
+	source := plan.IconFileSource.ValueString()
+	localSource := !files.URLSource(source)
+
+	var hash string
+	if localSource {
+		hashed, err := files.HashLocalSource(ctx, source)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading icon source during plan", err.Error())
+			return
+		}
+		hash = hashed
+	}
+
 	if req.State.Raw.IsNull() {
 		return
 	}
@@ -203,25 +217,18 @@ func (r *IconResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		return
 	}
 
-	source := plan.IconFileSource.ValueString()
-
-	if files.URLSource(source) {
-		if source == state.IconFileSource.ValueString() {
+	if localSource {
+		if hash == state.SourceHash.ValueString() {
 			return
 		}
-		planIconReplacement(ctx, resp, &plan, path.Root("icon_file_source"))
+		planIconReplacement(ctx, resp, &plan, path.Root("source_hash"))
 		return
 	}
 
-	hash, hashDiags := hashLocalIconSource(ctx, source)
-	resp.Diagnostics.Append(hashDiags...)
-	if resp.Diagnostics.HasError() {
+	if source == state.IconFileSource.ValueString() {
 		return
 	}
-	if hash == state.SourceHash.ValueString() {
-		return
-	}
-	planIconReplacement(ctx, resp, &plan, path.Root("source_hash"))
+	planIconReplacement(ctx, resp, &plan, path.Root("icon_file_source"))
 }
 
 // ImportState handles import by the Jamf Pro icon ID.

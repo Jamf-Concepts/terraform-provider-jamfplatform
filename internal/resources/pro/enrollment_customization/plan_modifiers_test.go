@@ -169,6 +169,22 @@ func TestModifyPlanCreateFromLocalPathLeavesIconSourceHashUnknown(t *testing.T) 
 	}
 }
 
+// TestModifyPlanCreateFromMissingLocalIconErrors pins that the create still
+// probes the source. The hash it computes is discarded, but opening the file is
+// what turns a typo in a path into a plan-time failure rather than one part-way
+// through an apply.
+func TestModifyPlanCreateFromMissingLocalIconErrors(t *testing.T) {
+	planModel := iconPlanTestModel("", filepath.Join(t.TempDir(), "typo.png"), "", "")
+	planModel.ID = types.StringUnknown()
+	planModel.IconSourceHash = types.StringUnknown()
+	planModel.BrandingSettings.IconURL = types.StringUnknown()
+
+	resp := runIconModifyPlan(t, nil, &planModel)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a create from a missing local icon file planned without a diagnostic")
+	}
+}
+
 // TestModifyPlanLocalIconUnchangedPlansNoUpload covers a local path whose bytes
 // still hash to what state holds. Both computed values must stay known, or
 // Update re-uploads on every apply that touches anything else.

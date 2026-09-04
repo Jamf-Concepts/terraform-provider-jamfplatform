@@ -25,9 +25,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -466,10 +468,11 @@ func TestAccResource_Icon_URL_SwitchToLocalDifferentBytes_TriggersReplace(t *tes
 // replacement, because ModifyPlan hashes the local file and finds what import
 // stored: both derive from the SAME server-served bytes.
 //
-// The hash comparison across the two steps is what pins that. Import commits
-// the hash and the apply must leave it alone, so a change to it here means
-// either the compare stopped matching (and the step became a replacement) or
-// something wrote a second hash over the imported one.
+// Both steps assert source_hash against the hash of the downloaded
+// server-served bytes, which the test computes itself. That pins the hash to a
+// concrete value rather than only to the two steps agreeing with each other, so
+// an Update that recomputed and overwrote the imported hash fails here even
+// though the plan is still an in-place update.
 //
 // Why this matters: Jamf Pro re-encodes uploaded PNGs server-side
 // (different zlib compression and/or metadata). The bytes served back
@@ -501,7 +504,11 @@ func TestAccResource_Icon_Import_NoReplace_AfterMatchingLocalConfig(t *testing.T
 	// local file we point at in step 2 has the exact bytes Jamf stored.
 	serverBytesPath := downloadToTempFile(t, uploadResp.URL)
 
-	hashCompare := statecheck.CompareValue(compare.ValuesSame())
+	serverBytes, err := os.ReadFile(serverBytesPath) //nolint:gosec // test tempfile
+	if err != nil {
+		t.Fatalf("reading the downloaded icon %q: %v", serverBytesPath, err)
+	}
+	serverBytesHash := files.ComputeContentSHA256(serverBytes)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -519,12 +526,22 @@ func TestAccResource_Icon_Import_NoReplace_AfterMatchingLocalConfig(t *testing.T
 				ImportStateId:      preCreatedID,
 				ImportStatePersist: true,
 				ImportStateVerify:  false,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(iconResourceAddress, "id", preCreatedID),
-					resource.TestMatchResourceAttr(iconResourceAddress, "source_hash", sourceHashRegex),
-				),
-				ConfigStateChecks: []statecheck.StateCheck{
-					hashCompare.AddStateValue(iconResourceAddress, tfjsonpath.New("source_hash")),
+				// An import step never reads Check or ConfigStateChecks, so what
+				// import committed is asserted through ImportStateCheck. The hash
+				// is pinned to the downloaded server-served bytes rather than only
+				// to the canonical format, since the test has those bytes.
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported state, got %d", len(states))
+					}
+					s := states[0]
+					if s.Attributes["id"] != preCreatedID {
+						return fmt.Errorf("imported id = %q, want %q", s.Attributes["id"], preCreatedID)
+					}
+					if got := s.Attributes["source_hash"]; got != serverBytesHash {
+						return fmt.Errorf("imported source_hash = %q, want the server-served bytes' %q", got, serverBytesHash)
+					}
+					return nil
 				},
 			},
 			// Step 2: apply config with icon_file_source pointing at the
@@ -542,10 +559,8 @@ func TestAccResource_Icon_Import_NoReplace_AfterMatchingLocalConfig(t *testing.T
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(iconResourceAddress, "id", preCreatedID),
+					resource.TestCheckResourceAttr(iconResourceAddress, "source_hash", serverBytesHash),
 				),
-				ConfigStateChecks: []statecheck.StateCheck{
-					hashCompare.AddStateValue(iconResourceAddress, tfjsonpath.New("source_hash")),
-				},
 			},
 		},
 	})
@@ -585,10 +600,24 @@ func TestAccResource_Icon_Import_Replace_WhenLocalIsOriginalUpload(t *testing.T)
 				ImportStateId:      preCreatedID,
 				ImportStatePersist: true,
 				ImportStateVerify:  false,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(iconResourceAddress, "id", preCreatedID),
-					resource.TestMatchResourceAttr(iconResourceAddress, "source_hash", sourceHashRegex),
-				),
+				// An import step never reads Check, so these run as an
+				// ImportStateCheck. The hash is matched against the canonical
+				// format only: this test deliberately never downloads the
+				// server-served bytes, because pointing at the original upload
+				// instead is the whole point of the replacement it asserts.
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported state, got %d", len(states))
+					}
+					s := states[0]
+					if s.Attributes["id"] != preCreatedID {
+						return fmt.Errorf("imported id = %q, want %q", s.Attributes["id"], preCreatedID)
+					}
+					if got := s.Attributes["source_hash"]; !sourceHashRegex.MatchString(got) {
+						return fmt.Errorf("imported source_hash = %q, want the canonical %s format", got, sourceHashRegex)
+					}
+					return nil
+				},
 			},
 			{
 				Config: localConfig(pathA),

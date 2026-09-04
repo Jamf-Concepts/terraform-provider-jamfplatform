@@ -164,6 +164,22 @@ func TestModifyPlanCreateFromLocalPathLeavesSourceHashUnknown(t *testing.T) {
 	}
 }
 
+// TestModifyPlanCreateFromMissingLocalPathErrors pins that the create still
+// probes the source. The hash it computes is discarded, but opening the file is
+// what turns a typo in a path into a plan-time failure rather than one part-way
+// through an apply.
+func TestModifyPlanCreateFromMissingLocalPathErrors(t *testing.T) {
+	planModel := iconTestModel("", filepath.Join(t.TempDir(), "typo.png"), "", "")
+	planModel.ID = types.StringUnknown()
+	planModel.SourceHash = types.StringUnknown()
+	planModel.URL = types.StringUnknown()
+
+	resp := runIconModifyPlan(t, nil, &planModel)
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a create from a missing local file planned without a diagnostic")
+	}
+}
+
 // TestModifyPlanLocalSourceUnchangedContentIsNoOp covers a local path whose
 // bytes still hash to what state holds.
 func TestModifyPlanLocalSourceUnchangedContentIsNoOp(t *testing.T) {

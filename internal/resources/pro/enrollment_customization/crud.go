@@ -297,8 +297,8 @@ func (r *EnrollmentCustomizationResource) Delete(ctx context.Context, req resour
 // image upload endpoint, and returns the resulting URL together with the
 // content hash so the caller can stamp it on the plan.
 //
-// The source is read once and the hash taken from that slice, then the file is
-// rewound and uploaded, so the hash describes exactly what was sent. The
+// The source is hashed by streaming it once, then rewound and uploaded, so the
+// hash describes exactly what was sent without the bytes being buffered. The
 // rewound *os.File stays an io.Seeker, which is what lets the SDK precompute
 // Content-Length and retry a 429; handing it a plain reader would forfeit both.
 func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (string, string, error) {
@@ -308,9 +308,9 @@ func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (
 	}
 	defer cleanup()
 
-	data, readErr := io.ReadAll(file)
-	if readErr != nil {
-		return "", "", readErr
+	hash, hashErr := files.HashStreamSHA256(file)
+	if hashErr != nil {
+		return "", "", hashErr
 	}
 	if _, seekErr := file.Seek(0, io.SeekStart); seekErr != nil {
 		return "", "", seekErr
@@ -323,7 +323,7 @@ func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (
 	if uploaded == nil {
 		return "", "", fmt.Errorf("upload returned a nil response")
 	}
-	return uploaded.URL, files.ComputeContentSHA256(data), nil
+	return uploaded.URL, hash, nil
 }
 
 // createAllPanels creates every pane on the supplied parent in plan order.
