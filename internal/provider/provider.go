@@ -210,7 +210,8 @@ func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.Metada
 func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: fmt.Sprintf(
-			"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
+			"> **⚠️ This provider is moving to the `jamf` namespace.** A future release will carry the address `jamf/jamfplatform` in place of `jamf-concepts/jamfplatform`. Terraform records that namespace in state, so the change breaks existing configurations. Change nothing today. When the release lands, run [`terraform state replace-provider jamf-concepts/jamfplatform jamf/jamfplatform`](https://developer.hashicorp.com/terraform/cli/commands/state/replace-provider), point `source` at `jamf/jamfplatform` in the `required_providers` block, then run `terraform init -upgrade`. Repeat that for each workspace and state file holding `jamfplatform` resources. The state command asks for confirmation and writes a backup; add `-auto-approve` to run it unattended. OpenTofu works the same way, with `tofu` in place of `terraform`.\n\n"+
+				"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
 				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
 				"**📘 New here? Start with the getting-started guide:** [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/) on Jamf Concepts walks through installing Terraform, creating API credentials, configuring the provider, writing your first device groups, compliance benchmarks and blueprints, applying a configuration, and bringing an existing tenant under management.\n\n"+
 				"> **⚠️ Upgrading from any pre-GA version — `v0.28.1` or earlier, or a `v0.29.0` release candidate?** The Jamf Platform API has reached general availability, and this release targets the GA gateway. Beta API integration credentials are revoked whichever pre-GA version you are coming from, so register a replacement integration in Jamf Account and replace `tenant_id` with `environment_id`. On `v0.28.1` or earlier, set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade; a release candidate already points there. Earlier versions reach only the retired beta host, and several constructs were removed along with the endpoints they called. See [Upgrading to the Platform API GA](guides/platform-api-ga).\n\n"+
@@ -328,6 +329,8 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 }
 
 func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	resp.Diagnostics.AddWarning(namespaceMigrationSummary, namespaceMigrationDetail)
+
 	var data JamfPlatformProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)

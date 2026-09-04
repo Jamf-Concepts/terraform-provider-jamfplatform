@@ -1,5 +1,7 @@
 # terraform-provider-jamfplatform
 
+> **⚠️ This provider is moving to the `jamf` namespace.** A future release will carry the address `jamf/jamfplatform` in place of `jamf-concepts/jamfplatform`. Terraform records that namespace in state, so the change breaks existing configurations. Change nothing today. When the release lands, run [`terraform state replace-provider jamf-concepts/jamfplatform jamf/jamfplatform`](https://developer.hashicorp.com/terraform/cli/commands/state/replace-provider), point `source` at `jamf/jamfplatform` in the `required_providers` block, then run `terraform init -upgrade`. Repeat that for each workspace and state file holding `jamfplatform` resources. The state command asks for confirmation and writes a backup; add `-auto-approve` to run it unattended. OpenTofu works the same way, with `tofu` in place of `terraform`.
+
 > **📘 Start here — [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/)**
 >
 > The official getting-started guide on Jamf Concepts. Covers installing Terraform, creating API credentials, configuring the provider, writing your first device groups / compliance benchmarks / blueprints, applying a configuration, and bringing an existing tenant under management. New to this provider or to Terraform? Read that first.
