@@ -17,7 +17,7 @@ import (
 var resourceSDKMethods = []string{
 	"CreateDeviceGroupV1",
 	"GetDeviceGroupV1",
-	"UpdateDeviceGroupV1",
+	"UpdateDeviceGroupV2",
 	"DeleteDeviceGroupV1",
 }
 

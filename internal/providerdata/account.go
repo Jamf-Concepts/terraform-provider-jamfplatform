@@ -53,7 +53,7 @@ func ConfigureAccount(_ context.Context, providerData any, resourceType string) 
 		)
 		return nil, diags
 	}
-	if scopeDiags := pd.RequireScope(resourceType, ScopeOrganization); scopeDiags.HasError() {
+	if scopeDiags := pd.RequireScope(resourceType, AccountScopes...); scopeDiags.HasError() {
 		diags.Append(scopeDiags...)
 		return nil, diags
 	}

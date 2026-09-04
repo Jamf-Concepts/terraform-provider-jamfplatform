@@ -52,7 +52,7 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_benchmark", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_benchmark", providerdata.ComplianceBenchmarksScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

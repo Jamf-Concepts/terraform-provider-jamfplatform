@@ -198,14 +198,17 @@ covering erase, unmanage and remove MDM profile.
 **Three scope levels are available.**
 
 A *platform environment* is a group of tenants across product types. Prefer it, for two concrete
-reasons: one environment-scoped integration covers the whole group, and it is the only scope on
-which the blueprint and compliance-benchmark permissions can be selected.
+reasons: one environment-scoped integration covers the whole group, and it is the only scope the
+Platform services are published at. The Platform API GA deleted the tenant header from six of their
+specifications outright, so environment scope is where that surface is going, one service at a
+time.
 
 A *tenant* scope targets a single Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud
 tenant. It is the legacy method of targeting an integration without a platform
 environment. It costs one integration per tenant per product: a Jamf Pro tenant and a Jamf Protect
 tenant are two integrations to create and two credential pairs to rotate. Treat it as the
-exception, for a deliberately single-product integration.
+exception, for a deliberately single-product integration, and note that it no longer reaches every
+construct — see the list below.
 
 An *organization management* scope reaches organization-level resources, the
 `jamfplatform_account_*` family, and is the only scope that reaches them. Configure it by setting
@@ -267,16 +270,21 @@ Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
 `JAMFPLATFORM_TENANT_ID`. They are mutually exclusive and both optional. An integration targets one
 or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
 integrations without a platform environment. A tenant-scoped GA integration remains valid for
-single-product access, and `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under
-either scope. Three sets of constructs are out of its reach, each for a different reason:
+single-product access: `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under either
+scope, and so do the Platform inventory constructs — `jamfplatform_device`,
+`jamfplatform_devices`, `jamfplatform_device_group`, `jamfplatform_device_groups` and the
+`jamfplatform_device_*` actions. Three sets of constructs are out of its reach, each for a
+different reason:
 
 - **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
   construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
-- **Blueprints and compliance benchmarks** are refused by Jamf Account. Their permissions cannot
-  be selected when a tenant-scoped integration is created, so such an integration can never hold
-  them and the calls fail with `403 BAD_PERMISSIONS`. The provider
-  cannot pre-empt this: a permission absent from the integration is indistinguishable from any
-  other privilege gap. Choose environment scope if the configuration manages either.
+- **Blueprints and compliance benchmarks** are refused by the provider, at configure time, with the
+  same diagnostic. Their specifications deleted the tenant header at the GA, and their permissions
+  cannot be selected when a tenant-scoped integration is created either, so such an integration
+  could never hold them. This used to surface as `403 BAD_PERMISSIONS` mid-apply, which the
+  provider could not attribute — a permission absent from the integration is indistinguishable from
+  any other privilege gap — and is now named at configure time instead. Choose environment scope if
+  the configuration manages either.
 - **Jamf Account** requires a third scope, *organization management*, which neither of these
   attributes selects. `jamfplatform_account_*` is the only family that scope reaches, and it is the
   only scope that reaches the family. The provider refuses each direction at configure time with a
@@ -284,6 +292,15 @@ either scope. Three sets of constructs are out of its reach, each for a differen
   `tenant_id` and exporting neither variable: the gateway resolves the organization from the access
   token, so no identifier is supplied. An organization-scoped integration therefore belongs in its
   own provider block, aliased, or its own workspace.
+
+Each construct's documentation page names the scope its endpoints are published at, in the same
+block as its permission table, taken from the API specifications the provider is generated against.
+That is not always the same set as the provider enforces: where the gateway still serves a header a
+specification has withdrawn, as it does for the Platform inventory constructs listed above, the
+documentation page reports the specification and the provider goes on accepting the wider set. A
+page naming environment scope is therefore not evidence that a working tenant-scoped integration
+needs replacing — the configure-time diagnostic is what states the scopes a given provider release
+accepts, and it is raised only when the configured scope is refused.
 
 Three failure modes follow from the change, easiest to diagnose first:
 
@@ -584,6 +601,6 @@ environment scope, described under [Scope](#scope). Further detail:
 | `no schema available for <type>.<name> while reading state; this is a bug in Terraform and should be reported` | Not a Terraform defect. A removed resource remains in state; remove it with `terraform state rm`. Every operation in the workspace fails until it is removed. |
 | `404 page not found`, with no JSON body | `base_url` includes a path. Supply the host only. |
 | `403 OWNERSHIP_FORBIDDEN` | `environment_id` supplied for a tenant-scoped integration, or the reverse. |
-| `403 BAD_PERMISSIONS` | The integration lacks a permission the construct requires; the resource's documentation page lists them. On a blueprint or compliance benchmark, also the signature of a tenant-scoped integration: those permissions are selectable only on an environment-scoped one. |
+| `403 BAD_PERMISSIONS` | The integration lacks a permission the construct requires; the resource's documentation page lists them, alongside the scope it needs. Blueprints and compliance benchmarks under a tenant-scoped integration used to land here; they are now refused at configure time instead. |
 | `403 NOT_ENTITLED` on a Security Cloud construct | The tenant does not hold that Security Cloud capability. Additional permissions will not resolve it. |
 | Authentication fails outright | Beta credentials in use. Register a replacement integration in Jamf Account. |

@@ -92,6 +92,9 @@ terraform.rc
 # -----------------------------------------------------------------------------
 local-testing/
 
+# Compiled wire-probe binaries built at the repo root during development
+/probe-*
+
 # -----------------------------------------------------------------------------
 # Environment and Configuration
 # -----------------------------------------------------------------------------
