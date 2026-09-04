@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/iotest"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -301,4 +302,49 @@ func itoa(i int) string {
 		digits = append([]byte{'-'}, digits...)
 	}
 	return string(digits)
+}
+
+func TestHashStreamSHA256MatchesComputeContentSHA256(t *testing.T) {
+	content := []byte("icon bytes that also fit in memory")
+
+	got, err := HashStreamSHA256(bytes.NewReader(content))
+	if err != nil {
+		t.Fatalf("HashStreamSHA256: %v", err)
+	}
+	if want := ComputeContentSHA256(content); got != want {
+		t.Fatalf("HashStreamSHA256 = %q, want %q; the streaming and buffering hashes must agree", got, want)
+	}
+	if !strings.HasPrefix(got, ContentSHA256Prefix) {
+		t.Fatalf("HashStreamSHA256 = %q, want the %q prefix", got, ContentSHA256Prefix)
+	}
+}
+
+func TestHashStreamSHA256ReadError(t *testing.T) {
+	if _, err := HashStreamSHA256(iotest.ErrReader(errors.New("boom"))); err == nil {
+		t.Fatal("HashStreamSHA256 returned no error for a reader that fails")
+	}
+}
+
+func TestHashLocalSource(t *testing.T) {
+	content := []byte("local icon bytes")
+	p := filepath.Join(t.TempDir(), "icon.png")
+	if err := os.WriteFile(p, content, 0o600); err != nil {
+		t.Fatalf("writing %s: %v", p, err)
+	}
+
+	got, err := HashLocalSource(context.Background(), p)
+	if err != nil {
+		t.Fatalf("HashLocalSource: %v", err)
+	}
+	if want := ComputeContentSHA256(content); got != want {
+		t.Fatalf("HashLocalSource = %q, want %q", got, want)
+	}
+}
+
+func TestHashLocalSourceMissingFile(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "absent.png")
+
+	if _, err := HashLocalSource(context.Background(), missing); err == nil {
+		t.Fatal("HashLocalSource returned no error for a path that does not exist")
+	}
 }

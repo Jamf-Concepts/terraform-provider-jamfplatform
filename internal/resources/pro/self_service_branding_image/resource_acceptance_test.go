@@ -10,14 +10,23 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"sync/atomic"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -53,6 +62,17 @@ func writePNG(t *testing.T, dir, name string, w, h int, tint uint8) string {
 	return p
 }
 
+// pngBytes returns the bytes of a generated fixture, for asserting a hash the
+// provider should have arrived at independently.
+func pngBytes(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path) //nolint:gosec // test fixture written by this test
+	if err != nil {
+		t.Fatalf("reading PNG fixture %q: %v", path, err)
+	}
+	return b
+}
+
 func imageConfig(path string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_self_service_branding_image" "test" {
@@ -61,15 +81,53 @@ resource "jamfplatform_pro_self_service_branding_image" "test" {
 `, path)
 }
 
+// unstableImageServer answers every request for one path with a different PNG,
+// the way a CDN can answer a fixed URL. The returned counter records how many
+// times the provider fetched it, so a test can prove the provider read the
+// source once rather than once per plan.
+//
+// The provider runs in this process, so a loopback server is reachable from it.
+func unstableImageServer(t *testing.T) (string, *atomic.Int64) {
+	t.Helper()
+	dir := t.TempDir()
+	images := [][]byte{
+		pngBytes(t, writePNG(t, dir, "a.png", 180, 180, 10)),
+		pngBytes(t, writePNG(t, dir, "b.png", 180, 180, 200)),
+	}
+
+	var hits atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := hits.Add(1)
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(images[int(n-1)%len(images)])
+	}))
+	t.Cleanup(server.Close)
+
+	return server.URL + "/branding.png", &hits
+}
+
 // TestAccResource_ProSelfServiceBrandingImage covers create (upload + id
-// derivation), a content-change replacement, and import. The import step uses
-// ImportStateVerify=false (like jamfplatform_pro_icon): image_file_source, url,
-// and source_hash do not round-trip byte-identically on import, so a full
-// verify is not meaningful — see the import step comment.
+// derivation), a content-change replacement, and import.
+//
+// Every create and replacement plan must leave source_hash unknown: it is
+// resolved in Create from the bytes uploaded, so that a source whose two reads
+// differ cannot plan one value and apply another (issue #373).
+//
+// The import step keeps ImportStateVerify=false, but for a narrower reason than
+// it used to claim. image_file_source is not server-derivable and url has no
+// metadata GET behind it, so neither round-trips. source_hash does: this store
+// returns an image byte for byte as it was sent, wire-verified 2026-09-04, so
+// the imported hash is asserted against the local file's own hash rather than
+// only matched against the format.
 func TestAccResource_ProSelfServiceBrandingImage(t *testing.T) {
 	dir := t.TempDir()
 	icon := writePNG(t, dir, "icon.png", 180, 180, 128)
 	banner := writePNG(t, dir, "banner.png", 1500, 235, 64)
+
+	iconHash := files.ComputeContentSHA256(pngBytes(t, icon))
+	bannerHash := files.ComputeContentSHA256(pngBytes(t, banner))
+
+	idCompare := statecheck.CompareValue(compare.ValuesDiffer())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testhelpers.AccPreCheck(t) },
@@ -77,8 +135,13 @@ func TestAccResource_ProSelfServiceBrandingImage(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: imageConfig(icon),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectUnknownValue(imageResourceAddress, tfjsonpath.New("source_hash")),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestMatchResourceAttr(imageResourceAddress, "source_hash", imageSourceHashRegex),
+					resource.TestCheckResourceAttr(imageResourceAddress, "source_hash", iconHash),
 					resource.TestMatchResourceAttr(imageResourceAddress, "url", regexp.MustCompile(`/branding-images/download/\d+$`)),
 					resource.TestCheckResourceAttrWith(imageResourceAddress, "id", func(v string) error {
 						if _, err := strconv.Atoi(v); err != nil {
@@ -87,25 +150,95 @@ func TestAccResource_ProSelfServiceBrandingImage(t *testing.T) {
 						return nil
 					}),
 				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					idCompare.AddStateValue(imageResourceAddress, tfjsonpath.New("id")),
+				},
 			},
 			{
-				// Switching to a different image replaces the resource (new id).
+				// Switching to a different image replaces the resource, because
+				// the id is derived from the upload URL and there is no update
+				// endpoint. The new id proves the replacement happened.
 				Config: imageConfig(banner),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(imageResourceAddress, plancheck.ResourceActionDestroyBeforeCreate),
+						plancheck.ExpectUnknownValue(imageResourceAddress, tfjsonpath.New("source_hash")),
+					},
+				},
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestMatchResourceAttr(imageResourceAddress, "source_hash", imageSourceHashRegex),
+					resource.TestCheckResourceAttr(imageResourceAddress, "source_hash", bannerHash),
 				),
+				ConfigStateChecks: []statecheck.StateCheck{
+					idCompare.AddStateValue(imageResourceAddress, tfjsonpath.New("id")),
+				},
 			},
 			{
 				ResourceName: imageResourceAddress,
 				ImportState:  true,
-				// ImportStateVerify=false (mirrors jamfplatform_pro_icon): on
-				// import image_file_source is null (not server-derivable),
-				// source_hash is recomputed from the downloaded bytes (Jamf may
-				// re-encode), and url is the upload-time tenant jamfcloud URL
-				// with no metadata GET to recover it. None round-trip
-				// byte-identically, so a full verify is not meaningful.
+				// image_file_source is null on import (not server-derivable) and
+				// url has no metadata GET to recover it, so neither round-trips
+				// and a full verify would assert nothing useful.
 				ImportStateVerify: false,
+				// The imported hash comes from the downloaded bytes, and this
+				// store returns them as they were sent, so it must equal the
+				// hash of the file that was uploaded. An import step never reads
+				// Check or ConfigStateChecks, so the assertion has to be an
+				// ImportStateCheck to run at all.
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported state, got %d", len(states))
+					}
+					if got := states[0].Attributes["source_hash"]; got != bannerHash {
+						return fmt.Errorf("imported source_hash = %q, want the uploaded file's %q", got, bannerHash)
+					}
+					return nil
+				},
 			},
 		},
 	})
+}
+
+// TestAccResource_ProSelfServiceBrandingImage_UnstableURL is the acceptance
+// cover for issue #373 on this resource, reproduced against a live tenant on
+// 2026-09-04.
+//
+// The condition is a URL whose bytes differ between two requests, which no
+// public URL can be relied on to do on demand, so the test serves it. The apply
+// has to succeed on the first run, the re-apply has to plan nothing, and the
+// provider has to have read the URL exactly once across both: before the fix it
+// read it on every plan, so the count is the assertion that would still catch a
+// plan-time fetch reintroduced somewhere the hash comparison no longer visits.
+func TestAccResource_ProSelfServiceBrandingImage_UnstableURL(t *testing.T) {
+	url, hits := unstableImageServer(t)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testhelpers.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: imageConfig(url),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectUnknownValue(imageResourceAddress, tfjsonpath.New("source_hash")),
+					},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(imageResourceAddress, "id"),
+					resource.TestMatchResourceAttr(imageResourceAddress, "source_hash", imageSourceHashRegex),
+				),
+			},
+			{
+				Config: imageConfig(url),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+
+	if got := hits.Load(); got != 1 {
+		t.Fatalf("the provider fetched the image URL %d times, want 1: only the upload in Create may read it, or an unstable source plans one hash and applies another", got)
+	}
 }

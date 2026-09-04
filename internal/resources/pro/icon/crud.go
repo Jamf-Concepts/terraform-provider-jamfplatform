@@ -13,6 +13,7 @@ package icon
 import (
 	"bytes"
 	"context"
+	"io"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -24,9 +25,16 @@ import (
 )
 
 // Create uploads an icon to Jamf Pro and stores the resulting ID and URL in
-// state. source_hash is already set on the plan by ModifyPlan, so Create
-// does not need to read bytes a second time — it just opens the source and
-// streams it to UploadIconV1.
+// state, along with the hash of the bytes it uploaded.
+//
+// The source is hashed by streaming it once and then rewound for the upload, so
+// source_hash always describes what was actually sent without the bytes being
+// buffered. The rewound *os.File stays an io.Seeker, which is what lets the SDK
+// precompute Content-Length and retry a 429; handing it a plain reader would
+// forfeit both. Computing the hash at plan time instead meant reading the source
+// twice, and a source that answers two reads with different bytes — Apple's
+// iTunes artwork CDN does — then planned one hash and applied another, which
+// Terraform rejects as an inconsistent plan (issue #373).
 func (r *IconResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan IconResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -49,6 +57,16 @@ func (r *IconResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 	defer cleanup()
 
+	hash, err := files.HashStreamSHA256(file)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading icon source", err.Error())
+		return
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		resp.Diagnostics.AddError("Error rewinding icon source", err.Error())
+		return
+	}
+
 	iconResp, err := r.client.UploadIconV1(createCtx, filename, file)
 	if err != nil {
 		resp.Diagnostics.AddError("Error uploading Jamf Pro icon", err.Error())
@@ -56,7 +74,7 @@ func (r *IconResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	assignIconResourceModel(&plan, iconResp)
-	// plan.SourceHash was set by ModifyPlan — do not overwrite.
+	plan.SourceHash = types.StringValue(hash)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, iconIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -76,12 +94,15 @@ func (r *IconResource) Create(ctx context.Context, req resource.CreateRequest, r
 //     Plugin Framework's import flow can populate req.State with the ID
 //     before calling Read, leaving Raw non-null but other attributes null.
 //
-// After loading, GetIconV1 refreshes the URL. We then ensure source_hash is
-// populated: if state lacks one (post-import, post-corruption, or any case
-// where Create's plan-time hash didn't make it into persisted state), we
-// download the icon bytes and compute the canonical "sha256:<hex>" value.
-// This makes the resource self-healing across import flows that strip
-// Computed attrs from the persisted state.
+// After loading, GetIconV1 refreshes the URL. State missing a source_hash then
+// has one computed from the icon's own bytes, downloaded from the tenant. That
+// covers the first Read after an import, which arrives with an ID and nothing
+// else, and recovery from a state file that lost the value. An ordinary refresh
+// already holds the hash and downloads nothing.
+//
+// icon_file_source cannot be recovered this way — a path or URL is not
+// something a refresh can infer — so whatever state held stays, which is null
+// after an import and a user's source on every refresh after that.
 func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state IconResourceModel
 
@@ -92,7 +113,6 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		}
 	}
 
-	// If state didn't supply an ID, fall back to identity (import path).
 	if state.ID.IsNull() || state.ID.IsUnknown() || state.ID.ValueString() == "" {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError(
@@ -143,10 +163,6 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	assignIconResourceModel(&state, iconResp)
 
-	// Populate source_hash when missing. This fires on:
-	//   - First Read after import (state has id but no source_hash).
-	//   - Recovery from state corruption (source_hash got cleared somehow).
-	// On normal refresh the hash is already set and we skip the download.
 	if state.SourceHash.IsNull() || state.SourceHash.IsUnknown() || state.SourceHash.ValueString() == "" {
 		data, dlErr := downloadIconBytes(readCtx, r.client, state.ID.ValueString(), iconResp.URL)
 		if dlErr != nil {
@@ -162,9 +178,6 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 				"source_hash": state.SourceHash.ValueString(),
 			})
 		}
-		// icon_file_source is not server-derived; it cannot be inferred
-		// from a refresh. Leave whatever state had (typically null on
-		// import; a user path on subsequent refreshes).
 	}
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, iconIdentityModel{ID: state.ID})...)
@@ -174,11 +187,11 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update is a refresh-only no-op. Every "content change" routes through
-// replacement via ModifyPlan's RequiresReplace, because Jamf Pro has no
-// icon update endpoint. Update only runs for in-place config diffs that do
-// NOT change source_hash — for example, after import when the user assigns
-// icon_file_source to a local path whose bytes match the imported hash.
+// Update refreshes state without touching the icon. Jamf Pro has no icon update
+// endpoint, so a new image only ever arrives by replacement, and Update is left
+// with the diffs that leave the image alone: re-pointing icon_file_source at
+// byte-identical content, and the first apply after an import, which gives state
+// a source for the first time.
 func (r *IconResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan IconResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)

@@ -6,11 +6,23 @@
 // Self Service branding image upload API. Uploaded images are referenced by ID
 // from jamfplatform_pro_self_service_branding_macos (icon_id /
 // banner_image_id) and jamfplatform_pro_self_service_branding_ios (icon_id).
+//
+// Two things about this store were probed on 2026-09-04 against Jamf Pro in EU,
+// and both differ from what the general icon store does, so do not carry either
+// answer across:
+//
+//   - It is append-only rather than one-per-tenant. Three uploads in a row
+//     answered 201 with ids 1, 2 and 3, including two of byte-identical
+//     content, so there is no conflict to translate on a second create.
+//   - It stores an image verbatim. A 512x512 PNG uploaded and downloaded again
+//     hashed identically, where the same image through UploadIconV1 came back
+//     re-encoded at 83 times the size. The import workflow in the schema
+//     description rests on that: an operator can point image_file_source at
+//     their own copy, which is the opposite of the icon resource's advice.
 package self_service_branding_image
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -89,12 +101,13 @@ The Self Service branding image store is **separate** from the general Jamf Pro 
 
 ### Change detection
 
-The provider opens ` + "`image_file_source`" + ` during every plan, computes a SHA-256 of the bytes, and stores it as ` + "`source_hash`" + `. A changed hash replaces the resource, because Jamf Pro cannot update a branding image in place. An unchanged hash leaves the resource stable.
+Jamf Pro has no branding-image update endpoint, so changing the image replaces the resource. ` + "`source_hash`" + ` holds a SHA-256 of the uploaded bytes. The provider computes it during apply from the exact bytes it sends, so any plan that creates or replaces an image shows ` + "`source_hash = (known after apply)`" + `.
 
-### Source types
+` + "`image_file_source`" + ` accepts a local filesystem path or an ` + "`http(s)://`" + ` URL, and the provider detects a change differently for each.
 
-- A local path (` + "`image_file_source = \"./banner.png\"`" + `): read on every plan, and stable unless the file content changes.
-- A URL (` + "`image_file_source = \"https://cdn.example.com/banner.png\"`" + `): downloaded on every plan, and replaced when the remote content changes.
+The provider reads and hashes a local path on every plan. Edit the file and the next plan shows the replacement.
+
+For a URL it waits until apply, and compares the URL string at plan time instead. Re-point the URL and the next plan replaces the image. It cannot hash a URL during a plan, because remote content is not stable between reads. A CDN can answer one URL with different bytes from one request to the next, so a plan-time hash proposes replacements nobody asked for and fails applies. The cost is that the provider will not see a new file published behind an unchanged URL; to track a vendor's artwork, download it and point ` + "`image_file_source`" + ` at the committed copy.
 
 ### Dimensions
 
@@ -106,7 +119,9 @@ Jamf Pro cannot delete a branding image. ` + "`terraform destroy`" + ` and repla
 
 ### Import
 
-` + "`terraform import jamfplatform_pro_self_service_branding_image.example 81`" + `. The provider downloads the image bytes from Jamf Pro and stores their SHA-256. Jamf Pro may re-encode an uploaded image, so point ` + "`image_file_source`" + ` at the downloaded copy rather than your original upload; otherwise the next plan shows a replacement that changes nothing.` + resourcePrivileges,
+` + "`terraform import jamfplatform_pro_self_service_branding_image.example 81`" + `. The provider downloads the image bytes from Jamf Pro and stores their SHA-256.
+
+Point ` + "`image_file_source`" + ` at the file you uploaded. This store hands an image back exactly as you sent it, so the hash import records matches your own copy and the first plan after import is an in-place update. The general icon store (` + "`jamfplatform_pro_icon`" + `) re-encodes a PNG, which is why its import workflow tells you to download the stored copy instead; that advice does not apply here.` + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro Self Service branding image ID, derived from the upload URL. Changes when the resource is replaced.",
@@ -116,14 +131,14 @@ Jamf Pro cannot delete a branding image. ` + "`terraform destroy`" + ` and repla
 				},
 			},
 			"image_file_source": schema.StringAttribute{
-				MarkdownDescription: "Local filesystem path or `http(s)://` URL to the image. Read by the provider during every plan to compute `source_hash`. Required.",
+				MarkdownDescription: "Local filesystem path or `http(s)://` URL to the image. The provider reads a local path on every plan and again on apply. It reads a URL on apply only, so a plan compares the URL string rather than the bytes it serves.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"source_hash": schema.StringAttribute{
-				MarkdownDescription: "Provider-computed SHA-256 of the image bytes, prefixed `sha256:`. Replacement is triggered when this value changes.",
+				MarkdownDescription: "SHA-256 of the uploaded image bytes, prefixed `sha256:`. The provider computes it during apply from the bytes it sends, so it reads `(known after apply)` on any plan that creates or replaces the image.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -156,10 +171,35 @@ func (r *SelfServiceBrandingImageResource) Configure(ctx context.Context, req re
 	r.client = client
 }
 
-// ModifyPlan implements provider-driven change detection: it opens
-// image_file_source, computes a SHA-256, sets source_hash on Create plans, and
-// triggers RequiresReplace when the hash differs from state (Jamf Pro has no
-// branding-image update endpoint). The destroy path returns early.
+// ModifyPlan decides whether a configuration change replaces the image, and
+// leaves source_hash unresolved on every plan that creates one.
+//
+// Jamf Pro exposes an upload and a download for this store and nothing else, so
+// the only way to change an image is to replace the resource, and the id is
+// derived from the upload URL so a replacement mints a new one. source_hash
+// carries that decision because image_file_source cannot: a path can be
+// re-pointed at byte-identical content, and content can change underneath an
+// unchanged path.
+//
+// Where the hash comes from depends on the source, because the two differ in
+// whether two reads of the same source answer with the same bytes:
+//
+//   - A create leaves source_hash Unknown. Create computes the hash from the
+//     exact bytes it uploads, so a source that answers two reads differently
+//     can no longer plan one value and apply another (issue #373, reproduced on
+//     this resource on 2026-09-04). A local path is still opened and hashed
+//     here and the hash discarded, so an unreadable one fails at plan rather
+//     than part-way through an apply.
+//   - A local path on an existing image is read and hashed here, and a
+//     differing hash replaces the resource. Local bytes are stable, so the
+//     operator sees the replacement in terraform plan.
+//   - An http(s):// URL on an existing image is not fetched here. Remote
+//     content is not stable between reads, so hashing it would propose a
+//     replacement on plans where nothing had changed. The URL string is
+//     compared instead, which does not detect content published behind an
+//     unchanged URL.
+//
+// The destroy path returns before touching the source; a destroy needs no bytes.
 func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return
@@ -175,24 +215,20 @@ func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req r
 		return
 	}
 
-	file, _, cleanup, openErr := files.OpenUploadSource(ctx, plan.ImageFileSource.ValueString(), files.DefaultMaxBytes)
-	if openErr != nil {
-		resp.Diagnostics.AddError("Error opening branding image source during plan", openErr.Error())
-		return
-	}
-	defer cleanup()
+	source := plan.ImageFileSource.ValueString()
+	localSource := !files.URLSource(source)
 
-	data, readErr := io.ReadAll(file)
-	if readErr != nil {
-		resp.Diagnostics.AddError("Error reading branding image source during plan", readErr.Error())
-		return
+	var hash string
+	if localSource {
+		hashed, err := files.HashLocalSource(ctx, source)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading branding image source during plan", err.Error())
+			return
+		}
+		hash = hashed
 	}
-	newHash := files.ComputeContentSHA256(data)
 
-	// Create case — set computed source_hash on the plan.
 	if req.State.Raw.IsNull() {
-		plan.SourceHash = types.StringValue(newHash)
-		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 		return
 	}
 
@@ -202,18 +238,18 @@ func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req r
 		return
 	}
 
-	if state.SourceHash.ValueString() == newHash {
-		// Hashes match — UseStateForUnknown carried state forward. Do nothing.
+	if localSource {
+		if hash == state.SourceHash.ValueString() {
+			return
+		}
+		planImageReplacement(ctx, resp, &plan, path.Root("source_hash"))
 		return
 	}
 
-	// Hashes differ — request replacement. Mark computed attrs Unknown so the
-	// framework re-derives them on apply.
-	plan.SourceHash = types.StringValue(newHash)
-	plan.ID = types.StringUnknown()
-	plan.URL = types.StringUnknown()
-	resp.RequiresReplace = append(resp.RequiresReplace, path.Root("source_hash"))
-	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+	if source == state.ImageFileSource.ValueString() {
+		return
+	}
+	planImageReplacement(ctx, resp, &plan, path.Root("image_file_source"))
 }
 
 // ImportState handles import by the Jamf Pro branding image ID.

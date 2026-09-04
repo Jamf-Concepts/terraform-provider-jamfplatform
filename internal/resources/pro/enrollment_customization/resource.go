@@ -82,7 +82,8 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro enrollment customization: the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. " +
 			"At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. " +
-			"The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive." + resourcePrivileges,
+			"Supply the icon either as a source the provider uploads (`icon_source`) or as a URL you uploaded yourself (`branding_settings.icon_url`); the two are mutually exclusive. " +
+			"The provider hashes a local `icon_source` on every plan and re-uploads it when the bytes change. It reads an `http(s)://` one during apply and compares the URL string at plan time, so re-pointing the URL uploads the new image, and the provider will not see a file published behind an unchanged URL." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Enrollment customization ID assigned by Jamf Pro.",
@@ -114,7 +115,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"icon_source": schema.StringAttribute{
-				MarkdownDescription: "Local filesystem path (or `http(s)://` URL) of the icon image to upload to Jamf Pro. The provider opens this source during every plan, computes a SHA-256 of the bytes, and re-uploads when the hash changes. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.",
+				MarkdownDescription: "Local filesystem path or `http(s)://` URL of the icon image to upload to Jamf Pro. The provider reads a local path on every plan and re-uploads when the bytes change. It reads a URL during apply only, so a plan compares the URL string rather than the bytes it serves. Mutually exclusive with `branding_settings.icon_url`; supply one or the other. When neither is set the customization is created without an icon.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -122,7 +123,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"icon_source_hash": schema.StringAttribute{
-				MarkdownDescription: "Provider-computed SHA-256 of the most recently uploaded icon bytes, prefixed `sha256:`. Used to detect changes to `icon_source` between plans. Returned by the provider; not user-settable.",
+				MarkdownDescription: "SHA-256 of the most recently uploaded icon bytes, prefixed `sha256:`. The provider computes it during apply from the bytes it sends, so it reads `(known after apply)` on any plan that uploads an icon. An imported customization carries no hash, because nothing in a read recovers one. The first apply that gives it an `icon_source` therefore uploads the image once. Read-only.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

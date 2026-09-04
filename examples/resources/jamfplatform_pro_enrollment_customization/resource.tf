@@ -5,9 +5,14 @@
 # At most one authentication pane (LDAP or SSO) may be configured per
 # customization; the two are mutually exclusive.
 #
-# The icon may be supplied either as a local file path (`icon_source`,
-# re-uploaded automatically when its bytes change) or as a pre-uploaded URL
-# (`branding_settings.icon_url`); the two are mutually exclusive.
+# Supply the icon either as a source the provider uploads (`icon_source`) or as
+# a URL you uploaded yourself (`branding_settings.icon_url`); the two are
+# mutually exclusive.
+#
+# The provider hashes a local `icon_source` on every plan and re-uploads it when
+# the bytes change. It reads an `http(s)://` one during apply and compares the
+# URL string at plan time, so re-pointing the URL uploads the new image, and the
+# provider will not see a file published behind an unchanged URL.
 
 resource "jamfplatform_pro_enrollment_customization" "welcome" {
   display_name = "Welcome flow"

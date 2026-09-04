@@ -197,6 +197,11 @@ func (r *EnrollmentCustomizationResource) Read(ctx context.Context, req resource
 // Update reconciles plan against state. The parent endpoint is full-replace
 // per wire-probe, so we always PUT the parent. Panels are diffed by their
 // server-assigned id (an unknown id in the plan = new pane to create).
+//
+// An unknown icon_source_hash is ModifyPlan's request to re-upload the icon,
+// and the only thing that produces one: nothing writes a known hash into a
+// plan, so the hash committed here is always taken from the bytes the upload
+// received rather than from an earlier read of the source (issue #373).
 func (r *EnrollmentCustomizationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state EnrollmentCustomizationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -223,8 +228,8 @@ func (r *EnrollmentCustomizationResource) Update(ctx context.Context, req resour
 	}
 
 	uploadedURL := ""
-	hashChanged := !plan.IconSourceHash.Equal(state.IconSourceHash)
-	if hashChanged && !plan.IconSource.IsNull() && !plan.IconSource.IsUnknown() && plan.IconSource.ValueString() != "" {
+	uploadWanted := plan.IconSourceHash.IsUnknown()
+	if uploadWanted && !plan.IconSource.IsNull() && !plan.IconSource.IsUnknown() && plan.IconSource.ValueString() != "" {
 		url, hash, err := uploadIconForPlan(updateCtx, r.client, plan.IconSource.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Error uploading enrollment customization icon", err.Error())
@@ -291,6 +296,11 @@ func (r *EnrollmentCustomizationResource) Delete(ctx context.Context, req resour
 // uploadIconForPlan opens the user-supplied source, streams it to the SDK's
 // image upload endpoint, and returns the resulting URL together with the
 // content hash so the caller can stamp it on the plan.
+//
+// The source is hashed by streaming it once, then rewound and uploaded, so the
+// hash describes exactly what was sent without the bytes being buffered. The
+// rewound *os.File stays an io.Seeker, which is what lets the SDK precompute
+// Content-Length and retry a 429; handing it a plain reader would forfeit both.
 func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (string, string, error) {
 	file, filename, cleanup, err := files.OpenUploadSource(ctx, source, files.DefaultMaxBytes)
 	if err != nil {
@@ -298,9 +308,9 @@ func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (
 	}
 	defer cleanup()
 
-	data, readErr := io.ReadAll(file)
-	if readErr != nil {
-		return "", "", readErr
+	hash, hashErr := files.HashStreamSHA256(file)
+	if hashErr != nil {
+		return "", "", hashErr
 	}
 	if _, seekErr := file.Seek(0, io.SeekStart); seekErr != nil {
 		return "", "", seekErr
@@ -313,7 +323,7 @@ func uploadIconForPlan(ctx context.Context, client *pro.Client, source string) (
 	if uploaded == nil {
 		return "", "", fmt.Errorf("upload returned a nil response")
 	}
-	return uploaded.URL, files.ComputeContentSHA256(data), nil
+	return uploaded.URL, hash, nil
 }
 
 // createAllPanels creates every pane on the supplied parent in plan order.

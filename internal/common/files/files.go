@@ -289,3 +289,35 @@ func ComputeContentSHA256(b []byte) string {
 	sum := sha256.Sum256(b)
 	return ContentSHA256Prefix + hex.EncodeToString(sum[:])
 }
+
+// HashStreamSHA256 streams r through SHA-256 once and returns the canonical
+// hash string: ContentSHA256Prefix followed by the lowercase hex digest. It
+// buffers nothing, so a caller holding an io.Seeker can hash a multi-gigabyte
+// source and rewind it for the upload rather than materialising it in the heap.
+//
+// The reader is consumed. A caller that also uploads the bytes must Seek back
+// to the start before handing the same source to the SDK.
+func HashStreamSHA256(r io.Reader) (string, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, r); err != nil {
+		return "", fmt.Errorf("files: hashing source: %w", err)
+	}
+	return ContentSHA256Prefix + hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// HashLocalSource opens a local file and returns the canonical hash of its
+// bytes, streaming rather than buffering. Only local paths belong here: a URL
+// is read during apply, where the bytes that are hashed are the bytes uploaded.
+//
+// Resources that decide at plan time whether an upload source has changed call
+// this, so the hash a plan compares and the hash an apply commits are computed
+// the same way.
+func HashLocalSource(ctx context.Context, src string) (string, error) {
+	file, _, cleanup, err := OpenUploadSource(ctx, src, DefaultMaxBytes)
+	if err != nil {
+		return "", err
+	}
+	defer cleanup()
+
+	return HashStreamSHA256(file)
+}
