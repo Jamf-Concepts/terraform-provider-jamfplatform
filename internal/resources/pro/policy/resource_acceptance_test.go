@@ -806,8 +806,10 @@ resource "jamfplatform_pro_policy" "test" {
 func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	// See PackageConfigurationDistributionPoint: the "default" distribution_point
-	// reference requires a principal DP on the tenant.
+	// reference requires a principal DP on the tenant. The package fixture also
+	// uploads its binary, which only converges on a JCDS-backed tenant.
 	testhelpers.EnsurePrincipalCloudDistributionPoint(t)
+	testhelpers.RequireJCDSUploads(t)
 	suffix := testhelpers.RunSuffix()
 	policyName := "tf-acc-policy-pkgcfg-pkgs-" + suffix
 	pkgDisplay := "tf-acc-pkg-fixture-" + suffix

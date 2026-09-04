@@ -10,6 +10,7 @@
 //   pro.UploadPackageManifestV1
 //   pro.DeletePackageManifestV1
 //   pro.RefreshCloudDistributionPointInventoryV1
+//   pro.GetCloudDistributionPointV1   (upload preflight — no cloud distribution point, no upload)
 //   pro.ListPackagesV1 (data source / list resource)
 //   pro.ResolvePackageV1ByName (data source)
 //
@@ -62,6 +63,15 @@ func (r *PackageResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
+
+	// Before the record exists: a doomed upload must not leave a metadata-only
+	// package behind for the next run to collide with.
+	if isConfiguredString(plan.PackageFileSource) {
+		if diags := preflightUploadDestination(createCtx, r.client); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+	}
 
 	created, err := r.client.CreatePackageV1(createCtx, buildPackageInput(plan))
 	if err != nil {
@@ -228,6 +238,10 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	// streaming path always uploads (it has no local hash to compare against
 	// state until after the stream completes).
 	if streamingURLEnabled(plan) {
+		if diags := preflightUploadDestination(updateCtx, r.client); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
 		// Upload + verify FIRST so JCDS has recomputed hashes when the
 		// metadata PUT lands (see disk-staging path for full rationale).
 		previous := strings.ToLower(state.Sha3512.ValueString())
@@ -343,6 +357,10 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	// then PUT metadata so the post-PUT GET reflects the canonical
 	// server state.
 	if willReupload {
+		if diags := preflightUploadDestination(updateCtx, r.client); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
 		if _, seekErr := uploadFile.Seek(0, io.SeekStart); seekErr != nil {
 			resp.Diagnostics.AddError("Error preparing package upload", seekErr.Error())
 			return
@@ -522,6 +540,57 @@ func openHashUploadVerify(ctx context.Context, client *pro.Client, plan *Package
 		fileName = filename
 	}
 	return uploadAndPoll(ctx, client, plan.ID.ValueString(), fileName, file, sha, sz, previousHash)
+}
+
+// preflightUploadDestination refuses an upload the tenant has nowhere to put.
+//
+// Every upload ends in a verification poll that waits for the cloud distribution
+// point to recompute the binary's hash. With no cloud distribution point
+// configured there is nothing to recompute it: the record's hash stays empty,
+// the poll runs to the full create or update timeout — 30 minutes by default —
+// and the apply then fails on a timeout that describes the symptom rather than
+// the cause. The tenant's answer is available in one GET before any bytes move,
+// so it is read there instead.
+//
+// Only cdnType NONE is refused, and only because it is unambiguous: the tenant
+// states it has no cloud distribution point at all, so no upload can converge.
+// A non-Jamf-Cloud CDN (Amazon S3, Akamai, Rackspace) is left alone — this
+// provider has no wire evidence either way for those, and a preflight that
+// guessed would break a working configuration.
+//
+// A failed read does NOT block the upload. The check exists to convert a slow
+// failure into a fast one; letting a transient read failure become an apply
+// failure would trade that for a new one. The upload proceeds and, if the tenant
+// really has no distribution point, ends where it does today.
+//
+// Call this from wherever an upload begins. Create calls it before the record is
+// created, so a doomed apply leaves no metadata-only package behind for the next
+// run to collide with; Update calls it once per upload path, and only when an
+// upload is actually going to run, so a metadata-only change is never gated on
+// distribution infrastructure it does not touch.
+func preflightUploadDestination(ctx context.Context, client cloudDistributionPointReader) diag.Diagnostics {
+	cdp, err := client.GetCloudDistributionPointV1(ctx)
+	if err != nil {
+		tflog.Warn(ctx, "could not read the cloud distribution point before uploading; proceeding", map[string]any{"err": err.Error()})
+		return nil
+	}
+	if cdp == nil || strings.EqualFold(cdp.CdnType, pro.CloudDistributionPointCdnTypeNone) {
+		return errorDiag(
+			"No cloud distribution point is configured",
+			"This package uploads a binary, but Jamf Pro has no cloud distribution point configured, so an uploaded file can never be verified and the upload would run until the timeout expired.\n\n"+
+				"Configure a cloud distribution point (Settings → Server infrastructure → Cloud distribution point, or the jamfplatform_pro_cloud_distribution_point resource — add a depends_on if Terraform creates it in the same run), "+
+				"or remove package_file_source to manage the package record on its own and distribute the file another way.",
+		)
+	}
+	return nil
+}
+
+// cloudDistributionPointReader is the one SDK call preflightUploadDestination
+// makes, named as an interface so the check is unit-testable without a live
+// tenant. *pro.Client satisfies it. Same shape as api_role's live privilege
+// validator, for the same reason.
+type cloudDistributionPointReader interface {
+	GetCloudDistributionPointV1(ctx context.Context) (*pro.CloudDistributionPoint, error)
 }
 
 // maxUploadAttempts bounds how many times uploadAndPoll re-uploads the same

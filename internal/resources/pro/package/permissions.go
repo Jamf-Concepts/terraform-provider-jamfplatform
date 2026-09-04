@@ -22,6 +22,13 @@ var resourceSDKMethods = []string{
 	"UploadPackageV1",
 	"UploadPackageManifestV1",
 	"DeletePackageManifestV1",
+	// Read before an upload, to refuse one the tenant has nowhere to put
+	// (preflightUploadDestination). It adds no privilege the resource did not
+	// already need: finalReadRestoringSize calls
+	// RefreshCloudDistributionPointInventoryV1 on the same
+	// cloud-distribution-point:read privilege, and that one goes undeclared here
+	// only because it sits in helpers.go, which permissions_test.go does not scan.
+	"GetCloudDistributionPointV1",
 }
 
 // resourcePrivileges is the rendered "Required Jamf permissions" Markdown
