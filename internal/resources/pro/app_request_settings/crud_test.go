@@ -29,6 +29,20 @@ func TestAppRequestWriteErrorDiagnostic(t *testing.T) {
 		}
 	})
 
+	t.Run("another formInputFields bound passes through", func(t *testing.T) {
+		t.Parallel()
+
+		err := errors.New("API request failed with status 400: [INVALID_SIZE] formInputFields: size must be between 0 and 10")
+		summary, detail := appRequestWriteErrorDiagnostic("Error updating Jamf Pro App Request settings", err)
+
+		if summary != "Error updating Jamf Pro App Request settings" {
+			t.Errorf("a bound other than the minimum was answered with the add-a-field advice: %s", summary)
+		}
+		if detail != err.Error() {
+			t.Errorf("detail was rewritten: %s", detail)
+		}
+	})
+
 	t.Run("any other failure passes through", func(t *testing.T) {
 		t.Parallel()
 

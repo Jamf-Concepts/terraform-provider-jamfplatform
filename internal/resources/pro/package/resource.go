@@ -182,7 +182,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Upload-source inputs (no wire field — pure provider plumbing).
 			"package_file_source": schema.StringAttribute{
-				MarkdownDescription: "Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update; a cloud distribution point must be configured on the tenant, and the change is refused before any upload starts when none is. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes; setting both is rejected before the change runs.",
+				MarkdownDescription: "Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. A cloud distribution point must be configured on the tenant; without one the change is refused before any bytes are uploaded. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes; setting both is rejected before the change runs.",
 				Optional:            true,
 			},
 			"package_file_source_checksum": schema.StringAttribute{

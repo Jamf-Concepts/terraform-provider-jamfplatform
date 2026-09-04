@@ -199,14 +199,18 @@ func (r *AppRequestSettingsResource) Delete(ctx context.Context, _ resource.Dele
 //
 // Jamf Pro reports the missing form fields as a validation failure on a field the settings
 // payload does not even have, so the raw message sends an operator looking for an attribute
-// of this resource that does not exist. The match is on the field name rather than the
-// INVALID_SIZE code, which the same endpoint uses for other size violations.
+// of this resource that does not exist. The match is on the field name plus the shortfall
+// the message states, not on the INVALID_SIZE code the same endpoint uses for other size
+// violations, and not on the field name alone: a violation of some other bound on
+// formInputFields would otherwise be answered with "add a form field", which is the
+// opposite of the fix.
 func appRequestWriteErrorDiagnostic(summary string, err error) (string, string) {
-	if strings.Contains(err.Error(), "formInputFields") {
+	msg := err.Error()
+	if strings.Contains(msg, "formInputFields") && strings.Contains(strings.ToLower(msg), "at least one") {
 		return "App Requests cannot be enabled without a form field",
 			"Jamf Pro requires at least one App Request form field on the tenant before App Requests can be enabled. " +
-				"Declare a jamfplatform_pro_app_request_form_field resource, and have these settings depend on it " +
-				"(depends_on) so the field exists before the settings are written.\n\nJamf Pro reported: " + err.Error()
+				"Declare a jamfplatform_pro_app_request_form_field resource and add a depends_on, so the field " +
+				"exists before these settings are written.\n\nJamf Pro reported: " + msg
 	}
-	return summary, err.Error()
+	return summary, msg
 }

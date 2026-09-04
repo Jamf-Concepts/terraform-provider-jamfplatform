@@ -90,6 +90,16 @@ func cdpMasterPatch(current *pro.CloudDistributionPoint, master bool) *pro.Cloud
 // so. A read that FAILS is therefore a defect and fails the test, exactly as
 // RequireAIGovernanceTool's catalogue read does: degrading a broken Pro path
 // into a skip would empty the upload suite while the lane still reported green.
+//
+// The skip has a cost worth naming, because it is the shape this repo otherwise
+// fights. On an estate with no cloud distribution point the lane goes green with
+// every upload test unrun, and the helper is deliberately not named
+// AccPreCheck*, so internal/conformance/acc_lanes_test.go does not demand a
+// require token that would promote the skip to a lane failure. That is the right
+// call — a tenant without a distribution point is a legitimate estate, not a
+// missing secret — but it means a green pro lane says nothing about the upload
+// path. TESTING.md §Tenant-prerequisite fixtures records the same caveat for a
+// reader who only ever sees the lane result.
 func RequireJCDSUploads(t *testing.T) {
 	t.Helper()
 	client := pro.New(NewAcceptanceClient(t))

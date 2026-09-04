@@ -14,7 +14,7 @@
 //   pro.ListPackagesV1 (data source / list resource)
 //   pro.ResolvePackageV1ByName (data source)
 //
-// Status: current. Last reviewed 2026-05-23.
+// Status: current. Last reviewed 2026-09-04.
 
 package pkg
 
@@ -64,8 +64,6 @@ func (r *PackageResource) Create(ctx context.Context, req resource.CreateRequest
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	// Before the record exists: a doomed upload must not leave a metadata-only
-	// package behind for the next run to collide with.
 	if isConfiguredString(plan.PackageFileSource) {
 		if diags := preflightUploadDestination(createCtx, r.client); diags.HasError() {
 			resp.Diagnostics.Append(diags...)
@@ -297,6 +295,11 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		previousHash string
 	)
 	if isConfiguredString(plan.PackageFileSource) {
+		if diags := preflightUploadDestination(updateCtx, r.client); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+
 		f, filename, c, openErr := files.OpenUploadSource(updateCtx, plan.PackageFileSource.ValueString(), files.DefaultMaxBytes)
 		if openErr != nil {
 			resp.Diagnostics.AddError("Error opening package binary", openErr.Error())
@@ -357,10 +360,6 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	// then PUT metadata so the post-PUT GET reflects the canonical
 	// server state.
 	if willReupload {
-		if diags := preflightUploadDestination(updateCtx, r.client); diags.HasError() {
-			resp.Diagnostics.Append(diags...)
-			return
-		}
 		if _, seekErr := uploadFile.Seek(0, io.SeekStart); seekErr != nil {
 			resp.Diagnostics.AddError("Error preparing package upload", seekErr.Error())
 			return
@@ -563,11 +562,20 @@ func openHashUploadVerify(ctx context.Context, client *pro.Client, plan *Package
 // failure would trade that for a new one. The upload proceeds and, if the tenant
 // really has no distribution point, ends where it does today.
 //
-// Call this from wherever an upload begins. Create calls it before the record is
-// created, so a doomed apply leaves no metadata-only package behind for the next
-// run to collide with; Update calls it once per upload path, and only when an
-// upload is actually going to run, so a metadata-only change is never gated on
-// distribution infrastructure it does not touch.
+// Call this from wherever an upload begins, and before any bytes move. Create
+// calls it before the record is created, so a doomed apply leaves no
+// metadata-only package behind for the next run to collide with. Update calls it
+// once per upload path, ahead of opening the source: a URL source is downloaded
+// in full before its hash can say whether a re-upload is needed, so checking
+// after that decision would fetch the whole binary only to refuse it.
+//
+// Gating Update on package_file_source being set rather than on the re-upload
+// decision cannot catch a metadata-only change, because the two coincide only on
+// a tenant that has a cloud distribution point: package_file_source conflicts
+// with every hash attribute, so a recorded sha3_512 can only have come from an
+// upload this provider completed, which a tenant with no distribution point
+// cannot have done. Where the check refuses, state carries no hash and a
+// re-upload was always going to run.
 func preflightUploadDestination(ctx context.Context, client cloudDistributionPointReader) diag.Diagnostics {
 	cdp, err := client.GetCloudDistributionPointV1(ctx)
 	if err != nil {
@@ -577,9 +585,9 @@ func preflightUploadDestination(ctx context.Context, client cloudDistributionPoi
 	if cdp == nil || strings.EqualFold(cdp.CdnType, pro.CloudDistributionPointCdnTypeNone) {
 		return errorDiag(
 			"No cloud distribution point is configured",
-			"This package uploads a binary, but Jamf Pro has no cloud distribution point configured, so an uploaded file can never be verified and the upload would run until the timeout expired.\n\n"+
-				"Configure a cloud distribution point (Settings → Server infrastructure → Cloud distribution point, or the jamfplatform_pro_cloud_distribution_point resource — add a depends_on if Terraform creates it in the same run), "+
-				"or remove package_file_source to manage the package record on its own and distribute the file another way.",
+			"This package uploads a binary, and Jamf Pro has no cloud distribution point to hold it. An uploaded file could never be verified, so the upload would run until the timeout expired.\n\n"+
+				"Configure a cloud distribution point, in Settings → Server infrastructure → Cloud distribution point or with the jamfplatform_pro_cloud_distribution_point resource; where Terraform creates it in the same run, add a depends_on. "+
+				"Or remove package_file_source to manage the package record on its own and distribute the file another way.",
 		)
 	}
 	return nil
