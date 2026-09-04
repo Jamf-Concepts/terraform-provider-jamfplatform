@@ -91,7 +91,7 @@ func (r *AppRequestSettingsResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable App Requests in Self Service on iOS. When `true`, `requester_user_group_id` must reference a valid static user group. Omit to leave the current value untouched.",
+				MarkdownDescription: "Enable App Requests in Self Service on iOS. When `true`, `requester_user_group_id` must reference a valid static user group, the tenant must have at least one App Request form field (`jamfplatform_pro_app_request_form_field`), and an SMTP server must be configured (`jamfplatform_pro_smtp_server`) so approval emails can be sent. Where Terraform creates a form field in the same run, add a `depends_on` so it exists before these settings are written. Omit to leave the current value untouched.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

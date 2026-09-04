@@ -29,12 +29,19 @@ Grant the API integration the following permissions in Jamf Account — see [Get
 # App Request settings (Settings → Self Service → App Request).
 #
 # One record per tenant. This resource adopts the existing settings on first
-# apply. Enabling App Requests requires a static user group (the requesters) and
-# a configured SMTP server, so approval emails can be sent.
+# apply. Enabling App Requests requires a static user group (the requesters), at
+# least one App Request form field, and a configured SMTP server, so approval
+# emails can be sent.
 
 resource "jamfplatform_pro_user_group" "app_request_requesters" {
   name       = "App Request Requesters"
   group_type = "static"
+}
+
+resource "jamfplatform_pro_app_request_form_field" "reason" {
+  title       = "Reason for request"
+  description = "Why do you need this app?"
+  priority    = 1
 }
 
 resource "jamfplatform_pro_app_request_settings" "example" {
@@ -42,6 +49,9 @@ resource "jamfplatform_pro_app_request_settings" "example" {
   app_store_locale        = "US" # or the literal "deviceLocale" to follow each device
   approver_emails         = ["it-approvals@example.com"]
   requester_user_group_id = tonumber(jamfplatform_pro_user_group.app_request_requesters.id)
+
+  # The form field must exist before App Requests can be enabled.
+  depends_on = [jamfplatform_pro_app_request_form_field.reason]
 }
 ```
 
@@ -55,7 +65,7 @@ resource "jamfplatform_pro_app_request_settings" "example" {
 ### Optional
 
 - `app_store_locale` (String) App Store country or region used to resolve requested apps. Either the literal `deviceLocale`, which follows each device's own locale, or an upper-case ISO 3166-1 alpha-2 country code such as `US`. Validated at plan time against the tenant's supported list; the `jamfplatform_pro_app_store_country_codes` data source returns that list. Omit to leave the current value untouched.
-- `enabled` (Boolean) Enable App Requests in Self Service on iOS. When `true`, `requester_user_group_id` must reference a valid static user group. Omit to leave the current value untouched.
+- `enabled` (Boolean) Enable App Requests in Self Service on iOS. When `true`, `requester_user_group_id` must reference a valid static user group, the tenant must have at least one App Request form field (`jamfplatform_pro_app_request_form_field`), and an SMTP server must be configured (`jamfplatform_pro_smtp_server`) so approval emails can be sent. Where Terraform creates a form field in the same run, add a `depends_on` so it exists before these settings are written. Omit to leave the current value untouched.
 - `requester_user_group_id` (Number) ID of the static Jamf Pro user group whose members may request apps (see `jamfplatform_pro_user_group`). Required when `enabled` is `true`, and it must reference a static group; Jamf Pro rejects a smart group or an unknown ID. Only valid while `enabled` is `true`: when App Requests are disabled the group is cleared and may not be set. Omit it while enabled to leave the current value untouched.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

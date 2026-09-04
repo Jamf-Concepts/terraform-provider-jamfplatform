@@ -12,12 +12,25 @@
 // (wire-probed 2026-06-13: omitting appStoreLocale → HTTP 500; omitting approverEmails →
 // cleared), so buildAppRequestSettingsInput always emits every field.
 //
-// Status: current. Last reviewed 2026-06-13.
+// Enabling App Requests has a tenant prerequisite the settings payload does not carry: at
+// least one App Request form field must already exist (wire-probed 2026-09-04 — a tenant
+// with none refuses an enabling PUT with "[INVALID_SIZE] formInputFields: At least one form
+// field is required", and the identical write succeeds once one field exists). The fields
+// are a separate collection (jamfplatform_pro_app_request_form_field), so nothing in the
+// plan can prove their presence and the check cannot move to plan time: a configuration
+// creating the field and enabling the settings in one apply has no field on the tenant while
+// the plan is built. Hence the refusal is translated at apply time by
+// appRequestWriteErrorDiagnostic. Jamf Pro enforces the rule only on the settings write:
+// deleting the last remaining form field while App Requests are enabled is accepted, leaving
+// the tenant enabled with no fields (same probe).
+//
+// Status: current. Last reviewed 2026-09-04.
 
 package app_request_settings
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -63,7 +76,7 @@ func (r *AppRequestSettingsResource) Create(ctx context.Context, req resource.Cr
 
 	updated, err := r.client.UpdateAppRequestSettingsV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro App Request settings", err.Error())
+		resp.Diagnostics.AddError(appRequestWriteErrorDiagnostic("Error setting Jamf Pro App Request settings", err))
 		return
 	}
 	resp.Diagnostics.Append(assignAppRequestSettingsResourceModel(ctx, &plan, updated)...)
@@ -158,7 +171,7 @@ func (r *AppRequestSettingsResource) Update(ctx context.Context, req resource.Up
 
 	updated, err := r.client.UpdateAppRequestSettingsV1(updateCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro App Request settings", err.Error())
+		resp.Diagnostics.AddError(appRequestWriteErrorDiagnostic("Error updating Jamf Pro App Request settings", err))
 		return
 	}
 	resp.Diagnostics.Append(assignAppRequestSettingsResourceModel(ctx, &plan, updated)...)
@@ -179,4 +192,21 @@ func (r *AppRequestSettingsResource) Update(ctx context.Context, req resource.Up
 // this handler returns.
 func (r *AppRequestSettingsResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Trace(ctx, "removing Jamf Pro App Request settings from Terraform state (singleton — no remote delete)")
+}
+
+// appRequestWriteErrorDiagnostic names the tenant prerequisite behind Jamf Pro's refusal of
+// an enabling write, and otherwise passes the error through under the caller's summary.
+//
+// Jamf Pro reports the missing form fields as a validation failure on a field the settings
+// payload does not even have, so the raw message sends an operator looking for an attribute
+// of this resource that does not exist. The match is on the field name rather than the
+// INVALID_SIZE code, which the same endpoint uses for other size violations.
+func appRequestWriteErrorDiagnostic(summary string, err error) (string, string) {
+	if strings.Contains(err.Error(), "formInputFields") {
+		return "App Requests cannot be enabled without a form field",
+			"Jamf Pro requires at least one App Request form field on the tenant before App Requests can be enabled. " +
+				"Declare a jamfplatform_pro_app_request_form_field resource, and have these settings depend on it " +
+				"(depends_on) so the field exists before the settings are written.\n\nJamf Pro reported: " + err.Error()
+	}
+	return summary, err.Error()
 }

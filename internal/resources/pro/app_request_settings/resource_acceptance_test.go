@@ -3,9 +3,10 @@
 
 //go:build acceptance
 
-// These tests mutate two additional tenant singletons as fixtures: the SMTP server
-// (enabling App Requests requires a configured SMTP server) and a transient static user
-// group (the requester group). The App Request settings and SMTP server are singletons with
+// These tests create additional tenant objects as fixtures: the SMTP server (enabling App
+// Requests requires a configured SMTP server), a transient static user group (the requester
+// group), and a transient App Request form field (a tenant must hold at least one before App
+// Requests can be enabled). The App Request settings and SMTP server are singletons with
 // no remote delete, so after a run the tenant is left with App Requests disabled, a dummy
 // SMTP configuration, and the test's approver emails. Restore these manually if needed.
 
@@ -62,6 +63,18 @@ const smtpFixture = `
 	}
 `
 
+// formFieldFixture is the App Request form field App Requests depends on: Jamf Pro refuses
+// an enabling write while the tenant has no form fields (wire-probed 2026-09-04), and the
+// prerequisite cannot be satisfied by the settings payload.
+func formFieldFixture(title string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_app_request_form_field" "fixture" {
+			title    = %q
+			priority = 1
+		}
+	`, title)
+}
+
 func requesterGroupFixture(name string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_user_group" "fixture" {
@@ -78,6 +91,8 @@ func TestAccResource_ProAppRequestSettings_Lifecycle(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	groupName := fmt.Sprintf("ZTFACC App Request Requesters %s", suffix)
+	fieldTitle := fmt.Sprintf("ZTFACC App Request Reason %s", suffix)
+	fixtures := smtpFixture + requesterGroupFixture(groupName) + formFieldFixture(fieldTitle)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -85,7 +100,7 @@ func TestAccResource_ProAppRequestSettings_Lifecycle(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Adopt: disabled, one approver, canonical (upper-case) locale.
-				Config: smtpFixture + requesterGroupFixture(groupName) + `
+				Config: fixtures + `
 					resource "jamfplatform_pro_app_request_settings" "test" {
 						enabled          = false
 						app_store_locale = "US"
@@ -100,14 +115,18 @@ func TestAccResource_ProAppRequestSettings_Lifecycle(t *testing.T) {
 				),
 			},
 			{
-				// Enable with the static requester group + a second approver email.
-				Config: smtpFixture + requesterGroupFixture(groupName) + `
+				// Enable with the static requester group, the form field the tenant must
+				// hold before App Requests can be enabled, and a second approver email.
+				Config: fixtures + `
 					resource "jamfplatform_pro_app_request_settings" "test" {
 						enabled                 = true
 						app_store_locale        = "US"
 						approver_emails         = ["approver-a@example.com", "approver-b@example.com"]
 						requester_user_group_id = tonumber(jamfplatform_pro_user_group.fixture.id)
-						depends_on              = [jamfplatform_pro_smtp_server.fixture]
+						depends_on = [
+							jamfplatform_pro_smtp_server.fixture,
+							jamfplatform_pro_app_request_form_field.fixture,
+						]
 					}
 				`,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -120,7 +139,7 @@ func TestAccResource_ProAppRequestSettings_Lifecycle(t *testing.T) {
 				// Disable again: omitting the group clears it (the provider does not carry a
 				// requester group on a disabled write). Leaves the tenant clean for teardown,
 				// so destroying the group fixture cannot strand a dangling reference.
-				Config: smtpFixture + requesterGroupFixture(groupName) + `
+				Config: fixtures + `
 					resource "jamfplatform_pro_app_request_settings" "test" {
 						enabled         = false
 						approver_emails = ["approver-a@example.com"]
