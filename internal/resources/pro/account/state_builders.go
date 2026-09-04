@@ -50,12 +50,14 @@ func assignProBaseFields(state *AccountResourceModel, a *pro.UserAccount) {
 // `Raw.IsNull()` returns false. A null `username` does answer it, because the
 // attribute is Required and every other path into Read sets it.
 //
-// Read must sample this before assignProBaseFields runs. That function writes
-// `username` from the Pro response, so a check made after it sees a populated
-// value on every path. Wire-verified 2026-09-04: the post-import Read reached
-// assignClassicPrivileges with a false import flag and a populated `username`,
-// and the privilege grid the classic endpoint had returned in full was discarded
-// (issue #372).
+// The username Read passes here comes off the immutable request state, never off
+// the model Read is assembling. `assignProBaseFields` writes `username` from the
+// Pro response, so a signal taken from the model would answer differently
+// depending on where in Read it was sampled, and the request state is the only
+// source no later assignment can reach. Wire-verified 2026-09-04: the post-import
+// Read reached assignClassicPrivileges with a false import flag and a populated
+// `username`, and the privilege grid the classic endpoint had returned in full
+// was discarded (issue #372).
 func importHydration(stateAbsent bool, username types.String) bool {
 	return stateAbsent || username.IsNull()
 }

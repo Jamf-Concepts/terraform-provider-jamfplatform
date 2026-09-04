@@ -27,6 +27,12 @@ import (
 // with no later plan to surface the gap, because the reconcile they pass through
 // treats an unset prior value as a configuration that does not own the attribute
 // (issue #372).
+//
+// The name Read passes here comes off the immutable request state, never off the
+// model Read is assembling. `assignDeviceGroupModel` nulls `name` when the wire
+// value is empty, so a signal taken from the model would answer differently
+// depending on where in Read it was sampled, and the request state is the only
+// source no later assignment can reach.
 func importHydration(stateAbsent bool, name types.String) bool {
 	return stateAbsent || name.IsNull()
 }

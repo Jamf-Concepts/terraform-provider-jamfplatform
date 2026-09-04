@@ -332,6 +332,85 @@ func readAfterImport(t *testing.T, r *DeviceGroupResource) DeviceGroupResourceMo
 	return state
 }
 
+// readWithIdentityOnly drives Read the way Terraform does for an
+// `import { identity = {...} }` block: the framework writes nothing into state, so
+// `req.State.Raw` is genuinely null and the identifier arrives only in
+// `req.Identity`. That is the other half of the hydration signal, and it is the
+// half `readAfterImport` cannot reach — the passthrough importer always leaves a
+// populated object behind.
+func readWithIdentityOnly(t *testing.T, r *DeviceGroupResource) DeviceGroupResourceModel {
+	t.Helper()
+	ctx := context.Background()
+
+	var schemaResp resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	var identityResp resource.IdentitySchemaResponse
+	r.IdentitySchema(ctx, resource.IdentitySchemaRequest{}, &identityResp)
+
+	stub := tfsdk.State{
+		Schema: schemaResp.Schema,
+		Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+	}
+	if !stub.Raw.IsNull() {
+		t.Fatal("the identity-only state must be genuinely null; a populated one would exercise the other branch")
+	}
+
+	identity := tfsdk.ResourceIdentity{
+		Schema: identityResp.IdentitySchema,
+		Raw:    tftypes.NewValue(identityResp.IdentitySchema.Type().TerraformType(ctx), nil),
+	}
+	if diags := identity.SetAttribute(ctx, path.Root("id"), readTestGroupID); diags.HasError() {
+		t.Fatalf("seeding the identity: %v", diags)
+	}
+
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: schemaResp.Schema, Raw: stub.Raw.Copy()},
+		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema, Raw: identity.Raw.Copy()},
+	}
+	r.Read(ctx, resource.ReadRequest{State: stub, Identity: &identity}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var state DeviceGroupResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the hydrated state: %v", diags)
+	}
+	return state
+}
+
+// TestRead_IdentityOnlyRefreshHydrates covers the identity-based import path end
+// to end. `stateAbsent` carries it, and until this test the whole branch that
+// rebuilds state out of `req.Identity` ran in no test at all — only as a boolean
+// case handed straight to importHydration. A group adopted this way must come
+// back with the same attributes the passthrough path adopts.
+func TestRead_IdentityOnlyRefreshHydrates(t *testing.T) {
+	r := &DeviceGroupResource{client: deviceGroupReadClient(t, map[string]any{
+		"id":          readTestGroupID,
+		"name":        "tf-acc-identity",
+		"description": "Adopted by identity",
+		"deviceType":  "COMPUTER",
+		"groupType":   "STATIC",
+		"memberCount": 1,
+	}, []string{"db1c72d0-1620-44ae-a4cd-4992b713efcd"})}
+
+	state := readWithIdentityOnly(t, r)
+
+	if got := state.ID.ValueString(); got != readTestGroupID {
+		t.Errorf("id = %q, want the identifier the identity carried", got)
+	}
+	if got := state.Description.ValueString(); got != "Adopted by identity" {
+		t.Errorf("description = %q, want %q", got, "Adopted by identity")
+	}
+	var members []string
+	if diags := state.Members.ElementsAs(context.Background(), &members, false); diags.HasError() {
+		t.Fatalf("reading the hydrated members: %v", diags)
+	}
+	if len(members) != 1 || members[0] != "db1c72d0-1620-44ae-a4cd-4992b713efcd" {
+		t.Errorf("members = %v, want one device", members)
+	}
+}
+
 // TestRead_ImportHydratesDescription is the regression test for issue #372: an
 // imported group came back with a null description whatever the API held, which
 // left the attribute unmanaged and no later plan to show it.

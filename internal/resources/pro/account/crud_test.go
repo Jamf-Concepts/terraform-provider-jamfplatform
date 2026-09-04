@@ -158,20 +158,104 @@ func TestRead_ImportHydratesPrivilegeGrid(t *testing.T) {
 	}
 }
 
-// TestRead_ImportSamplesTheSignalBeforeTheBaseFields pins the ordering the fix
-// depends on. Read calls assignProBaseFields before it touches privileges, and
-// that function writes `username` from the Pro response, so a signal sampled
-// afterwards is populated on every path. Asserting the hydrated username proves
-// the base fields did land, which is what makes the privilege assertion above
-// evidence of the ordering rather than of a stub that answered nothing.
-func TestRead_ImportSamplesTheSignalBeforeTheBaseFields(t *testing.T) {
+// TestRead_ImportHydrationSurvivesTheBaseFieldWrite pins the property that
+// replaced an ordering constraint. assignProBaseFields writes `username` from the
+// Pro response, so a signal sampled off the model Read is assembling would answer
+// differently before and after that call; Read samples it off the immutable
+// request state instead, and there is nothing left for a later assignment to
+// change. Asserting the hydrated username proves the base fields did land, so the
+// privilege assertion is evidence of that immunity rather than of a stub that
+// answered nothing.
+func TestRead_ImportHydrationSurvivesTheBaseFieldWrite(t *testing.T) {
 	state := readAccountAfterImport(t, accountReadResource(t, customPrivilegesXML))
 
 	if got := state.Username.ValueString(); got != "tf-acc-admin" {
 		t.Errorf("username = %q, want the value the Pro read returned", got)
 	}
 	if state.Privileges == nil {
-		t.Error("privileges = null, yet the base fields hydrated: the signal was read after assignProBaseFields")
+		t.Error("privileges = null, yet the base fields hydrated: the signal was taken from the model, not the request")
+	}
+}
+
+// readAccountAfterIdentityImport drives Read the way Terraform does for an
+// `import { identity = {...} }` block: the framework writes nothing into state, so
+// `req.State.Raw` is genuinely null and the identifier arrives only in
+// `req.Identity`. That is the other half of the hydration signal, and it is the
+// half readAccountAfterImport cannot reach — the passthrough importer always
+// leaves a populated object behind.
+func readAccountAfterIdentityImport(t *testing.T, r *AccountResource) AccountResourceModel {
+	t.Helper()
+	ctx := context.Background()
+
+	var schemaResp resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
+	var identityResp resource.IdentitySchemaResponse
+	r.IdentitySchema(ctx, resource.IdentitySchemaRequest{}, &identityResp)
+
+	stub := tfsdk.State{
+		Schema: schemaResp.Schema,
+		Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+	}
+	if !stub.Raw.IsNull() {
+		t.Fatal("the identity-only state must be genuinely null; a populated one would exercise the other branch")
+	}
+
+	identity := tfsdk.ResourceIdentity{
+		Schema: identityResp.IdentitySchema,
+		Raw:    tftypes.NewValue(identityResp.IdentitySchema.Type().TerraformType(ctx), nil),
+	}
+	if diags := identity.SetAttribute(ctx, path.Root("id"), readTestAccountID); diags.HasError() {
+		t.Fatalf("seeding the identity: %v", diags)
+	}
+
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: schemaResp.Schema, Raw: stub.Raw.Copy()},
+		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema, Raw: identity.Raw.Copy()},
+	}
+	r.Read(ctx, resource.ReadRequest{State: stub, Identity: &identity}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
+	}
+
+	var state AccountResourceModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the hydrated state: %v", diags)
+	}
+	return state
+}
+
+// TestRead_IdentityOnlyRefreshHydratesPrivilegeGrid covers the identity-based
+// import path end to end. `stateAbsent` carries it, and until this test the whole
+// branch that rebuilds state out of `req.Identity` ran in no test at all — only as
+// a boolean case handed straight to importHydration. An account adopted this way
+// must come back with the same privilege grid the passthrough path adopts.
+func TestRead_IdentityOnlyRefreshHydratesPrivilegeGrid(t *testing.T) {
+	state := readAccountAfterIdentityImport(t, accountReadResource(t, customPrivilegesXML))
+
+	if got := state.ID.ValueString(); got != readTestAccountID {
+		t.Errorf("id = %q, want the identifier the identity carried", got)
+	}
+	if got := state.Username.ValueString(); got != "tf-acc-admin" {
+		t.Errorf("username = %q, want the value the Pro read returned", got)
+	}
+	if state.Privileges == nil {
+		t.Fatal("privileges = null; an account adopted by identity must carry the grid the classic endpoint returned")
+	}
+
+	var objects []string
+	if diags := state.Privileges.JamfProServerObjects.ElementsAs(context.Background(), &objects, false); diags.HasError() {
+		t.Fatalf("reading the hydrated object privileges: %v", diags)
+	}
+	if len(objects) != 2 {
+		t.Errorf("jamf_pro_server_objects = %v, want the two declared privileges", objects)
+	}
+
+	var settings []string
+	if diags := state.Privileges.JamfProServerSettings.ElementsAs(context.Background(), &settings, false); diags.HasError() {
+		t.Fatalf("reading the hydrated settings privileges: %v", diags)
+	}
+	if len(settings) != 1 || settings[0] != "Read License Information" {
+		t.Errorf("jamf_pro_server_settings = %v, want the server-added privilege", settings)
 	}
 }
 

@@ -19,7 +19,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -119,7 +121,14 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 		}
 	}
 
-	hydrating := importHydration(stateAbsent, state.Username)
+	priorUsername := types.StringNull()
+	if !stateAbsent {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("username"), &priorUsername)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	hydrating := importHydration(stateAbsent, priorUsername)
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
 	resp.Diagnostics.Append(timeoutDiags...)

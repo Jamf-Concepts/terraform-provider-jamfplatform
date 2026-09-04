@@ -50,11 +50,15 @@ var dataSourceSDKMethods = []string{
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
 // listResourceSDKMethods lists the SDK methods the account list resource calls
-// (list_resource.go).
+// (list_resource.go). Config generation hydrates the Custom privilege grid from
+// the classic account representation, so the list resource spans both families
+// exactly as the resource does.
 var listResourceSDKMethods = []string{
 	"ListAccountsV1",
+	"GetAccountByUserID",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
-// section for the account list resource.
-var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)
+// section for the account list resource. It renders from the merged Pro +
+// ProClassic registry because GetAccountByUserID is a classic method.
+var listResourcePrivileges = permissions.Section(resourcePrivilegeRegistry, listResourceSDKMethods...)
