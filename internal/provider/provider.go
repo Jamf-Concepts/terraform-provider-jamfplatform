@@ -223,7 +223,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				"| Jamf AI Governance | `jamfplatform_ai_governance_*` | continuously deployed |\n"+
 				"| Jamf Account (single sign-on) | `jamfplatform_account_*` | continuously deployed |\n\n"+
 				"Jamf Pro is the only product versioned at the tenant. A tenant below the listed version raises an advisory warning at apply time, and a resource that needs a newer endpoint declares its own floor and fails when it is configured rather than mid-apply. The rest target continuously-deployed platform services, and no version is fetched for a configuration that uses only those.\n\n"+
-				"Which namespaces an API integration reaches depends on the scope it was created with: Jamf AI Governance needs a platform environment, and `jamfplatform_account_*` needs organization management and is the only family that scope reaches. Every resource and data source reports the scope it needs when it is configured. See `environment_id` below.\n\n"+
+				"Which namespaces an API integration reaches depends on the scope it was created with: Blueprints, Compliance Benchmarks and Jamf AI Governance need a platform environment, and `jamfplatform_account_*` needs organization management and is the only family that scope reaches. Every resource and data source reports the scope it needs when it is configured. See `environment_id` below.\n\n"+
 				"This provider builds on the work of [Deployment Theory](https://github.com/deploymenttheory)'s [terraform-provider-jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, the most widely adopted community Terraform provider for Jamf.",
 			providerdata.ProviderMinJamfProVersion,
 		),
@@ -246,8 +246,10 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration " +
 					"targets, a group of tenants across product types with interconnected capabilities. Can also " +
 					"be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. This is the scope new " +
-					"integrations should be created with, and Blueprints and Compliance Benchmarks are moving to " +
-					"it exclusively. Mutually exclusive with the legacy `tenant_id`. An API integration targets " +
+					"integrations should be created with, and the only one that reaches Blueprints, Compliance " +
+					"Benchmarks and Jamf AI Governance; the provider refuses a tenant-scoped integration for " +
+					"those when you configure it. Mutually exclusive with the legacy `tenant_id`. An API " +
+					"integration targets " +
 					"one or the other, so setting both is an error, and supplying the ID that does not match the " +
 					"integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same " +
 					"customer. Pick the one your integration was created for rather than treating them as two " +
@@ -263,6 +265,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Can also be set via the `JAMFPLATFORM_TENANT_ID` environment variable. " +
 					"Tenant scope is the legacy method for targeting integrations without a platform environment. " +
 					"It stays supported, and a few surfaces are still only reachable this way, but new configurations should use `environment_id`. " +
+					"This scope does not reach Blueprints, Compliance Benchmarks or Jamf AI Governance, so set `environment_id` if your configuration uses any of them. " +
 					"Mutually exclusive with `environment_id`; see that attribute for what happens when the ID and the integration disagree.",
 			},
 			"min_request_interval_ms": schema.Int64Attribute{

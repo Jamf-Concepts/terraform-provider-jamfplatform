@@ -133,7 +133,7 @@ func (d *DevicesDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_devices", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_devices", providerdata.DevicesScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

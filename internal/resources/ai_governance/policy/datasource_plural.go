@@ -129,7 +129,7 @@ func (d *PoliciesDataSource) Configure(_ context.Context, req datasource.Configu
 		)
 		return
 	}
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_ai_governance_policies", providerdata.ScopeEnvironment)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_ai_governance_policies", providerdata.AIGovernanceScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

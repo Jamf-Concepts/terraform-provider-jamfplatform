@@ -51,6 +51,19 @@ func laneCounts(entries []matrixEntry) map[string]int {
 	return out
 }
 
+// TestPartitionSplitsByProductAndDefaultsToPro routes one package per lane
+// through the shipped table and asserts where each lands, the pro lane taking
+// the three unclaimed ones (a script, a category and the offline function
+// package).
+//
+// The pro-tenant lane's four are two pairs. internal/provider and
+// internal/resources/pro/tenant_id are the provider's own scope plumbing;
+// internal/resources/devices and internal/resources/device_group are there to
+// guard the gatewayWidenings table in internal/providerdata/scopes.go, where a
+// widening asserts the gateway still serves a scope the published spec withdrew.
+// That assertion holds only while some lane actually sends X-Tenant-Id at those
+// constructs, so a change routing either of them back to the environment-scoped
+// pro lane must fail here rather than pass quietly.
 func TestPartitionSplitsByProductAndDefaultsToPro(t *testing.T) {
 	table := mustLoadReal(t)
 	entries, err := partition(table, module, imports(
@@ -63,6 +76,8 @@ func TestPartitionSplitsByProductAndDefaultsToPro(t *testing.T) {
 		"internal/resources/cbengine/benchmark",
 		"internal/provider",
 		"internal/resources/pro/tenant_id",
+		"internal/resources/devices",
+		"internal/resources/device_group",
 		"internal/resources/pro/script",
 		"internal/resources/pro/category",
 		"internal/functions/mobileconfig",
@@ -77,8 +92,8 @@ func TestPartitionSplitsByProductAndDefaultsToPro(t *testing.T) {
 		"securitycloud": 2,
 		"aigovernance":  1,
 		"platform-env":  2,
-		"pro-tenant":    2,
-		"pro":           3, // script, category and the offline function package
+		"pro-tenant":    4,
+		"pro":           3,
 	}
 	for lane, n := range want {
 		if got[lane] != n {

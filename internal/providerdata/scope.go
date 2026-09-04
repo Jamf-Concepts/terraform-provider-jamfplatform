@@ -37,8 +37,11 @@ type ScopeKind int
 const (
 	// ScopeOrganization is the absence of an environment or tenant header: the
 	// gateway resolves the context from the access token alone. It corresponds
-	// to Jamf's *Organization management* integration scope, which covers
-	// organization-level resources such as single sign-on and AI Governance.
+	// to Jamf's *Organization management* integration scope, which covers what a
+	// practitioner manages above and across individual tenants — single sign-on
+	// today. AI Governance reads as organization-level and is not: it is
+	// environment-scoped, wire-probed, and a request carrying no scope header is
+	// refused REQUEST_CONTEXT_NOT_PROVIDED.
 	//
 	// It is deliberately the zero value, because a provider block setting
 	// neither `environment_id` nor `tenant_id` is exactly this case.
@@ -53,14 +56,19 @@ const (
 	// ScopeEnvironment scopes every request to a platform environment — a group
 	// of tenants across product types with interconnected capabilities — sent as
 	// `X-Environment-Id`. **This is the preferred scope**, and the one Jamf
-	// intends new integrations to be created with. Blueprints and Compliance
-	// Benchmarks become exclusive to it at the Platform API GA.
+	// intends new integrations to be created with. Blueprints, Compliance
+	// Benchmarks and AI Governance are reachable only this way.
 	ScopeEnvironment
 	// ScopeTenant scopes every request to a single Jamf Pro, Jamf School, Jamf
 	// Protect or Jamf Security Cloud tenant, sent as `X-Tenant-Id`. Jamf
 	// describes this as the legacy method for targeting integrations without a
-	// platform environment: it remains supported, every published spec still
-	// declares this header, and some surfaces are only reachable this way.
+	// platform environment, and the Platform API GA began retiring it: six
+	// Platform specs deleted the header outright, leaving Jamf Pro, ProClassic
+	// and Security Cloud as the families still declaring it. Some Jamf Pro
+	// surfaces remain reachable only this way, so it is supported rather than
+	// deprecated — but a new integration should not be created with it. Which
+	// families still accept it is resolved from the SDK registry in scopes.go
+	// rather than asserted here.
 	ScopeTenant
 )
 
@@ -90,16 +98,19 @@ func (d *Data) Scope() ScopeKind {
 // an error diagnostic when the configured scope is not in allowed.
 //
 // Scope is enforced per construct rather than once in provider Configure because
-// the answer differs per API family and is about to differ more: Jamf Pro is
-// reachable under either an environment- or a tenant-scoped integration, while
-// Blueprints and Compliance Benchmarks go environment-only at the Platform API
-// GA. A single provider-level assertion could not express that, and hard-failing
-// Configure on an organization-scoped integration would block the
-// organization-level constructs this provider will grow later. Narrowing a
-// family at GA is then a one-token edit at its call sites.
+// the answer differs per API family, and it has already differed twice: Jamf Pro
+// is reachable under either an environment- or a tenant-scoped integration,
+// while Blueprints and Compliance Benchmarks became environment-only at the
+// Platform API GA. A single provider-level assertion could not express that, and
+// hard-failing Configure on an organization-scoped integration would block the
+// jamfplatform_account_* family.
 //
 // Pass allowed in preference order — it is the order the diagnostic lists them
-// in, so the scope a user should reach for first comes first.
+// in, so the scope a user should reach for first comes first. Pass one of the
+// derived family sets in scopes.go rather than writing the kinds out: they are
+// resolved from the SDK privilege registry, so a spec ingest that moves a
+// family's scope arrives as one changed value with a pinned expectation to
+// agree with, instead of going stale silently at each of the call sites.
 //
 // resourceType is the fully-qualified Terraform type name used in the
 // diagnostic (e.g. "jamfplatform_pro_category"). An empty allowed list and a nil
@@ -116,7 +127,7 @@ func (d *Data) RequireScope(resourceType string, allowed ...ScopeKind) diag.Diag
 	diags.AddError(
 		fmt.Sprintf("Unsupported API Integration Scope for %s", resourceType),
 		fmt.Sprintf("%s requires %s, but this provider is configured with %s.\n\n%s",
-			resourceType, scopeRequirement(allowed), scopeDescription(d.scope), scopeRemedy(allowed)),
+			resourceType, scopeRequirement(allowed), scopeDescription(d.scope), scopeRemedy(d.scope, allowed)),
 	)
 	return diags
 }
@@ -168,14 +179,27 @@ func scopeDescription(k ScopeKind) string {
 	}
 }
 
-// scopeRemedy says which attribute to set, and warns that the choice is not free
-// — the header has to match the scope the API integration was created against.
+// scopeRemedy says how to get from the configured scope to an accepted one, and
+// warns that the choice is not free: the header has to match the scope the API
+// integration was created against.
 //
-// The organization-only branch names the two environment variables as well as
-// the two attributes, for the reason given on scopeDescription: a scope set in
-// the environment is invisible in the provider block, so telling the operator to
-// remove an attribute they never wrote leaves the diagnostic unactionable.
-func scopeRemedy(allowed []ScopeKind) string {
+// It takes the configured kind as well as the allowed set because naming only
+// what to add is not actionable. Every reader of this diagnostic is, by
+// construction, carrying a scope the construct refuses, so the input that
+// selected it is already set — and `environment_id` and `tenant_id` are mutually
+// exclusive, so an operator who follows "set `environment_id`" literally trades
+// this error for `Conflicting API Integration Scope` on the next plan. Naming
+// the swap costs one clause and saves a whole cycle.
+//
+// The swap is named as a replacement rather than an addition only when the
+// configured scope has an attribute to remove. An organization-scoped provider
+// has neither set, so there the instruction really is just to set one.
+//
+// Both branches name the environment variables alongside the attributes, for the
+// reason given on scopeDescription: a scope set in the environment is invisible
+// in the provider block, so telling the operator to remove an attribute they
+// never wrote leaves the diagnostic unactionable.
+func scopeRemedy(configured ScopeKind, allowed []ScopeKind) string {
 	attrs := make([]string, 0, len(allowed))
 	for _, k := range allowed {
 		switch k {
@@ -188,15 +212,35 @@ func scopeRemedy(allowed []ScopeKind) string {
 	if len(attrs) == 0 {
 		return "Unset both scope inputs so requests are scoped from the access token alone: remove `environment_id` " +
 			"and `tenant_id` from the provider block, and unset `JAMFPLATFORM_ENVIRONMENT_ID` and " +
-			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope."
+			"`JAMFPLATFORM_TENANT_ID` in the environment — either source selects a scope. Note that unsetting " +
+			"them does not convert the integration: reaching this family needs an integration created with " +
+			"Organization management scope, and because that scope reaches nothing else, it belongs in its own " +
+			"aliased provider block rather than replacing the one the rest of the configuration uses."
 	}
-	return fmt.Sprintf(
-		"Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable. "+
-			"The scope must match the one the API integration was created with: an integration targets a platform environment or a single "+
-			"tenant, and crossing over is refused with 403 OWNERSHIP_FORBIDDEN even when both IDs belong to the same customer — so this is a "+
-			"choice between two integrations, not two IDs for one.",
-		joinOr(attrs),
-	)
+	action := fmt.Sprintf("Set %s in the provider block, or the matching `JAMFPLATFORM_*` environment variable.", joinOr(attrs))
+	if remove := scopeAttribute(configured); remove != "" {
+		action = fmt.Sprintf(
+			"Replace %s with %s in the provider block, or swap the matching `JAMFPLATFORM_*` environment "+
+				"variable. Set only one: the two are mutually exclusive, so adding %s while %s is still set "+
+				"is refused separately.",
+			remove, joinOr(attrs), joinOr(attrs), remove)
+	}
+	return action + " The scope must match the one the API integration was created with: an integration targets a " +
+		"platform environment or a single tenant, and crossing over is refused with 403 OWNERSHIP_FORBIDDEN even " +
+		"when both IDs belong to the same customer — so this is a choice between two integrations, not two IDs for one."
+}
+
+// scopeAttribute names the provider-block attribute that selects a scope, and
+// returns "" for organization scope, which no attribute selects.
+func scopeAttribute(k ScopeKind) string {
+	switch k {
+	case ScopeEnvironment:
+		return "`environment_id`"
+	case ScopeTenant:
+		return "`tenant_id`"
+	default:
+		return ""
+	}
 }
 
 // joinOr renders a list as "a", "a or b", or "a, b or c".

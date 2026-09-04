@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: general, scope, self_service, user_interaction, and the Options payloads packages, scripts, printers, disk_encryption, dock_items, local_accounts, management_account, directory_bindings, efi_password, restart_options, maintenance, files_and_processes. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The four account-maintenance payloads (local_accounts, management_account, directory_bindings, efi_password) are flattened peers of the UI sections; internally Jamf Pro stores them as a single account_maintenance object. The legacy Software Update and Conditional Access policy sections are intentionally not modelled. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Policies | Create, Read, Update, Delete | `policies` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Optio
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
