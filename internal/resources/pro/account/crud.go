@@ -94,9 +94,9 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 // classic (intersect-on-read) when the account is Custom + Full Access.
 func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state AccountResourceModel
-	isImport := req.State.Raw.IsNull()
+	stateAbsent := req.State.Raw.IsNull()
 
-	if isImport {
+	if stateAbsent {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError("Missing resource identity", "Terraform requested a refresh without existing state or identity data.")
 			return
@@ -118,6 +118,8 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 			return
 		}
 	}
+
+	hydrating := importHydration(stateAbsent, state.Username)
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
 	resp.Diagnostics.Append(timeoutDiags...)
@@ -155,7 +157,7 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.Diagnostics.AddError("Error reading Jamf Pro account privileges", err.Error())
 			return
 		}
-		resp.Diagnostics.Append(assignClassicPrivileges(readCtx, &state, classicGot, isImport)...)
+		resp.Diagnostics.Append(assignClassicPrivileges(readCtx, &state, classicGot, hydrating)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
