@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -202,12 +203,31 @@ type IdentitySetter interface {
 	Set(context.Context, any) diag.Diagnostics
 }
 
-// SetIdentity assigns the provided identity object when the target setter is available.
+// SetIdentity assigns the provided identity object when the target setter is
+// available. Callers pass a framework field such as `resp.Identity`, which is a
+// `*tfsdk.ResourceIdentity` and is nil whenever the resource declares no
+// identity schema or the Terraform client does not support identity. A nil
+// pointer of that type still satisfies IdentitySetter once it is boxed, so
+// `target == nil` is false for exactly the case the guard exists to catch, and
+// `Set` then dereferences nil and panics. isNilIdentitySetter looks through the
+// interface instead.
 func SetIdentity(ctx context.Context, target IdentitySetter, identity any) diag.Diagnostics {
-	if target == nil {
+	if isNilIdentitySetter(target) {
 		return nil
 	}
 	return target.Set(ctx, identity)
+}
+
+// isNilIdentitySetter reports whether target holds nothing: either a nil
+// interface, or a non-nil interface wrapping a nil pointer. Reflection covers
+// every implementation rather than the two the provider happens to pass today,
+// and SetIdentity runs once per CRUD call, so the cost does not matter.
+func isNilIdentitySetter(target IdentitySetter) bool {
+	if target == nil {
+		return true
+	}
+	value := reflect.ValueOf(target)
+	return value.Kind() == reflect.Pointer && value.IsNil()
 }
 
 // SetToStringSlice converts a Terraform set of strings into a Go slice, preserving diagnostics.

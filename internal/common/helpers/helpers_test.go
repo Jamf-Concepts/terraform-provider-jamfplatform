@@ -13,6 +13,7 @@ import (
 	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -379,6 +380,35 @@ func TestSetIdentity_NilTarget(t *testing.T) {
 	diags := SetIdentity(context.Background(), nil, "test")
 	if diags != nil {
 		t.Errorf("expected nil diags for nil target, got %v", diags)
+	}
+}
+
+// TestSetIdentity_TypedNilTarget covers what call sites actually pass. A
+// resource hands SetIdentity its `resp.Identity`, a `*tfsdk.ResourceIdentity`
+// that the framework leaves nil when the resource declares no identity schema
+// or the client does not support identity. Boxing that pointer into
+// IdentitySetter produces a non-nil interface, so TestSetIdentity_NilTarget
+// above — which passes an untyped nil, and therefore a nil interface — proves
+// nothing about the reachable case. Before the guard looked through the
+// interface, this panicked in (*ResourceIdentity).Set.
+func TestSetIdentity_TypedNilTarget(t *testing.T) {
+	var target *tfsdk.ResourceIdentity
+
+	diags := SetIdentity(context.Background(), target, "test")
+	if diags != nil {
+		t.Errorf("expected nil diags for a typed-nil target, got %v", diags)
+	}
+}
+
+// TestSetIdentity_TypedNilOfAnyImplementation pins that the guard is not
+// written against the one concrete type the framework happens to use, so a
+// future identity setter gets the same treatment.
+func TestSetIdentity_TypedNilOfAnyImplementation(t *testing.T) {
+	var target *mockIdentitySetter
+
+	diags := SetIdentity(context.Background(), target, "test")
+	if diags != nil {
+		t.Errorf("expected nil diags for a typed-nil target, got %v", diags)
 	}
 }
 
