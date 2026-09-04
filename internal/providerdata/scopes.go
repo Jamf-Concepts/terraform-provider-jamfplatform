@@ -96,24 +96,42 @@ type widening struct {
 //
 // All three are the Platform API GA's tenant withdrawal (public-apis-oas#436,
 // #437, #439), which stripped X-Tenant-Id from six Platform specs while the
-// gateway went on serving it. Probed 2026-09-04 with a tenant-scoped credential,
-// GET /pro/v1/jamf-pro-version at 200 as the served control and GET
-// /blueprints/v1/bogus-control-xyz at 403 BAD_PERMISSIONS as the unrouted
-// control, both in the same invocation. Evidence recorded in
-// jamfplatform-go-sdk v0.22.0, whose
-// TestAcceptance_TenantScopePlatformSpecsStillServed fails the day the
-// withdrawal lands.
+// gateway went on serving it. Two independent probes, both 2026-09-04, each with
+// GET /pro/v1/jamf-pro-version at 200 as the served control in the same
+// invocation: the SDK's, recorded in jamfplatform-go-sdk v0.22.0 alongside an
+// unrouted control, and this repo's own through the SDK against eu with the
+// pro-tenant credential — devices and device-groups both 200 under X-Tenant-Id.
+// The acceptance suite then ran green under tenant scope for jamfplatform_device_group
+// (9 tests) and jamfplatform_devices, which is the part a status code cannot
+// show: these constructs work end to end on a credential the spec says should
+// not reach them, so narrowing them would break working configurations.
+// jamfplatform-go-sdk's TestAcceptance_TenantScopePlatformSpecsStillServed fails
+// the day the withdrawal lands.
 //
-// Blueprints and Compliance Benchmarks are deliberately ABSENT. Their specs
-// withdrew tenant on the same build, and the same tenant credential was refused
-// 403 on both — which classifies as nothing on its own, since this provider's
-// own law is that a Security Cloud or Platform 403 BAD_PERMISSIONS is
-// indistinguishable from a privilege gap and takes two credentials rather than
-// two paths to tell apart. What settled it is that the environment-only outcome
-// for exactly those two families was the recorded GA decision before the spec
-// declared it, so the spec is being followed rather than guessed at. A
-// tenant-scoped operator therefore now gets a named diagnostic at Configure
-// instead of an opaque 403 mid-apply.
+// Blueprints and Compliance Benchmarks are deliberately ABSENT, and the reasoning
+// is worth reading before adding them back. Their specs withdrew tenant on the
+// same build, and two DIFFERENT tenant-scoped credentials are refused 403
+// BAD_PERMISSIONS on both — the SDK's on 2026-09-04 and this repo's pro-tenant
+// acceptance credential, first on 2026-09-03 in .github/acceptance-lanes.json's
+// evidence field and re-probed 2026-09-04. That still does not establish the
+// route is unrouted: this provider's own law is that a Platform 403
+// BAD_PERMISSIONS is indistinguishable from a privilege gap, and two credentials
+// that both lack the capability tell them apart no better than one does.
+//
+// The narrowing does not rest on that question, which is why it stands anyway.
+// The operative fact is that these capabilities cannot be GRANTED to a
+// tenant-scoped integration in Jamf Account at all, so no tenant credential can
+// ever reach them whether or not the gateway routes the path — recorded in the
+// lane table for the same two families. The spec's withdrawal agrees, and the
+// environment-only outcome for exactly these two was this repo's recorded GA
+// decision before either. A tenant-scoped operator therefore gets a named
+// diagnostic at Configure — verified live, in 0.25s, where the same run
+// previously spent 134 seconds applying before a 403 — instead of an opaque
+// failure mid-apply.
+//
+// AI Governance needs no entry either and never had one: it is environment-only
+// in the spec, refused 403 under tenant scope on the same probe, and was already
+// gated ScopeEnvironment by hand before this file existed.
 var gatewayWidenings = []widening{
 	{
 		family: "Platform devices",

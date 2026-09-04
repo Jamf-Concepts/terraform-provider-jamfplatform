@@ -909,6 +909,16 @@ probing a bogus path with the same token, and by checking a sibling call under t
 privilege still succeeds. Second, this is *not* the entitlement failure: `403 NOT_ENTITLED` is
 a different code and does deserve its own named diagnostic.
 
+**A `400` from the gateway is not always a bad request.** `GET /securitycloud/v2/groups` under a
+tenant-scoped credential with no Security Cloud entitlement answers
+`400 [URI_NOT_TEMPLATED] Failed to (fully) template URI to the downstream service`, while
+`GET /securitycloud/v1/ztna/apps` on the same credential in the same invocation answers the usual
+`403 BAD_PERMISSIONS` (probed 2026-09-04). So this namespace has a **third** failure shape beyond
+the `403` and the `400 INVALID_FIELD` above, it is per-route rather than per-service, and it says
+nothing about the request body — do not translate it into a validation diagnostic. A
+tenant-scoped operator without the entitlement can therefore see either code from the same
+construct depending on which endpoint runs first.
+
 **"Unrouted" is a dated snapshot, not a property of the endpoint**, and the exemplar of the
 rule above is the case that proves it. `PUT /securitycloud/v2/groups/{id}` 403'd on 2026-08-29
 while `PUT /securitycloud/v1/groups/{id}` returned 200 under the same `device-groups:update`,
@@ -1046,7 +1056,9 @@ if resp.Diagnostics.HasError() {
 - **Do not gate in provider Configure instead.** The answer differs per API family, and the Platform API GA proved it twice over: Blueprints and Compliance Benchmarks are now environment-only, while a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
 - **Organization scope is not a rejected special case.** It is the only scope that reaches the `jamfplatform_account_*` family, and it is rejected everywhere else. That two-way enforcement is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure, in both directions.
 
-**A spec-declared set is not always what the gateway serves.** The GA deleted `X-Tenant-Id` from six Platform specs while the gateway went on answering it, so `scopes.go` carries a `gatewayWidenings` table: a family, a scope, and the wire evidence with its date. Three entries today — Platform devices, device groups and device actions, all wire-verified 2026-09-04. An entry is an **assertion about the gateway**, the provider-side counterpart of the SDK's own `config.scopeTypes` override, and is **deleted rather than edited** when either half of its justification goes. Blueprints and Compliance Benchmarks are deliberately absent: their specs withdrew tenant on the same build, and a `403` on the one available tenant credential classifies as nothing on its own (see §Security Cloud shapes that recur), but the environment-only outcome for exactly those two was the recorded GA decision before the spec declared it, so the spec is being followed rather than guessed at.
+**A spec-declared set is not always what the gateway serves.** The GA deleted `X-Tenant-Id` from six Platform specs while the gateway went on answering it, so `scopes.go` carries a `gatewayWidenings` table: a family, a scope, and the wire evidence with its date. Three entries today — Platform devices, device groups and device actions — wire-verified 2026-09-04 by two independent probes, and confirmed by the acceptance suite running green under tenant scope for `jamfplatform_device_group` and `jamfplatform_devices`. That last part is the evidence a status code cannot give: the constructs work end to end on a credential the spec says should not reach them, so narrowing them would break working configurations. An entry is an **assertion about the gateway**, the provider-side counterpart of the SDK's own `config.scopeTypes` override, and is **deleted rather than edited** when either half of its justification goes.
+
+**Do not read a narrowing as proof the route is gone.** Blueprints and Compliance Benchmarks are deliberately absent from that table, and the reason is not that a `403` classified them: two *different* tenant-scoped credentials are refused `BAD_PERMISSIONS` on both, and two credentials that each lack the capability distinguish unrouted from unprivileged no better than one does (see §Security Cloud shapes that recur). The narrowing rests on something else — those capabilities **cannot be granted to a tenant-scoped integration in Jamf Account at all**, so no tenant credential can ever reach them whichever the gateway is doing. The spec's withdrawal and this repo's recorded GA decision both agree. When you narrow a family, say which of those two you have: an ungrantable permission is a decision you can act on, an ambiguous `403` is not.
 
 Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`, and the derived family sets in `internal/providerdata/scopes.go`. `providerdata.New` derives the configured scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
 
