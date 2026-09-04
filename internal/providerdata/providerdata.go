@@ -382,11 +382,14 @@ func New(client *jamfplatform.Client) *Data {
 
 // scopeFromClient maps the SDK's scope onto the provider's ScopeKind.
 //
-// The provider keeps its own enum rather than aliasing the SDK's because it
-// needs organization scope as a named kind carrying user-facing wording: the SDK
-// models it as the zero value and renders it "none", which is right for a log
-// field and wrong for a diagnostic that has to tell a practitioner which
-// integration scope they configured.
+// The provider keeps its own enum rather than aliasing the SDK's because its
+// kinds carry user-facing wording: a diagnostic has to tell a practitioner which
+// integration scope they configured and which attribute or environment variable
+// selected it, none of which belongs in an SDK log field. Both enums now name
+// organization as their zero value and render it the same way — SDK v0.22.0
+// corrected String() from "none", which had named a fourth state the model does
+// not have — so the two agree on the vocabulary and differ only in what they
+// carry. scopes.go maps between them.
 func scopeFromClient(c *jamfplatform.Client) ScopeKind {
 	if c == nil {
 		return ScopeOrganization
@@ -527,7 +530,7 @@ func configureSub[T any](
 		return nil, diags
 	}
 
-	if scopeDiags := pd.RequireScope(resourceType, ScopeEnvironment, ScopeTenant); scopeDiags.HasError() {
+	if scopeDiags := pd.RequireScope(resourceType, ProScopes...); scopeDiags.HasError() {
 		diags.Append(scopeDiags...)
 		return nil, diags
 	}

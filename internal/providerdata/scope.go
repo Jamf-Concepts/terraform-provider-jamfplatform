@@ -37,8 +37,11 @@ type ScopeKind int
 const (
 	// ScopeOrganization is the absence of an environment or tenant header: the
 	// gateway resolves the context from the access token alone. It corresponds
-	// to Jamf's *Organization management* integration scope, which covers
-	// organization-level resources such as single sign-on and AI Governance.
+	// to Jamf's *Organization management* integration scope, which covers what a
+	// practitioner manages above and across individual tenants — single sign-on
+	// today. AI Governance reads as organization-level and is not: it is
+	// environment-scoped, wire-probed, and a request carrying no scope header is
+	// refused REQUEST_CONTEXT_NOT_PROVIDED.
 	//
 	// It is deliberately the zero value, because a provider block setting
 	// neither `environment_id` nor `tenant_id` is exactly this case.
@@ -53,14 +56,19 @@ const (
 	// ScopeEnvironment scopes every request to a platform environment — a group
 	// of tenants across product types with interconnected capabilities — sent as
 	// `X-Environment-Id`. **This is the preferred scope**, and the one Jamf
-	// intends new integrations to be created with. Blueprints and Compliance
-	// Benchmarks become exclusive to it at the Platform API GA.
+	// intends new integrations to be created with. Blueprints, Compliance
+	// Benchmarks and AI Governance are reachable only this way.
 	ScopeEnvironment
 	// ScopeTenant scopes every request to a single Jamf Pro, Jamf School, Jamf
 	// Protect or Jamf Security Cloud tenant, sent as `X-Tenant-Id`. Jamf
 	// describes this as the legacy method for targeting integrations without a
-	// platform environment: it remains supported, every published spec still
-	// declares this header, and some surfaces are only reachable this way.
+	// platform environment, and the Platform API GA began retiring it: six
+	// Platform specs deleted the header outright, leaving Jamf Pro, ProClassic
+	// and Security Cloud as the families still declaring it. Some Jamf Pro
+	// surfaces remain reachable only this way, so it is supported rather than
+	// deprecated — but a new integration should not be created with it. Which
+	// families still accept it is resolved from the SDK registry in scopes.go
+	// rather than asserted here.
 	ScopeTenant
 )
 
@@ -90,16 +98,19 @@ func (d *Data) Scope() ScopeKind {
 // an error diagnostic when the configured scope is not in allowed.
 //
 // Scope is enforced per construct rather than once in provider Configure because
-// the answer differs per API family and is about to differ more: Jamf Pro is
-// reachable under either an environment- or a tenant-scoped integration, while
-// Blueprints and Compliance Benchmarks go environment-only at the Platform API
-// GA. A single provider-level assertion could not express that, and hard-failing
-// Configure on an organization-scoped integration would block the
-// organization-level constructs this provider will grow later. Narrowing a
-// family at GA is then a one-token edit at its call sites.
+// the answer differs per API family, and it has already differed twice: Jamf Pro
+// is reachable under either an environment- or a tenant-scoped integration,
+// while Blueprints and Compliance Benchmarks became environment-only at the
+// Platform API GA. A single provider-level assertion could not express that, and
+// hard-failing Configure on an organization-scoped integration would block the
+// jamfplatform_account_* family.
 //
 // Pass allowed in preference order — it is the order the diagnostic lists them
-// in, so the scope a user should reach for first comes first.
+// in, so the scope a user should reach for first comes first. Pass one of the
+// derived family sets in scopes.go rather than writing the kinds out: they are
+// resolved from the SDK privilege registry, so a spec ingest that moves a
+// family's scope arrives as one changed value with a pinned expectation to
+// agree with, instead of going stale silently at each of the call sites.
 //
 // resourceType is the fully-qualified Terraform type name used in the
 // diagnostic (e.g. "jamfplatform_pro_category"). An empty allowed list and a nil

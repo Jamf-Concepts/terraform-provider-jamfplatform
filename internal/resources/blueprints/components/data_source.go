@@ -83,7 +83,7 @@ func (d *ComponentsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_components", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_components", providerdata.BlueprintsScopes...)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

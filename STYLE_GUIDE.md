@@ -906,10 +906,22 @@ translated into a "grant this privilege" diagnostic** — it would be wrong half
 Two consequences. First, when the bundled spec advertises an endpoint the gateway 403s on,
 that is evidence the route is unmapped rather than that a privilege is missing: confirm it by
 probing a bogus path with the same token, and by checking a sibling call under the same
-privilege still succeeds (`PUT /securitycloud/v2/groups/{id}` fails this way while
-`PUT /securitycloud/v1/groups/{id}` succeeds under the same `device-groups:update`). Second,
-this is *not* the entitlement failure: `403 NOT_ENTITLED` is a different code and does deserve
-its own named diagnostic.
+privilege still succeeds. Second, this is *not* the entitlement failure: `403 NOT_ENTITLED` is
+a different code and does deserve its own named diagnostic.
+
+**"Unrouted" is a dated snapshot, not a property of the endpoint**, and the exemplar of the
+rule above is the case that proves it. `PUT /securitycloud/v2/groups/{id}` 403'd on 2026-08-29
+while `PUT /securitycloud/v1/groups/{id}` returned 200 under the same `device-groups:update`,
+so `security_cloud_device_group` called the deprecated v1 write under a staticcheck
+suppression. The 403 cleared on 2026-09-03 when the authorization policy deployed, and the
+handler behind it then 404'd until it was fixed on 2026-09-04 — probed at 12:51 (404) and
+13:33 (success) the same day. Two lessons. A `403` clearing is **not** the same event as the
+capability arriving, so a route that stops 403ing still needs its success probed, and a
+handler that accepts a write and discards it would be worse than the refusal — read the change
+back through a *different* operation. And a suppression justified by an unrouted successor is
+temporary by construction: it names a date and an upstream report, and the next SDK bump is
+where it gets re-probed. SDK v0.22.0 withdrew both v1 write paths with the spec, so that one
+is gone.
 
 **A read-only status timestamp does not belong in the schema.** The gateway's
 `status.updatedAt` and the grouped gateway's `updatedAt` advance on every server-side
@@ -932,8 +944,9 @@ func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest,
 ```
 
 It type-asserts `*providerdata.Data`, applies the `RequireScope` gate
-(`ScopeEnvironment, ScopeTenant`) and returns a `*securitycloud.Client`. It deliberately
-does not go through `configureSub` — see rule 5.
+(`SecurityCloudScopes`, which the SDK registry resolves to environment-or-tenant) and
+returns a `*securitycloud.Client`. It deliberately does not go through `configureSub` —
+see rule 5.
 
 Acceptance tests gate on `testhelpers.AccPreCheckSecurityCloud`, which skips unless the
 operator has declared that the configured scope belongs to a Security Cloud tenant; see
@@ -1017,21 +1030,27 @@ Platform Services resources do not use `ConfigurePro` — they only need the raw
 A Jamf API integration is created against one of three scopes, and the provider exposes all three: **Platform environment** (`environment_id` → `X-Environment-Id`) is the **preferred** scope; **Tenant** (`tenant_id` → `X-Tenant-Id`) is the legacy one Jamf documents as "targeting integrations without a platform environment"; **Organization management** is neither attribute set — no scope header, context resolved from the access token. The two attributes are mutually exclusive and **both optional**, so a construct cannot assume a scope was configured at all. Every construct's Configure therefore gates on `providerdata.RequireScope`, naming the scopes it can actually be reached under, **in preference order**:
 
 ```go
-resp.Diagnostics.Append(pd.RequireScope("jamfplatform_<name>", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+resp.Diagnostics.Append(pd.RequireScope("jamfplatform_<name>", providerdata.BlueprintsScopes...)...)
 if resp.Diagnostics.HasError() {
     return
 }
 ```
 
-- **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce environment-or-tenant for every `pro/` package and Pro action.
-- **Security Cloud constructs need no call site either** — `providerdata.ConfigureSecurityCloud` applies the same environment-or-tenant gate (see [§Jamf Security Cloud Resource Naming](#jamf-security-cloud-resource-naming)).
-- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`, except AI Governance, which declares `ScopeEnvironment` alone.
-- **Jamf Account constructs need no call site** — `providerdata.ConfigureAccount` applies a `ScopeOrganization`-only gate (see [§Jamf Account Resource Naming](#jamf-account-resource-naming)).
-- **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first.
-- **Do not gate in provider Configure instead.** The answer differs per API family — Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point those call sites simply drop `ScopeTenant` — and a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
+**Never write the kinds out at a call site.** Pass one of the derived family sets in `internal/providerdata/scopes.go` — `ProScopes`, `SecurityCloudScopes`, `AccountScopes`, `AIGovernanceScopes`, `BlueprintsScopes`, `ComplianceBenchmarksScopes`, `DevicesScopes`, `DeviceGroupsScopes`, `DeviceActionsScopes`. Each is resolved at initialisation from the SDK privilege registry's `MethodPrivileges.Scopes` (SDK v0.22.0), which carries the scope kinds the endpoints are published at, so a spec ingest that moves a family arrives as **one changed value with a pinned expectation to agree with** rather than going stale silently at 25 call sites. `scopes_test.go` pins every set, asserts the family's methods agree with each other, and fails on a widening entry the registry has caught up with.
+
+- **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce `ProScopes` for every `pro/` package and Pro action.
+- **Security Cloud constructs need no call site either** — `providerdata.ConfigureSecurityCloud` applies `SecurityCloudScopes` (see [§Jamf Security Cloud Resource Naming](#jamf-security-cloud-resource-naming)).
+- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion.
+- **Jamf Account constructs need no call site** — `providerdata.ConfigureAccount` applies `AccountScopes` (see [§Jamf Account Resource Naming](#jamf-account-resource-naming)).
+- **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first. The derived sets are already ordered that way; do not re-order them at a call site.
+- **Do not gate in provider Configure instead.** The answer differs per API family, and the Platform API GA proved it twice over: Blueprints and Compliance Benchmarks are now environment-only, while a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
 - **Organization scope is not a rejected special case.** It is the only scope that reaches the `jamfplatform_account_*` family, and it is rejected everywhere else. That two-way enforcement is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure, in both directions.
 
-Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`. `providerdata.New` derives the scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
+**A spec-declared set is not always what the gateway serves.** The GA deleted `X-Tenant-Id` from six Platform specs while the gateway went on answering it, so `scopes.go` carries a `gatewayWidenings` table: a family, a scope, and the wire evidence with its date. Three entries today — Platform devices, device groups and device actions, all wire-verified 2026-09-04. An entry is an **assertion about the gateway**, the provider-side counterpart of the SDK's own `config.scopeTypes` override, and is **deleted rather than edited** when either half of its justification goes. Blueprints and Compliance Benchmarks are deliberately absent: their specs withdrew tenant on the same build, and a `403` on the one available tenant credential classifies as nothing on its own (see §Security Cloud shapes that recur), but the environment-only outcome for exactly those two was the recorded GA decision before the spec declared it, so the spec is being followed rather than guessed at.
+
+Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`, and the derived family sets in `internal/providerdata/scopes.go`. `providerdata.New` derives the configured scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
+
+Scope is also **documented**, not only enforced: `permissions.Section` opens its "Required Jamf permissions" lead-in with the integration scope the endpoints are published at, derived from the same registry as the table. That line reports what the **spec** declares and deliberately omits the widenings — a published table should carry Jamf's declaration rather than this provider's tolerances, and `RequireScope`'s diagnostic is the authority on what a given release accepts.
 
 #### Failure modes
 

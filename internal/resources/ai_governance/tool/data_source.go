@@ -188,7 +188,7 @@ func configure(providerData any, construct string) (*aigovernance.Client, diag.D
 		)
 		return nil, diags
 	}
-	diags.Append(pd.RequireScope(construct, providerdata.ScopeEnvironment)...)
+	diags.Append(pd.RequireScope(construct, providerdata.AIGovernanceScopes...)...)
 	if diags.HasError() {
 		return nil, diags
 	}
