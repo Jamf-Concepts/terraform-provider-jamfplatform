@@ -15,7 +15,7 @@ description: |-
   Characters Jamf Pro cannot store
   & and < come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. This affects nearly every payload type here, including "Application & Custom Settings"; a web clip URL with a query string is the usual way to meet it. Write line breaks as &#13;. Rather than alter a payload silently, the provider refuses it on create, on edit and on import, naming the offending value.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Configuration profiles | Create, Read, Update, Delete | `configuration-profiles` |
@@ -48,7 +48,7 @@ On update the provider re-applies the existing top-level `PayloadUUID` and `Payl
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

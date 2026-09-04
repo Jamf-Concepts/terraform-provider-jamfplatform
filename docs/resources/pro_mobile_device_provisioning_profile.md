@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Pro mobile device provisioning profile: the signed .mobileprovision profile that authorises in-house (enterprise) apps to run on managed devices.
   An uploaded profile cannot be modified in place: changing name or profile_data replaces the profile (Terraform deletes and recreates it).
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Provisioning profiles | Create, Read, Delete | `provisioning-profiles` |
@@ -20,7 +20,7 @@ An uploaded profile cannot be modified in place: changing `name` or `profile_dat
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

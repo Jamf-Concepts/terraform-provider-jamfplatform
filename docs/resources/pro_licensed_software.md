@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro licensed software record: the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. software_definitions and licenses are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Licensed software | Create, Read, Update, Delete | `licensed-software` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro licensed software record: the "Licensed software" entry under
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

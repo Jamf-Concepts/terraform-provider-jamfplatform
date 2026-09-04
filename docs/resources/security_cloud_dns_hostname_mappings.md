@@ -6,7 +6,7 @@ description: |-
   Manages "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI: custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
   This resource owns the tenant's entire set of hostname mappings: a mapping added elsewhere and absent from this configuration is removed on the next apply. There is one set per tenant, so only one instance of this resource should exist in your configuration, and destroying it removes every mapping.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Custom hostname mappings | Read, Update, Delete | `custom-hostname-mappings` |
@@ -20,7 +20,7 @@ This resource owns the tenant's **entire** set of hostname mappings: a mapping a
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

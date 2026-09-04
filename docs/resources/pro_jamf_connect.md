@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource adopts an existing configuration profile, one that already contains a Jamf Connect payload, and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with jamfplatform_pro_macos_configuration_profile (or in the Jamf Pro UI) first and reference the profile's id as profile_id. Adopting a profile applies the configured deployment settings immediately. A profile left at the default auto_deployment_type = "NONE" turns automatic deployment off. Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself. It only stops Terraform from managing the deployment and update settings; the settings already applied remain in place. Import with terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Jamf Connect deployment | Read, Update | `jamf-connect-deployments` |
@@ -17,7 +17,7 @@ Manages the Jamf Connect deployment and update settings for a single macOS confi
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
