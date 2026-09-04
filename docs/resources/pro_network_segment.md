@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organizational context | Network segments | Create, Read, Update, Delete | `network-segments` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro network segment. Network segments are IP ranges used to scope
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

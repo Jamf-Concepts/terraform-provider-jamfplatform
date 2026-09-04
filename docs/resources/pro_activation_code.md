@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). One record per tenant. The activation code is a license secret, and an invalid code can disable the tenant. Import with terraform import jamfplatform_pro_activation_code.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Activation code | Read, Update | `activation-code` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro activation code and organization name (Settings → System 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

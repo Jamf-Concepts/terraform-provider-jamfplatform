@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL), the URL devices check in against. One value per tenant. Read-only; reference the returned url elsewhere in your configuration, such as in enrollment URLs, webhooks, or scripts.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Jamf Pro server URL | Read | `jss-url` |
@@ -17,7 +17,7 @@ Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL), the URL devices 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

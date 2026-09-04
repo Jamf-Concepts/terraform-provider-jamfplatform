@@ -10,7 +10,7 @@ description: |-
   Importing is not supported: Jamf Security Cloud does not return enough of an existing profile for Terraform to adopt it without immediately replacing it.
   See the Jamf Security Cloud guide ../guides/security-cloud for how activation profiles reach devices.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | Activation profiles | Create, Read, Update, Delete | `activation-profiles` |
@@ -34,7 +34,7 @@ See the [Jamf Security Cloud guide](../guides/security-cloud) for how activation
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

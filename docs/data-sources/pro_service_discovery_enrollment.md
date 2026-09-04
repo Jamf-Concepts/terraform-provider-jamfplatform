@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Read the current Jamf Pro service-discovery ("well-known") settings for Account-Driven enrollment. Returns one row per synced Apple Business/School Manager (AxM) organization, with its server_uuid, display name, and current enrollment_type. Useful for discovering the server_uuid values to manage with jamfplatform_pro_service_discovery_enrollment. Requires Jamf Pro 11.25.0 or later. One record per tenant.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | User-initiated enrollment settings | Read | `user-initiated-enrollment` |
@@ -17,7 +17,7 @@ Read the current Jamf Pro service-discovery ("well-known") settings for Account-
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -7,7 +7,7 @@ description: |-
   The assignment list is the read to do before destroying a claim: withdrawing a domain also removes it from every connection that names it, and nothing warns you.
   This is also the construct for a domain another Jamf Account organization owns and shares with yours (shared is true). Such a domain can be assigned to a connection but cannot be changed or withdrawn, so the jamfplatform_account_sso_domain resource refuses to manage one; reading it here takes no ownership of it.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Organization management scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organization management scope | SSO domains | Read | `sso-domains` |
@@ -23,7 +23,7 @@ This is also the construct for a domain another Jamf Account organization owns a
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Organization management** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

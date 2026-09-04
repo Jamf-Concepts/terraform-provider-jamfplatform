@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac Apps" sidebar. general.name, general.version, general.bundle_id and general.url are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac A
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

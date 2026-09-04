@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Reads the set of valid App Store country and region codes for the tenant: the values accepted by jamfplatform_pro_app_request_settings.app_store_locale, alongside the literal deviceLocale. The valid set varies by tenant and by Jamf Pro version. Use search to narrow the result to entries whose code or name contains a substring.
   Required Jamf permissions
-  None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+  None beyond scope — create the API integration with Platform environment scope (preferred) or Tenant scope; the underlying endpoints require no permission of their own.
 ---
 
 # jamfplatform_pro_app_store_country_codes (Data Source)
@@ -14,7 +14,7 @@ Reads the set of valid App Store country and region codes for the tenant: the va
 
 **Required Jamf permissions**
 
-None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+None beyond scope — create the API integration with **Platform environment** scope (preferred) or **Tenant** scope; the underlying endpoints require no permission of their own.
 
 ## Example Usage
 

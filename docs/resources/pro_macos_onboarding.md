@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). One record per tenant. Onboarding presents users with a curated, ordered list of Self Service items during macOS onboarding: policies, configuration profiles and apps. The onboarding_items list fully replaces what is stored. Declare the complete set in the order users should see them. An item you remove is removed from onboarding, and onboarding_items = [] clears every item. priority follows the list order automatically. Import with terraform import jamfplatform_pro_macos_onboarding.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Onboarding configuration | Read, Update | `onboarding` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > m
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

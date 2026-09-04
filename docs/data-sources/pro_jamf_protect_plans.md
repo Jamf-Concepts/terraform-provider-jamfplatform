@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. The catalog reflects the most recent plans sync rather than the live Protect instance. Refresh it by managing the registration with jamfplatform_pro_jamf_protect (which syncs on every apply), or by triggering Sync Plans in the Jamf Pro UI. The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Jamf Protect deployment | Read | `jamf-protect-deployments` |
@@ -17,7 +17,7 @@ Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jam
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

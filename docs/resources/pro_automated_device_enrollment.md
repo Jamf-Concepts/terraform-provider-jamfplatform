@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible name and any optional site_id / supervision_identity_id associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create, and any update that bumps server_token_wo_version), the provider blocks until Jamf Pro reports the Apple ADE sync as SUCCESSFUL. Until that completes the device list is not known to Jamf Pro, and downstream resources such as jamfplatform_pro_computer_prestage_enrollment scope assignments will fail. Default create and update timeout is 5 minutes; override it with the timeouts block when Apple's round-trip is slower on a particular tenant.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Automated Device Enrollment connection | Create, Read, Update, Delete | `device-enrollment-program-instances` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

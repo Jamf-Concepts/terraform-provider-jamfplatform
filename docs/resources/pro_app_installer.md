@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via app_title_name (list available titles with the jamfplatform_pro_app_installer_titles data source). update_behavior controls when updates apply: AUTOMATIC tracks the latest catalog version, MANUAL pins the deployment to the version current when you set it, reported in selected_version. Setting category_id, site_id, or smart_group_id to -1 means "none".
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro App Installer — an automatically-built, signed installer fo
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

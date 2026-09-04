@@ -7,7 +7,7 @@ description: |-
   Use it wherever a configuration has to name a Jamf Pro tenant to another Jamf product, rather than copying the identifier between consoles by hand. jamfplatform_security_cloud_uem_connect is the case it was built for.
   A provider scoped to a platform environment resolves the Jamf Pro tenant within that environment. Only an environment holding a single Jamf Pro tenant has been observed, so treat the result as unverified where an environment holds more than one.
   Required Jamf permissions
-  None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+  None beyond scope — create the API integration with Platform environment scope (preferred) or Tenant scope; the underlying endpoints require no permission of their own.
 ---
 
 # jamfplatform_pro_tenant_id (Data Source)
@@ -20,7 +20,7 @@ A provider scoped to a platform environment resolves the Jamf Pro tenant within 
 
 **Required Jamf permissions**
 
-None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+None beyond scope — create the API integration with **Platform environment** scope (preferred) or **Tenant** scope; the underlying endpoints require no permission of their own.
 
 ## Example Usage
 

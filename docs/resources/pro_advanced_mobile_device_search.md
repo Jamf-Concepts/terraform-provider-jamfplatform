@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro advanced mobile device search, a saved criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are report concerns Jamf Pro computes, and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | Advanced device searches | Create, Read, Update, Delete | `advanced-device-searches` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro advanced mobile device search, a saved criteria-driven invent
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

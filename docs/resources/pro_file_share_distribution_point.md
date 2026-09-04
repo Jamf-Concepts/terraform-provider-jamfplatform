@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro file share distribution point: an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use jamfplatform_pro_cloud_distribution_point. The three plaintext passwords (read_write_password, read_only_password, https_password) are Terraform WriteOnly attributes, sent to Jamf Pro but never stored in state. Pair each with its *_wo_version companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Distribution points | Create, Read, Update, Delete | `distribution-points` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro file share distribution point: an on-premises SMB or AFP file
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

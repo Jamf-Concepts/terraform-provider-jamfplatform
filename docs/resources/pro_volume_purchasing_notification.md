@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Volume Purchasing notification, configured on the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
@@ -17,7 +17,7 @@ Manages a Volume Purchasing notification, configured on the **"Notifications"** 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). One configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. Jamf Pro requires main_header and the three colour codes. Import with terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf Pro policies use to join Mac computers to an Active Directory, Open Directory, PowerBroker, ADmitMac or Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks, selected by type. A plan-time cross-field validator checks that the supplied nested block matches type. The plaintext password is a Terraform WriteOnly attribute, sent to Jamf Pro but never persisted in Terraform state. Pair it with password_wo_version to rotate: bump the integer to force a new update carrying the current password value.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Directory bindings | Create, Read, Update, Delete | `directory-bindings` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro directory binding. Directory bindings are reusable definition
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

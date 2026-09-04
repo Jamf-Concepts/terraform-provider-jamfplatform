@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Pro mobile device enrollment profile: the Apple Configurator and over-the-air enrollment profile devices use to enrol into Jamf Pro. It carries enrolment metadata alongside user and location information and purchasing information.
   Attachments are read-only. Jamf Pro refuses this provider's authentication when an attachment is uploaded to an enrollment profile, so attachments can be listed here but not managed. Add or remove them in the Jamf Pro admin UI.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | Enrollment profiles | Create, Read, Update, Delete | `enrollment-profiles` |
@@ -20,7 +20,7 @@ Attachments are read-only. Jamf Pro refuses this provider's authentication when 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro cloud distribution point. One record per tenant. Configuring this resource enables the selected content delivery network (cdn_type); destroying it disables the cloud distribution point and resets the tenant to NONE. Destroying this resource disables the Jamf Cloud distribution point and permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud. Changing cdn_type forces replacement and has the same effect. Neither can be undone. JAMF_CLOUD (Jamf Cloud Distribution Service, or JCDS) needs no credentials. The other types (AMAZON_S3, AKAMAI, RACKSPACE_CLOUD_FILES) require the credential and endpoint fields, and the provider does not acceptance-test them. Import with terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Cloud Distribution Point | Read, Update | `cloud-distribution-point` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro cloud distribution point. One record per tenant. Configurin
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

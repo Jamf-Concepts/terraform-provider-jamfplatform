@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro webhook (Settings → Global → Webhooks in the Jamf Pro admin UI). A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. "Mutual TLS Authentication" is deliberately unsupported: its certificate material is settable only through the legacy admin web UI, and no API reaches it.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Webhooks | Create, Read, Update, Delete | `webhooks` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro webhook (Settings → Global → Webhooks in the Jamf Pro adm
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

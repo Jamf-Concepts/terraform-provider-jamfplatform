@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro ebook (the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF, EPUB or iBook hosted at general.url) or an Apple Books title (a books.apple.com URL). For App Store ebooks Jamf Pro derives general.file_type and general.version from the URL, so leave them unset. Scope is the dual-target union of computers, mobile devices and users, plus class_ids; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | eBooks | Create, Read, Update, Delete | `ebooks` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro ebook (the "eBooks" entry under the Users sidebar). Distribut
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

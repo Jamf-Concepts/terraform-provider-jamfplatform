@@ -8,7 +8,7 @@ description: |-
   ~> Scope only ever accumulates. jamf_pro_group_ids adds groups to the configuration profile's scope; it never removes one. Deploying group 3 to a profile already scoped to groups 1 and 2 leaves it scoped to all three, and deploying with the argument omitted leaves the existing scope untouched. To narrow or clear the scope, edit the configuration profile in Jamf Pro.
   ~> Omitting jamf_pro_group_ids on a first deployment scopes the configuration profile to nothing, so it reaches no devices. Jamf Security Cloud reports success either way, so name at least one group unless you intend to scope the profile in Jamf Pro yourself.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | UEM Connect configuration | Update | `uem-connect` |
@@ -26,7 +26,7 @@ Re-running it is safe: deploying the same activation profile and operating syste
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

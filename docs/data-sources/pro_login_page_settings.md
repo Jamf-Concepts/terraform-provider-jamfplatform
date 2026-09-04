@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). One record per tenant.
   Required Jamf permissions
-  None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+  None beyond scope — create the API integration with Platform environment scope (preferred) or Tenant scope; the underlying endpoints require no permission of their own.
 ---
 
 # jamfplatform_pro_login_page_settings (Data Source)
@@ -14,7 +14,7 @@ Read the current Jamf Pro login page disclaimer settings (Settings > System > Lo
 
 **Required Jamf permissions**
 
-None — any authenticated Jamf Platform API integration may call the underlying endpoints.
+None beyond scope — create the API integration with **Platform environment** scope (preferred) or **Tenant** scope; the underlying endpoints require no permission of their own.
 
 ## Example Usage
 

@@ -7,7 +7,7 @@ description: |-
   This is also the construct for a connection the jamfplatform_account_sso_connection resource refuses to manage: one built with Microsoft's admin-consent flow in the Jamf Account console, which has no client registration of its own and cannot be written back. Reading it here takes no ownership of it.
   Two things no read returns, so neither appears here: the client secret, which Jamf Account never gives back, and the tenants each product is enabled for. enabled_product_names reports the products alone, which is the only part of that assignment that can be read.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Organization management scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organization management scope | SSO connections | Read | `sso-connections` |
@@ -23,7 +23,7 @@ Two things no read returns, so neither appears here: the client secret, which Ja
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Organization management** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Pro supervision identity, the certificate used to supervise and enroll devices through Apple Configurator (Settings → Apple Configurator Enrollment).
   Provide certificate_data to import an existing .p12 identity, or omit it to have Jamf Pro generate a new identity for you. The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. Only display_name can be changed in place; changing the password or certificate replaces the identity.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Apple Configurator enrollment settings | Read, Update | `apple-configurator-enrollment` |
@@ -20,7 +20,7 @@ Provide `certificate_data` to import an existing `.p12` identity, or omit it to 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

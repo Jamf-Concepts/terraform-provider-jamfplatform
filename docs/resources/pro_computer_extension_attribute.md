@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro computer extension attribute: a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. input_type acts as a discriminator. script is required with SCRIPT and valid only there; popup_menu_choices only with POPUP; directory_service_attribute and allow_multiple_values only with DIRECTORY_SERVICE_ATTRIBUTE_MAPPING. Only SCRIPT extension attributes may be disabled. A plan-time validator enforces these rules before apply.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | Device extension attributes | Create, Read, Update, Delete | `extension-attributes` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro computer extension attribute: a custom inventory field collec
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

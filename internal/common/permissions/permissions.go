@@ -17,6 +17,23 @@
 // picker: the section it sits under, the name printed beside its checkboxes,
 // and which of those checkboxes to tick. catalogue.go holds that mapping.
 //
+// A rendered block also names the API integration SCOPE the endpoints are
+// published at, because permissions are not the whole of what an operator
+// chooses in Jamf Account: an integration is created against a platform
+// environment, a single tenant, or the organization, and a credential carrying
+// the wrong one is refused whatever it has been granted. SDK v0.22.0 began
+// emitting MethodPrivileges.Scopes for exactly this, so the line is derived from
+// the same registry as the table.
+//
+// It reports what the SPEC declares, which is not always the whole of what the
+// gateway serves — the Platform API GA withdrew X-Tenant-Id from six Platform
+// specs while the gateway went on answering it — so this is a recommendation
+// rather than an exhaustive list of what will work. The authority on what a
+// given provider release actually accepts is providerdata.RequireScope, whose
+// Configure diagnostic names the accepted scopes outright; that is where the
+// evidenced divergences live, and deliberately not here, since a published table
+// should carry Jamf's own declaration rather than this provider's tolerances.
+//
 // The SDK also publishes each method's pre-GA Jamf Pro privilege names
 // (MethodPrivileges.Legacy) and this package used to render them beside the
 // capability. It no longer does. Scoped and Legacy are independent sets — the
@@ -77,6 +94,26 @@ func Merge(registries ...Registry) Registry {
 // as a permission granting nothing.
 const malformedAction = "unrecognised permission shape"
 
+// scopeLabels names each scope kind the way Jamf Account labels it when an API
+// integration is created, since the rendered block is written throughout in that
+// picker's vocabulary rather than the wire's. Organization management sends no
+// scope header at all — the gateway resolves it from the access token — so it is
+// named by what an operator picks, not by a header they will never see.
+var scopeLabels = map[jamfplatform.ScopeKind]string{
+	jamfplatform.ScopeEnvironment:  "Platform environment",
+	jamfplatform.ScopeTenant:       "Tenant",
+	jamfplatform.ScopeOrganization: "Organization management",
+}
+
+// scopeOrder is the order a rendered scope list is offered in: environment
+// first, because it is the scope Jamf intends new integrations to be created
+// with and the one the withdrawals are moving every Platform surface towards.
+var scopeOrder = []jamfplatform.ScopeKind{
+	jamfplatform.ScopeEnvironment,
+	jamfplatform.ScopeTenant,
+	jamfplatform.ScopeOrganization,
+}
+
 // requirement is one deduplicated table row: a capability plus every action on
 // it the construct needs. One row per capability rather than per
 // capability-action pair, because that is how Jamf Account presents it — a
@@ -125,9 +162,10 @@ func splitScoped(scoped string) (capability, action string, ok bool) {
 // built from a scoped value splitScoped rejected, both sort after every
 // resolved row — neither has picker names to sort on, and both render as
 // visibly incomplete.
-func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bool, missing []string) {
+func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bool, missing []string, scopes []jamfplatform.ScopeKind) {
 	seen := make(map[string]int)
 	known := 0
+	scopes = slices.Clone(scopeOrder)
 	for _, name := range methods {
 		mp, ok := reg[name]
 		if !ok {
@@ -135,6 +173,7 @@ func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bo
 			continue
 		}
 		known++
+		scopes = intersectScopes(scopes, mp.Scopes)
 		for _, scoped := range mp.Scoped {
 			capability, action, parsed := splitScoped(scoped)
 			key := capability
@@ -156,6 +195,9 @@ func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bo
 		}
 	}
 	noPrivilege = known > 0 && len(reqs) == 0
+	if known == 0 {
+		scopes = nil
+	}
 	sort.Slice(reqs, func(i, j int) bool {
 		ci, ni, ki := rowKey(reqs[i])
 		cj, nj, kj := rowKey(reqs[j])
@@ -170,7 +212,72 @@ func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bo
 		}
 		return reqs[i].capability < reqs[j].capability
 	})
-	return reqs, noPrivilege, missing
+	return reqs, noPrivilege, missing, scopes
+}
+
+// intersectScopes narrows have to the kinds also present in add, preserving
+// have's order.
+//
+// The fold is an intersection, not a union, because Scopes is an alternatives
+// set per method while a client carries exactly one scope: a construct calling
+// several methods needs a credential every one of them accepts. A union would
+// name a scope one of the endpoints refuses, sending an operator to create the
+// wrong integration.
+//
+// An entry declaring no scope at all narrows the result to nothing. The SDK
+// guarantees a non-empty set — a spec declaring none fails its generation — so
+// this can only mean a registry that predates the field, and claiming a scope
+// from the methods that do carry one would publish a partial answer as a
+// complete one. Section suppresses the line instead.
+func intersectScopes(have, add []jamfplatform.ScopeKind) []jamfplatform.ScopeKind {
+	if len(add) == 0 {
+		return nil
+	}
+	return slices.DeleteFunc(have, func(k jamfplatform.ScopeKind) bool {
+		return !slices.Contains(add, k)
+	})
+}
+
+// scopePhrase names the resolved scope set the way the lead-in reads it — for
+// example "**Platform environment** scope" or "**Platform environment** scope
+// (preferred) or **Tenant** scope" — and returns "" when nothing can be claimed.
+//
+// Where two kinds are accepted the first is marked preferred rather than listed
+// flatly, because the choice is not free in either direction: an integration
+// targets one scope, crossing the header over is refused 403
+// OWNERSHIP_FORBIDDEN even inside one customer, and the Platform surfaces are
+// being moved to environment one spec at a time. A kind with no scopeLabels
+// entry suppresses the phrase entirely rather than printing a partial list,
+// which would understate what the endpoints accept.
+func scopePhrase(scopes []jamfplatform.ScopeKind) string {
+	labels := make([]string, 0, len(scopes))
+	for _, k := range scopes {
+		label, ok := scopeLabels[k]
+		if !ok {
+			return ""
+		}
+		labels = append(labels, "**"+label+"** scope")
+	}
+	switch len(labels) {
+	case 0:
+		return ""
+	case 1:
+		return labels[0]
+	default:
+		return labels[0] + " (preferred) or " + joinOr(labels[1:])
+	}
+}
+
+// joinOr renders a label list as "a", "a or b", or "a, b or c".
+func joinOr(parts []string) string {
+	switch len(parts) {
+	case 0:
+		return ""
+	case 1:
+		return parts[0]
+	default:
+		return strings.Join(parts[:len(parts)-1], ", ") + " or " + parts[len(parts)-1]
+	}
 }
 
 // rowKey returns the sort key of a rendered row: the Jamf Account section and
@@ -233,19 +340,30 @@ func actionList(actions map[string]bool) string {
 // dash means this provider's copy of Jamf's permissions map does not cover the
 // row, not that the permission is ungrantable.
 func Section(reg Registry, methods ...string) string {
-	reqs, noPrivilege, missing := collect(reg, methods)
+	reqs, noPrivilege, missing, scopes := collect(reg, methods)
+	phrase := scopePhrase(scopes)
 
 	if noPrivilege && len(missing) == 0 {
-		return "\n\n**Required Jamf permissions**\n\n" +
-			"None — any authenticated Jamf Platform API integration may call the underlying endpoints."
+		none := "None — any authenticated Jamf Platform API integration may call the underlying endpoints."
+		if phrase != "" {
+			none = "None beyond scope — create the API integration with " + phrase +
+				"; the underlying endpoints require no permission of their own."
+		}
+		return "\n\n**Required Jamf permissions**\n\n" + none
 	}
 	if len(reqs) == 0 {
 		return ""
 	}
 
+	lead := "Grant the API integration the following permissions in Jamf Account — see "
+	if phrase != "" {
+		lead = "Create the API integration with " + phrase +
+			", then grant it the following permissions in Jamf Account — see "
+	}
+
 	var b strings.Builder
 	b.WriteString("\n\n**Required Jamf permissions**\n\n")
-	b.WriteString("Grant the API integration the following permissions in Jamf Account — see " +
+	b.WriteString(lead +
 		"[Getting started with the Platform API](" + platformAPIGettingStartedURL + "). " +
 		"`Category` and `Permission` name the section and row of the permission picker; " +
 		"`Actions` are the boxes to tick within that row.\n\n")
@@ -272,7 +390,7 @@ func Section(reg Registry, methods ...string) string {
 // absent from it. Drift-guard tests call this to assert a construct's declared
 // SDK method list stays in sync with the SDK.
 func Missing(reg Registry, methods ...string) []string {
-	_, _, missing := collect(reg, methods)
+	_, _, missing, _ := collect(reg, methods)
 	return missing
 }
 
