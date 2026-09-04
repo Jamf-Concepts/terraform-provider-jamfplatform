@@ -14,7 +14,7 @@ description: |-
   terraform import jamfplatform_pro_icon.example 42. The provider downloads the icon bytes from the CDN URL and stores their SHA-256 in state.Download the icon locally from the URL stored in state, for example curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')". Download it from that URL rather than reusing the file you uploaded. Jamf Pro re-encodes uploaded PNGs, with different zlib compression or metadata, so the bytes the CDN serves back are not byte-identical to the ones you sent.Add icon_file_source = "./icon.png" to your configuration.terraform plan shows an in-place update on icon_file_source (null to path). Nothing is replaced, because the local bytes now match what import stored.
   Point icon_file_source at your original upload instead of the CDN-downloaded copy and the first plan after import shows a replacement: the local bytes hash to something other than what import stored, since Jamf Pro transformed them.
   Required Jamf permissions
-  None beyond scope — create the API integration with Platform environment scope (preferred) or Tenant scope; the underlying endpoints require no permission of their own.
+  None beyond scope. Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope, and it needs no permission of its own. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here.
 ---
 
 # jamfplatform_pro_icon (Resource)
@@ -46,7 +46,7 @@ Point `icon_file_source` at your original upload instead of the CDN-downloaded c
 
 **Required Jamf permissions**
 
-None beyond scope — create the API integration with **Platform environment** scope (preferred) or **Tenant** scope; the underlying endpoints require no permission of their own.
+None beyond scope. Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope, and it needs no permission of its own. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here.
 
 ## Example Usage
 

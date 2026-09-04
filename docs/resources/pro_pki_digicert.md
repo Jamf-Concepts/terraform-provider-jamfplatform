@@ -8,7 +8,7 @@ description: |-
   The certificate, a .p12/.pfx keystore, authenticates Jamf Pro to DigiCert One. Supply it through the client_certificate block as data_wo (base64 of the keystore: use filebase64("cert.p12")) plus password_wo. Both are WriteOnly, never persisted in Terraform state, and never returned by Jamf Pro on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump client_certificate.wo_version. Editing data_wo/password_wo without bumping the version is deliberately a no-op. Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only client_certificate_details block.
   Import with terraform import jamfplatform_pro_pki_digicert.<name> <id>.
   Required Jamf permissions
-  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | DigiCert Trust Lifecycle Manager | Create, Read, Update, Delete | `digicert-settings` |
@@ -26,7 +26,7 @@ Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`.
 
 **Required Jamf permissions**
 
-Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

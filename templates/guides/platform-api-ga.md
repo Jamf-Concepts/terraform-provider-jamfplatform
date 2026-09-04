@@ -293,9 +293,14 @@ different reason:
   token, so no identifier is supplied. An organization-scoped integration therefore belongs in its
   own provider block, aliased, or its own workspace.
 
-Each construct's documentation page names the scope it needs, in the same block as its permission
-table: both are derived from the API specifications the provider is generated against, so they move
-together.
+Each construct's documentation page names the scope its endpoints are published at, in the same
+block as its permission table, taken from the API specifications the provider is generated against.
+That is not always the same set as the provider enforces: where the gateway still serves a header a
+specification has withdrawn, as it does for the Platform inventory constructs listed above, the
+documentation page reports the specification and the provider goes on accepting the wider set. A
+page naming environment scope is therefore not evidence that a working tenant-scoped integration
+needs replacing — the configure-time diagnostic is what states the scopes a given provider release
+accepts, and it is raised only when the configured scope is refused.
 
 Three failure modes follow from the change, easiest to diagnose first:
 

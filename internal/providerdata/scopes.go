@@ -28,7 +28,7 @@ import (
 // this API family" is now data the SDK carries instead of a literal repeated at
 // every Configure. That matters because the answer moves: the Platform API GA
 // withdrew X-Tenant-Id from six Platform specs, and a set written out by hand at
-// 25 call sites is a set that goes stale silently at 25 call sites. Deriving it
+// 27 call sites is a set that goes stale silently at 27 call sites. Deriving it
 // means a spec ingest that narrows or widens a family arrives as one changed
 // value, and scopes_test.go fails on the entries whose justification the change
 // retires.
@@ -49,6 +49,22 @@ import (
 // with, then tenant, then organization.
 var scopeOrder = []ScopeKind{ScopeEnvironment, ScopeTenant, ScopeOrganization}
 
+// ScopeOrder returns the order this package reports a resolved scope set in.
+//
+// It is exported for one caller, and that caller is a test rather than
+// production code: internal/common/permissions renders the same preference into
+// every construct's documentation, from its own scopeOrder over the SDK's enum
+// rather than this one, because the two packages speak different vocabularies —
+// this one names a scope the way a diagnostic must ("environment"), that one the
+// way Jamf Account's picker does ("Platform environment"). Two orderings of one
+// user-facing decision can disagree, and the disagreement would be invisible:
+// each package's own test checks its order against itself. Handing the order out
+// lets the docs side assert the two agree kind-for-kind. The returned slice is a
+// copy, so a caller cannot reorder the authorization path's own preference.
+func ScopeOrder() []ScopeKind {
+	return slices.Clone(scopeOrder)
+}
+
 // Scope sets per API family, in the preference order RequireScope documents.
 //
 // AccountScopes resolves to organization alone from the SDK's own
@@ -58,15 +74,15 @@ var scopeOrder = []ScopeKind{ScopeEnvironment, ScopeTenant, ScopeOrganization}
 // the SDK's side too — read MethodPrivileges.ScopesSource to tell that apart
 // from a transcription.
 var (
-	AccountScopes              = declaredScopes("Jamf Account", account.Privileges)
-	AIGovernanceScopes         = declaredScopes("Jamf AI Governance", aigovernance.Privileges)
-	BlueprintsScopes           = declaredScopes("Blueprints", blueprints.Privileges)
-	ComplianceBenchmarksScopes = declaredScopes("Compliance Benchmarks", compliancebenchmarks.Privileges)
-	DeviceActionsScopes        = declaredScopes("Platform device actions", deviceactions.Privileges)
-	DeviceGroupsScopes         = declaredScopes("Platform device groups", devicegroups.Privileges)
-	DevicesScopes              = declaredScopes("Platform devices", devices.Privileges)
-	ProScopes                  = declaredScopes("Jamf Pro", pro.Privileges, proclassic.Privileges)
-	SecurityCloudScopes        = declaredScopes("Jamf Security Cloud", securitycloud.Privileges)
+	AccountScopes              = resolveFamily("Jamf Account", account.Privileges)
+	AIGovernanceScopes         = resolveFamily("Jamf AI Governance", aigovernance.Privileges)
+	BlueprintsScopes           = resolveFamily("Blueprints", blueprints.Privileges)
+	ComplianceBenchmarksScopes = resolveFamily("Compliance Benchmarks", compliancebenchmarks.Privileges)
+	DeviceActionsScopes        = resolveFamily("Platform device actions", deviceactions.Privileges)
+	DeviceGroupsScopes         = resolveFamily("Platform device groups", devicegroups.Privileges)
+	DevicesScopes              = resolveFamily("Platform devices", devices.Privileges)
+	ProScopes                  = resolveFamily("Jamf Pro", pro.Privileges, proclassic.Privileges)
+	SecurityCloudScopes        = resolveFamily("Jamf Security Cloud", securitycloud.Privileges)
 )
 
 // widening records a scope the gateway still serves after the published spec
@@ -81,9 +97,11 @@ var (
 // first case, because a redundant entry is indistinguishable from a live one at
 // a call site and would go on claiming evidence for a scope the spec now grants
 // outright. The second case cannot be caught from here — it needs a probe — so
-// each entry names its evidence and its date in full, and dropping the scope is
-// the deliberate act the blueprints and compliance-benchmarks families already
-// went through.
+// each entry names, in full, the request that was made, what answered it, the
+// control that classifies that answer, and which privileges the probe actually
+// exercised. Anything less is not re-probeable, and an entry a maintainer cannot
+// re-probe is an entry they will either delete while it is still load-bearing or
+// keep long after it is wrong.
 type widening struct {
 	family string
 	scope  ScopeKind
@@ -96,38 +114,67 @@ type widening struct {
 //
 // All three are the Platform API GA's tenant withdrawal (public-apis-oas#436,
 // #437, #439), which stripped X-Tenant-Id from six Platform specs while the
-// gateway went on serving it. Two independent probes, both 2026-09-04, each with
-// GET /pro/v1/jamf-pro-version at 200 as the served control in the same
-// invocation: the SDK's, recorded in jamfplatform-go-sdk v0.22.0 alongside an
-// unrouted control, and this repo's own through the SDK against eu with the
-// pro-tenant credential — devices and device-groups both 200 under X-Tenant-Id.
-// The acceptance suite then ran green under tenant scope for jamfplatform_device_group
-// (9 tests) and jamfplatform_devices, which is the part a status code cannot
-// show: these constructs work end to end on a credential the spec says should
-// not reach them, so narrowing them would break working configurations.
-// jamfplatform-go-sdk's TestAcceptance_TenantScopePlatformSpecsStillServed fails
-// the day the withdrawal lands.
+// gateway went on serving it. Two independent probes, both 2026-09-04: the
+// SDK's, which stands as TestAcceptance_TenantScopePlatformSpecsStillServed in
+// jamfplatform/acc_tenant_scope_test.go and is therefore the probe to re-run
+// rather than reconstruct, and this repo's own through the SDK against eu with
+// the pro-tenant credential.
 //
-// Blueprints and Compliance Benchmarks are deliberately ABSENT, and the reasoning
-// is worth reading before adding them back. Their specs withdrew tenant on the
-// same build, and two DIFFERENT tenant-scoped credentials are refused 403
-// BAD_PERMISSIONS on both — the SDK's on 2026-09-04 and this repo's pro-tenant
-// acceptance credential, first on 2026-09-03 in .github/acceptance-lanes.json's
-// evidence field and re-probed 2026-09-04. That still does not establish the
-// route is unrouted: this provider's own law is that a Platform 403
-// BAD_PERMISSIONS is indistinguishable from a privilege gap, and two credentials
-// that both lack the capability tell them apart no better than one does.
+// Each probe carries two controls in the same invocation, and the entries below
+// need both because they rest on two different answers. GET
+// /pro/v1/jamf-pro-version at 200 is the SERVED control: it rules out a dead or
+// unentitled credential, without which a blanket refusal across the namespaces
+// reads as a withdrawal that has landed. A bogus path inside the namespace under
+// test, answering 403 BAD_PERMISSIONS, is the UNROUTED control, and it is the
+// one that gives a 404 its meaning — this repo's law is that an unmapped
+// Platform route answers 403 BAD_PERMISSIONS, so a namespace answering anything
+// else has a handler behind it and accepted the header. A 200 is
+// self-classifying and needs no unrouted control, which is why the devices and
+// device-groups entries cite the response alone and the device-actions entry
+// cites the pair.
 //
-// The narrowing does not rest on that question, which is why it stands anyway.
-// The operative fact is that these capabilities cannot be GRANTED to a
-// tenant-scoped integration in Jamf Account at all, so no tenant credential can
-// ever reach them whether or not the gateway routes the path — recorded in the
-// lane table for the same two families. The spec's withdrawal agrees, and the
-// environment-only outcome for exactly these two was this repo's recorded GA
-// decision before either. A tenant-scoped operator therefore gets a named
-// diagnostic at Configure — verified live, in 0.25s, where the same run
-// previously spent 134 seconds applying before a 403 — instead of an opaque
-// failure mid-apply.
+// The acceptance suite then ran green under tenant scope for
+// jamfplatform_device_group (9 tests) and jamfplatform_devices, which is the
+// part a status code cannot show: these constructs work end to end on a
+// credential the spec says should not reach them, so narrowing them would break
+// working configurations. The SDK test above fails the day the withdrawal
+// reaches the gateway, and is where that news will arrive first.
+//
+// Blueprints and Compliance Benchmarks are deliberately ABSENT, and theirs is
+// the one family set in this file resting on a spec declaration with no wire
+// evidence either way. Read the whole of it before adding them back.
+//
+// Their specs withdrew tenant on the same build, and two DIFFERENT
+// tenant-scoped credentials are refused 403 BAD_PERMISSIONS on both — the SDK's
+// on 2026-09-04 and this repo's pro-tenant acceptance credential, first on
+// 2026-09-03 in .github/acceptance-lanes.json's evidence field and re-probed
+// 2026-09-04. Those 403s classify nothing, by the law stated three paragraphs
+// up: a Platform 403 BAD_PERMISSIONS is what an unmapped route answers and also
+// what a privilege gap answers, and two credentials that both lack the
+// capability tell those apart no better than one does. Classifying it needs an
+// unrouted control in the same namespace, of the kind the device-actions entry
+// carries, and neither family has been probed with one.
+//
+// So the narrowing rests on the spec withdrawal alone, plus environment-only for
+// exactly these two having been this repo's recorded GA decision before the spec
+// said so. It is asserted elsewhere that these capabilities cannot be GRANTED to
+// a tenant-scoped integration in Jamf Account at all, which would settle the
+// question outright — but that assertion is INFERRED from the same 403s rather
+// than observed. No dated observation of Jamf Account's permission picker exists
+// anywhere in this repository: no date, no capability slug, no procedure. And
+// the lane table's evidence field, which is where the inference is recorded,
+// names securitycloud in the identical 403 list while SecurityCloudScopes stays
+// environment-and-tenant — a list that includes a family nobody narrowed cannot
+// be the discriminator for the two who were.
+//
+// What would settle it is a dated observation of the permission picker for a
+// tenant-scoped integration, naming the capability slug it does or does not
+// offer; record it here and the narrowing stops being an inference. Until then
+// the honest reading is that the narrowing follows the spec and the wire has not
+// been asked, and the cost of being wrong is bounded and loud: a tenant-scoped
+// operator gets a named diagnostic at Configure — verified live, in 0.25s, where
+// the same run previously spent 134 seconds applying before a 403 — instead of
+// an opaque failure mid-apply, and the remedy is one evidenced entry below.
 //
 // AI Governance needs no entry either and never had one: it is environment-only
 // in the spec, refused 403 under tenant scope on the same probe, and was already
@@ -136,45 +183,97 @@ var gatewayWidenings = []widening{
 	{
 		family: "Platform devices",
 		scope:  ScopeTenant,
-		why:    "GET /devices/v1/devices answered 200 with 13 rows under X-Tenant-Id",
+		why: "GET /devices/v1/devices answered 200 with 13 rows under X-Tenant-Id on 2026-09-04, " +
+			"alongside the served control in the same invocation — a 200 is self-classifying and " +
+			"needs no unrouted control",
 	},
 	{
 		family: "Platform device groups",
 		scope:  ScopeTenant,
-		why:    "GET /device-groups/v1/groups answered 200 with 53 rows under X-Tenant-Id",
+		why: "GET /device-groups/v1/groups answered 200 with 53 rows under X-Tenant-Id on " +
+			"2026-09-04, alongside the served control in the same invocation — a 200 is " +
+			"self-classifying and needs no unrouted control",
 	},
 	{
 		family: "Platform device actions",
 		scope:  ScopeTenant,
-		why: "POST /device-management-action/v1 answered 404 NOT_FOUND under X-Tenant-Id — a " +
-			"routed handler rejecting the request, not the gateway refusing the header",
+		why: "POST /device-actions/v1/devices/00000000-0000-0000-0000-000000000000/check-in — the " +
+			"device-management-action spec, which the gateway serves under the /device-actions " +
+			"prefix — answered 404 under X-Tenant-Id on 2026-09-04 for a device id no tenant can " +
+			"hold, against a bogus path in the same namespace answering 403 BAD_PERMISSIONS in " +
+			"the same invocation: a routed handler rejecting the id, not the gateway refusing the " +
+			"header. Probed through CheckInDevice, so under device-actions:execute ONLY; " +
+			"EraseDevice and UnmanageDevice require destructive-device-actions:execute and are " +
+			"UNPROBED under tenant scope, which is what jamfplatform_device_erase and " +
+			"jamfplatform_device_unmanage are admitted on",
 	},
 }
 
-// resolvedFamilies records every family name declaredScopes has been called
-// with. gatewayWidenings is keyed by that name, and a key that matches nothing
-// widens nothing — silently, since a widening that does not apply looks exactly
-// like a family the gateway never diverged on. TestWideningFamiliesAreResolved
-// reads this map so a mistyped or renamed family fails the build instead.
+// resolvedFamilies records the family names the provider's own scope sets were
+// resolved under. gatewayWidenings is keyed by that name, and a key that matches
+// nothing widens nothing — silently, since a widening that does not apply looks
+// exactly like a family the gateway never diverged on.
+// TestWideningFamiliesAreResolved reads this map so a mistyped or renamed family
+// fails the build instead.
+//
+// Only resolveFamily writes it, and only the var block above calls resolveFamily.
+// That separation is the point: the map used to be written by declaredScopes,
+// which the tests also call, so a test passing gatewayWidenings[0].family seeded
+// the exact key the guard reads and a typo in an entry survived four of six
+// -shuffle seeds. A guard a test can satisfy on the guarded value's behalf is not
+// a guard.
 var resolvedFamilies = map[string]bool{}
 
+// resolveFamily resolves one of the provider's own API families against the live
+// gatewayWidenings table and records its name for the widening-key guard.
+func resolveFamily(family string, regs ...map[string]jamfplatform.MethodPrivileges) []ScopeKind {
+	resolvedFamilies[family] = true
+	return declaredScopes(family, gatewayWidenings, regs...)
+}
+
 // declaredScopes resolves the scope kinds a credential may carry to reach every
-// method in the given SDK privilege registries, widened by any evidenced
-// gatewayWidenings entry for the family.
+// method in the given SDK privilege registries, widened by any evidenced entry
+// in the given widening table for the family.
+//
+// The table is a parameter rather than a package read so the widening path can be
+// asserted against a synthetic table. Parameterising it is what lets the mechanism
+// stay under test on the day the spec catches up and the real entries are deleted,
+// which the entries' own lifecycle rule says is the expected maintenance act;
+// indexing the live table from a test instead made emptying it panic the whole
+// package before nine unrelated tests could report.
 //
 // It panics rather than returning an empty set, because RequireScope treats an
 // empty allowed list as "no scope requirement" and would let an unreachable
-// construct plan and then fail at the gateway. Both panics are deterministic and
-// fire at package initialisation, so `go test ./...` reaches them before any
-// build ships: an empty registry means the SDK renamed or dropped the package,
-// and an empty intersection means two specs in one package disagree so
-// completely that no single credential reaches the family — which is a defect in
-// the split, not a scope to enforce.
-func declaredScopes(family string, regs ...map[string]jamfplatform.MethodPrivileges) []ScopeKind {
-	resolvedFamilies[family] = true
+// construct plan and then fail at the gateway. All three panics are
+// deterministic and fire at package initialisation, so `go test ./...` reaches
+// them before any build ships: no registry at all, or any one of several empty,
+// means the SDK renamed or dropped that package — checked per registry rather
+// than across all of them, because ProScopes folds two and an empty pro.Privileges
+// beside a populated proclassic.Privileges would otherwise resolve the gate for
+// ~115 packages from a registry describing none of their endpoints. An empty
+// intersection means two specs in one package disagree so completely that no
+// single credential reaches the family, which is a defect in the split rather
+// than a scope to enforce.
+//
+// The intersection panic deliberately precedes the widening loop. Widening first
+// would let an emptied intersection be rescued to the widened scope alone —
+// dropping environment, the preferred scope and the only one those specs
+// declare — so the one family set the panic cannot fire for would be a widened
+// one, which is to say the three families with the most spec churn behind them. A
+// widening may only ever add to a set the registry already resolved.
+func declaredScopes(family string, widenings []widening, regs ...map[string]jamfplatform.MethodPrivileges) []ScopeKind {
+	if len(regs) == 0 {
+		panic(fmt.Sprintf("providerdata: no SDK privilege registry was given for %s — "+
+			"its scope cannot be resolved from nothing", family))
+	}
 	var accepted []ScopeKind
 	seen := false
-	for _, reg := range regs {
+	for i, reg := range regs {
+		if len(reg) == 0 {
+			panic(fmt.Sprintf("providerdata: SDK privilege registry %d of %d for %s is empty — "+
+				"the package was renamed or withdrawn, so its scope cannot be resolved",
+				i+1, len(regs), family))
+		}
 		for _, mp := range reg {
 			kinds := methodScopes(family, mp)
 			if !seen {
@@ -186,18 +285,14 @@ func declaredScopes(family string, regs ...map[string]jamfplatform.MethodPrivile
 			})
 		}
 	}
-	if !seen {
-		panic(fmt.Sprintf("providerdata: the SDK privilege registry for %s is empty — "+
-			"the package was renamed or withdrawn, so its scope cannot be resolved", family))
-	}
-	for _, w := range gatewayWidenings {
-		if w.family == family && !slices.Contains(accepted, w.scope) {
-			accepted = append(accepted, w.scope)
-		}
-	}
 	if len(accepted) == 0 {
 		panic(fmt.Sprintf("providerdata: no scope reaches every %s method — the SDK registry's "+
 			"specs disagree, so no single credential can serve the family", family))
+	}
+	for _, w := range widenings {
+		if w.family == family && !slices.Contains(accepted, w.scope) {
+			accepted = append(accepted, w.scope)
+		}
 	}
 	return slices.DeleteFunc(slices.Clone(scopeOrder), func(k ScopeKind) bool {
 		return !slices.Contains(accepted, k)

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). One record per tenant.
   Required Jamf permissions
-  None beyond scope — create the API integration with Platform environment scope (preferred) or Tenant scope; the underlying endpoints require no permission of their own.
+  None beyond scope. Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope, and it needs no permission of its own. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here.
 ---
 
 # jamfplatform_pro_login_page_settings (Data Source)
@@ -14,7 +14,7 @@ Read the current Jamf Pro login page disclaimer settings (Settings > System > Lo
 
 **Required Jamf permissions**
 
-None beyond scope — create the API integration with **Platform environment** scope (preferred) or **Tenant** scope; the underlying endpoints require no permission of their own.
+None beyond scope. Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope, and it needs no permission of its own. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here.
 
 ## Example Usage
 

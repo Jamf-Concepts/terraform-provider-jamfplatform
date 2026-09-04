@@ -86,7 +86,7 @@ func TestFamilyScopesMatchTheSDKRegistry(t *testing.T) {
 // it is the scope Jamf intends new integrations to carry.
 func TestFamilyScopesAreOrderedAndDeduplicated(t *testing.T) {
 	for _, family := range slices.Sorted(maps.Keys(familyRegistries)) {
-		got := declaredScopes(family, familyRegistries[family]...)
+		got := declaredScopes(family, gatewayWidenings, familyRegistries[family]...)
 		if len(got) == 0 {
 			t.Errorf("%s resolved no scope", family)
 			continue
@@ -136,14 +136,43 @@ func TestFamilyScopesAreUniformPerRegistry(t *testing.T) {
 }
 
 // TestWideningFamiliesAreResolved fails on a gatewayWidenings entry whose family
-// name matches no declaredScopes call. Such an entry widens nothing at all, and
-// nothing else would say so: a widening that does not apply is indistinguishable
-// from a family the gateway never diverged on.
+// name matches none of the provider's own resolved families. Such an entry
+// widens nothing at all, and nothing else would say so: a widening that does not
+// apply is indistinguishable from a family the gateway never diverged on.
+//
+// resolvedFamilies is written only by resolveFamily, which only the exported var
+// block calls, so nothing in this file can seed the key it is asked about. That
+// is deliberate — the map was previously written by declaredScopes, which the
+// tests below also call, and a test that passed gatewayWidenings[0].family
+// through it seeded the exact key this test reads, letting a typoed family name
+// survive four of six -shuffle seeds.
 func TestWideningFamiliesAreResolved(t *testing.T) {
 	for _, w := range gatewayWidenings {
 		if !resolvedFamilies[w.family] {
-			t.Errorf("gatewayWidenings names family %q, which no declaredScopes call resolves — "+
+			t.Errorf("gatewayWidenings names family %q, which no resolveFamily call resolves — "+
 				"the entry widens nothing; fix the name or delete it", w.family)
+		}
+	}
+}
+
+// TestResolvedFamiliesMatchTheTestRegistryMap ties familyRegistries to the
+// families the provider actually resolves.
+//
+// Without it the two could drift apart silently, and every per-method assertion
+// in this file would go on passing while covering a family set the provider no
+// longer gates on — including the widening-key guard above, whose whole value is
+// that resolvedFamilies is production data.
+func TestResolvedFamiliesMatchTheTestRegistryMap(t *testing.T) {
+	for _, family := range slices.Sorted(maps.Keys(familyRegistries)) {
+		if !resolvedFamilies[family] {
+			t.Errorf("familyRegistries names family %q, which no resolveFamily call resolves — "+
+				"the test map and the exported sets disagree", family)
+		}
+	}
+	for _, family := range slices.Sorted(maps.Keys(resolvedFamilies)) {
+		if _, ok := familyRegistries[family]; !ok {
+			t.Errorf("family %q is resolved but absent from familyRegistries — its per-method "+
+				"assertions are not running", family)
 		}
 	}
 }
@@ -181,28 +210,60 @@ func TestWideningEntriesAreStillWidenings(t *testing.T) {
 }
 
 // TestDeclaredScopesAppliesAWidening proves the widening path does something,
-// against a synthetic registry rather than a live one, so the assertion survives
-// the day the spec catches up and the real entries go.
+// against a synthetic registry AND a synthetic widening table.
+//
+// Both halves have to be synthetic for the claim to hold. Parameterising the
+// registry alone leaves the assertion driven by whatever gatewayWidenings
+// happens to hold, and the entries' own lifecycle rule says deleting them is the
+// expected maintenance act — all three share one justification, so they
+// plausibly go together. Indexing the live table made that act panic the package
+// at gatewayWidenings[0] before nine unrelated tests, the RequireScope ones
+// included, could report at all. Nothing here reads the live table, so emptying
+// it leaves this file passing and still asserting the mechanism.
 func TestDeclaredScopesAppliesAWidening(t *testing.T) {
-	family := gatewayWidenings[0].family
-	scope := gatewayWidenings[0].scope
-	narrower := ScopeEnvironment
-	if scope == ScopeEnvironment {
-		narrower = ScopeTenant
+	table := []widening{
+		{family: "widened family", scope: ScopeTenant, why: "synthetic: asserts the mechanism, not the gateway"},
+		{family: "some other family", scope: ScopeOrganization, why: "synthetic: must not apply here"},
 	}
-	got := declaredScopes(family, map[string]jamfplatform.MethodPrivileges{
-		"OnlyMethod": {Method: "OnlyMethod", Scopes: []jamfplatform.ScopeKind{sdkKind(narrower)}},
+	got := declaredScopes("widened family", table, map[string]jamfplatform.MethodPrivileges{
+		"OnlyMethod": {Method: "OnlyMethod", Scopes: []jamfplatform.ScopeKind{jamfplatform.ScopeEnvironment}},
 	})
-	if !slices.Contains(got, scope) {
-		t.Fatalf("declaredScopes(%q) = %s, want it widened to include %s", family, names(got), scope)
+	if want := []ScopeKind{ScopeEnvironment, ScopeTenant}; !slices.Equal(got, want) {
+		t.Fatalf("declaredScopes = %s, want %s — the widening for the family under test must be "+
+			"added and the one for another family must not", names(got), names(want))
 	}
+}
+
+// TestDeclaredScopesPanicsRatherThanRescuingAWidenedFamily pins the order of the
+// intersection panic and the widening loop.
+//
+// Widening first would rescue an emptied intersection to the widened scope alone,
+// dropping environment — the preferred scope, and the only one the widened
+// families' specs declare. The panic sells itself as the reason this file cannot
+// fail open, so the families it cannot fire for must not be exactly the three
+// with the most spec churn behind them.
+func TestDeclaredScopesPanicsRatherThanRescuingAWidenedFamily(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("declaredScopes rescued a disjoint widened family to the widened scope alone " +
+				"instead of panicking — the widening loop is running before the intersection guard")
+		}
+	}()
+	declaredScopes("widened family", []widening{
+		{family: "widened family", scope: ScopeTenant, why: "synthetic"},
+	}, map[string]jamfplatform.MethodPrivileges{
+		"Environment": {Method: "Environment", Scopes: []jamfplatform.ScopeKind{jamfplatform.ScopeEnvironment}},
+		"Organization": {Method: "Organization", Scopes: []jamfplatform.ScopeKind{
+			jamfplatform.ScopeOrganization,
+		}},
+	})
 }
 
 // TestDeclaredScopesIntersectsRatherThanUnions pins the direction of the fold. A
 // union would hand a construct a scope one of its methods refuses, which fails
 // at the gateway mid-apply — the failure RequireScope exists to pre-empt.
 func TestDeclaredScopesIntersectsRatherThanUnions(t *testing.T) {
-	got := declaredScopes("uniform pair", map[string]jamfplatform.MethodPrivileges{
+	got := declaredScopes("uniform pair", nil, map[string]jamfplatform.MethodPrivileges{
 		"Both": {Method: "Both", Scopes: []jamfplatform.ScopeKind{
 			jamfplatform.ScopeEnvironment, jamfplatform.ScopeTenant,
 		}},
@@ -215,11 +276,12 @@ func TestDeclaredScopesIntersectsRatherThanUnions(t *testing.T) {
 	}
 }
 
-// TestDeclaredScopesPanicsOnAnEmptyRegistry and its sibling below cover the two
-// ways a resolved set could come back empty. Both panic rather than returning
-// nil, because RequireScope reads an empty allowed list as "no scope
-// requirement" and would let an unreachable construct plan and then die at the
-// gateway.
+// TestDeclaredScopesPanicsOnAnEmptyRegistry and the three tests below it cover
+// every way a resolved set could come back empty: a withdrawn registry, one
+// withdrawn registry among several, no registry at all, and a set of specs no
+// single scope satisfies. All four panic rather than returning nil, because
+// RequireScope reads an empty allowed list as "no scope requirement" and would
+// let an unreachable construct plan and then die at the gateway.
 func TestDeclaredScopesPanicsOnAnEmptyRegistry(t *testing.T) {
 	defer func() {
 		r := recover()
@@ -230,7 +292,46 @@ func TestDeclaredScopesPanicsOnAnEmptyRegistry(t *testing.T) {
 			t.Errorf("panic message %q does not say the registry was empty", r)
 		}
 	}()
-	declaredScopes("withdrawn family", map[string]jamfplatform.MethodPrivileges{})
+	declaredScopes("withdrawn family", nil, map[string]jamfplatform.MethodPrivileges{})
+}
+
+// TestDeclaredScopesPanicsOnOneEmptyRegistryAmongSeveral covers the guard where
+// it is actually load-bearing.
+//
+// ProScopes is the only two-registry call, and it is the gate for ~115 pro/
+// packages plus every Pro action. A guard that fired only when EVERY registry
+// handed in was empty would pass an empty pro.Privileges beside a populated
+// proclassic.Privileges, resolving that gate from a registry describing none of
+// those endpoints — a silently wrong answer, not an absent one.
+func TestDeclaredScopesPanicsOnOneEmptyRegistryAmongSeveral(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("declaredScopes returned for one empty registry beside a populated one — " +
+				"the emptiness guard keys on all registries rather than each")
+		}
+		if msg, _ := r.(string); !strings.Contains(msg, "registry") {
+			t.Errorf("panic message %q does not say a registry was empty", r)
+		}
+	}()
+	declaredScopes("half-withdrawn family", nil,
+		map[string]jamfplatform.MethodPrivileges{
+			"Present": {Method: "Present", Scopes: []jamfplatform.ScopeKind{jamfplatform.ScopeEnvironment}},
+		},
+		map[string]jamfplatform.MethodPrivileges{},
+	)
+}
+
+// TestDeclaredScopesPanicsWhenGivenNoRegistryAtAll covers the variadic's own
+// empty case, which no caller writes today and which would otherwise resolve to
+// no scope at all — read by RequireScope as "no scope requirement".
+func TestDeclaredScopesPanicsWhenGivenNoRegistryAtAll(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("declaredScopes with no registry returned instead of panicking")
+		}
+	}()
+	declaredScopes("family with no registry", nil)
 }
 
 func TestDeclaredScopesPanicsWhenNoScopeReachesEveryMethod(t *testing.T) {
@@ -239,7 +340,7 @@ func TestDeclaredScopesPanicsWhenNoScopeReachesEveryMethod(t *testing.T) {
 			t.Fatal("declaredScopes over disjoint scope sets returned instead of panicking")
 		}
 	}()
-	declaredScopes("disjoint family", map[string]jamfplatform.MethodPrivileges{
+	declaredScopes("disjoint family", nil, map[string]jamfplatform.MethodPrivileges{
 		"Environment": {Method: "Environment", Scopes: []jamfplatform.ScopeKind{jamfplatform.ScopeEnvironment}},
 		"Tenant":      {Method: "Tenant", Scopes: []jamfplatform.ScopeKind{jamfplatform.ScopeTenant}},
 	})
@@ -282,19 +383,6 @@ func TestMethodScopesDeduplicates(t *testing.T) {
 	})
 	if want := []ScopeKind{ScopeTenant, ScopeEnvironment}; !slices.Equal(got, want) {
 		t.Errorf("methodScopes = %s, want %s", names(got), names(want))
-	}
-}
-
-// sdkKind is the inverse of scopeKindFromSDK, for building synthetic registry
-// entries in the tests above.
-func sdkKind(k ScopeKind) jamfplatform.ScopeKind {
-	switch k {
-	case ScopeEnvironment:
-		return jamfplatform.ScopeEnvironment
-	case ScopeTenant:
-		return jamfplatform.ScopeTenant
-	default:
-		return jamfplatform.ScopeOrganization
 	}
 }
 

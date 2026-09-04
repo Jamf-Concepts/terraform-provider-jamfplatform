@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). One registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing api_url, client_id, or bumping password_wo_version re-registers in place: Jamf Pro overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. Destroying this resource removes the registration only. Configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the jamfplatform_pro_jamf_protect_plans data source). Import with terraform import jamfplatform_pro_jamf_protect.<name> singleton.
   Required Jamf permissions
-  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Jamf Protect deployment | Read, Update | `jamf-protect-deployments` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → J
 
 **Required Jamf permissions**
 
-Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

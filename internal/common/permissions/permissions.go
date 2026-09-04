@@ -114,6 +114,34 @@ var scopeOrder = []jamfplatform.ScopeKind{
 	jamfplatform.ScopeOrganization,
 }
 
+// scopeCaveat is the sentence every rendered scope clause carries, and it says
+// the two things the scope name alone does not.
+//
+// The first is that the choice is permanent: an API integration is created
+// against one scope in Jamf Account and there is no attribute anywhere that
+// moves it afterwards, so an operator reading a scope on a Registry page needs
+// to know whether the page is describing a decision they can revisit. Stating
+// it here puts it in front of every reader of every construct, once, rather
+// than in a guide the reader arriving from a search engine never opens.
+//
+// The second is that this block reports the specification and not this
+// provider's enforcement, and it points at the enforcement rather than
+// describing it, because a per-construct page cannot say which side of the
+// divergence its own construct falls on: permissions deliberately does not read
+// gatewayWidenings, so the sentence has to hold on all ~370 pages and it is a
+// widening on three of them. The guide carries the detail. The two deliberately differ — the Platform API GA
+// withdrew X-Tenant-Id from six Platform specs while the gateway went on
+// answering it, and providerdata.RequireScope accepts the wider set for the
+// families where that was probed — so a flat imperative to create the
+// integration with the declared scope would tell an operator whose tenant-scoped
+// credential already works that they must register a replacement. The
+// Configure-time diagnostic is named as the authority because it is derived from
+// what the release enforces, and it is silent when the scope is accepted, which
+// is precisely the case a published imperative would get wrong.
+const scopeCaveat = "You choose an integration's scope when you create it in Jamf Account, and " +
+	"cannot change it afterwards. The provider names the scopes it accepts when you configure it, " +
+	"and for a few families that is wider than Jamf lists here."
+
 // requirement is one deduplicated table row: a capability plus every action on
 // it the construct needs. One row per capability rather than per
 // capability-action pair, because that is how Jamf Account presents it — a
@@ -162,6 +190,16 @@ func splitScoped(scoped string) (capability, action string, ok bool) {
 // built from a scoped value splitScoped rejected, both sort after every
 // resolved row — neither has picker names to sort on, and both render as
 // visibly incomplete.
+//
+// A method absent from the registry suppresses the scope claim as well as
+// marking the row set incomplete, for the same reason intersectScopes treats an
+// entry declaring no scope as narrowing the result to nothing: the intersection
+// would then be computed from a strict subset of what the construct calls, and
+// a scope every resolved method accepts can still be refused by the one that was
+// skipped. That subset renders identically to a complete answer, so the only
+// safe rendering of a partial fold is none. It is a separate condition from
+// known == 0 because a mixed list still resolves methods, which is exactly the
+// case a count of resolutions cannot see.
 func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bool, missing []string, scopes []jamfplatform.ScopeKind) {
 	seen := make(map[string]int)
 	known := 0
@@ -195,7 +233,7 @@ func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bo
 		}
 	}
 	noPrivilege = known > 0 && len(reqs) == 0
-	if known == 0 {
+	if known == 0 || len(missing) > 0 {
 		scopes = nil
 	}
 	sort.Slice(reqs, func(i, j int) bool {
@@ -240,13 +278,18 @@ func intersectScopes(have, add []jamfplatform.ScopeKind) []jamfplatform.ScopeKin
 
 // scopePhrase names the resolved scope set the way the lead-in reads it — for
 // example "**Platform environment** scope" or "**Platform environment** scope
-// (preferred) or **Tenant** scope" — and returns "" when nothing can be claimed.
+// (preferred for new integrations) or **Tenant** scope" — and
+// returns "" when nothing can be claimed.
 //
-// Where two kinds are accepted the first is marked preferred rather than listed
-// flatly, because the choice is not free in either direction: an integration
-// targets one scope, crossing the header over is refused 403
+// Where two kinds are accepted the first carries a recommendation rather than
+// being listed flatly, because the choice is not free in either direction: an
+// integration targets one scope, crossing the header over is refused 403
 // OWNERSHIP_FORBIDDEN even inside one customer, and the Platform surfaces are
-// being moved to environment one spec at a time. A kind with no scopeLabels
+// being moved to environment one spec at a time. The recommendation says what
+// it is for rather than sitting as a bare "(preferred)", which told an operator
+// nothing about why they should prefer it. Whose recommendation it is comes from
+// the lead-in Section builds around this phrase, whose subject is Jamf, so the
+// parenthetical does not repeat the attribution. A kind with no scopeLabels
 // entry suppresses the phrase entirely rather than printing a partial list,
 // which would understate what the endpoints accept.
 func scopePhrase(scopes []jamfplatform.ScopeKind) string {
@@ -264,7 +307,7 @@ func scopePhrase(scopes []jamfplatform.ScopeKind) string {
 	case 1:
 		return labels[0]
 	default:
-		return labels[0] + " (preferred) or " + joinOr(labels[1:])
+		return labels[0] + " (preferred for new integrations) or " + joinOr(labels[1:])
 	}
 }
 
@@ -346,8 +389,8 @@ func Section(reg Registry, methods ...string) string {
 	if noPrivilege && len(missing) == 0 {
 		none := "None — any authenticated Jamf Platform API integration may call the underlying endpoints."
 		if phrase != "" {
-			none = "None beyond scope — create the API integration with " + phrase +
-				"; the underlying endpoints require no permission of their own."
+			none = "None beyond scope. Jamf lists this under " + phrase +
+				", and it needs no permission of its own. " + scopeCaveat
 		}
 		return "\n\n**Required Jamf permissions**\n\n" + none
 	}
@@ -357,8 +400,8 @@ func Section(reg Registry, methods ...string) string {
 
 	lead := "Grant the API integration the following permissions in Jamf Account — see "
 	if phrase != "" {
-		lead = "Create the API integration with " + phrase +
-			", then grant it the following permissions in Jamf Account — see "
+		lead = "Jamf lists this under " + phrase + ". " + scopeCaveat +
+			" Grant the API integration the following permissions in Jamf Account — see "
 	}
 
 	var b strings.Builder

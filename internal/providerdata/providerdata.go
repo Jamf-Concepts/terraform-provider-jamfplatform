@@ -388,13 +388,53 @@ func New(client *jamfplatform.Client) *Data {
 // selected it, none of which belongs in an SDK log field. Both enums now name
 // organization as their zero value and render it the same way — SDK v0.22.0
 // corrected String() from "none", which had named a fourth state the model does
-// not have — so the two agree on the vocabulary and differ only in what they
-// carry. scopes.go maps between them.
+// not have — so the two agree on the vocabulary they share. What they do about a
+// kind they do not share is scopeKindFromClient's business, below; scopes.go
+// answers the same question for a registry entry.
+//
+// A nil client is organization scope and is reached in normal use: the framework
+// calls Configure with a nil ProviderData during early lifecycle, so this must
+// not dereference it.
 func scopeFromClient(c *jamfplatform.Client) ScopeKind {
 	if c == nil {
 		return ScopeOrganization
 	}
-	kind, id := c.Scope()
+	return scopeKindFromClient(c.Scope())
+}
+
+// scopeKindFromClient maps the scope a configured client reports — the pair
+// Client.Scope() returns — onto the provider's ScopeKind. It is the client-side
+// twin of scopeKindFromSDK, which does the same job for a registry entry.
+//
+// An empty ID is organization scope, and legitimately so: sending no scope
+// header is how an organization-scoped credential works, because the gateway
+// then resolves the context from the access token alone.
+//
+// A kind that is none of the three panics rather than falling through, and the
+// direction of the fallback is why. ScopeOrganization is the sole member of
+// AccountScopes, so it is the one value that *passes* the gate in
+// ConfigureAccount — the gate whose whole purpose is to admit only a
+// header-less organization credential. Defaulting to it would fail closed at
+// every other call site and fail open at the one where it counts, which is the
+// failure the derived scope sets exist to make impossible.
+//
+// The panic is deliberate in preference to a sentinel kind that no family set
+// contains, even though this runs at provider Configure in a live plugin
+// process, where a panic reaches the operator as an opaque go-plugin crash
+// rather than a diagnostic. Two reasons. No practitioner input can reach the
+// branch: the kind originates in the scope option the provider itself handed the
+// SDK, so a fourth kind arrives only once this repository grows an option that
+// selects one — and the first plan against such a build panics deterministically,
+// in development, naming what to add. And a sentinel would be reported as
+// "organization" by ScopeKind.String, which has no case for it, so its
+// fail-closed diagnostic would tell an operator they had configured a scope they
+// had not — the same conflation the SDK removed from its own String in v0.22.0.
+//
+// What the panic guards is bounded, because it sits below the empty-ID branch:
+// Client.Scope() returns an empty ID for every kind carrying no request header,
+// so a fourth kind the SDK grows without a header still resolves to organization
+// above. Only a header-bearing one the provider has no ScopeKind for lands here.
+func scopeKindFromClient(kind jamfplatform.ScopeKind, id string) ScopeKind {
 	if id == "" {
 		return ScopeOrganization
 	}
@@ -403,8 +443,12 @@ func scopeFromClient(c *jamfplatform.Client) ScopeKind {
 		return ScopeEnvironment
 	case jamfplatform.ScopeTenant:
 		return ScopeTenant
+	case jamfplatform.ScopeOrganization:
+		return ScopeOrganization
 	}
-	return ScopeOrganization
+	panic(fmt.Sprintf("providerdata: the configured SDK client reports scope kind %d, which this "+
+		"provider has no ScopeKind for — add one rather than letting it default to organization, "+
+		"the only scope the jamfplatform_account_* gate accepts", kind))
 }
 
 // GetJamfProVersion fetches the tenant's Jamf Pro version. Successful results are

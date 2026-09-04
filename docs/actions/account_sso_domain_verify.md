@@ -9,7 +9,7 @@ description: |-
   Jamf Account allows one verification every five minutes per domain, counted from the last time the domain changed, and claiming it counts as a change. So a verification invoked in the same run that claims the domain is refused, and this action reports that refusal rather than waiting it out. Do not trigger this action from the claiming resource's own lifecycle; that arrangement is refused every single time. Give the DNS record time to publish, then invoke the action on a later run: terraform apply -invoke='action.jamfplatform_account_sso_domain_verify.corp'.
   Invoking it is never free, even when ownership is not proven. Every verification resets that five-minute window and moves the point the domain's verification lapses out to 14 days from now, so the domain's last_modified_at and verification_expires_at change on every invocation. Triggering it repeatedly against a domain whose record is not published yet does nothing but push those two forward.
   Required Jamf permissions
-  Create the API integration with Organization management scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Organization management scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organization management scope | SSO domains | Read, Update | `sso-domains` |
@@ -29,7 +29,7 @@ Invoking it is never free, even when ownership is not proven. Every verification
 
 **Required Jamf permissions**
 
-Create the API integration with **Organization management** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Organization management** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

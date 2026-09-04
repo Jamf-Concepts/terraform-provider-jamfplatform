@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages Jamf Pro Access Management settings for Managed Apple Accounts. One record per tenant. When access-management controls are enabled in Apple Business Manager / Apple School Manager, this names the Automated Device Enrollment (ADE) server object Jamf Pro returns in its Get Token response, so ABM/ASM can restrict Managed Apple Account sign-in to managed or supervised devices only. The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. Omitting automated_device_enrollment_server_uuid keeps the value currently set on the tenant, including on the first apply: this resource adopts the existing setting. To clear the setting, set automated_device_enrollment_server_uuid = "". Omitting it does not clear it. Import with terraform import jamfplatform_pro_access_management_settings.<name> singleton.
   Required Jamf permissions
-  Create the API integration with Platform environment scope (preferred) or Tenant scope, then grant it the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | Access management | Read, Update | `access-management` |
@@ -17,7 +17,7 @@ Manages Jamf Pro Access Management settings for Managed Apple Accounts. One reco
 
 **Required Jamf permissions**
 
-Create the API integration with **Platform environment** scope (preferred) or **Tenant** scope, then grant it the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Jamf lists this under **Platform environment** scope (preferred for new integrations) or **Tenant** scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
