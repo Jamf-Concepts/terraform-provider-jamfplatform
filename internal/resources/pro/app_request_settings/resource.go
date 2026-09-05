@@ -12,7 +12,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
@@ -21,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -79,7 +77,7 @@ func (r *AppRequestSettingsResource) Schema(ctx context.Context, req resource.Sc
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro App Request settings (Settings → Self Service → App Request). " +
 			"App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. " +
-			"This resource adopts the existing settings on first apply. Omitting `enabled`, `app_store_locale` or `requester_user_group_id` keeps that field at its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. " +
+			"This resource adopts the existing settings on first apply. Omitting `enabled`, `app_store_locale` or `requester_user_group_id` keeps that field at its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare, an empty set clearing every approver. " +
 			"Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -106,12 +104,9 @@ func (r *AppRequestSettingsResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"approver_emails": schema.SetAttribute{
-				MarkdownDescription: "Email addresses of the App Request approvers. At least one is required.",
+				MarkdownDescription: "Email addresses of the App Request approvers. The set is applied exactly as declared: removing an address revokes it, and an empty set clears every approver. The Jamf Pro admin UI expects at least one approver while App Requests are enabled, so declare an empty set only where they are switched off.",
 				ElementType:         types.StringType,
 				Required:            true,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-				},
 			},
 			"requester_user_group_id": schema.Int64Attribute{
 				MarkdownDescription: "ID of the static Jamf Pro user group whose members may request apps (see `jamfplatform_pro_user_group`). Required when `enabled` is `true`, and it must reference a static group; Jamf Pro rejects a smart group or an unknown ID. Only valid while `enabled` is `true`: when App Requests are disabled the group is cleared and may not be set. Omit it while enabled to leave the current value untouched.",

@@ -49,6 +49,7 @@ var (
 	_ resource.ResourceWithImportState      = &SmtpServerResource{}
 	_ resource.ResourceWithIdentity         = &SmtpServerResource{}
 	_ resource.ResourceWithConfigValidators = &SmtpServerResource{}
+	_ resource.ResourceWithModifyPlan       = &SmtpServerResource{}
 )
 
 const (
@@ -104,7 +105,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the SMTP server connection is enabled (\"Use the switch to enable or disable the connection\" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it.",
+				MarkdownDescription: "Whether the SMTP server connection is enabled (\"Use the switch to enable or disable the connection\" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it. Enabling requires `sender_settings.email_address` and `sender_settings.display_name` to both hold a value.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -124,16 +125,15 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"email_address": schema.StringAttribute{
-						MarkdownDescription: "**\"Sender email address\"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from.",
-						Required:            true,
-						Validators: []validator.String{
-							stringvalidator.LengthAtLeast(1),
-						},
+						MarkdownDescription: "**\"Sender email address\"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from. " +
+							"Jamf Pro requires a real address whenever `enabled` is `true`, and accepts an empty string only while the connection is disabled — which is how a tenant that has never set up mail reads back, so an empty value here is expected on adoption and must be filled in before enabling.",
+						Required: true,
 					},
 					"display_name": schema.StringAttribute{
-						MarkdownDescription: "**\"Sender display name\"** in the Jamf Pro admin UI. The sender name shown in messages. Optional; omit to preserve the current value.",
-						Optional:            true,
-						Computed:            true,
+						MarkdownDescription: "**\"Sender display name\"** in the Jamf Pro admin UI. The sender name shown in messages. Omit to preserve the current value. " +
+							"Jamf Pro requires a non-empty name whenever `enabled` is `true`, so a tenant whose stored name is empty needs one supplied here before the connection can be enabled.",
+						Optional: true,
+						Computed: true,
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -290,6 +290,25 @@ func woVersion(secretName string) schema.Int64Attribute {
 		MarkdownDescription: fmt.Sprintf("Rotation trigger for the `WriteOnly` `%s`. Bump this integer (any change) to send the current `%s` on the next apply; leaving it unset or unchanged signals \"leave the stored value alone\": the provider omits the secret and Jamf Pro retains the existing one. Set it on create when you supply the secret.", secretName, secretName),
 		Optional:            true,
 	}
+}
+
+// ModifyPlan runs the sender-identity preflight against the resolved plan, so an
+// enabled connection missing a sender address or display name fails the plan
+// instead of the apply. It reads the plan rather than the configuration because
+// `enabled` is Optional+Computed: the value UseStateForUnknown carries forward is
+// the one the write will send. No-op on destroy.
+func (r *SmtpServerResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan SmtpServerResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(validateSenderSettingsWhenEnabled(plan.Enabled, plan.SenderSettings)...)
 }
 
 // ConfigValidators returns the cross-field validators evaluated at plan time.

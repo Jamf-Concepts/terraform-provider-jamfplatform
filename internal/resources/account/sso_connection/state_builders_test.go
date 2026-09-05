@@ -550,3 +550,80 @@ func TestBuildConnectionsResultModel(t *testing.T) {
 		t.Errorf("enabled_product_names = %s, want both products", result.EnabledProductNames)
 	}
 }
+
+// TestAssignConnectionResourceModel_PKCEFollowsTheConnectionType pins the one
+// attribute Jamf reports for every connection and this resource accepts for only
+// half of them.
+//
+// The console offers a PKCE setting for a generic OpenID Connect or an Okta
+// connection and for neither of the other two, which validators.go enforces by
+// refusing a configured value there. Recording Jamf's value anyway made the
+// resource contradict itself through `terraform plan -generate-config-out`, which
+// writes state back out as configuration: an Entra connection came back with
+// `pkce = "disabled"` written in and the generated file was refused at plan time
+// (issue #379).
+//
+// All four families are covered on a refresh and on an adoption, since an import
+// is the path a practitioner reaches this by and the two share nothing but this
+// function.
+func TestAssignConnectionResourceModel_PKCEFollowsTheConnectionType(t *testing.T) {
+	for _, tc := range []struct {
+		wireType string
+		wantPKCE bool
+	}{
+		{account.ConnectionTypeOidc, true},
+		{account.ConnectionTypeOkta, true},
+		{account.ConnectionTypeWaad, false},
+		{account.ConnectionTypeGoogleApps, false},
+	} {
+		for form, adopt := range map[string]bool{"refresh": false, "adoption": true} {
+			t.Run(tc.wireType+"/"+form, func(t *testing.T) {
+				read := oidcConnectionRead()
+				read.Type = new(tc.wireType)
+				read.PkceAuthType = new(account.PkceAuthTypeDisabled)
+
+				var state ConnectionResourceModel
+				if diags := assignConnectionResourceModel(&state, read, oidcSummaryRead(), adopt); diags.HasError() {
+					t.Fatalf("assigning state: %v", diags)
+				}
+
+				if !tc.wantPKCE {
+					if !state.PKCE.IsNull() {
+						t.Errorf("pkce = %q, want nothing: the console offers no PKCE setting for this connection type, and this resource refuses a configured one",
+							state.PKCE.ValueString())
+					}
+					return
+				}
+				if got := state.PKCE.ValueString(); got != pkceDisabled {
+					t.Errorf("pkce = %q, want the stored value %q", got, pkceDisabled)
+				}
+			})
+		}
+	}
+}
+
+// TestAssignConnectionDataSourceModel_ReportsPKCEForEveryConnectionType is the
+// other half of the asymmetry. A data source owns no configuration to contradict,
+// so it reports whatever Jamf holds — including for the two families a managed
+// connection records nothing for.
+func TestAssignConnectionDataSourceModel_ReportsPKCEForEveryConnectionType(t *testing.T) {
+	for _, wireType := range []string{
+		account.ConnectionTypeOidc,
+		account.ConnectionTypeOkta,
+		account.ConnectionTypeWaad,
+		account.ConnectionTypeGoogleApps,
+	} {
+		t.Run(wireType, func(t *testing.T) {
+			read := oidcConnectionRead()
+			read.Type = new(wireType)
+
+			var state ConnectionDataSourceModel
+			if diags := assignConnectionDataSourceModel(&state, read, oidcSummaryRead()); diags.HasError() {
+				t.Fatalf("assigning state: %v", diags)
+			}
+			if got := state.PKCE.ValueString(); got != pkceDisabled {
+				t.Errorf("pkce = %q, want the stored value %q", got, pkceDisabled)
+			}
+		})
+	}
+}

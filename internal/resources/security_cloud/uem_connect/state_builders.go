@@ -34,6 +34,20 @@ import (
 // cannot be used as the signal, and `oauth` is deliberately left null there. Those
 // credentials are not the user's to manage.
 //
+// # Why the server address is dropped on the platform_tenant form
+//
+// Jamf Security Cloud reports the resolved address for both forms, and on this one
+// `uem_server_url` cannot be written in configuration at all: the resource refuses
+// the pair (resource.go's Conflicting validator), because the tenant resolves the
+// address. Committing what the server resolved would make the resource contradict
+// its own rule, and the way that surfaces is
+// `terraform plan -generate-config-out`, which writes state back out as
+// configuration — a generated file carrying both the tenant and the address cannot
+// be planned. Create already nulls it for the same reason
+// (nullUnknownReadBackValues), so this is what keeps a refresh from undoing that.
+// The data source keeps reporting the real address: it owns no configuration to
+// contradict and the resolved address is worth knowing.
+//
 // # Why the optional blocks are gated
 //
 // `user_data_field_mapping` and `group_membership_mapping` are Optional-only, and Jamf Security
@@ -62,12 +76,13 @@ func assignUEMConnectResourceModel(state *UEMConnectResourceModel, config *secur
 
 	state.ID = types.StringValue(config.ID)
 	state.UEMVendor = types.StringValue(config.Vendor)
-	state.UEMServerURL = types.StringValue(config.URL)
 
 	if config.TenantID != nil && *config.TenantID != "" {
+		state.UEMServerURL = types.StringNull()
 		state.PlatformTenant = &PlatformTenantModel{TenantID: types.StringValue(*config.TenantID)}
 		state.OAuth = nil
 	} else {
+		state.UEMServerURL = types.StringValue(config.URL)
 		state.PlatformTenant = nil
 		clientID := types.StringNull()
 		if config.DeviceSyncAuth != nil {

@@ -504,6 +504,10 @@ data "jamfplatform_pro_patch_software_title" "bad" {
 // TestAccListResource_ProPatchSoftwareTitle_Basic exercises the list resource via
 // the `terraform query` workflow. DisplayName / the filter match on the title's
 // display name.
+//
+// The title is created with no package assignments, which is the case that made
+// generated configuration unusable: version_packages is Optional-only with a
+// minimum of one entry, so it has to stream as null rather than an empty map.
 func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -551,6 +555,7 @@ func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
 							{Path: tfjsonpath.New("name_id"), KnownValue: knownvalue.StringExact(accTitleNameID)},
+							{Path: tfjsonpath.New("version_packages"), KnownValue: knownvalue.Null()},
 						},
 					),
 				},

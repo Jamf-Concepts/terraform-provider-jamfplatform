@@ -193,6 +193,13 @@ func checkIntegrationDestroyed(t *testing.T) resource.TestCheckFunc {
 // mapping and keeps the other, since a nested collection needs both an add and a
 // remove exercised. Step 5 empties the list, which is how mappings are cleared and
 // is not the same as omitting it. Step 6 imports.
+// Two things this test asserts belong to issue #379. uem_server_url must NOT be
+// recorded on this form: it conflicts with platform_tenant, so an address in
+// state is an address `terraform plan -generate-config-out` writes into a
+// configuration the resource then refuses — which is exactly how the defect
+// surfaced, the refresh re-committing what Create had deliberately dropped. And
+// the final step is the generation guard, on this form rather than the oauth one
+// for the same reason.
 func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	requireNoExistingIntegration(t)
@@ -215,10 +222,7 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "uem_vendor", securitycloud.ConnectorCreateRequestBodyVendorJamfPro),
 					resource.TestCheckResourceAttr(resourceName, "platform_tenant.tenant_id", tenant),
-					// The address is not configured on this form; Jamf Security Cloud
-					// derives it from the tenant, so the computed value arriving is
-					// the assertion that matters.
-					resource.TestCheckResourceAttrSet(resourceName, "uem_server_url"),
+					resource.TestCheckNoResourceAttr(resourceName, "uem_server_url"),
 					resource.TestCheckNoResourceAttr(resourceName, "oauth.client_id"),
 					// The defaults the server applies on create.
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
@@ -404,6 +408,7 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 					"group_membership_mapping",
 				},
 			},
+			testhelpers.GenerateConfigStep(resourceName),
 		},
 	})
 }
@@ -785,6 +790,11 @@ func TestAccResource_SecurityCloudUEMConnect_DriftRecovery(t *testing.T) {
 // The data source's own additions are asserted for presence rather than value:
 // `connected` and the sync summary depend on when the read happens relative to the
 // first sync, so pinning them would be pinning a race.
+//
+// The server address is where the two deliberately disagree on the platform_tenant
+// form. The data source reports what Jamf Security Cloud resolved from the tenant;
+// the resource records nothing, because uem_server_url conflicts with
+// platform_tenant and a generated configuration carrying both cannot be planned.
 func TestAccDataSource_SecurityCloudUEMConnect_ReadsCreatedIntegration(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	requireNoExistingIntegration(t)
@@ -813,10 +823,9 @@ func TestAccDataSource_SecurityCloudUEMConnect_ReadsCreatedIntegration(t *testin
 						"data.jamfplatform_security_cloud_uem_connect.test", "id",
 						resourceName, "id",
 					),
-					resource.TestCheckResourceAttrPair(
-						"data.jamfplatform_security_cloud_uem_connect.test", "uem_server_url",
-						resourceName, "uem_server_url",
-					),
+					resource.TestCheckResourceAttrSet(
+						"data.jamfplatform_security_cloud_uem_connect.test", "uem_server_url"),
+					resource.TestCheckNoResourceAttr(resourceName, "uem_server_url"),
 					resource.TestCheckResourceAttr(
 						"data.jamfplatform_security_cloud_uem_connect.test", "platform_tenant_id", tenant),
 					resource.TestCheckResourceAttr(

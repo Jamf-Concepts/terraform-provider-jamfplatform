@@ -5,12 +5,22 @@
 //   pro.GetSmtpServerV2
 //   pro.UpdateSmtpServerV2
 //
-// Status: current. Last reviewed 2026-06-09.
+// Every sender-settings validation Jamf Pro applies is gated on `enabled`
+// (probed 2026-09-05, Jamf Pro 11.31, EU gateway). A disabled connection accepts
+// an empty senderSettings.emailAddress and displayName and round-trips both,
+// which is how a tenant that has never set up mail reads back. An enabled one
+// refuses each independently: 400 [INVALID_EMAIL] for an address that is not in
+// address format, 400 [INVALID_DISPLAY_NAME] for a display name that is empty or
+// absent. validateSenderSettingsWhenEnabled catches the empty cases at plan
+// time; smtpServerWriteErrorDiagnostic translates whatever reaches the wire.
+//
+// Status: current. Last reviewed 2026-09-05.
 
 package smtp_server
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -52,7 +62,7 @@ func (r *SmtpServerResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	if _, err := r.client.UpdateSmtpServerV2(createCtx, buildSmtpServerInput(plan, current, createSecret(cfg))); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro SMTP Server settings", err.Error())
+		resp.Diagnostics.AddError(smtpServerWriteErrorDiagnostic("Error setting Jamf Pro SMTP Server settings", err))
 		return
 	}
 
@@ -149,7 +159,7 @@ func (r *SmtpServerResource) Update(ctx context.Context, req resource.UpdateRequ
 	defer cancel()
 
 	if _, err := r.client.UpdateSmtpServerV2(updateCtx, buildSmtpServerInput(plan, nil, updateSecret(cfg, plan, state))); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro SMTP Server settings", err.Error())
+		resp.Diagnostics.AddError(smtpServerWriteErrorDiagnostic("Error updating Jamf Pro SMTP Server settings", err))
 		return
 	}
 
@@ -176,4 +186,44 @@ func (r *SmtpServerResource) Update(ctx context.Context, req resource.UpdateRequ
 // on its own after this handler returns.
 func (r *SmtpServerResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Trace(ctx, "removing Jamf Pro SMTP Server settings from Terraform state (singleton — no remote delete)")
+}
+
+// smtpServerWriteErrorDiagnostic names the two sender-identity refusals Jamf Pro
+// raises on an enabled connection, so the operator is told which field to fill in
+// rather than being handed a bare 400.
+//
+// It is the backstop behind validateSenderSettingsWhenEnabled, which cannot fire
+// on a first apply that leaves display_name out: the attribute is
+// Optional+Computed with no prior state to resolve from, so the plan value is
+// Unknown and the write carries whatever the tenant already stored — empty, on a
+// tenant that has never set up mail.
+//
+// The match is on the field names Jamf Pro attributes the failure to rather than
+// its error codes: the codes are undocumented and the SDK generates no constants
+// for them.
+func smtpServerWriteErrorDiagnostic(summary string, err error) (string, string) {
+	msg := err.Error()
+
+	displayName := strings.Contains(msg, "senderSettings.displayName")
+	email := strings.Contains(msg, "senderSettings.emailAddress")
+
+	switch {
+	case displayName && email:
+		return "Sender email address and display name required to enable the SMTP server",
+			"Jamf Pro refused the write because an enabled connection needs both a sender email address and a " +
+				"sender display name, and neither is set. Set sender_settings.email_address and " +
+				"sender_settings.display_name, or leave enabled false.\n\nJamf Pro reported: " + msg
+	case displayName:
+		return "Sender display name required to enable the SMTP server",
+			"Jamf Pro refused the write because an enabled connection needs a non-empty sender display name, and " +
+				"the tenant's stored name is empty. Set sender_settings.display_name rather than omitting it, " +
+				"since omitting it preserves the empty value.\n\nJamf Pro reported: " + msg
+	case email:
+		return "Sender email address rejected by Jamf Pro",
+			"Jamf Pro refused the write because an enabled connection needs a sender email address in a valid " +
+				"address format. Set sender_settings.email_address to the address Jamf Pro should send from, or " +
+				"leave enabled false.\n\nJamf Pro reported: " + msg
+	}
+
+	return summary, msg
 }

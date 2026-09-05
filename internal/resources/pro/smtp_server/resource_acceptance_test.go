@@ -159,6 +159,76 @@ func TestAccResource_ProSmtpServer_None(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProSmtpServer_UnconfiguredTenant covers the state a tenant that
+// has never set up mail reads back in, and the two things that state has to
+// support.
+//
+// The sender address and display name are both empty, which Jamf Pro accepts and
+// round-trips while the connection is disabled (wire-probed 2026-09-05; enabling
+// refuses each independently). Until issue #379 this resource carried a
+// minimum-length validator on the address, so the tenant could not be declared at
+// all and configuration generated from it could not be planned — the state is
+// unreachable from every other test here, because a test that applies a
+// configuration and reads it back can only produce a state the configuration
+// already described.
+//
+// Step 2 is the generation guard, and step 3 asserts the replacement rule: the
+// prohibition on an empty sender belongs to an ENABLED connection, and now fires
+// at plan time instead of arriving as a 400 mid-apply.
+func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	const unconfigured = `
+		resource "jamfplatform_pro_smtp_server" "test" {
+			authentication_type = "NONE"
+			enabled             = false
+			sender_settings = {
+				email_address = ""
+				display_name  = ""
+			}
+			connection_settings = {
+				host            = "192.0.2.25"
+				port            = 25
+				encryption_type = "NONE"
+			}
+		}
+	`
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSingletonRecordStillExists(t),
+		Steps: []resource.TestStep{
+			{
+				Config: unconfigured,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(smtpAddr, "enabled", "false"),
+					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.email_address", ""),
+					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.display_name", ""),
+				),
+			},
+			testhelpers.GenerateConfigStep(smtpAddr),
+			{
+				Config: `
+					resource "jamfplatform_pro_smtp_server" "test" {
+						authentication_type = "NONE"
+						enabled             = true
+						sender_settings = {
+							email_address = ""
+							display_name  = ""
+						}
+						connection_settings = {
+							host            = "192.0.2.25"
+							port            = 25
+							encryption_type = "NONE"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`Sender email address required`),
+			},
+		},
+	})
+}
+
 // TestAccResource_ProSmtpServer_GraphApi is the GRAPH_API happy-path: no
 // connection settings, Graph credentials only.
 func TestAccResource_ProSmtpServer_GraphApi(t *testing.T) {
