@@ -1,0 +1,22 @@
+# golangci-lint configuration.
+#
+# This file exists for ONE reason: to keep `make lint` off local-testing/.
+# That directory holds manual API request workflows for development, it is
+# gitignored (.gitignore:93), and it is deliberately not held to the provider's
+# standards — but its 20 packages are inside the module, so `./...` walks them
+# and `golangci-lint run` reports their nits. CI never noticed, because a
+# gitignored directory is not checked out, so the lint job was green while
+# `make lint` failed for every developer who had ever run a probe. Excluding it
+# here rather than in GNUmakefile keeps the CLI and the golangci-lint-action
+# CI job (which takes no arguments) in agreement.
+#
+# The linter SELECTION is deliberately left alone: no `linters.default` key, so
+# the default `standard` set stays in force (errcheck, govet, ineffassign,
+# staticcheck, unused). Do not use this file to quieten a finding in internal/
+# or examples/ — fix the code.
+version: "2"
+
+linters:
+  exclusions:
+    paths:
+      - local-testing
