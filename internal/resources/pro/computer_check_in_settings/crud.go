@@ -85,7 +85,7 @@ func (r *ComputerCheckInSettingsResource) Read(ctx context.Context, req resource
 	}
 
 	var state ComputerCheckInSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

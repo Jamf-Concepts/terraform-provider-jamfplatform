@@ -105,4 +105,60 @@ func ImportSingletonState(ctx context.Context, req resource.ImportStateRequest, 
 		return
 	}
 	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), SingletonID)...)
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, singletonImportMarkerKey, singletonImportMarkerValue)...)
+}
+
+// singletonImportMarkerKey is the provider private state key ImportSingletonState
+// writes and IsSingletonImport consumes, so a singleton's Read can tell an import
+// from a refresh.
+//
+// The framework keeps a marker of its own for this — privatestate.ImportBeforeReadKey,
+// set during ImportResourceState and deleted on the first read — but it lives in
+// req.Private.Framework, which is an internal package, and no field on the public
+// resource.ReadRequest exposes it. Hence a provider-owned key alongside it, doing
+// the same job by the same mechanism.
+const singletonImportMarkerKey = "singleton_import"
+
+// singletonImportMarkerValue is the marker's payload. Private state values must be
+// valid UTF-8 JSON, and a zero-length value means "delete this key", so the
+// presence of the key is the signal and the content is deliberately inert.
+var singletonImportMarkerValue = []byte(`{"imported":true}`)
+
+// IsSingletonImport reports whether this Read is the one Terraform performs
+// immediately after an import, and consumes the marker so the next refresh is not
+// mistaken for another import.
+//
+// # Why a marker rather than a null state
+//
+// The obvious test — `req.State.Raw.IsNull()` — cannot work for a singleton, and
+// every one of them used it. ImportSingletonState routes through
+// ImportStatePassthroughWithIdentity, which writes the id into state on BOTH
+// import forms, so by the time Read runs the state is never null and the import
+// branch never fires. The branch was therefore dead in all 27 Jamf Pro singletons:
+// each one's "nothing here to import" diagnostic was unreachable, and an import of
+// a setting the tenant has not configured fell through to the refresh path, whose
+// RemoveResource makes Terraform report its own "Cannot import non-existent remote
+// object" instead.
+//
+// Note this is specific to the singletons. For a resource importing through
+// ImportStatePassthroughID the null-state test is correct and still in use: that
+// helper writes state only on the req.ID path, so an identity-form import does
+// leave state null. The two must not be conflated.
+//
+// # Why it clears the marker
+//
+// fwserver hands Read the same *privatestate.ProviderData for the request and the
+// response, and copies it back into the resource's stored private state. A marker
+// left in place would make every later refresh look like an import, so a setting
+// deleted out of band would raise "nothing to import" forever instead of being
+// dropped from state. Consuming it on first read is what keeps it to the one read
+// it describes — the same lifecycle the framework gives its own key.
+func IsSingletonImport(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) bool {
+	marker, diags := req.Private.GetKey(ctx, singletonImportMarkerKey)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() || len(marker) == 0 {
+		return false
+	}
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, singletonImportMarkerKey, nil)...)
+	return true
 }

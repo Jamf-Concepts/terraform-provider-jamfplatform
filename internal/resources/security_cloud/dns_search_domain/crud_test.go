@@ -56,9 +56,12 @@ func searchDomainClient(t *testing.T, status int, body any) *securitycloud.Clien
 }
 
 // nullObject builds a value of the given object type with every attribute null —
-// the shape a data source configuration with no arguments arrives as. A wholly null
-// object cannot be decoded into a Go struct, so the config has to be an object of
-// nulls rather than a null object.
+// the shape a data source configuration with no arguments arrives as, and the shape
+// the state carries into the Read that follows an import (only the id is passed
+// through, and even that is null here because these tests exercise the read of the
+// remote value rather than the import path). A wholly null object cannot be decoded
+// into a Go struct, so it has to be an object of nulls rather than a null object,
+// which is also why a zero tftypes.Value will not serve: req.State.Get refuses it.
 func nullObject(objectType tftypes.Type) tftypes.Value {
 	object, ok := objectType.(tftypes.Object)
 	if !ok {
@@ -84,7 +87,7 @@ func TestResourceRead_EmptyValueIsAbsence(t *testing.T) {
 	r.Schema(ctx, resource.SchemaRequest{}, &schemaResp)
 
 	resp := resource.ReadResponse{State: tfsdk.State{Schema: schemaResp.Schema}}
-	r.Read(ctx, resource.ReadRequest{State: tfsdk.State{Schema: schemaResp.Schema, Raw: tftypes.Value{}}}, &resp)
+	r.Read(ctx, resource.ReadRequest{State: tfsdk.State{Schema: schemaResp.Schema, Raw: nullObject(schemaResp.Schema.Type().TerraformType(ctx))}}, &resp)
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("an empty value is absence, not an error: %v", resp.Diagnostics)
@@ -111,7 +114,7 @@ func TestResourceRead_ValueIsKept(t *testing.T) {
 		State:    tfsdk.State{Schema: schemaResp.Schema},
 		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema},
 	}
-	r.Read(ctx, resource.ReadRequest{State: tfsdk.State{Schema: schemaResp.Schema, Raw: tftypes.Value{}}}, &resp)
+	r.Read(ctx, resource.ReadRequest{State: tfsdk.State{Schema: schemaResp.Schema, Raw: nullObject(schemaResp.Schema.Type().TerraformType(ctx))}}, &resp)
 
 	if resp.Diagnostics.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)

@@ -90,7 +90,7 @@ func (r *SelfServiceMacosSettingsResource) Read(ctx context.Context, req resourc
 	}
 
 	var state SelfServiceMacosSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

@@ -101,7 +101,7 @@ func (r *ManagedSoftwareUpdateResource) Read(ctx context.Context, req resource.R
 	}
 
 	var state ManagedSoftwareUpdateResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

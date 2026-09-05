@@ -117,7 +117,7 @@ func (r *SelfServiceBrandingMacosResource) Read(ctx context.Context, req resourc
 	}
 
 	var state SelfServiceBrandingMacosResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(selfServiceBrandingMacosTimeoutAttributeTypes)

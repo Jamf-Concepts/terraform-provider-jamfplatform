@@ -211,3 +211,91 @@ func referencesRequestID(block *ast.BlockStmt) bool {
 	})
 	return found
 }
+
+// A singleton resource must not detect an import from a null state.
+//
+// `req.State.Raw.IsNull()` is the repo's usual test for "this Read follows an
+// import", and for most resources it is correct: ImportStatePassthroughID writes
+// the state attribute only on the req.ID path, so an identity-form import really
+// does leave state null. For a singleton it is never right.
+// helpers.ImportSingletonState routes through ImportStatePassthroughWithIdentity,
+// which writes the id on BOTH forms, so state is never null by the time Read runs
+// and the import branch cannot fire.
+//
+// That is not a hypothetical: all 27 Jamf Pro singletons shipped with exactly that
+// branch, making each one's "nothing here to import" diagnostic unreachable, and
+// an import of a setting the tenant had never configured fell through to the
+// refresh path instead. helpers.IsSingletonImport reads a private-state marker the
+// import writes, which is the only signal that survives both forms.
+//
+// The check is a prohibition rather than a requirement to call the helper, because
+// a singleton Read that needs no import branch at all is legitimate; reaching for
+// the null-state test is what never is.
+func TestSingletonResources_DoNotDetectImportFromNullState(t *testing.T) {
+	dirs := findSingletonPackages(t)
+	if len(dirs) < singletonPackageFloor {
+		t.Fatalf("found only %d singleton resource packages, want at least %d", len(dirs), singletonPackageFloor)
+	}
+
+	checkedFiles := 0
+	found := 0
+
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatalf("read %s: %v", dir, err)
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+				continue
+			}
+			path := filepath.Join(dir, name)
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, path, nil, 0)
+			if err != nil {
+				t.Fatalf("parse %s: %v", path, err)
+			}
+			checkedFiles++
+
+			ast.Inspect(file, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok || !isNullStateTest(call) {
+					return true
+				}
+				found++
+				t.Errorf("%s:%d: a singleton resource must not derive an import from req.State.Raw.IsNull() — "+
+					"it is never null here, because ImportStatePassthroughWithIdentity writes the id on both "+
+					"import forms. Use helpers.IsSingletonImport(ctx, req, resp), which consumes the marker "+
+					"the import wrote.",
+					relPath(path), fset.Position(call.Pos()).Line)
+				return true
+			})
+		}
+	}
+
+	t.Logf("checked %d files across %d singleton resource packages", checkedFiles, len(dirs))
+}
+
+// isNullStateTest reports whether the call is `req.State.Raw.IsNull()`.
+//
+// Matched on the AST rather than the file text, because comments are not nodes:
+// service_discovery_enrollment's state builder carries a doc comment explaining
+// why it deliberately does NOT use this idiom, and a textual scan flags that
+// explanation as the very thing it warns against.
+func isNullStateTest(call *ast.CallExpr) bool {
+	isNull, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || isNull.Sel.Name != "IsNull" {
+		return false
+	}
+	raw, ok := isNull.X.(*ast.SelectorExpr)
+	if !ok || raw.Sel.Name != "Raw" {
+		return false
+	}
+	state, ok := raw.X.(*ast.SelectorExpr)
+	if !ok || state.Sel.Name != "State" {
+		return false
+	}
+	ident, ok := state.X.(*ast.Ident)
+	return ok && ident.Name == "req"
+}

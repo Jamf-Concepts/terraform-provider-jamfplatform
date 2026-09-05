@@ -90,7 +90,7 @@ func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.Rea
 	}
 
 	var state JamfTeacherSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = helpers.InitialSingletonID()

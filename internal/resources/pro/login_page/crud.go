@@ -88,7 +88,7 @@ func (r *LoginPageSettingsResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	var state LoginPageSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

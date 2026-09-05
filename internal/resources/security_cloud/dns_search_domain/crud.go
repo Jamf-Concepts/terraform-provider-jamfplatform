@@ -169,14 +169,9 @@ func (r *SearchDomainResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	var state SearchDomainResourceModel
-	if req.State.Raw.IsNull() {
-		state.ID = types.StringValue(helpers.SingletonID)
-		state.Timeouts = helpers.NewResourceTimeoutsNullValue(searchDomainTimeoutAttributeTypes)
-	} else {
-		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)

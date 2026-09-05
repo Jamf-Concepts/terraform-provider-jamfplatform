@@ -94,7 +94,7 @@ func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.Read
 	}
 
 	var state JamfParentSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = helpers.InitialSingletonID()
