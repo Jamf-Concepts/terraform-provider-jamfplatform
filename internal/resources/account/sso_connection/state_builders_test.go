@@ -602,11 +602,13 @@ func TestAssignConnectionResourceModel_PKCEFollowsTheConnectionType(t *testing.T
 	}
 }
 
-// TestAssignConnectionDataSourceModel_ReportsPKCEForEveryConnectionType is the
-// other half of the asymmetry. A data source owns no configuration to contradict,
-// so it reports whatever Jamf holds — including for the two families a managed
-// connection records nothing for.
-func TestAssignConnectionDataSourceModel_ReportsPKCEForEveryConnectionType(t *testing.T) {
+// TestAssignConnectionDataSourceModel_ReportsEveryGatedAttribute is the other half
+// of the asymmetry, for both attributes the resource gates. A data source owns no
+// configuration to contradict, so it reports whatever Jamf holds — including
+// `pkce` for the two families a managed connection records none for, and
+// `auth_method` for Google Workspace, which Jamf returns as CLIENT_SECRET_POST
+// like every other family (probed 2026-09-05).
+func TestAssignConnectionDataSourceModel_ReportsEveryGatedAttribute(t *testing.T) {
 	for _, wireType := range []string{
 		account.ConnectionTypeOidc,
 		account.ConnectionTypeOkta,
@@ -623,6 +625,10 @@ func TestAssignConnectionDataSourceModel_ReportsPKCEForEveryConnectionType(t *te
 			}
 			if got := state.PKCE.ValueString(); got != pkceDisabled {
 				t.Errorf("pkce = %q, want the stored value %q", got, pkceDisabled)
+			}
+			if state.AuthMethod.IsNull() {
+				t.Error("auth_method must be reported for every connection type, including the Google " +
+					"Workspace one the resource records nothing for")
 			}
 		})
 	}
