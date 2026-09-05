@@ -9,7 +9,6 @@ package sso_settings
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -455,15 +454,5 @@ func (r *SsoSettingsResource) Configure(ctx context.Context, req resource.Config
 
 // ImportState handles import for the singleton.
 func (r *SsoSettingsResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid singleton import identifier",
-			fmt.Sprintf(
-				"jamfplatform_pro_sso_settings is a singleton resource and must be imported with id %q. Got %q.",
-				helpers.SingletonID, req.ID,
-			),
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_pro_sso_settings")
 }

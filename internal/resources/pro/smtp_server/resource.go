@@ -314,17 +314,7 @@ func (r *SmtpServerResource) Configure(ctx context.Context, req resource.Configu
 //
 //	terraform import jamfplatform_pro_smtp_server.<name> singleton
 func (r *SmtpServerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid singleton import identifier",
-			fmt.Sprintf(
-				"jamfplatform_pro_smtp_server is a singleton resource and must be imported with id %q. Got %q.",
-				helpers.SingletonID, req.ID,
-			),
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_pro_smtp_server")
 }
 
 // authenticationsListType is the Terraform type of the Computed
