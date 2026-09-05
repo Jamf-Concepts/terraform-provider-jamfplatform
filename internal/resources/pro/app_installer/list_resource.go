@@ -202,25 +202,24 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 		"name_substring": filter.NameSubstring.ValueString(),
 		"limit":          req.Limit,
 		"returned":       len(results),
+		"skipped":        len(skippedUnnamedTitle),
 	})
 
 	titleWarning := appTitleNameSkipWarning(skippedUnnamedTitle)
 
-	if len(results) == 0 {
-		if len(titleWarning) > 0 {
-			stream.Results = list.ListResultsStreamDiagnostics(titleWarning)
-			return
-		}
+	if len(results) == 0 && len(titleWarning) == 0 {
 		stream.Results = list.NoListResults
 		return
 	}
-	results[0].Diagnostics.Append(titleWarning...)
 
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, result := range results {
 			if !push(result) {
 				return
 			}
+		}
+		if len(titleWarning) > 0 {
+			push(list.ListResult{Diagnostics: titleWarning})
 		}
 	}
 }
@@ -263,6 +262,14 @@ func hydrateAppTitleName(ctx context.Context, catalog titleCatalog, state *AppIn
 // App Catalog read fails every deployment at once, and because a dropped item's
 // own diagnostics never reach the stream — the item is not streamed. An empty
 // input renders nothing, so the caller can append unconditionally.
+//
+// It is carried by a trailing diagnostics-only list.ListResult, which is the
+// framework's own shape for a result that reports rather than enumerates: a
+// literal with no DisplayName, nil Identity and nil Resource passes straight
+// through, where one built with req.NewListResult would set both pointers and be
+// rejected for carrying an empty identity. Attaching the warning to the first
+// streamed deployment instead would blame a tenant-wide failure on whichever one
+// happened to sort first.
 func appTitleNameSkipWarning(skipped []string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if len(skipped) == 0 {

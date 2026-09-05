@@ -57,7 +57,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -165,14 +164,14 @@ func (r *SearchDomainResource) Configure(ctx context.Context, req resource.Confi
 // would hide a mis-typed import behind a Read that happens to succeed, since the
 // endpoint takes no identifier and would return the tenant's search domain
 // whatever was typed.
+//
+// helpers.ImportSingletonState is what accepts the identifier from either import
+// form: `terraform import` and an `id =` import block fill req.ID, while an
+// `identity = { id = … }` block leaves it empty and puts the value in
+// req.Identity. This resource advertises an IdentitySchema, so it has to honour
+// both.
+//
+//	terraform import jamfplatform_security_cloud_dns_search_domain.<name> singleton
 func (r *SearchDomainResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid import ID",
-			"The Jamf Security Cloud search domain is a single per-tenant setting and must be imported as "+
-				"\""+helpers.SingletonID+"\". Got: "+req.ID,
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_security_cloud_dns_search_domain")
 }

@@ -63,12 +63,21 @@ var (
 // provider is additionally read individually and folded in through the shared
 // assignAzureState builder.
 //
-// A Google provider is listed but never hydrated. Google Secure LDAP
-// authenticates with a client certificate and its password, both schema-
-// Required and write-only, and Jamf Pro returns neither, so no generated
-// configuration for one can ever plan. Its identity is still streamed, because
-// that is all an import block needs; only the generated configuration is
-// dropped, and a warning names it.
+// A Google provider is enumerated by a plain query and left out of a generating
+// one entirely — not merely left unhydrated. Google Secure LDAP authenticates
+// with a client certificate and its password, both schema-Required and
+// write-only, and Jamf Pro returns neither, so no generated configuration for
+// one can ever plan.
+//
+// The drop is total rather than identity-only because the framework treats a
+// null Resource on an IncludeResource request as a provider bug: it emits the
+// result and attaches its own "Incomplete List Result … This is always a
+// problem with the provider. Please report this to the provider developers."
+// warning. Streaming an identity-only Google row would hand the operator that
+// on every generating query, and it generates no HCL anyway (ResourceObject is
+// omitempty), so the import block it produced could not be planned either.
+// googleSkipWarningDetail is therefore the only thing that names a dropped
+// provider, and it carries the id an operator needs to import one by hand.
 type CloudIdentityProviderListResource struct {
 	client *pro.Client
 }
@@ -101,7 +110,7 @@ func (r *CloudIdentityProviderListResource) ListResourceConfigSchema(ctx context
 		Description: "Lists Jamf Pro Cloud Identity Providers (Google Secure LDAP and Microsoft Entra ID). " +
 			"Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. " +
 			"A plain query returns each provider's id and display name. When Terraform is generating configuration, every Microsoft Entra ID provider is read in full so its `entra_id` block is complete and the result can be planned. " +
-			"A Google Secure LDAP provider is listed but no configuration is generated for it: Google Secure LDAP signs in with a client certificate Jamf Pro never returns, so that resource has to be written by hand." + listResourcePrivileges,
+			"A plain query lists a Google Secure LDAP provider; a query generating configuration leaves it out altogether and warns, naming each one it omitted and its id. Google Secure LDAP signs in with a client certificate and the password protecting it, neither of which Jamf Pro returns, so that resource has to be written by hand and then imported." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},
