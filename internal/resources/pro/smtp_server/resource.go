@@ -146,11 +146,9 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"host": schema.StringAttribute{
-						MarkdownDescription: "**\"Server\"** in the Jamf Pro admin UI. SMTP server hostname or IP address.",
-						Required:            true,
-						Validators: []validator.String{
-							stringvalidator.LengthAtLeast(1),
-						},
+						MarkdownDescription: "**\"Server\"** in the Jamf Pro admin UI. SMTP server hostname or IP address. " +
+							"Jamf Pro stores an empty host on a tenant that has never set up mail and returns it on a read, so an empty value here is expected on adoption and must be filled in before the connection is of any use.",
+						Required: true,
 					},
 					"port": schema.Int64Attribute{
 						MarkdownDescription: "**\"Port\"** in the Jamf Pro admin UI. SMTP server port (e.g. `25`, `465`, `587`).",
@@ -292,9 +290,9 @@ func woVersion(secretName string) schema.Int64Attribute {
 	}
 }
 
-// ModifyPlan runs the sender-identity preflight against the resolved plan, so an
-// enabled connection missing a sender address or display name fails the plan
-// instead of the apply. It reads the plan rather than the configuration because
+// ModifyPlan runs the enable-time preflight against the resolved plan, so an
+// enabled connection missing a sender address, a sender display name or an SMTP
+// server address fails the plan instead of the apply. It reads the plan rather than the configuration because
 // `enabled` is Optional+Computed: the value UseStateForUnknown carries forward is
 // the one the write will send. No-op on destroy.
 func (r *SmtpServerResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
@@ -308,7 +306,7 @@ func (r *SmtpServerResource) ModifyPlan(ctx context.Context, req resource.Modify
 		return
 	}
 
-	resp.Diagnostics.Append(validateSenderSettingsWhenEnabled(plan.Enabled, plan.SenderSettings)...)
+	resp.Diagnostics.Append(validateSenderSettingsWhenEnabled(plan.Enabled, plan.SenderSettings, plan.ConnectionSettings)...)
 }
 
 // ConfigValidators returns the cross-field validators evaluated at plan time.

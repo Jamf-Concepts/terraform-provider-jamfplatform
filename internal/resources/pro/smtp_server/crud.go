@@ -14,6 +14,16 @@
 // absent. validateSenderSettingsWhenEnabled catches the empty cases at plan
 // time; smtpServerWriteErrorDiagnostic translates whatever reaches the wire.
 //
+// connectionSettings.host obeys the identical rule, probed in the same session.
+// It reads back empty from an unconfigured tenant — the same read returned
+// authenticationType NONE, enabled false, senderSettings.emailAddress "" and
+// connectionSettings.host "" together — a disabled write carrying an empty host
+// round-trips, and an enabled one is refused
+// 400 [FIELD_REQUIRED_FOR_SMTP] connectionSettings.host, whose message names the
+// condition as "not blank or empty when authentication is set to None or Basic
+// Credentials". So the host carries no minimum-length validator either, and
+// validateSenderSettingsWhenEnabled covers it alongside the sender fields.
+//
 // Status: current. Last reviewed 2026-09-05.
 
 package smtp_server
@@ -200,12 +210,24 @@ func (r *SmtpServerResource) Delete(ctx context.Context, _ resource.DeleteReques
 //
 // The match is on the field names Jamf Pro attributes the failure to rather than
 // its error codes: the codes are undocumented and the SDK generates no constants
-// for them.
+// for them. So each branch has to cover every refusal that names its field — the
+// host is refused both blank ([FIELD_REQUIRED_FOR_SMTP], probed) and malformed
+// ([INVALID_HOSTNAME]), and the sender address likewise, which is why neither of
+// those two messages claims the value was empty.
 func smtpServerWriteErrorDiagnostic(summary string, err error) (string, string) {
 	msg := err.Error()
 
 	displayName := strings.Contains(msg, "senderSettings.displayName")
 	email := strings.Contains(msg, "senderSettings.emailAddress")
+
+	if strings.Contains(msg, "connectionSettings.host") {
+		return "SMTP server address rejected by Jamf Pro",
+			"Jamf Pro refused the write because an enabled connection needs a usable SMTP server address " +
+				"whenever authentication_type is NONE or BASIC — it refuses an empty one with " +
+				"[FIELD_REQUIRED_FOR_SMTP] and a malformed one with [INVALID_HOSTNAME]. Set " +
+				"connection_settings.host to the server Jamf Pro should relay through, or leave enabled " +
+				"false.\n\nJamf Pro reported: " + msg
+	}
 
 	switch {
 	case displayName && email:

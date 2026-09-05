@@ -175,6 +175,14 @@ func TestAccResource_ProSmtpServer_None(t *testing.T) {
 // Step 2 is the generation guard, and step 3 asserts the replacement rule: the
 // prohibition on an empty sender belongs to an ENABLED connection, and now fires
 // at plan time instead of arriving as a 400 mid-apply.
+//
+// connection_settings.host is empty here too, and for the same reason: an
+// unconfigured tenant reads back with an empty host alongside the empty sender
+// address (one read returned authenticationType NONE, enabled false,
+// senderSettings.emailAddress "" and connectionSettings.host "" together), a
+// disabled write carrying an empty host round-trips, and an enabled one is refused
+// 400 [FIELD_REQUIRED_FOR_SMTP]. So all three empty fields belong to the shape
+// this test declares, and step 4 pins the host's half of the enable-time rule.
 func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 
@@ -187,7 +195,7 @@ func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
 				display_name  = ""
 			}
 			connection_settings = {
-				host            = "192.0.2.25"
+				host            = ""
 				port            = 25
 				encryption_type = "NONE"
 			}
@@ -204,6 +212,7 @@ func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
 					resource.TestCheckResourceAttr(smtpAddr, "enabled", "false"),
 					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.email_address", ""),
 					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.display_name", ""),
+					resource.TestCheckResourceAttr(smtpAddr, "connection_settings.host", ""),
 				),
 			},
 			testhelpers.GenerateConfigStep(smtpAddr),
@@ -224,6 +233,24 @@ func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
 					}
 				`,
 				ExpectError: regexp.MustCompile(`Sender email address required`),
+			},
+			{
+				Config: `
+					resource "jamfplatform_pro_smtp_server" "test" {
+						authentication_type = "NONE"
+						enabled             = true
+						sender_settings = {
+							email_address = "notifications@example.com"
+							display_name  = "Jamf Pro"
+						}
+						connection_settings = {
+							host            = ""
+							port            = 25
+							encryption_type = "NONE"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`SMTP server address required`),
 			},
 		},
 	})
@@ -430,7 +457,7 @@ func TestAccResource_ProSmtpServer_OmitPreservesDisplayName(t *testing.T) {
 			authentication_type = "NONE"
 			sender_settings = { email_address = "notifications@example.com" }
 			connection_settings = {
-				host            = "192.0.2.25"
+				host            = ""
 				port            = 25
 				encryption_type = "NONE"
 			}

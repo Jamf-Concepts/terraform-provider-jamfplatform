@@ -46,11 +46,38 @@ const SingletonID = "singleton"
 // req.Identity instead.
 //
 // Every singleton resource used to compare req.ID against SingletonID directly, so
-// all 27 of them rejected the identity form with "must be imported with id
+// all 29 of them rejected the identity form with "must be imported with id
 // \"singleton\". Got \"\"" while advertising an IdentitySchema that promised it
 // worked. Reading the identifier from whichever field carries it, once, is what
 // keeps the promise; the framework's own ImportStatePassthroughWithIdentity then
 // stores it and mirrors the identity through.
+//
+// # Why the identity is written even on the flat-ID path
+//
+// ImportStatePassthroughWithIdentity writes the identity only when the identifier
+// arrived *as* an identity: on the req.ID path it sets the state attribute and
+// returns, leaving resp.Identity as the fully-null value the framework
+// pre-populated. Nothing later fills it in, so `terraform import <addr> singleton`
+// produces an imported resource with no identity — and the framework's own
+// ReadResource then refuses any read that returns without one:
+//
+//	Missing Resource Identity After Read
+//	The Terraform Provider unexpectedly returned no resource identity data after
+//	having no errors in the resource read. This is always an issue in the
+//	Terraform Provider and should be reported to the provider developers.
+//
+// (fwserver/server_readresource.go: resp.NewIdentity is seeded from
+// req.CurrentIdentity, and a fully-null one is an error whenever the resource
+// declares an IdentitySchema.)
+//
+// A singleton that exists never reaches that, because its Read sets the identity
+// on the way out. One the tenant has NOT configured does: Read finds nothing,
+// drops the resource from state and returns with no error and no identity. So
+// `terraform import` against an unconfigured singleton told the practitioner to
+// report a provider bug, while the identity form — carrying an identity from the
+// import block — reported Terraform's own "Cannot import non-existent remote
+// object". Setting it here is what makes the two forms agree, in the one place
+// both of them pass through.
 func ImportSingletonState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse, typeName string) {
 	supplied := req.ID
 	if supplied == "" && req.Identity != nil {
@@ -74,4 +101,8 @@ func ImportSingletonState(ctx context.Context, req resource.ImportStateRequest, 
 	}
 
 	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	if resp.Diagnostics.HasError() || resp.Identity == nil {
+		return
+	}
+	resp.Diagnostics.Append(resp.Identity.SetAttribute(ctx, path.Root("id"), SingletonID)...)
 }

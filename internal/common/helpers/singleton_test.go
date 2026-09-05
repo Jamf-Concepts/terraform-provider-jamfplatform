@@ -45,6 +45,16 @@ func singletonImportFixture(t *testing.T, id string, identityValue *string) (res
 		}
 	}
 
+	// The framework seeds resp.Identity from req.Identity, so it already carries
+	// the value on the identity path and is fully null on the req.ID path — which
+	// is the asymmetry that made `terraform import <addr> singleton` produce an
+	// identity-less resource. Mirrored here so the fixture fails the way production
+	// did rather than the way a uniform null would.
+	respIdentityRaw := tftypes.NewValue(objType, map[string]tftypes.Value{"id": tftypes.NewValue(tftypes.String, nil)})
+	if identityValue != nil {
+		respIdentityRaw = tftypes.NewValue(objType, map[string]tftypes.Value{"id": tftypes.NewValue(tftypes.String, *identityValue)})
+	}
+
 	resp := &resource.ImportStateResponse{
 		State: tfsdk.State{
 			Schema: stateSchema,
@@ -52,7 +62,7 @@ func singletonImportFixture(t *testing.T, id string, identityValue *string) (res
 		},
 		Identity: &tfsdk.ResourceIdentity{
 			Schema: idSchema,
-			Raw:    tftypes.NewValue(objType, map[string]tftypes.Value{"id": tftypes.NewValue(tftypes.String, nil)}),
+			Raw:    respIdentityRaw,
 		},
 	}
 	return req, resp
@@ -65,6 +75,27 @@ func stateID(t *testing.T, resp *resource.ImportStateResponse) types.String {
 	diags := resp.State.GetAttribute(context.Background(), path.Root("id"), &got)
 	if diags.HasError() {
 		t.Fatalf("reading id back from state: %v", diags.Errors())
+	}
+	return got
+}
+
+// identityID reads the id the helper mirrored into the resource identity.
+//
+// This has to hold on BOTH import forms, and the framework's own passthrough only
+// manages it on one: on the req.ID path it writes state and returns, leaving the
+// identity fully null. A singleton whose Read then finds nothing on the tenant
+// returns with no error and no identity, and the framework answers that with
+// "Missing Resource Identity After Read … report this to the provider
+// developers". See ImportSingletonState.
+func identityID(t *testing.T, resp *resource.ImportStateResponse) types.String {
+	t.Helper()
+	if resp.Identity == nil {
+		t.Fatal("the framework always pre-populates an identity for a resource with an IdentitySchema")
+	}
+	var got types.String
+	diags := resp.Identity.GetAttribute(context.Background(), path.Root("id"), &got)
+	if diags.HasError() {
+		t.Fatalf("reading id back from the identity: %v", diags.Errors())
 	}
 	return got
 }
@@ -144,6 +175,12 @@ func TestImportSingletonState(t *testing.T) {
 			}
 			if got := stateID(t, resp); got.ValueString() != SingletonID {
 				t.Errorf("state id = %q, want %q", got.ValueString(), SingletonID)
+			}
+			if got := identityID(t, resp); got.ValueString() != SingletonID {
+				t.Errorf("identity id = %q, want %q — an import that leaves the identity null makes the "+
+					"framework refuse the read that follows with \"Missing Resource Identity After Read\", "+
+					"which tells the practitioner to report a provider bug",
+					got.ValueString(), SingletonID)
 			}
 		})
 	}

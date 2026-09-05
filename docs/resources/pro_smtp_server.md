@@ -121,7 +121,7 @@ Optional:
 Required:
 
 - `encryption_type` (String) **"Encryption"** in the Jamf Pro admin UI. Protocol used to encrypt the SMTP connection. One of `NONE`, `SSL`, `TLS_1_2`, `TLS_1_1`, `TLS_1`, `TLS_1_3` (the UI labels these None / SSL / TLSv1.2 / TLSv1.1 / TLSv1 / TLSv1.3).
-- `host` (String) **"Server"** in the Jamf Pro admin UI. SMTP server hostname or IP address.
+- `host` (String) **"Server"** in the Jamf Pro admin UI. SMTP server hostname or IP address. Jamf Pro stores an empty host on a tenant that has never set up mail and returns it on a read, so an empty value here is expected on adoption and must be filled in before the connection is of any use.
 - `port` (Number) **"Port"** in the Jamf Pro admin UI. SMTP server port (e.g. `25`, `465`, `587`).
 
 Optional:

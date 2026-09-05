@@ -247,17 +247,31 @@ func senderModel(email, display *string) *smtpSenderSettingsModel {
 	return &smtpSenderSettingsModel{EmailAddress: value(email), DisplayName: value(display)}
 }
 
+// connectionModel builds a connection_settings model carrying just the host,
+// where a nil pointer means the attribute is unknown and an empty string means it
+// is set to "" — the shape a tenant that has never set up mail reads back.
+func connectionModel(host *string) *smtpConnectionSettingsModel {
+	h := types.StringUnknown()
+	if host != nil {
+		h = types.StringValue(*host)
+	}
+	return &smtpConnectionSettingsModel{Host: h}
+}
+
 func TestValidateSenderSettingsWhenEnabled(t *testing.T) {
 	empty := ""
 	address := "notifications@example.com"
 	name := "Jamf Pro"
+	host := "smtp.example.com"
 
 	tests := []struct {
 		name         string
 		enabled      types.Bool
 		sender       *smtpSenderSettingsModel
+		connection   *smtpConnectionSettingsModel
 		wantEmailErr bool
 		wantNameErr  bool
+		wantHostErr  bool
 	}{
 		{
 			name:    "disabled tolerates both empty",
@@ -313,16 +327,56 @@ func TestValidateSenderSettingsWhenEnabled(t *testing.T) {
 			enabled: types.BoolValue(true),
 			sender:  senderModel(nil, &name),
 		},
+		{
+			name:       "disabled tolerates an empty host",
+			enabled:    types.BoolValue(false),
+			sender:     senderModel(&address, &name),
+			connection: connectionModel(&empty),
+		},
+		{
+			name:        "enabled with an empty host is refused",
+			enabled:     types.BoolValue(true),
+			sender:      senderModel(&address, &name),
+			connection:  connectionModel(&empty),
+			wantHostErr: true,
+		},
+		{
+			name:       "enabled with a host set passes",
+			enabled:    types.BoolValue(true),
+			sender:     senderModel(&address, &name),
+			connection: connectionModel(&host),
+		},
+		{
+			name:       "enabled with an unknown host defers to the server",
+			enabled:    types.BoolValue(true),
+			sender:     senderModel(&address, &name),
+			connection: connectionModel(nil),
+		},
+		{
+			name:    "no connection block defers (GRAPH_API / GOOGLE_MAIL forms carry none)",
+			enabled: types.BoolValue(true),
+			sender:  senderModel(&address, &name),
+		},
+		{
+			name:         "enabled with every field empty names all three",
+			enabled:      types.BoolValue(true),
+			sender:       senderModel(&empty, &empty),
+			connection:   connectionModel(&empty),
+			wantEmailErr: true,
+			wantNameErr:  true,
+			wantHostErr:  true,
+		},
 	}
 
 	emailPath := path.Root("sender_settings").AtName("email_address")
 	namePath := path.Root("sender_settings").AtName("display_name")
+	hostPath := path.Root("connection_settings").AtName("host")
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			diags := validateSenderSettingsWhenEnabled(tc.enabled, tc.sender)
+			diags := validateSenderSettingsWhenEnabled(tc.enabled, tc.sender, tc.connection)
 
-			var gotEmail, gotName bool
+			var gotEmail, gotName, gotHost bool
 			for _, d := range diags.Errors() {
 				withPath, ok := d.(diag.DiagnosticWithPath)
 				if !ok {
@@ -333,6 +387,8 @@ func TestValidateSenderSettingsWhenEnabled(t *testing.T) {
 					gotEmail = true
 				case withPath.Path().Equal(namePath):
 					gotName = true
+				case withPath.Path().Equal(hostPath):
+					gotHost = true
 				default:
 					t.Fatalf("unexpected diagnostic at %s: %s", withPath.Path(), d.Summary())
 				}
@@ -343,6 +399,9 @@ func TestValidateSenderSettingsWhenEnabled(t *testing.T) {
 			}
 			if gotName != tc.wantNameErr {
 				t.Errorf("display_name error = %v, want %v", gotName, tc.wantNameErr)
+			}
+			if gotHost != tc.wantHostErr {
+				t.Errorf("connection_settings.host error = %v, want %v", gotHost, tc.wantHostErr)
 			}
 			if len(diags.Warnings()) != 0 {
 				t.Errorf("expected no warnings, got %d", len(diags.Warnings()))
@@ -373,8 +432,18 @@ func TestSmtpServerWriteErrorDiagnostic(t *testing.T) {
 			wantSummary: "Sender email address rejected by Jamf Pro",
 		},
 		{
-			name:        "unrelated failure passes through",
+			name:        "blank host, the refusal an enabled unconfigured tenant gets",
+			err:         errors.New(`400: [FIELD_REQUIRED_FOR_SMTP] connectionSettings.host: Field required; please ensure this field is not blank or empty when authentication is set to None or Basic Credentials`),
+			wantSummary: "SMTP server address rejected by Jamf Pro",
+		},
+		{
+			name:        "malformed host reaches the same branch, since the match is on the field",
 			err:         errors.New(`400: [INVALID_HOSTNAME] connectionSettings.host: Invalid hostname`),
+			wantSummary: "SMTP server address rejected by Jamf Pro",
+		},
+		{
+			name:        "unrelated failure passes through",
+			err:         errors.New(`400: [INVALID_PORT] connectionSettings.port: Invalid port`),
 			wantSummary: "Error updating Jamf Pro SMTP Server settings",
 		},
 	}

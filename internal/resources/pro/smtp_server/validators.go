@@ -145,9 +145,45 @@ var _ resource.ConfigValidator = authBlockConfigValidator{}
 // app_request_settings.validateEnabledRequiresRequesterGroup: a first apply that
 // leaves display_name out has no prior state to resolve from, so the check
 // cannot fire and smtpServerWriteErrorDiagnostic translates the refusal instead.
-func validateSenderSettingsWhenEnabled(enabled types.Bool, sender *smtpSenderSettingsModel) diag.Diagnostics {
+//
+// The connection host obeys the same gating and is checked here too, from the
+// same probe (2026-09-05, Jamf Pro 11.31, EU gateway):
+//
+//	enabled:false, host ""  → 200, round-trips
+//	enabled:true,  host ""  → 400 [FIELD_REQUIRED_FOR_SMTP] connectionSettings.host
+//	                          "Field required; please ensure this field is not blank
+//	                           or empty when authentication is set to None or Basic
+//	                           Credentials"
+//
+// An unconfigured tenant reads back with an empty host alongside its empty sender
+// address — the same read returned authenticationType NONE, enabled false,
+// senderSettings.emailAddress "" and connectionSettings.host "" — so the host
+// carries no minimum-length validator either, for exactly the reason the address
+// does not: it would make that tenant undeclarable and its generated
+// configuration unplannable.
+//
+// The server's own message names the condition as "None or Basic Credentials",
+// which is the same set connection_settings is permitted for at all
+// (authBlockConfigValidator forbids the block for GRAPH_API and GOOGLE_MAIL). So
+// the block being present is the gate, and no separate authentication_type test
+// is needed here.
+func validateSenderSettingsWhenEnabled(enabled types.Bool, sender *smtpSenderSettingsModel, connection *smtpConnectionSettingsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-	if enabled.IsNull() || enabled.IsUnknown() || !enabled.ValueBool() || sender == nil {
+	if enabled.IsNull() || enabled.IsUnknown() || !enabled.ValueBool() {
+		return diags
+	}
+
+	if connection != nil && !connection.Host.IsUnknown() && connection.Host.ValueString() == "" {
+		diags.AddAttributeError(
+			path.Root("connection_settings").AtName("host"),
+			"SMTP server address required to enable the connection",
+			"Jamf Pro accepts an empty connection host only while the connection is disabled, and a tenant "+
+				"that has never set up mail reads back with an empty one. Set connection_settings.host to the "+
+				"SMTP server Jamf Pro should relay through, or leave enabled false.",
+		)
+	}
+
+	if sender == nil {
 		return diags
 	}
 
