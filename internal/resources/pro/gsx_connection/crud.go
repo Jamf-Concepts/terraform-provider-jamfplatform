@@ -97,7 +97,7 @@ func (r *GsxConnectionSettingsResource) Read(ctx context.Context, req resource.R
 	}
 
 	var state GsxConnectionSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

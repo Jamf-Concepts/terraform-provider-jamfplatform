@@ -87,7 +87,7 @@ func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.Re
 	}
 
 	var state ReEnrollmentSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = helpers.InitialSingletonID()

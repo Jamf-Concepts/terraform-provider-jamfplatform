@@ -4,12 +4,16 @@
 // SDK endpoints used:
 //
 //	pro.ListCloudIdpV1
+//	pro.GetCloudAzureV1
 //
-// Status: current. Last reviewed 2026-05-30.
+// Status: current. Last reviewed 2026-09-05.
 package cloud_identity_provider
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -30,6 +34,14 @@ import (
 // expose a user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item read issued when IncludeResource
+// is requested (config generation). Every provider gets its own deadline rather
+// than a share of the list-fetch budget, so a slow read cannot exhaust a
+// deadline the remaining providers still need. A provider whose read fails or
+// times out is dropped from the generated configuration rather than aborting
+// the whole resource type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &CloudIdentityProviderListResource{}
 	_ list.ListResourceWithConfigure = &CloudIdentityProviderListResource{}
@@ -39,10 +51,33 @@ var (
 // Jamf Pro Cloud Identity Providers. The Pro Cloud Identity Provider registry (/v1/cloud-idp) list
 // endpoint has no filter or RSQL parameters, so the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter after the full list is
-// fetched. The list endpoint returns the CloudIDPCommonResponse shape (all five
-// fields including enabled and provider_description), so no follow-up GET is
-// needed — the full summary is available in a single round trip even when
-// include_resource = true.
+// fetched.
+//
+// A plain query is served from that one round trip: the registry returns the
+// CloudIDPCommonResponse shape, which is everything an identity and a display
+// name need. Config generation is not. The registry carries no connection
+// settings at all, so a managed-resource state built from it alone leaves the
+// provider-specific block empty, and the resource's own cross-field validator
+// then refuses the generated configuration for naming a provider with no block
+// to go with it. So when IncludeResource is requested each Microsoft Entra ID
+// provider is additionally read individually and folded in through the shared
+// assignAzureState builder.
+//
+// A Google provider is enumerated by a plain query and left out of a generating
+// one entirely — not merely left unhydrated. Google Secure LDAP authenticates
+// with a client certificate and its password, both schema-Required and
+// write-only, and Jamf Pro returns neither, so no generated configuration for
+// one can ever plan.
+//
+// The drop is total rather than identity-only because the framework treats a
+// null Resource on an IncludeResource request as a provider bug: it emits the
+// result and attaches its own "Incomplete List Result … This is always a
+// problem with the provider. Please report this to the provider developers."
+// warning. Streaming an identity-only Google row would hand the operator that
+// on every generating query, and it generates no HCL anyway (ResourceObject is
+// omitempty), so the import block it produced could not be planned either.
+// googleSkipWarningDetail is therefore the only thing that names a dropped
+// provider, and it carries the id an operator needs to import one by hand.
 type CloudIdentityProviderListResource struct {
 	client *pro.Client
 }
@@ -73,9 +108,9 @@ func (r *CloudIdentityProviderListResource) Configure(ctx context.Context, req r
 func (r *CloudIdentityProviderListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
 		Description: "Lists Jamf Pro Cloud Identity Providers (Google Secure LDAP and Microsoft Entra ID). " +
-			"Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. " +
-			"The list response includes all summary fields (id, display_name, provider_name, enabled, provider_description); " +
-			"setting `include_resource = true` populates the managed-resource state from those same fields without an extra round trip." + listResourcePrivileges,
+			"Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. " +
+			"A plain query returns each provider's id and display name. When Terraform is generating configuration, every Microsoft Entra ID provider is read in full so its `entra_id` block is complete and the result can be planned. " +
+			"A plain query lists a Google Secure LDAP provider; a query generating configuration leaves it out altogether and warns, naming each one it omitted and its id. Google Secure LDAP signs in with a client certificate and the password protecting it, neither of which Jamf Pro returns, so that resource has to be written by hand and then imported." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},
@@ -125,6 +160,7 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 	}
 
 	results := make([]list.ListResult, 0, maxResults)
+	var skippedGoogle, skippedUnreadable []skippedCloudIdentityProvider
 
 	for i := range all {
 		if int64(len(results)) >= maxResults {
@@ -144,20 +180,33 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 		}
 
 		if req.IncludeResource {
-			// The list endpoint returns the full CloudIDPCommonResponse shape
-			// (all five summary fields) so we can populate the resource state
-			// directly without a follow-up GetCloudIdpV1 call. The provider-
-			// specific google/azure blocks are left nil; Terraform refreshes
-			// the full state on the next plan/apply.
-			state := CloudIdentityProviderResourceModel{
-				ID:           types.StringValue(item.ID),
-				DisplayName:  types.StringValue(item.DisplayName),
-				ProviderName: types.StringValue(providerNameFromWire(item.ProviderName)),
-				Google:       nil,
-				Azure:        nil,
-				Timeouts:     helpers.NewResourceTimeoutsNullValue(cloudIdentityProviderTimeoutAttributeTypes),
+			itemCtx, cancelItem := context.WithTimeout(ctx, defaultItemReadTimeout)
+			read := func(readCtx context.Context, id string) (*pro.AzureConfiguration, error) {
+				return r.client.GetCloudAzureV1(readCtx, id)
 			}
-			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			state, skip := hydrateListedCloudIdentityProvider(itemCtx, item, read)
+			cancelItem()
+
+			if skip != nil {
+				switch skip.reason {
+				case skipUnrepresentableGoogle:
+					tflog.Debug(ctx, "Generating no configuration for a Google Secure LDAP Cloud Identity Provider", map[string]any{
+						"id":   skip.id,
+						"name": skip.name,
+					})
+					skippedGoogle = append(skippedGoogle, *skip)
+				default:
+					tflog.Warn(ctx, "Skipping Jamf Pro Cloud Identity Provider from generated configuration after a per-item read failure", map[string]any{
+						"id":    skip.id,
+						"name":  skip.name,
+						"error": skip.err.Error(),
+					})
+					skippedUnreadable = append(skippedUnreadable, *skip)
+				}
+				continue
+			}
+
+			result.Diagnostics.Append(result.Resource.Set(ctx, state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return
@@ -168,12 +217,16 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 	}
 
 	tflog.Debug(ctx, "Listed Jamf Pro Cloud Identity Providers", map[string]any{
-		"name_substring": filter.NameSubstring.ValueString(),
-		"limit":          req.Limit,
-		"returned":       len(results),
+		"name_substring":     filter.NameSubstring.ValueString(),
+		"limit":              req.Limit,
+		"returned":           len(results),
+		"skipped_google":     len(skippedGoogle),
+		"skipped_unreadable": len(skippedUnreadable),
 	})
 
-	if len(results) == 0 {
+	skipDiags := skippedCloudIdentityProviderDiagnostics(skippedGoogle, skippedUnreadable)
+
+	if len(results) == 0 && len(skipDiags) == 0 {
 		stream.Results = list.NoListResults
 		return
 	}
@@ -184,6 +237,9 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 				return
 			}
 		}
+		if len(skipDiags) > 0 {
+			push(list.ListResult{Diagnostics: skipDiags})
+		}
 	}
 }
 
@@ -191,4 +247,139 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 // filters.ApplyClassicFilter. DisplayName is a plain string field.
 func cloudIdentityProviderListItemName(item pro.CloudIDPCommonResponse) string {
 	return item.DisplayName
+}
+
+// azureConfigReader reads one Microsoft Entra ID configuration by id.
+//
+// The read is injected rather than reached for off the client so that the whole
+// per-item decision in hydrateListedCloudIdentityProvider can be exercised
+// without a tenant. The closure supplying it stays inside the IncludeResource
+// block, which is where internal/conformance checks that a per-item read holds
+// its own deadline.
+type azureConfigReader func(ctx context.Context, id string) (*pro.AzureConfiguration, error)
+
+// cloudIdentityProviderSkipReason says why an enumerated provider carries no
+// generated configuration. The two causes need different explanations, because
+// the operator's next move differs: a Google provider has to be written by
+// hand, whereas a provider that could not be read is a permission or a lifetime
+// problem to look into.
+type cloudIdentityProviderSkipReason int
+
+const (
+	skipUnrepresentableGoogle cloudIdentityProviderSkipReason = iota
+	skipUnreadable
+)
+
+// skippedCloudIdentityProvider records a provider the registry enumerated that
+// carries no generated configuration, so the omission is reported once at the
+// end of the stream rather than per item.
+type skippedCloudIdentityProvider struct {
+	id     string
+	name   string
+	reason cloudIdentityProviderSkipReason
+	err    error
+}
+
+// errNoEntraConfiguration is the drop reason for an Entra ID provider whose
+// read returned no connection settings. Folding that into state would put an
+// empty `entra_id` block into the generated configuration, which is the exact
+// failure this hydration exists to prevent, so it is treated as a failed read
+// rather than a partial success.
+var errNoEntraConfiguration = errors.New("the read returned no Entra ID connection details")
+
+// hydrateListedCloudIdentityProvider builds the managed-resource state for one
+// enumerated provider, or reports why that provider carries none. It is the
+// hydrate-or-drop decision the IncludeResource path turns on, named so it can
+// be tested without a live client or a framework list request.
+//
+// Anything that is not Google is read as Entra ID. The registry serves exactly
+// two provider types, and a third would be dropped by the read that fails on it
+// rather than by a guess made here.
+//
+// `mappings` is deliberately left null, which happens by virtue of the state
+// starting with no `entra_id` block: assignAzureState surfaces mappings only
+// when a prior model shows the operator authored them, because the attribute is
+// Optional and not Computed. Nothing is authored on this path. The Read that
+// follows an import of the same provider reaches the same conclusion from the
+// same gate, so a generated configuration carrying Jamf Pro's own generated
+// mappings would plan as an addition against the state that import produces.
+func hydrateListedCloudIdentityProvider(ctx context.Context, item pro.CloudIDPCommonResponse, read azureConfigReader) (*CloudIdentityProviderResourceModel, *skippedCloudIdentityProvider) {
+	if item.ProviderName == providerGoogle {
+		return nil, &skippedCloudIdentityProvider{
+			id:     item.ID,
+			name:   item.DisplayName,
+			reason: skipUnrepresentableGoogle,
+		}
+	}
+
+	got, err := read(ctx, item.ID)
+	if err == nil && (got == nil || got.Server == nil) {
+		err = errNoEntraConfiguration
+	}
+	if err != nil {
+		return nil, &skippedCloudIdentityProvider{
+			id:     item.ID,
+			name:   item.DisplayName,
+			reason: skipUnreadable,
+			err:    err,
+		}
+	}
+
+	state := &CloudIdentityProviderResourceModel{
+		ID:           types.StringValue(item.ID),
+		DisplayName:  types.StringValue(item.DisplayName),
+		ProviderName: types.StringValue(providerNameFromWire(item.ProviderName)),
+		Timeouts:     helpers.NewResourceTimeoutsNullValue(cloudIdentityProviderTimeoutAttributeTypes),
+	}
+	assignAzureState(state, got)
+	return state, nil
+}
+
+// skippedCloudIdentityProviderDiagnostics builds the trailing warnings for the
+// providers left out of a config-generation run. A dropped result is silent
+// otherwise: it generates no HCL and the stream has no diagnostics channel of
+// its own, so a generated configuration would come back quietly short of the
+// registry.
+func skippedCloudIdentityProviderDiagnostics(google, unreadable []skippedCloudIdentityProvider) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if len(google) > 0 {
+		diags.AddWarning(
+			"No configuration was generated for the Google Secure LDAP providers",
+			googleSkipWarningDetail(google),
+		)
+	}
+	if len(unreadable) > 0 {
+		diags.AddWarning(
+			"Some Jamf Pro Cloud Identity Providers were left out of the results",
+			unreadableSkipWarningDetail(unreadable),
+		)
+	}
+	return diags
+}
+
+// googleSkipWarningDetail names every Google provider dropped from a
+// config-generation run. Terraform cannot generate one at all, so the message
+// hands the operator the manual route instead of describing an obstacle and
+// stopping there.
+func googleSkipWarningDetail(skipped []skippedCloudIdentityProvider) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d Google Secure LDAP provider(s) were listed, but Terraform cannot generate a configuration for them:\n", len(skipped))
+	for _, s := range skipped {
+		fmt.Fprintf(&b, "  - %s (id %s)\n", s.name, s.id)
+	}
+	b.WriteString("\nGoogle Secure LDAP signs in with a client certificate and the password protecting it. Jamf Pro never returns either one, so a generated configuration would be missing both and Terraform would refuse to plan it. Write the resource by hand with a `google` block supplying the keystore, then run `terraform import` to bring the existing provider under management. Microsoft Entra ID providers are not affected.")
+	return b.String()
+}
+
+// unreadableSkipWarningDetail names every provider the registry enumerated that
+// could not be read individually, with the error that dropped it, so a short
+// generated configuration is never mistaken for a complete one.
+func unreadableSkipWarningDetail(skipped []skippedCloudIdentityProvider) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d Cloud Identity Provider(s) were listed by Jamf Pro but could not be read individually, so they carry no configuration and are not in the results:\n", len(skipped))
+	for _, s := range skipped {
+		fmt.Fprintf(&b, "  - %s (id %s): %s\n", s.name, s.id, s.err)
+	}
+	b.WriteString("\nCheck that the API integration holds permission to read Cloud Identity Providers, and that each provider still exists. One deleted between the two reads reports the same way.")
+	return b.String()
 }

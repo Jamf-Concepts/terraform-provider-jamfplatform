@@ -89,7 +89,7 @@ func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	var state SsoSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = helpers.InitialSingletonID()

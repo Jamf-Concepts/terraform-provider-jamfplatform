@@ -57,9 +57,13 @@ var pluralDataSourceSDKMethods = []string{
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
 
 // listResourceSDKMethods lists the SDK methods the Cloud Identity Provider
-// list resource calls.
+// list resource calls. A plain query needs only the registry list; config
+// generation additionally reads each Entra ID provider individually, so an
+// integration that can list but not read one gets a warning naming the
+// providers left out rather than a silently short configuration.
 var listResourceSDKMethods = []string{
 	"ListCloudIdpV1",
+	"GetCloudAzureV1",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown

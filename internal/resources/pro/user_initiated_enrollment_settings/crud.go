@@ -86,7 +86,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Read(ctx context.Context, req 
 	}
 
 	var state UserInitiatedEnrollmentSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 	if isImport {
 		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(userInitiatedEnrollmentSettingsTimeoutAttributeTypes)

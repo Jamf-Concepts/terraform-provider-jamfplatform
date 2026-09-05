@@ -81,7 +81,7 @@ variable "smtp_password" {
 
 - `basic_auth_credentials` (Attributes) Basic SMTP credentials. Required when `authentication_type = "BASIC"`; forbidden otherwise. (see [below for nested schema](#nestedatt--basic_auth_credentials))
 - `connection_settings` (Attributes) **"Authentication settings"** (Server and port / Encryption / Connection timeout) in the Jamf Pro admin UI. The SMTP relay connection. Required when `authentication_type` is `NONE` or `BASIC`; must be omitted for `GRAPH_API` and `GOOGLE_MAIL`, which connect over HTTP rather than SMTP. (see [below for nested schema](#nestedatt--connection_settings))
-- `enabled` (Boolean) Whether the SMTP server connection is enabled ("Use the switch to enable or disable the connection" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it.
+- `enabled` (Boolean) Whether the SMTP server connection is enabled ("Use the switch to enable or disable the connection" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it. Enabling requires `sender_settings.email_address` and `sender_settings.display_name` to both hold a value.
 - `google_mail_credentials` (Attributes) Google Workspace (Google Auth) credentials. Required when `authentication_type = "GOOGLE_MAIL"`; forbidden otherwise. The sender Google accounts are linked out of band through the Jamf Pro admin UI's interactive Google OAuth grant. Terraform configures the client credentials only. (see [below for nested schema](#nestedatt--google_mail_credentials))
 - `graph_api_credentials` (Attributes) Microsoft Graph API credentials. Required when `authentication_type = "GRAPH_API"`; forbidden otherwise. (see [below for nested schema](#nestedatt--graph_api_credentials))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -95,11 +95,11 @@ variable "smtp_password" {
 
 Required:
 
-- `email_address` (String) **"Sender email address"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from.
+- `email_address` (String) **"Sender email address"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from. Jamf Pro requires a real address whenever `enabled` is `true`, and accepts an empty string only while the connection is disabled — which is how a tenant that has never set up mail reads back, so an empty value here is expected on adoption and must be filled in before enabling.
 
 Optional:
 
-- `display_name` (String) **"Sender display name"** in the Jamf Pro admin UI. The sender name shown in messages. Optional; omit to preserve the current value.
+- `display_name` (String) **"Sender display name"** in the Jamf Pro admin UI. The sender name shown in messages. Omit to preserve the current value. Jamf Pro requires a non-empty name whenever `enabled` is `true`, so a tenant whose stored name is empty needs one supplied here before the connection can be enabled.
 
 
 <a id="nestedatt--basic_auth_credentials"></a>
@@ -121,7 +121,7 @@ Optional:
 Required:
 
 - `encryption_type` (String) **"Encryption"** in the Jamf Pro admin UI. Protocol used to encrypt the SMTP connection. One of `NONE`, `SSL`, `TLS_1_2`, `TLS_1_1`, `TLS_1`, `TLS_1_3` (the UI labels these None / SSL / TLSv1.2 / TLSv1.1 / TLSv1 / TLSv1.3).
-- `host` (String) **"Server"** in the Jamf Pro admin UI. SMTP server hostname or IP address.
+- `host` (String) **"Server"** in the Jamf Pro admin UI. SMTP server hostname or IP address. Jamf Pro stores an empty host on a tenant that has never set up mail and returns it on a read, so an empty value here is expected on adoption and must be filled in before the connection is of any use.
 - `port` (Number) **"Port"** in the Jamf Pro admin UI. SMTP server port (e.g. `25`, `465`, `587`).
 
 Optional:

@@ -159,6 +159,103 @@ func TestAccResource_ProSmtpServer_None(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProSmtpServer_UnconfiguredTenant covers the state a tenant that
+// has never set up mail reads back in, and the two things that state has to
+// support.
+//
+// The sender address and display name are both empty, which Jamf Pro accepts and
+// round-trips while the connection is disabled (wire-probed 2026-09-05; enabling
+// refuses each independently). Until issue #379 this resource carried a
+// minimum-length validator on the address, so the tenant could not be declared at
+// all and configuration generated from it could not be planned — the state is
+// unreachable from every other test here, because a test that applies a
+// configuration and reads it back can only produce a state the configuration
+// already described.
+//
+// Step 2 is the generation guard, and step 3 asserts the replacement rule: the
+// prohibition on an empty sender belongs to an ENABLED connection, and now fires
+// at plan time instead of arriving as a 400 mid-apply.
+//
+// connection_settings.host is empty here too, and for the same reason: an
+// unconfigured tenant reads back with an empty host alongside the empty sender
+// address (one read returned authenticationType NONE, enabled false,
+// senderSettings.emailAddress "" and connectionSettings.host "" together), a
+// disabled write carrying an empty host round-trips, and an enabled one is refused
+// 400 [FIELD_REQUIRED_FOR_SMTP]. So all three empty fields belong to the shape
+// this test declares, and step 4 pins the host's half of the enable-time rule.
+func TestAccResource_ProSmtpServer_UnconfiguredTenant(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	const unconfigured = `
+		resource "jamfplatform_pro_smtp_server" "test" {
+			authentication_type = "NONE"
+			enabled             = false
+			sender_settings = {
+				email_address = ""
+				display_name  = ""
+			}
+			connection_settings = {
+				host            = ""
+				port            = 25
+				encryption_type = "NONE"
+			}
+		}
+	`
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSingletonRecordStillExists(t),
+		Steps: []resource.TestStep{
+			{
+				Config: unconfigured,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(smtpAddr, "enabled", "false"),
+					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.email_address", ""),
+					resource.TestCheckResourceAttr(smtpAddr, "sender_settings.display_name", ""),
+					resource.TestCheckResourceAttr(smtpAddr, "connection_settings.host", ""),
+				),
+			},
+			testhelpers.GenerateConfigStep(smtpAddr),
+			{
+				Config: `
+					resource "jamfplatform_pro_smtp_server" "test" {
+						authentication_type = "NONE"
+						enabled             = true
+						sender_settings = {
+							email_address = ""
+							display_name  = ""
+						}
+						connection_settings = {
+							host            = "192.0.2.25"
+							port            = 25
+							encryption_type = "NONE"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`Sender email address required`),
+			},
+			{
+				Config: `
+					resource "jamfplatform_pro_smtp_server" "test" {
+						authentication_type = "NONE"
+						enabled             = true
+						sender_settings = {
+							email_address = "notifications@example.com"
+							display_name  = "Jamf Pro"
+						}
+						connection_settings = {
+							host            = ""
+							port            = 25
+							encryption_type = "NONE"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`SMTP server address required`),
+			},
+		},
+	})
+}
+
 // TestAccResource_ProSmtpServer_GraphApi is the GRAPH_API happy-path: no
 // connection settings, Graph credentials only.
 func TestAccResource_ProSmtpServer_GraphApi(t *testing.T) {
@@ -360,7 +457,7 @@ func TestAccResource_ProSmtpServer_OmitPreservesDisplayName(t *testing.T) {
 			authentication_type = "NONE"
 			sender_settings = { email_address = "notifications@example.com" }
 			connection_settings = {
-				host            = "192.0.2.25"
+				host            = ""
 				port            = 25
 				encryption_type = "NONE"
 			}

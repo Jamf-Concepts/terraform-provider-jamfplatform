@@ -123,7 +123,7 @@ func (r *JamfProtectResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	var state JamfProtectResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

@@ -5,11 +5,12 @@
 
 // Tests in this file exercise the jamfplatform_pro_cloud_identity_provider list
 // resource via the `terraform query` workflow. A Microsoft Entra ID Cloud
-// Identity Provider is created as the backing resource (no env gate required)
-// because the list endpoint (/v1/cloud-idp) returns the full
-// CloudIDPCommonResponse summary — no follow-up GET is needed for
-// include_resource=true. The test pins the name_substring filter client-side
-// behaviour and the include_resource path.
+// Identity Provider is created as the backing resource (no env gate required):
+// an Entra ID connection needs only a directory id, and nothing in that block is
+// write-only, so the whole resource can be read back. The tests pin the
+// name_substring filter client-side behaviour and the include_resource path,
+// which since issue #379 reads each provider individually to fill in the
+// settings block the discriminator requires.
 
 package cloud_identity_provider_test
 
@@ -32,6 +33,21 @@ import (
 // query` workflow. Step 1 creates an Azure CIP; Step 2 queries the list
 // resource with a name_substring filter to confirm the created provider appears
 // in the results.
+//
+// Two of step 2's assertions carry issue #379. The settings block is the point
+// of it: a listing reporting only the display and provider names generates a
+// resource whose own discriminator then refuses it, because
+// `provider_name = "ENTRA_ID"` requires the block — so the directory id is what
+// proves the per-item read happened rather than the summary being passed
+// through. And mappings must stay ABSENT: Jamf Pro returns generated mappings
+// for every connection, and writing them into a generated configuration would
+// plan an add against the null that importing the same provider produces.
+// entraDirectoryID is the Microsoft Entra directory (tenant) id the backing
+// fixtures declare. Jamf Pro stores it without contacting Microsoft, so any
+// well-formed GUID serves, and naming it once lets the include_resource assertions
+// check the value the per-item read returned rather than restating a literal.
+const entraDirectoryID = "d5749c84-5cc5-4691-a187-4545c02ff915"
+
 func TestAccListResource_ProCloudIdentityProvider_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -52,10 +68,10 @@ resource "jamfplatform_pro_cloud_identity_provider" "src" {
   provider_name = "ENTRA_ID"
 
   entra_id = {
-    tenant_id = "d5749c84-5cc5-4691-a187-4545c02ff915"
+    tenant_id = %q
   }
 }
-`, displayName),
+`, displayName, entraDirectoryID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_cloud_identity_provider.src", "id"),
 				),
@@ -85,6 +101,11 @@ list "jamfplatform_pro_cloud_identity_provider" "test" {
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("display_name"), KnownValue: knownvalue.StringExact(displayName)},
 							{Path: tfjsonpath.New("provider_name"), KnownValue: knownvalue.StringExact("ENTRA_ID")},
+							{
+								Path:       tfjsonpath.New("entra_id").AtMapKey("tenant_id"),
+								KnownValue: knownvalue.StringExact(entraDirectoryID),
+							},
+							{Path: tfjsonpath.New("entra_id").AtMapKey("mappings"), KnownValue: knownvalue.Null()},
 						},
 					),
 				},
@@ -117,10 +138,10 @@ resource "jamfplatform_pro_cloud_identity_provider" "src" {
   provider_name = "ENTRA_ID"
 
   entra_id = {
-    tenant_id = "d5749c84-5cc5-4691-a187-4545c02ff915"
+    tenant_id = %q
   }
 }
-`, displayName),
+`, displayName, entraDirectoryID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_cloud_identity_provider.src", "id"),
 				),

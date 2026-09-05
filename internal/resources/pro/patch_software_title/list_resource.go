@@ -98,6 +98,12 @@ func (r *PatchSoftwareTitleListResource) ListResourceConfigSchema(ctx context.Co
 // and attaches a warning naming the title — a preview reports what it could not
 // determine rather than dropping it, and rather than failing the whole listing
 // over an informational attribute.
+//
+// version_packages goes through assignedVersionPackagesValue rather than a
+// direct fold, because a title with no assignments must land as an unset
+// attribute: an empty map is not a legal configuration value, so emitting one
+// would hand `terraform plan -generate-config-out` configuration this provider
+// then refuses.
 func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
 	if r.proClient == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
@@ -165,7 +171,7 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 		}
 
 		if req.IncludeResource {
-			assignments, assignDiags := types.MapValueFrom(ctx, types.StringType, assignedPackagesByVersion(s.Packages))
+			assignments, assignDiags := assignedVersionPackagesValue(ctx, s.Packages)
 			if assignDiags.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(assignDiags)
 				return

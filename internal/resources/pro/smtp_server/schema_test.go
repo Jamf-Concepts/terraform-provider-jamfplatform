@@ -9,8 +9,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestSmtpServerResource_Metadata(t *testing.T) {
@@ -58,6 +61,8 @@ func TestSmtpServerResource_Schema(t *testing.T) {
 	if !sender.Attributes["email_address"].IsRequired() {
 		t.Error("sender_settings.email_address must be Required")
 	}
+	assertEmptyValueAccepted(t, sender, "sender_settings", "email_address")
+	assertEmptyValueAccepted(t, sender, "sender_settings", "display_name")
 
 	// connection_settings: Optional-only typed-pointer.
 	conn, ok := s.Attributes["connection_settings"].(schema.SingleNestedAttribute)
@@ -67,6 +72,7 @@ func TestSmtpServerResource_Schema(t *testing.T) {
 	if !conn.IsOptional() || conn.IsComputed() {
 		t.Error("connection_settings must be Optional-only (not Computed)")
 	}
+	assertEmptyValueAccepted(t, conn, "connection_settings", "host")
 	for _, name := range []string{"host", "port", "encryption_type"} {
 		if !conn.Attributes[name].IsRequired() {
 			t.Errorf("connection_settings.%s must be Required", name)
@@ -122,5 +128,45 @@ func TestSmtpServerDataSource_Schema(t *testing.T) {
 	basic := s.Attributes["basic_auth_credentials"].(dsschema.SingleNestedAttribute)
 	if _, leaked := basic.Attributes["password"]; leaked {
 		t.Error("data source must not expose basic_auth_credentials.password")
+	}
+}
+
+// assertEmptyValueAccepted proves no attribute-level validator on a nested
+// block's string field refuses an empty string.
+//
+// Jamf Pro stores an empty sender email address, an empty sender display name AND
+// an empty connection host on any tenant that has never set up mail, and returns
+// all three together on a read — observed on the wire 2026-09-05, which answered
+// with authenticationType NONE, enabled false, senderSettings.emailAddress "" and
+// connectionSettings.host "". A minimum-length validator on any of them makes
+// that real tenant state impossible to declare and breaks the configuration
+// `terraform plan -generate-config-out` writes from it, which for a per-tenant
+// singleton means the tenant cannot be adopted at all.
+//
+// For the two sender fields the prohibition on empty values belongs to an enabled
+// connection and lives in validateSenderSettingsWhenEnabled, which this asserts
+// is the sole enforcement point. No equivalent enable-time rule is asserted for
+// the host: whether Jamf Pro refuses an enabled write with an empty one is not
+// established, and inventing the rule is the mistake this whole class of fix
+// exists to undo.
+func assertEmptyValueAccepted(t *testing.T, block schema.SingleNestedAttribute, blockName, name string) {
+	t.Helper()
+
+	attr, ok := block.Attributes[name].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("%s.%s must be StringAttribute", blockName, name)
+	}
+
+	req := validator.StringRequest{
+		Path:           path.Root(blockName).AtName(name),
+		ConfigValue:    types.StringValue(""),
+		PathExpression: path.MatchRoot(blockName).AtName(name),
+	}
+	for _, v := range attr.Validators {
+		resp := &validator.StringResponse{}
+		v.ValidateString(context.Background(), req, resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("%s.%s must accept an empty string, got: %v", blockName, name, resp.Diagnostics.Errors())
+		}
 	}
 }
