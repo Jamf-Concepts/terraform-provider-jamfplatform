@@ -521,3 +521,167 @@ func TestAccResource_ProLdapServer_InvalidAuthType(t *testing.T) {
 		},
 	})
 }
+
+const ldapOmitRetainsConnection = `
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-omit.example.com"
+							authentication_type = "none"
+						}`
+
+// ldapOmitRetainsConfig declares every gated mapping sub-block with a
+// distinctive value, so a server that stopped retaining an omitted element is
+// caught on content rather than presence.
+func ldapOmitRetainsConfig(name string) string {
+	return fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {`+ldapOmitRetainsConnection+`
+						mappings_for_users = {
+							user_mappings = {
+								object_class_limitation = "any"
+								object_classes          = "inetOrgPerson"
+								search_base             = "OU=People,DC=omit,DC=example,DC=com"
+								search_scope            = "All Subtrees"
+								username                = "uid"
+								user_id                 = "uidNumber"
+							}
+							user_group_mappings = {
+								object_class_limitation = "any"
+								object_classes          = "groupOfNames"
+								search_base             = "OU=Groups,DC=omit,DC=example,DC=com"
+								search_scope            = "All Subtrees"
+								group_name              = "cn"
+								group_id                = "gidNumber"
+							}
+							user_group_membership_mappings = {
+								membership_location     = "group object"
+								object_class_limitation = "any"
+								object_classes          = "posixGroup"
+								search_base             = "OU=Groups,DC=omit,DC=example,DC=com"
+								search_scope            = "All Subtrees"
+								username_mapping        = "uid"
+								group_id_mapping        = "gidNumber"
+							}
+						}
+					}
+				`, name)
+}
+
+// ldapOmitRetainsChildrenDroppedConfig keeps mappings_for_users but drops two
+// of its three sub-blocks and one Optional+Computed leaf, so the PUT carries a
+// partial <mappings_for_users>.
+func ldapOmitRetainsChildrenDroppedConfig(name string) string {
+	return fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {`+ldapOmitRetainsConnection+`
+						mappings_for_users = {
+							user_mappings = {
+								object_class_limitation = "any"
+								object_classes          = "inetOrgPerson"
+								search_base             = "OU=People,DC=omit,DC=example,DC=com"
+								search_scope            = "All Subtrees"
+								username                = "uid"
+							}
+						}
+					}
+				`, name)
+}
+
+// ldapOmitRetainsConnectionOnlyConfig drops mappings_for_users entirely.
+func ldapOmitRetainsConnectionOnlyConfig(name string) string {
+	return fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {`+ldapOmitRetainsConnection+`
+					}
+				`, name)
+}
+
+// ldapRetainedOnServer asserts the server's copy still carries every mapping
+// value the omit-retains config declared in its first step.
+func ldapRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := testhelpers.NewProClassicClient(t)
+	return testhelpers.CheckLiveObject(ldapServerResource,
+		func(ctx context.Context, id string) (*proclassic.LdapServer, error) {
+			return c.GetLDAPServerByID(ctx, id)
+		},
+		func(s *proclassic.LdapServer) error {
+			m := s.MappingsForUsers
+			if m == nil {
+				return fmt.Errorf("mappings_for_users: absent")
+			}
+			if m.UserMappings == nil {
+				return fmt.Errorf("mappings_for_users.user_mappings: absent")
+			}
+			if err := testhelpers.RequireEqual("user_mappings.username", "uid", testhelpers.Deref(m.UserMappings.MapUsername)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("user_mappings.user_id", "uidNumber", testhelpers.Deref(m.UserMappings.MapUserID)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("user_mappings.search_base", "OU=People,DC=omit,DC=example,DC=com", testhelpers.Deref(m.UserMappings.SearchBase)); err != nil {
+				return err
+			}
+			if m.UserGroupMappings == nil {
+				return fmt.Errorf("mappings_for_users.user_group_mappings: absent")
+			}
+			if err := testhelpers.RequireEqual("user_group_mappings.group_name", "cn", testhelpers.Deref(m.UserGroupMappings.MapGroupName)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("user_group_mappings.object_classes", "groupOfNames", testhelpers.Deref(m.UserGroupMappings.ObjectClasses)); err != nil {
+				return err
+			}
+			if m.UserGroupMembershipMappings == nil {
+				return fmt.Errorf("mappings_for_users.user_group_membership_mappings: absent")
+			}
+			if err := testhelpers.RequireEqual("user_group_membership_mappings.membership_location", "group object", testhelpers.Deref(m.UserGroupMembershipMappings.UserGroupMembershipStoredIn)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("user_group_membership_mappings.object_classes", "posixGroup", testhelpers.Deref(m.UserGroupMembershipMappings.ObjectClasses)); err != nil {
+				return err
+			}
+			return testhelpers.RequireEqual("user_group_membership_mappings.group_id_mapping", "gidNumber", testhelpers.Deref(m.UserGroupMembershipMappings.GroupID))
+		})
+}
+
+// TestAccResource_ProLdapServer_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping mapping sub-blocks, and then
+// mappings_for_users itself, plans them as removed, but the classic PUT omits
+// the elements and the server keeps every value. Step 2 keeps
+// mappings_for_users with only user_mappings, so the PUT carries a partial
+// parent; step 3 drops the block so the PUT carries <connection> alone. Each
+// step's implicit post-apply plan must be empty. If this test fails on
+// content, the endpoint no longer merges at that level and nothing that
+// suppresses the removal plan may ship for this resource.
+func TestAccResource_ProLdapServer_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ldap-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLdapServerDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: ldapOmitRetainsConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_mappings.group_name", "cn"),
+					ldapRetainedOnServer(t),
+				),
+			},
+			{
+				Config: ldapOmitRetainsChildrenDroppedConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username", "uid"),
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_group_mappings.group_name"),
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.membership_location"),
+					ldapRetainedOnServer(t),
+				),
+			},
+			{
+				Config: ldapOmitRetainsConnectionOnlyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username"),
+					ldapRetainedOnServer(t),
+				),
+			},
+		},
+	})
+}
