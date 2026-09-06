@@ -53,7 +53,9 @@ func TestFlattenEbookGeneral_ReportsDrift(t *testing.T) {
 // TestFlattenEbook_StickyFieldsIgnoreDrift pins the other half of the #387
 // split for this resource: file_type (server canonicalises the casing),
 // deploy_as_managed (the write does not persist) and the four self_service
-// notification_* fields (never echoed) keep the value already in state.
+// notification_* fields (never echoed) keep the value already in state. The
+// empty EbookSelfService passed in is the shape a real GET returns: the whole
+// <notification> family absent.
 func TestFlattenEbook_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	general := &EbookGeneralModel{
@@ -78,7 +80,6 @@ func TestFlattenEbook_StickyFieldsIgnoreDrift(t *testing.T) {
 		NotificationSubject: types.StringValue("state subject"),
 		NotificationMessage: types.StringValue("state message"),
 	}
-	// The wire shape a real GET returns: the whole <notification> family absent.
 	flattenEbookSelfService(&proclassic.EbookSelfService{}, ss)
 	for _, tc := range []struct{ name, want, got string }{
 		{"notification_method", "Self Service", ss.NotificationMethod.ValueString()},

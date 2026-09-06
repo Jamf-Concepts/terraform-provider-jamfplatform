@@ -290,6 +290,12 @@ func TestAssignPolicyResourceModel_PackageConfigurationReportsDrift(t *testing.T
 // persist, or normalises keep the sticky read, so a configured value is not
 // nulled or rewritten by a refresh. The evidence for each is in the doc comment
 // of the flattener that holds it.
+//
+// The Policy passed in is the shape a real GET returns against the state
+// declared here: empty no_execute_*, a server-forced any_ip_address, an
+// override target_drive mirroring general.target_drive, a dropped
+// force_afp_smb, an absent <notification> family and an empty
+// leave_existing_default.
 func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
@@ -314,10 +320,6 @@ func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
 		},
 		Printers: &PolicyPrintersModel{LeaveExistingDefault: types.BoolValue(true)},
 	}
-	// The wire shape a real GET returns for the above: empty no_execute_*,
-	// server-forced any_ip_address, a mirrored override target_drive, a dropped
-	// force_afp_smb, an absent <notification> family and an empty
-	// leave_existing_default.
 	src := &proclassic.Policy{
 		General: &proclassic.PolicyGeneral{
 			Name: new("tf-acc"),

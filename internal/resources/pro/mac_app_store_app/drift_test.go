@@ -72,7 +72,9 @@ func TestFlattenMacApp_ReportsDrift(t *testing.T) {
 // TestFlattenMacApp_StickyFieldsIgnoreDrift pins the other half of the #387
 // split: is_free (Jamf Pro resolves it from the App Store listing, so the write
 // does not persist) and the four self_service notification_* fields (never
-// echoed) keep the value already in state.
+// echoed) keep the value already in state. The empty MacApplicationSelfService
+// passed in is the shape a real GET returns: the whole <notification> family
+// absent.
 func TestFlattenMacApp_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	general := &MacAppGeneralModel{IsFree: types.BoolValue(false)}
@@ -90,7 +92,6 @@ func TestFlattenMacApp_StickyFieldsIgnoreDrift(t *testing.T) {
 		NotificationSubject: types.StringValue("state subject"),
 		NotificationMessage: types.StringValue("state message"),
 	}
-	// The wire shape a real GET returns: the whole <notification> family absent.
 	flattenMacAppSelfService(&proclassic.MacApplicationSelfService{}, ss)
 	for _, tc := range []struct{ name, want, got string }{
 		{"notification_method", "Self Service", ss.NotificationMethod.ValueString()},

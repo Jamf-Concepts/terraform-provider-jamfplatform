@@ -91,7 +91,9 @@ func TestFlattenMobileApp_ReportsDrift(t *testing.T) {
 // split: host_externally (the write does not persist while external_url is
 // set), after_install_button_text (echoed on create, absent from every GET
 // after a PUT) and the three self_service notification_* fields (never echoed)
-// keep the value already in state.
+// keep the value already in state. The empty MobileDeviceApplicationSelfService
+// passed in is the shape a GET returns after any PUT: after_install_button_text
+// and the whole <notification> family absent.
 func TestFlattenMobileApp_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	general := &MobileAppGeneralModel{HostExternally: types.BoolValue(false)}
@@ -109,8 +111,6 @@ func TestFlattenMobileApp_StickyFieldsIgnoreDrift(t *testing.T) {
 		NotificationSubject:    types.StringValue("state subject"),
 		NotificationMessage:    types.StringValue("state message"),
 	}
-	// The wire shape a GET returns after any PUT: after_install_button_text and
-	// the whole <notification> family absent.
 	flattenMobileAppSelfService(&proclassic.MobileDeviceApplicationSelfService{}, ss)
 	for _, tc := range []struct{ name, want, got string }{
 		{"after_install_button_text", "state after", ss.AfterInstallButtonText.ValueString()},

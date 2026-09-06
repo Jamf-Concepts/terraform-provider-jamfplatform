@@ -84,8 +84,10 @@ func captureID(addr string, into *string) resource.TestCheckFunc {
 // regression for issue #387. Before that fix the flatteners returned the value
 // already in state for every one of these attributes, so step 2's refresh
 // adopted nothing, the plan was empty, and a Jamf Pro UI edit to a managed
-// attribute was invisible indefinitely. The plan check is the assertion: an
-// out-of-band change must plan as an in-place update.
+// attribute was invisible indefinitely. The plan check on step 2 is the
+// assertion: the refresh at the head of that step must see the mutated server
+// values and plan them back to the configured ones, so an out-of-band change
+// shows up as an in-place update.
 func TestAccResource_ProRestrictedSoftware_DriftIsReported(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -107,8 +109,6 @@ func TestAccResource_ProRestrictedSoftware_DriftIsReported(t *testing.T) {
 				),
 			},
 			{
-				// The refresh at the head of this step must see the mutated
-				// server values and plan them back to the configured ones.
 				PreConfig: func() { mutateRestrictedSoftwareOutOfBand(t, id) },
 				Config:    driftConfig(name, "Chess.app", message),
 				ConfigPlanChecks: resource.ConfigPlanChecks{

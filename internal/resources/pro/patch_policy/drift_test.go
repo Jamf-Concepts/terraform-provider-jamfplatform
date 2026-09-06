@@ -104,7 +104,9 @@ func TestAssignPatchPolicy_ReportsDrift(t *testing.T) {
 // TestFlattenUserInteraction_StickyNotificationsIgnoreDrift pins the other half
 // of the #387 split: <notifications> and every child of it, <reminders>
 // included, are absent from the GET even immediately after the POST that stored
-// them, so the whole sub-block keeps the value already in state.
+// them, so the whole sub-block keeps the value already in state. The empty
+// PatchPolicyUserInteraction passed in is that shape: no <notifications> child
+// at all.
 func TestFlattenUserInteraction_StickyNotificationsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	state := &PatchPolicyUserInteractionModel{
@@ -119,7 +121,6 @@ func TestFlattenUserInteraction_StickyNotificationsIgnoreDrift(t *testing.T) {
 			},
 		},
 	}
-	// The wire shape a real GET returns: no <notifications> child at all.
 	flattenUserInteraction(&proclassic.PatchPolicyUserInteraction{}, state, false)
 	n := state.Notifications
 	for _, tc := range []struct{ name, want, got string }{
