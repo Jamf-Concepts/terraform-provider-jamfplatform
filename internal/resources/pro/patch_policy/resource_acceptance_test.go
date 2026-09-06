@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -429,6 +430,357 @@ func TestAccListResource_ProPatchPolicy_Basic(t *testing.T) {
 						},
 					),
 				},
+			},
+		},
+	})
+}
+
+// patchPolicyOmitRetainsFixtures returns the title chain plus every sibling
+// object the omit-retains steps reference: a smart computer group and a
+// building for the targets, a second building and a department for the
+// exclusions, and a network segment and an iBeacon that are both limited and
+// excluded.
+func patchPolicyOmitRetainsFixtures(suffix string) string {
+	return fixtureTitle(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_device_group" "grp" {
+			name        = "tf-acc-pp-omit-grp-%[1]s"
+			group_type  = "smart"
+			device_type = "computer"
+			description = "Patch policy omit-retains fixture"
+			criteria = [
+				{ criteria = "Operating System Version", operator = "greater than or equal", value = "10.0" },
+			]
+		}
+
+		resource "jamfplatform_pro_building" "b1" {
+			name = "tf-acc-pp-omit-bldg1-%[1]s"
+		}
+
+		resource "jamfplatform_pro_building" "b2" {
+			name = "tf-acc-pp-omit-bldg2-%[1]s"
+		}
+
+		resource "jamfplatform_pro_department" "d1" {
+			name = "tf-acc-pp-omit-dept-%[1]s"
+		}
+
+		resource "jamfplatform_pro_network_segment" "n1" {
+			name             = "tf-acc-pp-omit-ns-%[1]s"
+			starting_address = "10.214.0.1"
+			ending_address   = "10.214.0.254"
+		}
+
+		resource "jamfplatform_pro_ibeacon" "i1" {
+			name  = "tf-acc-pp-omit-ibeacon-%[1]s"
+			uuid  = "5a3f7a1e-6c2d-4b8e-9f10-2d3c4b5a6e7f"
+			major = 7
+			minor = 11
+		}
+	`, suffix)
+}
+
+// patchPolicyOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: every state-gated block the wire can show — scope targets /
+// limitations / exclusions and user_interaction with its deadlines and
+// grace_period — carries a value distinct from the server default so that a
+// server which stopped retaining an omitted element is caught on content, not
+// on presence. user_interaction.notifications (and its nested reminders) is
+// deliberately absent: the classic GET never returns a <notifications>
+// element, neither after a create that carried one nor after a PUT that did
+// (wire-observed 2026-09-06 on this tenant, both distribution methods), so
+// no value declared there can be verified against the server and the block
+// stays out rather than pretend the test covers it.
+func patchPolicyOmitRetainsConfig(suffix, name string) string {
+	return patchPolicyOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_patch_policy" "test" {
+			software_title_configuration_id = jamfplatform_pro_patch_software_title.title.id
+			name                            = %[1]q
+			target_version                  = %[2]q
+			enabled                         = false
+			distribution_method             = "selfservice"
+
+			scope = {
+				targets = {
+					computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+					building_ids       = [jamfplatform_pro_building.b1.id]
+				}
+				limitations = {
+					network_segment_ids = [jamfplatform_pro_network_segment.n1.id]
+					ibeacon_ids         = [jamfplatform_pro_ibeacon.i1.id]
+				}
+				exclusions = {
+					building_ids        = [jamfplatform_pro_building.b2.id]
+					department_ids      = [jamfplatform_pro_department.d1.id]
+					network_segment_ids = [jamfplatform_pro_network_segment.n1.id]
+					ibeacon_ids         = [jamfplatform_pro_ibeacon.i1.id]
+				}
+			}
+
+			user_interaction = {
+				install_button_text      = "Retain me"
+				self_service_description = "Omit-retains contract description."
+
+				deadlines = {
+					enabled = true
+					period  = 5
+				}
+
+				grace_period = {
+					duration                    = 45
+					notification_center_subject = "Retained grace subject"
+					message                     = "Retained grace message"
+				}
+			}
+		}
+	`, name, accTitleVersion)
+}
+
+// patchPolicyOmitRetainsParentsOnlyConfig keeps the two blocks that have gated
+// children but drops the children: scope keeps its targets and loses
+// limitations and exclusions (so the scope goes through the granular merge),
+// user_interaction keeps install_button_text and loses deadlines,
+// grace_period and the Optional+Computed self_service_description leaf.
+func patchPolicyOmitRetainsParentsOnlyConfig(suffix, name string) string {
+	return patchPolicyOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_patch_policy" "test" {
+			software_title_configuration_id = jamfplatform_pro_patch_software_title.title.id
+			name                            = %[1]q
+			target_version                  = %[2]q
+			enabled                         = false
+			distribution_method             = "selfservice"
+
+			scope = {
+				targets = {
+					computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+					building_ids       = [jamfplatform_pro_building.b1.id]
+				}
+			}
+
+			user_interaction = {
+				install_button_text = "Retain me"
+			}
+		}
+	`, name, accTitleVersion)
+}
+
+// patchPolicyOmitRetainsGeneralOnlyConfig drops every optional block, so the
+// PUT carries <general> alone. The fixtures stay so the server-side references
+// they back remain valid while the policy still holds them.
+func patchPolicyOmitRetainsGeneralOnlyConfig(suffix, name string) string {
+	return patchPolicyOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_patch_policy" "test" {
+			software_title_configuration_id = jamfplatform_pro_patch_software_title.title.id
+			name                            = %[1]q
+			target_version                  = %[2]q
+			enabled                         = false
+			distribution_method             = "selfservice"
+		}
+	`, name, accTitleVersion)
+}
+
+// patchPolicyStateInt reads an integer attribute of a sibling fixture out of
+// Terraform state so the wire assertion can compare scope members by value
+// rather than count.
+func patchPolicyStateInt(s *terraform.State, addr, attr string) (int, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return 0, fmt.Errorf("fixture %s not found in state", addr)
+	}
+	raw, ok := rs.Primary.Attributes[attr]
+	if !ok {
+		return 0, fmt.Errorf("fixture %s: attribute %s not in state", addr, attr)
+	}
+	id, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("fixture %s: %s %q is not an integer: %w", addr, attr, raw, err)
+	}
+	return id, nil
+}
+
+// requireOneIDName asserts an id/name scope category holds exactly the one
+// member with the given id.
+func requireOneIDName(field string, items *[]proclassic.IDName, wantID int) error {
+	if items == nil || len(*items) != 1 {
+		return fmt.Errorf("%s: want exactly one member, got %+v", field, items)
+	}
+	return testhelpers.RequireEqual(field+"[0].id", wantID, testhelpers.Deref((*items)[0].ID))
+}
+
+// patchPolicyRetainedOnServer asserts the server's copy still carries every
+// value the omit-retains config declared in its first step.
+func patchPolicyRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return func(s *terraform.State) error {
+		grp, err := patchPolicyStateInt(s, "jamfplatform_device_group.grp", "jamf_pro_id")
+		if err != nil {
+			return err
+		}
+		b1, err := patchPolicyStateInt(s, "jamfplatform_pro_building.b1", "id")
+		if err != nil {
+			return err
+		}
+		b2, err := patchPolicyStateInt(s, "jamfplatform_pro_building.b2", "id")
+		if err != nil {
+			return err
+		}
+		d1, err := patchPolicyStateInt(s, "jamfplatform_pro_department.d1", "id")
+		if err != nil {
+			return err
+		}
+		n1, err := patchPolicyStateInt(s, "jamfplatform_pro_network_segment.n1", "id")
+		if err != nil {
+			return err
+		}
+		i1, err := patchPolicyStateInt(s, "jamfplatform_pro_ibeacon.i1", "id")
+		if err != nil {
+			return err
+		}
+		return testhelpers.CheckLiveObject(patchPolicyType+".test",
+			func(ctx context.Context, id string) (*proclassic.PatchPolicy, error) {
+				return c.GetPatchPolicyByID(ctx, id)
+			},
+			func(p *proclassic.PatchPolicy) error {
+				sc := p.Scope
+				if sc == nil {
+					return fmt.Errorf("scope: absent")
+				}
+				if sc.ComputerGroups == nil {
+					return fmt.Errorf("scope.targets.computer_groups: absent")
+				}
+				if err := requireOneIDName("scope.targets.computer_groups", sc.ComputerGroups.ComputerGroup, grp); err != nil {
+					return err
+				}
+				if sc.Buildings == nil {
+					return fmt.Errorf("scope.targets.buildings: absent")
+				}
+				if err := requireOneIDName("scope.targets.buildings", sc.Buildings.Building, b1); err != nil {
+					return err
+				}
+				if sc.Limitations == nil {
+					return fmt.Errorf("scope.limitations: absent")
+				}
+				if sc.Limitations.NetworkSegments == nil {
+					return fmt.Errorf("scope.limitations.network_segments: absent")
+				}
+				if err := requireOneIDName("scope.limitations.network_segments", sc.Limitations.NetworkSegments.NetworkSegment, n1); err != nil {
+					return err
+				}
+				if sc.Limitations.Ibeacons == nil {
+					return fmt.Errorf("scope.limitations.ibeacons: absent")
+				}
+				if err := requireOneIDName("scope.limitations.ibeacons", sc.Limitations.Ibeacons.Ibeacon, i1); err != nil {
+					return err
+				}
+				if sc.Exclusions == nil {
+					return fmt.Errorf("scope.exclusions: absent")
+				}
+				if sc.Exclusions.Buildings == nil {
+					return fmt.Errorf("scope.exclusions.buildings: absent")
+				}
+				if err := requireOneIDName("scope.exclusions.buildings", sc.Exclusions.Buildings.Building, b2); err != nil {
+					return err
+				}
+				if sc.Exclusions.Departments == nil {
+					return fmt.Errorf("scope.exclusions.departments: absent")
+				}
+				if err := requireOneIDName("scope.exclusions.departments", sc.Exclusions.Departments.Department, d1); err != nil {
+					return err
+				}
+				if sc.Exclusions.NetworkSegments == nil {
+					return fmt.Errorf("scope.exclusions.network_segments: absent")
+				}
+				if err := requireOneIDName("scope.exclusions.network_segments", sc.Exclusions.NetworkSegments.NetworkSegment, n1); err != nil {
+					return err
+				}
+				if sc.Exclusions.Ibeacons == nil {
+					return fmt.Errorf("scope.exclusions.ibeacons: absent")
+				}
+				if err := requireOneIDName("scope.exclusions.ibeacons", sc.Exclusions.Ibeacons.Ibeacon, i1); err != nil {
+					return err
+				}
+
+				ui := p.UserInteraction
+				if ui == nil {
+					return fmt.Errorf("user_interaction: absent")
+				}
+				if err := testhelpers.RequireEqual("user_interaction.install_button_text", "Retain me", testhelpers.Deref(ui.InstallButtonText)); err != nil {
+					return err
+				}
+				if err := testhelpers.RequireEqual("user_interaction.self_service_description", "Omit-retains contract description.", testhelpers.Deref(ui.SelfServiceDescription)); err != nil {
+					return err
+				}
+				if ui.Deadlines == nil {
+					return fmt.Errorf("user_interaction.deadlines: absent")
+				}
+				if err := testhelpers.RequireEqual("user_interaction.deadlines.enabled", true, testhelpers.Deref(ui.Deadlines.DeadlineEnabled)); err != nil {
+					return err
+				}
+				if err := testhelpers.RequireEqual("user_interaction.deadlines.period", 5, testhelpers.Deref(ui.Deadlines.DeadlinePeriod)); err != nil {
+					return err
+				}
+				if ui.GracePeriod == nil {
+					return fmt.Errorf("user_interaction.grace_period: absent")
+				}
+				if err := testhelpers.RequireEqual("user_interaction.grace_period.duration", 45, testhelpers.Deref(ui.GracePeriod.GracePeriodDuration)); err != nil {
+					return err
+				}
+				if err := testhelpers.RequireEqual("user_interaction.grace_period.notification_center_subject", "Retained grace subject", testhelpers.Deref(ui.GracePeriod.NotificationCenterSubject)); err != nil {
+					return err
+				}
+				return testhelpers.RequireEqual("user_interaction.grace_period.message", "Retained grace message", testhelpers.Deref(ui.GracePeriod.Message))
+			})(s)
+	}
+}
+
+// TestAccResource_ProPatchPolicy_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping scope limitations and
+// exclusions, and the user_interaction deadlines / grace_period sub-blocks,
+// from config plans them as removed, but the classic
+// PUT omits the elements and the server keeps every value. Step 2 keeps
+// scope.targets and a one-field user_interaction so the scope goes through
+// the granular merge and the user_interaction PUT omits its children; step 3
+// drops both blocks so the PUT carries <general> alone. Each step's implicit
+// post-apply plan must be empty, which is what makes the contract usable. If
+// this test fails on content, the endpoint no longer merges and nothing that
+// suppresses the removal plan may ship for this resource.
+func TestAccResource_ProPatchPolicy_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pp-omit-" + suffix
+	addr := patchPolicyType + ".test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPatchPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: patchPolicyOmitRetainsConfig(suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "user_interaction.install_button_text", "Retain me"),
+					resource.TestCheckResourceAttr(addr, "user_interaction.grace_period.duration", "45"),
+					resource.TestCheckResourceAttr(addr, "scope.exclusions.ibeacon_ids.#", "1"),
+					patchPolicyRetainedOnServer(t),
+				),
+			},
+			{
+				Config: patchPolicyOmitRetainsParentsOnlyConfig(suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "scope.targets.building_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(addr, "scope.limitations.ibeacon_ids.#"),
+					resource.TestCheckNoResourceAttr(addr, "scope.exclusions.building_ids.#"),
+					resource.TestCheckResourceAttr(addr, "user_interaction.install_button_text", "Retain me"),
+					resource.TestCheckNoResourceAttr(addr, "user_interaction.deadlines.period"),
+					resource.TestCheckNoResourceAttr(addr, "user_interaction.grace_period.duration"),
+					patchPolicyRetainedOnServer(t),
+				),
+			},
+			{
+				Config: patchPolicyOmitRetainsGeneralOnlyConfig(suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(addr, "scope.targets.building_ids.#"),
+					resource.TestCheckNoResourceAttr(addr, "user_interaction.install_button_text"),
+					patchPolicyRetainedOnServer(t),
+				),
 			},
 		},
 	})
