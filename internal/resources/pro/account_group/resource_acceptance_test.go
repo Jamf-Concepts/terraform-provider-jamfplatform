@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -209,6 +210,230 @@ func TestAccResource_ProAccountGroup_Members(t *testing.T) {
 				Config: accountGroupMembersConfig(name, suffix, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_account_group.members", "members.#", "0"),
+				),
+			},
+		},
+	})
+}
+
+const accountGroupOmitRetainsAddr = "jamfplatform_pro_account_group.omit"
+
+// accountGroupOmitRetainsFixture is the jamfplatform_pro_account member every
+// step of the omit-retains test carries, so the account is created once and
+// outlives the group. It mirrors the proven accountGroupMembersConfig shape.
+// The steps that stop managing members keep the fixture through depends_on,
+// which also orders the destroy (group first, account second) so a member is
+// never deleted out from under a group that still lists it.
+func accountGroupOmitRetainsFixture(suffix string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "omit_member" {
+  username      = "tf-acc-ag-omit-%[1]s"
+  full_name     = "TF Acc AG Omit Member"
+  email_address = "tf-acc-ag-omit-%[1]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  password            = "Pr0bePassw0rd-%[1]s"
+  password_wo_version = 1
+
+  privileges = {
+    jamf_pro_server_objects = ["Read Computers"]
+  }
+}
+`, suffix)
+}
+
+// accountGroupOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: three privilege categories, a managed member and the
+// Optional+Computed site_id, each carrying a distinctive value so a server that
+// stopped retaining an omitted element is caught on content, not presence.
+func accountGroupOmitRetainsConfig(name, suffix string) string {
+	return accountGroupOmitRetainsFixture(suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_account_group" "omit" {
+  display_name  = %q
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+  site_id       = -1
+  members       = [jamfplatform_pro_account.omit_member.id]
+
+  privileges = {
+    jamf_pro_server_objects  = ["Read Buildings", "Read Departments"]
+    jamf_pro_server_settings = ["Read SMTP Server"]
+    jamf_pro_server_actions  = ["Send Computer Remote Lock Command"]
+  }
+}
+`, name)
+}
+
+// accountGroupOmitRetainsObjectsOnlyConfig keeps the privileges block but
+// declares only jamf_pro_server_objects, and drops members and site_id, so the
+// PUT carries a <privileges> element missing two categories and no <members>.
+func accountGroupOmitRetainsObjectsOnlyConfig(name, suffix string) string {
+	return accountGroupOmitRetainsFixture(suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_account_group" "omit" {
+  display_name  = %q
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  privileges = {
+    jamf_pro_server_objects = ["Read Buildings", "Read Departments"]
+  }
+
+  depends_on = [jamfplatform_pro_account.omit_member]
+}
+`, name)
+}
+
+// accountGroupOmitRetainsHeaderOnlyConfig drops every optional attribute, so the
+// PUT carries the three required scalars alone.
+func accountGroupOmitRetainsHeaderOnlyConfig(name, suffix string) string {
+	return accountGroupOmitRetainsFixture(suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_account_group" "omit" {
+  display_name  = %q
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  depends_on = [jamfplatform_pro_account.omit_member]
+}
+`, name)
+}
+
+// hasPrivilege reports whether a classic privilege category carries want. The
+// server silently expands a submitted grid with dependency privileges, so the
+// retained-on-server assertion is containment, never equality.
+func hasPrivilege(category *[]string, want string) bool {
+	if category == nil {
+		return false
+	}
+	for _, p := range *category {
+		if p == want {
+			return true
+		}
+	}
+	return false
+}
+
+// privilegeList renders a classic privilege category for a diagnostic, so a
+// missing category reads as "absent" rather than a struct pointer.
+func privilegeList[T any](category *T, privileges func(*T) *[]string) []string {
+	if category == nil {
+		return nil
+	}
+	return testhelpers.Deref(privileges(category))
+}
+
+// accountGroupRetainedOnServer asserts the server's copy still carries every
+// privilege and the member the omit-retains config declared in its first step.
+// The member's id is read from the fixture's state entry because the classic
+// response identifies members by account id, not by the group.
+func accountGroupRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return func(s *terraform.State) error {
+		member, ok := s.RootModule().Resources["jamfplatform_pro_account.omit_member"]
+		if !ok {
+			return fmt.Errorf("member fixture jamfplatform_pro_account.omit_member not found in state")
+		}
+		wantMember, err := strconv.Atoi(member.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("member fixture id %q is not an integer: %w", member.Primary.ID, err)
+		}
+		return testhelpers.CheckLiveObject(accountGroupOmitRetainsAddr,
+			func(ctx context.Context, id string) (*proclassic.Group, error) {
+				return c.GetAccountGroupByID(ctx, id)
+			},
+			func(g *proclassic.Group) error {
+				if g.Privileges == nil {
+					return fmt.Errorf("privileges: absent")
+				}
+				if g.Privileges.JssObjects == nil {
+					return fmt.Errorf("privileges.jamf_pro_server_objects: absent")
+				}
+				for _, want := range []string{"Read Buildings", "Read Departments"} {
+					if !hasPrivilege(g.Privileges.JssObjects.Privilege, want) {
+						return fmt.Errorf("privileges.jamf_pro_server_objects: want %q, got %v", want, testhelpers.Deref(g.Privileges.JssObjects.Privilege))
+					}
+				}
+				if g.Privileges.JssSettings == nil || !hasPrivilege(g.Privileges.JssSettings.Privilege, "Read SMTP Server") {
+					return fmt.Errorf("privileges.jamf_pro_server_settings: want %q, got %v", "Read SMTP Server", privilegeList(g.Privileges.JssSettings, func(c *proclassic.GroupPrivilegesJssSettings) *[]string { return c.Privilege }))
+				}
+				if g.Privileges.JssActions == nil || !hasPrivilege(g.Privileges.JssActions.Privilege, "Send Computer Remote Lock Command") {
+					return fmt.Errorf("privileges.jamf_pro_server_actions: want %q, got %v", "Send Computer Remote Lock Command", privilegeList(g.Privileges.JssActions, func(c *proclassic.GroupPrivilegesJssActions) *[]string { return c.Privilege }))
+				}
+				if g.Members == nil || g.Members.User == nil || len(*g.Members.User) != 1 {
+					return fmt.Errorf("members: want exactly one member, got %+v", g.Members)
+				}
+				if err := testhelpers.RequireEqual("members[0].id", wantMember, testhelpers.Deref((*g.Members.User)[0].ID)); err != nil {
+					return err
+				}
+				if g.Site == nil {
+					return fmt.Errorf("site: absent")
+				}
+				return testhelpers.RequireEqual("site.id", -1, testhelpers.Deref(g.Site.ID))
+			})(s)
+	}
+}
+
+// TestAccResource_ProAccountGroup_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping members, two privilege
+// categories, and finally the whole privileges block from config plans them as
+// removed, but the classic /accounts/groupid PUT omits the elements and the
+// server keeps every value. Step 2 keeps the privileges block with one category
+// so the PUT carries a partial <privileges>, exercising the category-level
+// merge the resource documents; step 3 drops privileges too so the PUT carries
+// the header alone. Each step's implicit post-apply plan must be empty, which
+// is what makes the contract usable.
+//
+// Step 2 fails today, and the failure is the resource's, not the server's:
+// wire-probed 2026-09-06 on Jamf Pro 11.31.1, a sent <privileges> replaces the
+// whole grid, so the two undeclared categories are emptied while Read's
+// null-means-unmanaged gate hides the loss (issue #385). The whole-block
+// omission in step 3 and the members omission both retain correctly. The test
+// stays written as the contract the resource claims, and skips until #385 is
+// fixed, so that the fix is proven by deleting the skip rather than by
+// rewriting the assertion.
+// skipUntilPrivilegeCategoryMergeIsFixed gates the omit-retains test on issue
+// #385. Delete this function, and the call to it, when the resource either
+// emulates the category-level retention it promises or stops promising it.
+func skipUntilPrivilegeCategoryMergeIsFixed(t *testing.T) {
+	t.Helper()
+	t.Skip("jamfplatform_pro_account_group sends a partial <privileges> that the server treats as a full replace, wiping undeclared categories; see issue #385")
+}
+
+func TestAccResource_ProAccountGroup_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	skipUntilPrivilegeCategoryMergeIsFixed(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-account-group-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAccountGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: accountGroupOmitRetainsConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(accountGroupOmitRetainsAddr, "members.#", "1"),
+					resource.TestCheckResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_settings.#", "1"),
+					resource.TestCheckResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_actions.#", "1"),
+					accountGroupRetainedOnServer(t),
+				),
+			},
+			{
+				Config: accountGroupOmitRetainsObjectsOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(accountGroupOmitRetainsAddr, "members.#"),
+					resource.TestCheckNoResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_settings.#"),
+					resource.TestCheckNoResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_actions.#"),
+					resource.TestCheckResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_objects.#", "2"),
+					resource.TestCheckResourceAttr(accountGroupOmitRetainsAddr, "site_id", "-1"),
+					accountGroupRetainedOnServer(t),
+				),
+			},
+			{
+				Config: accountGroupOmitRetainsHeaderOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(accountGroupOmitRetainsAddr, "privileges.jamf_pro_server_objects.#"),
+					accountGroupRetainedOnServer(t),
 				),
 			},
 		},
