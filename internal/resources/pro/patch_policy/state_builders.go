@@ -177,12 +177,18 @@ func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *Pa
 // first allocated so the from-scratch read hydrates the full block rather than
 // leaving unmanaged notifications/deadlines/grace_period null.
 //
-// The whole notifications sub-block keeps a sticky read: <notifications> and
-// every child of it, <reminders> included, are absent from the GET even
-// immediately after the POST that stored them. install_button_text,
-// self_service_description, the icon id, and the deadlines and grace_period
-// sub-blocks are all echoed faithfully and read from the wire. Wire-probed
-// against Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
+// The notifications sub-block splits. enabled, subject and both reminders
+// fields are echoed while the tenant-level Settings -> Self Service -> macOS ->
+// "Enable Self Service notifications" toggle is on, and omitted with it off, so
+// they read through helpers.WireWhenPresent*: the wire wins whenever it carries
+// a value, and state is kept when it does not. message and type are omitted
+// even with the toggle on — a GET taken straight after the POST that set all
+// four returned the other three and dropped exactly these two — so they keep a
+// sticky read, and the schema models them Optional-only for the same reason.
+//
+// install_button_text, self_service_description, the icon id, and the deadlines
+// and grace_period sub-blocks are all echoed unconditionally and read from the
+// wire. Wire-probed against Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
 func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *PatchPolicyUserInteractionModel, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.Notifications == nil && ui.Notifications != nil {
@@ -224,8 +230,8 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if n != nil {
 			nEnabled, nSubject, nMsg, nType, nReminders = n.NotificationEnabled, n.NotificationSubject, n.NotificationMessage, n.NotificationType, n.Reminders
 		}
-		state.Notifications.Enabled = helpers.StickyIgnoringDriftBool(nEnabled, state.Notifications.Enabled)
-		state.Notifications.Subject = helpers.StickyIgnoringDriftString(nSubject, state.Notifications.Subject)
+		state.Notifications.Enabled = helpers.WireWhenPresentBool(nEnabled, state.Notifications.Enabled)
+		state.Notifications.Subject = helpers.WireWhenPresentString(nSubject, state.Notifications.Subject)
 		state.Notifications.Message = helpers.StickyIgnoringDriftString(nMsg, state.Notifications.Message)
 		state.Notifications.Type = helpers.StickyIgnoringDriftString(nType, state.Notifications.Type)
 		if state.Notifications.Reminders != nil {
@@ -236,8 +242,8 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 			if nReminders != nil {
 				rEnabled, rFreq = nReminders.NotificationRemindersEnabled, nReminders.NotificationReminderFrequency
 			}
-			state.Notifications.Reminders.Enabled = helpers.StickyIgnoringDriftBool(rEnabled, state.Notifications.Reminders.Enabled)
-			state.Notifications.Reminders.Frequency = stickyIgnoringDriftInt64(rFreq, state.Notifications.Reminders.Frequency)
+			state.Notifications.Reminders.Enabled = helpers.WireWhenPresentBool(rEnabled, state.Notifications.Reminders.Enabled)
+			state.Notifications.Reminders.Frequency = helpers.WireWhenPresentInt64(rFreq, state.Notifications.Reminders.Frequency)
 		}
 	}
 

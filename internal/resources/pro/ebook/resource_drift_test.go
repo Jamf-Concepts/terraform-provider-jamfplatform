@@ -22,11 +22,15 @@ import (
 )
 
 // ebookDriftConfig declares the general and self_service attributes the drift
-// test mutates server-side. All of them are echoed faithfully by the classic
-// /ebooks GET (Jamf Pro 11.31.1, wire-probed 2026-09-06). file_type and
-// deploy_as_managed are deliberately absent: the first is canonicalised by the
-// server and the second does not persist, so both keep a sticky read and
-// cannot report drift — see flattenEbookGeneral.
+// test mutates server-side. All of them are echoed unconditionally by the
+// classic /ebooks GET (Jamf Pro 11.31.1, wire-probed 2026-09-06).
+//
+// Three groups are deliberately absent. file_type is canonicalised by the
+// server and deploy_as_managed does not persist, so both keep a sticky read and
+// cannot report drift (see flattenEbookGeneral). The notification_* fields are
+// echoed only while the tenant-level Self Service notifications toggle is on,
+// and an acceptance test must not depend on a tenant setting it does not
+// manage — that half is covered by the unit tests in drift_test.go instead.
 func ebookDriftConfig(name, author, buttonText string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_ebook" "test" {

@@ -22,11 +22,17 @@ import (
 )
 
 // mobileAppDriftConfig declares the attributes the drift test mutates
-// server-side. host_externally and self_service.after_install_button_text are
-// deliberately absent: the first does not persist while external_url is set and
-// the second stops being echoed after the first PUT, so both keep a sticky read
-// and cannot report drift — see flattenMobileAppGeneral and
-// flattenMobileAppSelfService.
+// server-side, all of them echoed unconditionally by the classic
+// /mobiledeviceapplications GET.
+//
+// host_externally is deliberately absent: the write does not persist while
+// external_url is set, so it keeps a sticky read and cannot report drift (see
+// flattenMobileAppGeneral). So are after_install_button_text and the
+// notification_* fields, each echoed only while its own gate is on
+// (general.make_available_after_install for the first, the tenant-level Self
+// Service notifications toggle for the rest) — an acceptance test must not
+// depend on a tenant setting it does not manage, so that half is covered by the
+// unit tests in drift_test.go instead.
 func mobileAppDriftConfig(name, buttonText string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {

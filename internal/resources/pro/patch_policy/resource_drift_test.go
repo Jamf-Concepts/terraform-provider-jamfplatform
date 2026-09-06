@@ -24,9 +24,15 @@ import (
 const patchPolicyDriftResourceAddr = "jamfplatform_pro_patch_policy.test"
 
 // patchPolicyDriftConfig declares the attributes the drift test mutates
-// server-side. user_interaction.notifications is deliberately absent: the
-// classic GET omits the whole <notifications> element, so every field under it
-// keeps a sticky read and cannot report drift — see flattenUserInteraction.
+// server-side, all of them echoed unconditionally by the classic
+// /patchpolicies GET.
+//
+// user_interaction.notifications is deliberately absent. Four of its six fields
+// are echoed only while the tenant-level Self Service notifications toggle is
+// on, and an acceptance test must not depend on a tenant setting it does not
+// manage; the other two (message, type) are never echoed at all. Both halves
+// are covered by the unit tests in drift_test.go instead — see
+// flattenUserInteraction.
 func patchPolicyDriftConfig(suffix string) string {
 	return fixtureTitle(suffix) + fmt.Sprintf(`
 		resource "jamfplatform_pro_patch_policy" "test" {

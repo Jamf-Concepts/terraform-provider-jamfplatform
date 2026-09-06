@@ -290,18 +290,16 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 							},
 							// message and type are Optional-only (NOT Computed): the
-							// classic GET never echoes them, so there is nothing to
-							// compute. As Computed they planned Unknown when unset and
-							// stayed Unknown after apply whenever the state-gated
-							// flatten skipped the block ("invalid result object after
-							// apply"). Optional-only ⇒ unset plans as a known null;
-							// the sticky read still preserves a user-set value the server
-							// drops. Re-probing on Jamf Pro 11.31.1 (2026-09-06) found
-							// the GET omits the whole <notifications> element, not just
-							// these two — enabled, subject and reminders are dropped as
-							// well, correcting the earlier note here. Their
-							// Optional+Computed shape is therefore load-bearing only for
-							// the plan, never for a refresh; see issue #387.
+							// classic GET never echoes them — re-confirmed on Jamf Pro
+							// 11.31.1 (2026-09-06), where a GET taken straight after the
+							// POST that set all four returned notification_enabled,
+							// notification_subject and the reminders block and omitted
+							// exactly these two. So there is nothing to compute. As
+							// Computed they planned Unknown when unset and stayed Unknown
+							// after apply whenever the state-gated flatten skipped the
+							// block ("invalid result object after apply"). Optional-only
+							// ⇒ unset plans as a known null; the sticky read still
+							// preserves a user-set value the server drops.
 							"message": schema.StringAttribute{
 								MarkdownDescription: "Notification message body. Write-only in practice: Jamf Pro does not return it, so a configured value is preserved in state but never refreshed.",
 								Optional:            true,

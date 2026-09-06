@@ -233,7 +233,7 @@ Optional:
 
 Optional:
 
-- `after_install_button_text` (String) Button label shown after the app is installed.
+- `after_install_button_text` (String) Button label shown after the app is installed. Requires `general.make_available_after_install = true`; Jamf Pro discards the label otherwise and never returns it.
 - `feature_on_main_page` (Boolean) Feature the app on the Self Service main page.
 - `install_button_text` (String) Install-button label.
 - `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available.

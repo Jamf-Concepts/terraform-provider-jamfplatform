@@ -88,12 +88,15 @@ func TestFlattenMobileApp_ReportsDrift(t *testing.T) {
 }
 
 // TestFlattenMobileApp_StickyFieldsIgnoreDrift pins the other half of the #387
-// split: host_externally (the write does not persist while external_url is
-// set), after_install_button_text (echoed on create, absent from every GET
-// after a PUT) and the three self_service notification_* fields (never echoed)
-// keep the value already in state. The empty MobileDeviceApplicationSelfService
-// passed in is the shape a GET returns after any PUT: after_install_button_text
-// and the whole <notification> family absent.
+// split: host_externally keeps the value already in state, because the write
+// does not persist while external_url is set.
+//
+// after_install_button_text and the three self_service notification_* fields
+// are asserted here too, but for a different rule: each is echoed only while
+// its gate is on — general.make_available_after_install for the first, the
+// tenant-level Self Service notifications toggle for the rest. With the gates
+// off, which is what the empty MobileDeviceApplicationSelfService stands for,
+// state must be kept rather than nulled.
 func TestFlattenMobileApp_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	general := &MobileAppGeneralModel{HostExternally: types.BoolValue(false)}
@@ -118,10 +121,42 @@ func TestFlattenMobileApp_StickyFieldsIgnoreDrift(t *testing.T) {
 		{"notification_message", "state message", ss.NotificationMessage.ValueString()},
 	} {
 		if tc.got != tc.want {
-			t.Errorf("%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+			t.Errorf("%s: gate off, so state must be kept as %q, got %q", tc.name, tc.want, tc.got)
 		}
 	}
 	if !ss.NotificationEnabled.ValueBool() {
-		t.Error("notification_enabled: sticky read must keep true")
+		t.Error("notification_enabled: gate off, so state must be kept as true")
+	}
+}
+
+// TestFlattenMobileAppSelfService_GatedFieldsDriftWhenEchoed pins the other
+// side of both conditional echoes: with the gates on the classic GET does
+// return these fields, and a value that differs from state must then win so
+// drift is reported.
+func TestFlattenMobileAppSelfService_GatedFieldsDriftWhenEchoed(t *testing.T) {
+	t.Parallel()
+	ss := &MobileAppSelfServiceModel{
+		AfterInstallButtonText: types.StringValue("state after"),
+		NotificationEnabled:    types.BoolValue(true),
+		NotificationSubject:    types.StringValue("state subject"),
+		NotificationMessage:    types.StringValue("state message"),
+	}
+	flattenMobileAppSelfService(&proclassic.MobileDeviceApplicationSelfService{
+		SelfServiceAfterInstallButtonText: new("wire after"),
+		Notification:                      &proclassic.NotificationValue{Enabled: new(false)},
+		NotificationSubject:               new("wire subject"),
+		NotificationMessage:               new("wire message"),
+	}, ss)
+	for _, tc := range []struct{ name, want, got string }{
+		{"after_install_button_text", "wire after", ss.AfterInstallButtonText.ValueString()},
+		{"notification_subject", "wire subject", ss.NotificationSubject.ValueString()},
+		{"notification_message", "wire message", ss.NotificationMessage.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: wire value must win, want %q got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if ss.NotificationEnabled.ValueBool() {
+		t.Error("notification_enabled: wire false must win over state true")
 	}
 }

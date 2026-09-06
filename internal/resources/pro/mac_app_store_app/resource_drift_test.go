@@ -22,9 +22,15 @@ import (
 )
 
 // macAppDriftConfig declares the attributes the drift test mutates
-// server-side. is_free is deliberately absent: Jamf Pro resolves it from the
-// App Store listing, so it keeps a sticky read and cannot report drift — see
-// flattenMacAppGeneral.
+// server-side, all of them echoed unconditionally by the classic
+// /macapplications GET.
+//
+// is_free is deliberately absent: Jamf Pro resolves it from the App Store
+// listing, so it keeps a sticky read and cannot report drift (see
+// flattenMacAppGeneral). So are the notification_* fields, which are echoed
+// only while the tenant-level Self Service notifications toggle is on — an
+// acceptance test must not depend on a tenant setting it does not manage, so
+// that half is covered by the unit tests in drift_test.go instead.
 func macAppDriftConfig(name, buttonText string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_mac_app_store_app" "test" {

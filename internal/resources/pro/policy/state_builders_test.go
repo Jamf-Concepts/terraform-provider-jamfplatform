@@ -291,6 +291,13 @@ func TestAssignPolicyResourceModel_PackageConfigurationReportsDrift(t *testing.T
 // nulled or rewritten by a refresh. The evidence for each is in the doc comment
 // of the flattener that holds it.
 //
+// The self_service notification_* fields are asserted here too, but for a
+// different rule: they are echoed only while the tenant-level Self Service
+// notifications toggle is on, so with the toggle off — the empty
+// PolicySelfService below — state must be kept rather than nulled.
+// TestFlattenPolicySelfService_NotificationDriftWhenEchoed covers the other
+// side.
+//
 // The Policy passed in is the shape a real GET returns against the state
 // declared here: empty no_execute_*, a server-forced any_ip_address, an
 // override target_drive mirroring general.target_drive, a dropped
@@ -423,5 +430,39 @@ func TestAssignPolicyResourceModel_IncludeUnmanagedHydratesFromScratch(t *testin
 	}
 	if state.SelfService == nil || !state.SelfService.UseForSelfService.ValueBool() {
 		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
+	}
+}
+
+// TestFlattenPolicySelfService_NotificationDriftWhenEchoed pins the other side
+// of the conditional echo: while the tenant-level Self Service notifications
+// toggle is on the classic GET does return the <notification> family, and a
+// value that differs from state must then win so drift is reported.
+// TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift covers the toggle-off
+// side, where state is kept rather than nulled.
+func TestFlattenPolicySelfService_NotificationDriftWhenEchoed(t *testing.T) {
+	t.Parallel()
+	state := &PolicySelfServiceModel{
+		DisplayNotifications: types.BoolValue(true),
+		NotificationLocation: types.StringValue("Self Service"),
+		NotificationSubject:  types.StringValue("state subject"),
+		NotificationMessage:  types.StringValue("state message"),
+	}
+	flattenPolicySelfService(&proclassic.PolicySelfService{
+		Notification:        &proclassic.NotificationValue{Enabled: new(false)},
+		NotificationType:    new("Self Service and Notification Center"),
+		NotificationSubject: new("wire subject"),
+		NotificationMessage: new("wire message"),
+	}, state, false)
+	for _, tc := range []struct{ name, want, got string }{
+		{"notification_location", "Self Service and Notification Center", state.NotificationLocation.ValueString()},
+		{"notification_subject", "wire subject", state.NotificationSubject.ValueString()},
+		{"notification_message", "wire message", state.NotificationMessage.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: wire value must win, want %q got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if state.DisplayNotifications.ValueBool() {
+		t.Error("display_notifications: wire false must win over state true")
 	}
 }

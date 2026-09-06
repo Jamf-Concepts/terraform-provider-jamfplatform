@@ -58,7 +58,7 @@ func flattenNotificationEnabled(n *proclassic.NotificationValue, current types.B
 	if n != nil {
 		apiEnabled = n.Enabled
 	}
-	return helpers.StickyIgnoringDriftBool(apiEnabled, current)
+	return helpers.WireWhenPresentBool(apiEnabled, current)
 }
 
 // stickyIgnoringDriftInt64 is the Int64 sibling of helpers.StickyIgnoringDriftString

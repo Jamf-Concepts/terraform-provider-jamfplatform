@@ -475,14 +475,18 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.PolicyScopeExclu
 
 // flattenPolicySelfService maps the wire <self_service> block onto the model.
 //
-// The three notification_* scalars, and display_notifications via
-// flattenNotificationEnabled, keep a sticky read: Jamf Pro stores the whole
-// <notification> family on the policy and omits every element of it from the
-// GET — verified on a POST that set all four and on a later PUT — so nothing
-// read from the wire can be compared with state. Every other field here,
-// including the self_service_icon triple, is echoed faithfully and reads from
-// the wire. Wire-probed against Jamf Pro 11.31.1 on 2026-09-06; see issue
-// #387.
+// The Self Service notification fields are echoed only while the tenant-level
+// Settings -> Self Service -> macOS -> "Enable Self Service notifications"
+// toggle is on. With it off the write is accepted and the GET omits the whole
+// <notification> family, so they read through helpers.WireWhenPresent*: the
+// wire wins whenever it carries a value (drift reported), and state is kept
+// when it does not (no "inconsistent result after apply" on a tenant that has
+// notifications disabled). That gate is a tenant setting this resource does not
+// own, which is why neither a plain wire read nor a sticky read is right.
+//
+// Every other field here, the self_service_icon triple included, is echoed
+// unconditionally and reads from the wire. Wire-probed against Jamf Pro
+// 11.31.1 on 2026-09-06; see issue #387.
 func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySelfServiceModel, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.SelfServiceIcon == nil && ss.SelfServiceIcon != nil {
@@ -500,9 +504,9 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 	state.EnsureUsersViewDescription = helpers.BoolPointerValueOrNull(ss.ForceUsersToViewDescription)
 	state.IncludeInFeaturedCategory = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 	state.DisplayNotifications = flattenNotificationEnabled(ss.Notification, state.DisplayNotifications)
-	state.NotificationLocation = helpers.StickyIgnoringDriftString(ss.NotificationType, state.NotificationLocation)
-	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationLocation = helpers.WireWhenPresentString(ss.NotificationType, state.NotificationLocation)
+	state.NotificationSubject = helpers.WireWhenPresentString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.WireWhenPresentString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
 		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)

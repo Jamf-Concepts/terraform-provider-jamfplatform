@@ -98,7 +98,7 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	// configured/prior value when absent so a Required attribute is never nulled
 	// (which would trip "inconsistent result after apply"). Create issues a
 	// follow-up PUT precisely so the server persists it and this echo is present.
-	state.OsType = serverWhenPresentString(g.OsType, state.OsType)
+	state.OsType = helpers.WireWhenPresentString(g.OsType, state.OsType)
 
 	// Server-managed read-only field. (display_name and internal_app are not
 	// modeled — see MobileAppGeneralModel.)
@@ -201,16 +201,33 @@ func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplic
 }
 
 // flattenMobileAppSelfService maps the wire <self_service> block onto the
-// model. Four fields keep a sticky read. after_install_button_text is echoed on
-// create and never again: a POST stores and echoes it faithfully, but after any
-// PUT the element is absent from the GET, so state is the only record of it
-// once the object has been updated once. The three notification_* fields are
-// never echoed at all. The rest of the block, the icon included, is echoed
-// faithfully and reads from the wire. Wire-probed against Jamf Pro 11.31.1 on
-// 2026-09-06; see issue #387.
+// model. Four fields are echoed conditionally and read through
+// helpers.WireWhenPresent*, which adopts the wire whenever it carries a value
+// and keeps state when it does not.
+//
+// The Self Service notification fields are echoed only while the tenant-level
+// Settings -> Self Service -> macOS -> "Enable Self Service notifications"
+// toggle is on. With it off the write is accepted and the GET omits the whole
+// <notification> family, so they read through helpers.WireWhenPresent*: the
+// wire wins whenever it carries a value (drift reported), and state is kept
+// when it does not (no "inconsistent result after apply" on a tenant that has
+// notifications disabled). That gate is a tenant setting this resource does not
+// own, which is why neither a plain wire read nor a sticky read is right.
+//
+// after_install_button_text has a gate of its own, and a nearer one:
+// general.make_available_after_install. With that toggle off the label is
+// accepted, silently discarded and omitted from the GET — probed in isolation,
+// the same POST round-tripping it with the toggle on and dropping it with the
+// toggle off. Because the read deliberately keeps the configured value rather
+// than nulling it, the combination is rejected at plan time instead; see
+// requiresMakeAvailableAfterInstall in validators.go.
+//
+// The rest of the block, the icon included, is echoed unconditionally and reads
+// from the wire. Wire-probed against Jamf Pro 11.31.1 on 2026-09-06; see issue
+// #387.
 func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfService, state *MobileAppSelfServiceModel) {
 	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
-	state.AfterInstallButtonText = helpers.StickyIgnoringDriftString(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
+	state.AfterInstallButtonText = helpers.WireWhenPresentString(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
 	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
 	state.FeatureOnMainPage = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 
@@ -218,9 +235,9 @@ func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfServi
 	if ss.Notification != nil {
 		apiEnabled = ss.Notification.Enabled
 	}
-	state.NotificationEnabled = helpers.StickyIgnoringDriftBool(apiEnabled, state.NotificationEnabled)
-	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.WireWhenPresentBool(apiEnabled, state.NotificationEnabled)
+	state.NotificationSubject = helpers.WireWhenPresentString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.WireWhenPresentString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
 		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)

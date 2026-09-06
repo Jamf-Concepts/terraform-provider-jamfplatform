@@ -161,10 +161,19 @@ func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, 
 }
 
 // flattenMacAppSelfService maps the wire <self_service> block onto the model.
-// The four notification_* fields keep a sticky read: the <notification> family
-// is stored and omitted from every GET. The rest of the block, the icon
-// included, is echoed faithfully and reads from the wire. Wire-probed against
-// Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
+//
+// The Self Service notification fields are echoed only while the tenant-level
+// Settings -> Self Service -> macOS -> "Enable Self Service notifications"
+// toggle is on. With it off the write is accepted and the GET omits the whole
+// <notification> family, so they read through helpers.WireWhenPresent*: the
+// wire wins whenever it carries a value (drift reported), and state is kept
+// when it does not (no "inconsistent result after apply" on a tenant that has
+// notifications disabled). That gate is a tenant setting this resource does not
+// own, which is why neither a plain wire read nor a sticky read is right.
+//
+// The rest of the block, the icon included, is echoed unconditionally and reads
+// from the wire. Wire-probed against Jamf Pro 11.31.1 on 2026-09-06; see issue
+// #387.
 func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *MacAppSelfServiceModel) {
 	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.InstallButtonText, state.InstallButtonText)
 	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
@@ -177,10 +186,10 @@ func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *M
 		apiEnabled = ss.Notification.Enabled
 		apiMethod = ss.Notification.Method
 	}
-	state.NotificationEnabled = helpers.StickyIgnoringDriftBool(apiEnabled, state.NotificationEnabled)
-	state.NotificationMethod = helpers.StickyIgnoringDriftString(apiMethod, state.NotificationMethod)
-	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.WireWhenPresentBool(apiEnabled, state.NotificationEnabled)
+	state.NotificationMethod = helpers.WireWhenPresentString(apiMethod, state.NotificationMethod)
+	state.NotificationSubject = helpers.WireWhenPresentString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.WireWhenPresentString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
 		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)

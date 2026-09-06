@@ -195,6 +195,59 @@ func StickyIgnoringDriftBool(api *bool, current types.Bool) types.Bool {
 	return types.BoolValue(*api)
 }
 
+// WireWhenPresentString adopts the API value whenever the wire carries one, and
+// otherwise keeps what state already holds. It is the read for an attribute the
+// classic API echoes **conditionally** — one whose presence in the GET depends
+// on something the attribute itself does not control, such as a tenant-level
+// setting or a sibling toggle.
+//
+// It is the middle ground between the two wrong answers. A plain
+// wire-authoritative read nulls a configured value on every refresh taken while
+// the gate is off, tripping "Provider produced inconsistent result after
+// apply". StickyIgnoringDriftString never re-reads the wire at all, so drift
+// goes unreported even while the gate is on and the server is answering
+// truthfully. This reports drift whenever the wire can speak, and holds its
+// tongue when it cannot.
+//
+// An empty string counts as absent: the classic API expresses "no value" both
+// ways for these fields. An Unknown current value resolves to Null rather than
+// propagating — an Optional+Computed attribute unset on create plans Unknown,
+// and returning that would leave an unknown in state after apply.
+func WireWhenPresentString(wire *string, current types.String) types.String {
+	if wire != nil && *wire != "" {
+		return types.StringValue(*wire)
+	}
+	if current.IsUnknown() {
+		return types.StringNull()
+	}
+	return current
+}
+
+// WireWhenPresentBool is the bool sibling of WireWhenPresentString and carries
+// the same rationale. There is no empty form for a bool, so only a nil wire
+// pointer counts as absent.
+func WireWhenPresentBool(wire *bool, current types.Bool) types.Bool {
+	if wire != nil {
+		return types.BoolValue(*wire)
+	}
+	if current.IsUnknown() {
+		return types.BoolNull()
+	}
+	return current
+}
+
+// WireWhenPresentInt64 is the Int64 sibling of WireWhenPresentString, taking the
+// *int the ProClassic SDK uses for integer wire fields.
+func WireWhenPresentInt64(wire *int, current types.Int64) types.Int64 {
+	if wire != nil {
+		return types.Int64Value(int64(*wire))
+	}
+	if current.IsUnknown() {
+		return types.Int64Null()
+	}
+	return current
+}
+
 // ProviderNotConfiguredError returns the (summary, detail) pair every Pro CRUD
 // handler uses to guard against a nil SDK client — the case where a CRUD method
 // fires before Configure populated the provider data.

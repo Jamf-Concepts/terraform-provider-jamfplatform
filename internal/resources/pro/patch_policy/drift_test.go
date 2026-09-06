@@ -129,16 +129,70 @@ func TestFlattenUserInteraction_StickyNotificationsIgnoreDrift(t *testing.T) {
 		{"type", "Self Service", n.Type.ValueString()},
 	} {
 		if tc.got != tc.want {
-			t.Errorf("notifications.%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+			t.Errorf("notifications.%s: toggle off, so state must be kept as %q, got %q", tc.name, tc.want, tc.got)
 		}
 	}
 	if !n.Enabled.ValueBool() {
-		t.Error("notifications.enabled: sticky read must keep true")
+		t.Error("notifications.enabled: toggle off, so state must be kept as true")
 	}
 	if !n.Reminders.Enabled.ValueBool() {
-		t.Error("notifications.reminders.enabled: sticky read must keep true")
+		t.Error("notifications.reminders.enabled: toggle off, so state must be kept as true")
 	}
 	if n.Reminders.Frequency.ValueInt64() != 2 {
-		t.Errorf("notifications.reminders.frequency: sticky read must keep 2, got %d", n.Reminders.Frequency.ValueInt64())
+		t.Errorf("notifications.reminders.frequency: toggle off, so state must be kept as 2, got %d", n.Reminders.Frequency.ValueInt64())
+	}
+}
+
+// TestFlattenUserInteraction_NotificationDriftWhenEchoed pins the split inside
+// the notifications sub-block. While the tenant-level Self Service
+// notifications toggle is on the GET returns notification_enabled,
+// notification_subject and both reminders fields, so a divergent wire value
+// must win and drift is reported. notification_message and notification_type
+// are dropped even then — a GET taken straight after the POST that set all four
+// returned the other three and omitted exactly these two — so they keep the
+// value already in state.
+func TestFlattenUserInteraction_NotificationDriftWhenEchoed(t *testing.T) {
+	t.Parallel()
+	state := &PatchPolicyUserInteractionModel{
+		Notifications: &PatchPolicyUserInteractionNotificationsModel{
+			Enabled: types.BoolValue(true),
+			Subject: types.StringValue("state subject"),
+			Message: types.StringValue("state message"),
+			Type:    types.StringValue("Self Service"),
+			Reminders: &PatchPolicyUserInteractionNotificationsRemindersModel{
+				Enabled:   types.BoolValue(true),
+				Frequency: types.Int64Value(2),
+			},
+		},
+	}
+	flattenUserInteraction(&proclassic.PatchPolicyUserInteraction{
+		Notifications: &proclassic.PatchPolicyUserInteractionNotifications{
+			NotificationEnabled: new(false),
+			NotificationSubject: new("wire subject"),
+			Reminders: &proclassic.PatchPolicyUserInteractionNotificationsReminders{
+				NotificationRemindersEnabled:  new(false),
+				NotificationReminderFrequency: new(9),
+			},
+		},
+	}, state, false)
+
+	n := state.Notifications
+	if got := n.Subject.ValueString(); got != "wire subject" {
+		t.Errorf("notifications.subject: wire value must win, got %q", got)
+	}
+	if n.Enabled.ValueBool() {
+		t.Error("notifications.enabled: wire false must win over state true")
+	}
+	if n.Reminders.Enabled.ValueBool() {
+		t.Error("notifications.reminders.enabled: wire false must win over state true")
+	}
+	if n.Reminders.Frequency.ValueInt64() != 9 {
+		t.Errorf("notifications.reminders.frequency: wire value must win, got %d", n.Reminders.Frequency.ValueInt64())
+	}
+	if got := n.Message.ValueString(); got != "state message" {
+		t.Errorf("notifications.message: never echoed, must keep state, got %q", got)
+	}
+	if got := n.Type.ValueString(); got != "Self Service" {
+		t.Errorf("notifications.type: never echoed, must keep state, got %q", got)
 	}
 }

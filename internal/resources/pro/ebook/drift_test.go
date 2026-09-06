@@ -51,11 +51,16 @@ func TestFlattenEbookGeneral_ReportsDrift(t *testing.T) {
 }
 
 // TestFlattenEbook_StickyFieldsIgnoreDrift pins the other half of the #387
-// split for this resource: file_type (server canonicalises the casing),
-// deploy_as_managed (the write does not persist) and the four self_service
-// notification_* fields (never echoed) keep the value already in state. The
-// empty EbookSelfService passed in is the shape a real GET returns: the whole
-// <notification> family absent.
+// split for this resource: file_type (the server canonicalises the casing) and
+// deploy_as_managed (the write does not persist) keep the value already in
+// state.
+//
+// The four self_service notification_* fields are asserted here too, but for a
+// different rule: they are echoed only while the tenant-level Self Service
+// notifications toggle is on, so with the toggle off — the empty
+// EbookSelfService passed in — state must be kept rather than nulled.
+// TestFlattenEbookSelfService_NotificationDriftWhenEchoed covers the other
+// side.
 func TestFlattenEbook_StickyFieldsIgnoreDrift(t *testing.T) {
 	t.Parallel()
 	general := &EbookGeneralModel{
@@ -87,10 +92,41 @@ func TestFlattenEbook_StickyFieldsIgnoreDrift(t *testing.T) {
 		{"notification_message", "state message", ss.NotificationMessage.ValueString()},
 	} {
 		if tc.got != tc.want {
-			t.Errorf("%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+			t.Errorf("%s: toggle off, so state must be kept as %q, got %q", tc.name, tc.want, tc.got)
 		}
 	}
 	if !ss.NotificationEnabled.ValueBool() {
-		t.Error("notification_enabled: sticky read must keep true")
+		t.Error("notification_enabled: toggle off, so state must be kept as true")
+	}
+}
+
+// TestFlattenEbookSelfService_NotificationDriftWhenEchoed pins the other side of
+// the conditional echo: while the tenant-level Self Service notifications
+// toggle is on the classic GET does return the <notification> family, and a
+// value that differs from state must then win so drift is reported.
+func TestFlattenEbookSelfService_NotificationDriftWhenEchoed(t *testing.T) {
+	t.Parallel()
+	ss := &EbookSelfServiceModel{
+		NotificationEnabled: types.BoolValue(true),
+		NotificationMethod:  types.StringValue("Self Service"),
+		NotificationSubject: types.StringValue("state subject"),
+		NotificationMessage: types.StringValue("state message"),
+	}
+	flattenEbookSelfService(&proclassic.EbookSelfService{
+		Notification:        &proclassic.NotificationValue{Enabled: new(false), Method: new("Self Service and Notification Center")},
+		NotificationSubject: new("wire subject"),
+		NotificationMessage: new("wire message"),
+	}, ss)
+	for _, tc := range []struct{ name, want, got string }{
+		{"notification_method", "Self Service and Notification Center", ss.NotificationMethod.ValueString()},
+		{"notification_subject", "wire subject", ss.NotificationSubject.ValueString()},
+		{"notification_message", "wire message", ss.NotificationMessage.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: wire value must win, want %q got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if ss.NotificationEnabled.ValueBool() {
+		t.Error("notification_enabled: wire false must win over state true")
 	}
 }
