@@ -61,30 +61,54 @@ func TestBuildPrinterInput_AllFieldsSet(t *testing.T) {
 	}
 }
 
-// TestBuildPrinterInput_CategoryAlwaysEmittedWhenNull verifies the special
-// "always emit" encoding for category. Null in TF state must serialize to a
-// non-nil *string (pointing at "") so the SDK emits `<category></category>`
-// and the server clears the category to its sentinel. Returning nil instead
-// would omit the tag, which the classic endpoint treats as "preserve current"
-// — the exact opposite semantic.
-func TestBuildPrinterInput_CategoryAlwaysEmittedWhenNull(t *testing.T) {
+// TestBuildPrinterInput_ClearableStringsAlwaysEmittedWhenNull verifies the
+// always-emit encoding for every plain Optional string. Null in the plan must
+// serialize to a non-nil *string pointing at "" so the SDK emits an empty
+// element and the classic merge clears the stored value; returning nil would
+// omit the tag, which the endpoint treats as "preserve current" — the exact
+// opposite semantic, and the cause of issue #384.
+func TestBuildPrinterInput_ClearableStringsAlwaysEmittedWhenNull(t *testing.T) {
 	plan := PrinterResourceModel{
-		Name:     types.StringValue("Front Desk"),
-		Category: types.StringNull(),
+		Name:           types.StringValue("Front Desk"),
+		Category:       types.StringNull(),
+		URI:            types.StringNull(),
+		CUPSName:       types.StringNull(),
+		Location:       types.StringNull(),
+		Model:          types.StringNull(),
+		Info:           types.StringNull(),
+		Notes:          types.StringNull(),
+		PPD:            types.StringNull(),
+		OSRequirements: types.StringNull(),
 	}
 	got := buildPrinterInput(plan)
 
-	if got.Category == nil {
-		t.Fatalf("Category must serialize to a non-nil *string even when null (sends empty <category/>); got nil")
-	}
-	if *got.Category != "" {
-		t.Errorf("null Category must emit empty string, got %q", *got.Category)
+	for _, c := range []struct {
+		name string
+		ptr  *string
+	}{
+		{"Category", got.Category},
+		{"URI", got.URI},
+		{"CUPSName", got.CUPSName},
+		{"Location", got.Location},
+		{"Model", got.Model},
+		{"Info", got.Info},
+		{"Notes", got.Notes},
+		{"Ppd", got.Ppd},
+		{"OsRequirements", got.OsRequirements},
+	} {
+		if c.ptr == nil {
+			t.Errorf("%s must serialize to a non-nil *string even when null (sends an empty element); got nil", c.name)
+			continue
+		}
+		if *c.ptr != "" {
+			t.Errorf("null %s must emit empty string, got %q", c.name, *c.ptr)
+		}
 	}
 }
 
 // TestBuildPrinterInput_PPDPathOmittedWhenNull verifies that null ppd_path
-// produces a nil pointer (omitted tag) — the opposite of category. Emitting
-// an empty tag here would clear the server's auto-fill under use_generic=true.
+// produces a nil pointer (omitted tag) — the opposite of ppd. Emitting an
+// empty tag here would clear the server's auto-fill under use_generic=true.
 func TestBuildPrinterInput_PPDPathOmittedWhenNull(t *testing.T) {
 	plan := PrinterResourceModel{
 		Name:    types.StringValue("Front Desk"),
@@ -96,8 +120,8 @@ func TestBuildPrinterInput_PPDPathOmittedWhenNull(t *testing.T) {
 	if got.PpdPath != nil {
 		t.Errorf("null PpdPath must serialise to nil (omitted tag preserves server auto-fill), got %q", *got.PpdPath)
 	}
-	if got.Ppd != nil {
-		t.Errorf("null Ppd must serialise to nil, got %q", *got.Ppd)
+	if got.PpdContents != nil {
+		t.Errorf("null PpdContents must serialise to nil, got %q", *got.PpdContents)
 	}
 }
 
@@ -128,7 +152,10 @@ func TestBuildPrinterInput_SharedNullOmitted(t *testing.T) {
 	}
 }
 
-func TestBuildPrinterInput_MostFieldsNullOmitted(t *testing.T) {
+// TestBuildPrinterInput_ServerOwnedFieldsNullOmitted pins the fields that
+// must still omit when null: the Optional+Computed bools and the two PPD
+// fields whose null means "server-owned" (see buildPrinterInput).
+func TestBuildPrinterInput_ServerOwnedFieldsNullOmitted(t *testing.T) {
 	plan := PrinterResourceModel{
 		Name:           types.StringValue("Minimal"),
 		Category:       types.StringNull(),
@@ -148,31 +175,18 @@ func TestBuildPrinterInput_MostFieldsNullOmitted(t *testing.T) {
 	}
 	got := buildPrinterInput(plan)
 
-	// Name is the only required field set. Category gets the always-emit
-	// treatment. Everything else must omit.
 	if got.Name == nil || *got.Name != "Minimal" {
 		t.Errorf("expected Name=Minimal, got %v", got.Name)
-	}
-	if got.Category == nil || *got.Category != "" {
-		t.Errorf("expected Category emitted as empty, got %v", got.Category)
 	}
 	for _, c := range []struct {
 		name string
 		ptr  any
 	}{
-		{"URI", got.URI},
-		{"CUPSName", got.CUPSName},
-		{"Location", got.Location},
-		{"Model", got.Model},
-		{"Info", got.Info},
-		{"Notes", got.Notes},
 		{"MakeDefault", got.MakeDefault},
 		{"UseGeneric", got.UseGeneric},
-		{"Ppd", got.Ppd},
 		{"PpdPath", got.PpdPath},
 		{"PpdContents", got.PpdContents},
 		{"Shared", got.Shared},
-		{"OsRequirements", got.OsRequirements},
 	} {
 		if !isNilPointer(c.ptr) {
 			t.Errorf("%s must be nil when TF value null, got non-nil", c.name)
