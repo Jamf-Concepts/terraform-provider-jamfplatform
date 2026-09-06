@@ -1048,9 +1048,14 @@ func TestAccResource_ProMacApp_ScopeSplitOwnership(t *testing.T) {
 // on presence.
 func macAppOmitRetainsConfig(name string) string {
 	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
 		resource "jamfplatform_pro_mac_app_store_app" "test" {
 			general = {
-				name            = %q
+				name            = %[1]q
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.macapp.omit"
 				url             = "https://apps.apple.com/app/id000000001"
@@ -1069,6 +1074,13 @@ func macAppOmitRetainsConfig(name string) string {
 				self_service_description        = "Omit-retains contract description."
 				force_users_to_view_description = true
 				feature_on_main_page            = true
+				self_service_categories = [
+					{
+						id         = jamfplatform_pro_category.omit.id
+						display_in = true
+						feature_in = true
+					},
+				]
 			}
 			vpp = {
 				assign_vpp_device_based_licenses = false
@@ -1078,14 +1090,20 @@ func macAppOmitRetainsConfig(name string) string {
 	`, name)
 }
 
-// macAppOmitRetainsScopeOnlyConfig drops self_service, vpp and the scope
-// exclusions while still declaring scope targets, so the PUT omits two whole
-// blocks and re-emits the scope from a granular merge.
-func macAppOmitRetainsScopeOnlyConfig(name string) string {
+// macAppOmitRetainsChildrenDroppedConfig keeps every parent block but drops
+// their gated children and one Optional+Computed leaf: scope loses
+// exclusions (re-emitted from the granular merge), self_service loses its
+// categories collection and feature_on_main_page, and vpp goes entirely.
+func macAppOmitRetainsChildrenDroppedConfig(name string) string {
 	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
 		resource "jamfplatform_pro_mac_app_store_app" "test" {
 			general = {
-				name            = %q
+				name            = %[1]q
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.macapp.omit"
 				url             = "https://apps.apple.com/app/id000000001"
@@ -1096,6 +1114,11 @@ func macAppOmitRetainsScopeOnlyConfig(name string) string {
 					all_computers = true
 				}
 			}
+			self_service = {
+				install_button_text             = "Retain me"
+				self_service_description        = "Omit-retains contract description."
+				force_users_to_view_description = true
+			}
 		}
 	`, name)
 }
@@ -1104,9 +1127,14 @@ func macAppOmitRetainsScopeOnlyConfig(name string) string {
 // carries <general> alone.
 func macAppOmitRetainsGeneralOnlyConfig(name string) string {
 	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
 		resource "jamfplatform_pro_mac_app_store_app" "test" {
 			general = {
-				name            = %q
+				name            = %[1]q
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.macapp.omit"
 				url             = "https://apps.apple.com/app/id000000001"
@@ -1152,6 +1180,13 @@ func macAppRetainedOnServer(t *testing.T) resource.TestCheckFunc {
 			if err := testhelpers.RequireEqual("self_service.feature_on_main_page", true, testhelpers.Deref(a.SelfService.FeatureOnMainPage)); err != nil {
 				return err
 			}
+			if a.SelfService.SelfServiceCategories == nil || a.SelfService.SelfServiceCategories.Category == nil || len(*a.SelfService.SelfServiceCategories.Category) != 1 {
+				return fmt.Errorf("self_service.self_service_categories: want exactly one category, got %+v", a.SelfService.SelfServiceCategories)
+			}
+			cat := (*a.SelfService.SelfServiceCategories.Category)[0]
+			if err := testhelpers.RequireEqual("self_service.self_service_categories[0].feature_in", true, testhelpers.Deref(cat.FeatureIn)); err != nil {
+				return err
+			}
 			if a.Vpp == nil {
 				return fmt.Errorf("vpp: absent")
 			}
@@ -1160,11 +1195,13 @@ func macAppRetainedOnServer(t *testing.T) resource.TestCheckFunc {
 }
 
 // TestAccResource_ProMacApp_OmittedBlocksRetained pins the omit-retains
-// contract the plan output cannot show: dropping scope.exclusions,
-// self_service and vpp from config plans them as removed, but the classic
-// PUT omits the elements and the server keeps every value. Step 2 keeps
-// scope.targets so the scope goes through the granular merge; step 3 drops
-// scope too so the PUT carries <general> alone. Each step's implicit
+// contract the plan output cannot show: dropping a gated block or
+// sub-collection from config plans it as removed, but the classic PUT omits
+// the element and the server keeps every value. Step 2 keeps every parent
+// block and drops its gated children (scope exclusions through the granular
+// merge, self_service categories, one Optional+Computed leaf) plus the vpp
+// block; step 3 drops every optional block so the PUT carries <general>
+// alone. Each step's implicit
 // post-apply plan must be empty, which is what makes the contract usable.
 // If this test fails on content, the endpoint no longer merges and nothing
 // that suppresses the removal plan may ship for this resource.
@@ -1185,10 +1222,12 @@ func TestAccResource_ProMacApp_OmittedBlocksRetained(t *testing.T) {
 				),
 			},
 			{
-				Config: macAppOmitRetainsScopeOnlyConfig(name),
+				Config: macAppOmitRetainsChildrenDroppedConfig(name),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckNoResourceAttr(macAppResourceAddr, "self_service.install_button_text"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Retain me"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "self_service.self_service_categories.#"),
 					resource.TestCheckNoResourceAttr(macAppResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "vpp.vpp_admin_account_id"),
 					macAppRetainedOnServer(t),
 				),
 			},
