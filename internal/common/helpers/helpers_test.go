@@ -90,6 +90,36 @@ func TestOptionalStringPointer(t *testing.T) {
 	}
 }
 
+func TestAlwaysEmitStringPointer(t *testing.T) {
+	if got := AlwaysEmitStringPointer(types.StringNull()); got == nil || *got != "" {
+		t.Errorf("null must yield a pointer to the empty string so the element is emitted and clears, got %v", got)
+	}
+	if got := AlwaysEmitStringPointer(types.StringUnknown()); got != nil {
+		t.Errorf("unknown must yield nil (server-owned), got %q", *got)
+	}
+	if got := AlwaysEmitStringPointer(types.StringValue("hello")); got == nil || *got != "hello" {
+		t.Errorf("expected pointer to 'hello', got %v", got)
+	}
+	if got := AlwaysEmitStringPointer(types.StringValue("")); got == nil || *got != "" {
+		t.Errorf("explicit empty string must be forwarded, got %v", got)
+	}
+}
+
+func TestAlwaysEmitBoolPointer(t *testing.T) {
+	if got := AlwaysEmitBoolPointer(types.BoolNull()); got == nil || *got {
+		t.Errorf("null must yield a pointer to false so the flag is emitted and cleared, got %v", got)
+	}
+	if got := AlwaysEmitBoolPointer(types.BoolUnknown()); got != nil {
+		t.Errorf("unknown must yield nil (server-owned), got %v", *got)
+	}
+	if got := AlwaysEmitBoolPointer(types.BoolValue(true)); got == nil || !*got {
+		t.Errorf("expected pointer to true, got %v", got)
+	}
+	if got := AlwaysEmitBoolPointer(types.BoolValue(false)); got == nil || *got {
+		t.Errorf("explicit false must be forwarded, got %v", got)
+	}
+}
+
 func TestBoolPointerValueOrNull(t *testing.T) {
 	b := true
 	f := false
