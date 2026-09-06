@@ -649,3 +649,289 @@ func TestAccResource_ProLicensedSoftware_OptOut(t *testing.T) {
 		},
 	})
 }
+
+// licensedSoftwareOmitRetainsConfig is the fully declared shape for the
+// omit-retains contract: both opt-out lists, a purchasing block on the first
+// licence and every Optional+Computed header scalar, each carrying a
+// distinctive value so a server that stopped retaining an omitted element is
+// caught on content, not presence.
+func licensedSoftwareOmitRetainsConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_licensed_software" "test" {
+			name                    = %q
+			publisher               = "Omit Retains Publisher"
+			notes                   = "omit-retains header notes"
+			send_email_on_violation = true
+
+			software_definitions = [
+				{ name = "Omit Retains Editor", version = "7.3", compare_type = "is" },
+				{ name = "Omit Retains Viewer", version = "2.1", compare_type = "like" },
+			]
+
+			licenses = [
+				{
+					serial_number_1   = "OMIT-RETAINS-1"
+					organization_name = "Retain Org"
+					registered_to     = "Retain Team"
+					license_type      = "Standard"
+					license_count     = 13
+					notes             = "primary omit-retains licence"
+					purchasing = {
+						license_term       = "perpetual"
+						po_number          = "PO-OMIT-RETAINS"
+						po_date            = "2026-03-15"
+						vendor             = "Retain Reseller"
+						license_expires    = "2027-03-15"
+						purchase_price     = "4242.00"
+						life_expectancy    = 4
+						purchasing_account = "Retain Finance"
+						purchasing_contact = "Retain Contact"
+					}
+				},
+				{
+					serial_number_1 = "OMIT-RETAINS-2"
+					license_type    = "Concurrent"
+					license_count   = 7
+				},
+			]
+		}
+	`, name)
+}
+
+// licensedSoftwareOmitRetainsListsOnlyConfig keeps both lists with the same
+// elements and drops only the Optional+Computed notes header, so the PUT
+// re-sends both wrappers and the header carries notes from prior state.
+//
+// The first licence deliberately keeps its purchasing block. A sent <licenses>
+// wrapper REPLACES the collection, and the classic merge does not descend into
+// a re-sent element: wire-verified 2026-09-06, a PUT whose <license> carried no
+// <purchasing> came back on GET with the server's default block (is_perpetual
+// true, every other field empty or 0), so the nested block is not a retain
+// gate and dropping it here would fail on content by design, not by defect.
+func licensedSoftwareOmitRetainsListsOnlyConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_licensed_software" "test" {
+			name                    = %q
+			publisher               = "Omit Retains Publisher"
+			send_email_on_violation = true
+
+			software_definitions = [
+				{ name = "Omit Retains Editor", version = "7.3", compare_type = "is" },
+				{ name = "Omit Retains Viewer", version = "2.1", compare_type = "like" },
+			]
+
+			licenses = [
+				{
+					serial_number_1   = "OMIT-RETAINS-1"
+					organization_name = "Retain Org"
+					registered_to     = "Retain Team"
+					license_type      = "Standard"
+					license_count     = 13
+					notes             = "primary omit-retains licence"
+					purchasing = {
+						license_term       = "perpetual"
+						po_number          = "PO-OMIT-RETAINS"
+						po_date            = "2026-03-15"
+						vendor             = "Retain Reseller"
+						license_expires    = "2027-03-15"
+						purchase_price     = "4242.00"
+						life_expectancy    = 4
+						purchasing_account = "Retain Finance"
+						purchasing_contact = "Retain Contact"
+					}
+				},
+				{
+					serial_number_1 = "OMIT-RETAINS-2"
+					license_type    = "Concurrent"
+					license_count   = 7
+				},
+			]
+		}
+	`, name)
+}
+
+// licensedSoftwareOmitRetainsNameOnlyConfig drops every optional attribute, so
+// the PUT carries <general> alone and neither list wrapper.
+func licensedSoftwareOmitRetainsNameOnlyConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_licensed_software" "test" {
+			name = %q
+		}
+	`, name)
+}
+
+// licensedSoftwareOmitRetainsClearDefinitionsConfig declares an explicit [] for
+// software_definitions while still omitting licenses, so one PUT carries an
+// empty <software_definitions> wrapper (clear) and no <licenses> (retain).
+func licensedSoftwareOmitRetainsClearDefinitionsConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_licensed_software" "test" {
+			name                 = %q
+			software_definitions = []
+		}
+	`, name)
+}
+
+// licensedSoftwareRetainedOnServer asserts the server's copy still carries every
+// value the omit-retains config declared in its first step. wantDefinitions
+// false flips the software_definitions assertion to "cleared", for the step
+// that declares [] — the other half of the opt-out contract.
+func licensedSoftwareRetainedOnServer(t *testing.T, wantDefinitions bool) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(licensedSoftwareResourceAddr,
+		func(ctx context.Context, id string) (*proclassic.LicensedSoftware, error) {
+			return c.GetLicensedSoftwareByID(ctx, id)
+		},
+		func(ls *proclassic.LicensedSoftware) error {
+			if ls.General == nil {
+				return fmt.Errorf("general: absent")
+			}
+			if err := testhelpers.RequireEqual("general.publisher", "Omit Retains Publisher", testhelpers.Deref(ls.General.Publisher)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("general.notes", "omit-retains header notes", testhelpers.Deref(ls.General.Notes)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("general.send_email_on_violation", true, testhelpers.Deref(ls.General.SendEmailOnViolation)); err != nil {
+				return err
+			}
+
+			var defs []proclassic.LicensedSoftwareDefintion
+			if ls.SoftwareDefinitions != nil && ls.SoftwareDefinitions.Definition != nil {
+				defs = *ls.SoftwareDefinitions.Definition
+			}
+			if !wantDefinitions {
+				if len(defs) != 0 {
+					return fmt.Errorf("software_definitions: want cleared, got %d element(s)", len(defs))
+				}
+			} else {
+				if len(defs) != 2 {
+					return fmt.Errorf("software_definitions: want 2 elements, got %d", len(defs))
+				}
+				for i, want := range []proclassic.LicensedSoftwareDefintion{
+					{Name: new("Omit Retains Editor"), Version: new("7.3"), CompareType: new("is")},
+					{Name: new("Omit Retains Viewer"), Version: new("2.1"), CompareType: new("like")},
+				} {
+					prefix := fmt.Sprintf("software_definitions[%d]", i)
+					if err := testhelpers.RequireEqual(prefix+".name", *want.Name, testhelpers.Deref(defs[i].Name)); err != nil {
+						return err
+					}
+					if err := testhelpers.RequireEqual(prefix+".version", *want.Version, testhelpers.Deref(defs[i].Version)); err != nil {
+						return err
+					}
+					if err := testhelpers.RequireEqual(prefix+".compare_type", *want.CompareType, testhelpers.Deref(defs[i].CompareType)); err != nil {
+						return err
+					}
+				}
+			}
+
+			if ls.Licenses == nil || ls.Licenses.License == nil || len(*ls.Licenses.License) != 2 {
+				return fmt.Errorf("licenses: want 2 elements, got %+v", ls.Licenses)
+			}
+			lics := *ls.Licenses.License
+			if err := testhelpers.RequireEqual("licenses[0].serial_number_1", "OMIT-RETAINS-1", testhelpers.Deref(lics[0].SerialNumber1)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].organization_name", "Retain Org", testhelpers.Deref(lics[0].OrganizationName)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].registered_to", "Retain Team", testhelpers.Deref(lics[0].RegisteredTo)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].license_type", "Standard", testhelpers.Deref(lics[0].LicenseType)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].license_count", 13, testhelpers.Deref(lics[0].LicenseCount)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].notes", "primary omit-retains licence", testhelpers.Deref(lics[0].Notes)); err != nil {
+				return err
+			}
+			p := lics[0].Purchasing
+			if p == nil {
+				return fmt.Errorf("licenses[0].purchasing: absent")
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.is_perpetual", true, testhelpers.Deref(p.IsPerpetual)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.po_number", "PO-OMIT-RETAINS", testhelpers.Deref(p.PoNumber)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.vendor", "Retain Reseller", testhelpers.Deref(p.Vendor)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.life_expectancy", 4, testhelpers.Deref(p.LifeExpectancy)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.purchasing_account", "Retain Finance", testhelpers.Deref(p.PurchasingAccount)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[0].purchasing.purchasing_contact", "Retain Contact", testhelpers.Deref(p.PurchasingContact)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[1].serial_number_1", "OMIT-RETAINS-2", testhelpers.Deref(lics[1].SerialNumber1)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("licenses[1].license_type", "Concurrent", testhelpers.Deref(lics[1].LicenseType)); err != nil {
+				return err
+			}
+			return testhelpers.RequireEqual("licenses[1].license_count", 7, testhelpers.Deref(lics[1].LicenseCount))
+		})
+}
+
+// TestAccResource_ProLicensedSoftware_OmittedBlocksRetained pins the opt-out
+// contract on both positional lists at once, with content the plan output
+// cannot show. Step 2 re-sends both lists and drops only the notes header;
+// step 3 drops both lists, so the PUT carries <general> alone and the server
+// must retain every element and every purchasing field; step 4 declares
+// software_definitions = [] while still
+// omitting licenses, so the same PUT must clear one collection and retain the
+// other — the half of the contract that separates "not managed" from "empty".
+// Each step's implicit post-apply plan must be empty. If a step fails on
+// content, the endpoint no longer merges at that granularity and nothing that
+// suppresses the removal plan may ship for this resource.
+func TestAccResource_ProLicensedSoftware_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-licsw-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLicensedSoftwareDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: licensedSoftwareOmitRetainsConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "software_definitions.#", "2"),
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "licenses.#", "2"),
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "licenses.0.purchasing.po_number", "PO-OMIT-RETAINS"),
+					licensedSoftwareRetainedOnServer(t, true),
+				),
+			},
+			{
+				Config: licensedSoftwareOmitRetainsListsOnlyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "licenses.0.purchasing.po_number", "PO-OMIT-RETAINS"),
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "notes", "omit-retains header notes"),
+					licensedSoftwareRetainedOnServer(t, true),
+				),
+			},
+			{
+				Config: licensedSoftwareOmitRetainsNameOnlyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(licensedSoftwareResourceAddr, "software_definitions.#"),
+					resource.TestCheckNoResourceAttr(licensedSoftwareResourceAddr, "licenses.#"),
+					licensedSoftwareRetainedOnServer(t, true),
+				),
+			},
+			{
+				Config: licensedSoftwareOmitRetainsClearDefinitionsConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "software_definitions.#", "0"),
+					resource.TestCheckNoResourceAttr(licensedSoftwareResourceAddr, "licenses.#"),
+					licensedSoftwareRetainedOnServer(t, false),
+				),
+			},
+		},
+	})
+}
