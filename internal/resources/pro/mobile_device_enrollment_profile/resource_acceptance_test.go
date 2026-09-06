@@ -229,3 +229,230 @@ data "jamfplatform_pro_mobile_device_enrollment_profile" "bad" {
 		},
 	})
 }
+
+// mdepOmitRetainsFixtures declares the site, department and building the
+// omit-retains configs reference. The department and building are real objects
+// rather than free text so the location leaves name something the tenant knows.
+func mdepOmitRetainsFixtures(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_site" "omit" {
+  name = "%[1]s-site"
+}
+
+resource "jamfplatform_pro_department" "omit" {
+  name = "%[1]s-dept"
+}
+
+resource "jamfplatform_pro_building" "omit" {
+  name = "%[1]s-bldg"
+}
+`, name)
+}
+
+// mdepOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: both state-gated blocks (location, purchasing) carry a distinctive
+// value in every writable leaf so that a server which stopped retaining an
+// omitted element is caught on content, not on presence. is_purchased is false
+// and is_leased true because the server treats the pair as exclusive: a write
+// carrying both true is stored with is_leased reset to false (wire-observed
+// 2026-09-06), which the provider does not yet reject at plan time.
+func mdepOmitRetainsConfig(name string) string {
+	return mdepOmitRetainsFixtures(name) + fmt.Sprintf(`
+resource "jamfplatform_pro_mobile_device_enrollment_profile" "test" {
+  depends_on  = [jamfplatform_pro_site.omit, jamfplatform_pro_department.omit, jamfplatform_pro_building.omit]
+  name        = %[1]q
+  description = "Omit-retains contract profile."
+  site_id     = jamfplatform_pro_site.omit.id
+
+  location = {
+    username      = "omit.retains"
+    real_name     = "Omit Retains"
+    email_address = "omit.retains@example.com"
+    phone_number  = "+1 555 0100"
+    department    = jamfplatform_pro_department.omit.name
+    building      = jamfplatform_pro_building.omit.name
+    room          = "R-omit"
+    position      = "Retained Position"
+  }
+
+  purchasing = {
+    is_purchased       = false
+    is_leased          = true
+    po_number          = "PO-OMIT-1"
+    po_date            = "2024-02-29"
+    vendor             = "Omit Vendor"
+    warranty_expires   = "2027-03-31"
+    applecare_id       = "AC-OMIT-1"
+    lease_expires      = "2028-04-30"
+    purchase_price     = "1234.56"
+    life_expectancy    = 7
+    purchasing_account = "ACCT-OMIT"
+    purchasing_contact = "Contact Omit"
+  }
+}
+`, name)
+}
+
+// mdepOmitRetainsLeavesDroppedConfig keeps both blocks and drops two leaves
+// that the merge treats differently: life_expectancy is Optional+Computed, so
+// the builder omits it and the server retains 7; room is plain Optional, so
+// the builder emits <room></room> and the server clears it. The second is the
+// documented clear-by-omission half of this endpoint's contract, not a retain
+// case.
+func mdepOmitRetainsLeavesDroppedConfig(name string) string {
+	return mdepOmitRetainsFixtures(name) + fmt.Sprintf(`
+resource "jamfplatform_pro_mobile_device_enrollment_profile" "test" {
+  depends_on  = [jamfplatform_pro_site.omit, jamfplatform_pro_department.omit, jamfplatform_pro_building.omit]
+  name        = %[1]q
+  description = "Omit-retains contract profile."
+  site_id     = jamfplatform_pro_site.omit.id
+
+  location = {
+    username      = "omit.retains"
+    real_name     = "Omit Retains"
+    email_address = "omit.retains@example.com"
+    phone_number  = "+1 555 0100"
+    department    = jamfplatform_pro_department.omit.name
+    building      = jamfplatform_pro_building.omit.name
+    position      = "Retained Position"
+  }
+
+  purchasing = {
+    is_purchased       = false
+    is_leased          = true
+    po_number          = "PO-OMIT-1"
+    po_date            = "2024-02-29"
+    vendor             = "Omit Vendor"
+    warranty_expires   = "2027-03-31"
+    applecare_id       = "AC-OMIT-1"
+    lease_expires      = "2028-04-30"
+    purchase_price     = "1234.56"
+    purchasing_account = "ACCT-OMIT"
+    purchasing_contact = "Contact Omit"
+  }
+}
+`, name)
+}
+
+// mdepOmitRetainsGeneralOnlyConfig drops both optional blocks, so the PUT
+// carries <general> alone.
+func mdepOmitRetainsGeneralOnlyConfig(name string) string {
+	return mdepOmitRetainsFixtures(name) + fmt.Sprintf(`
+resource "jamfplatform_pro_mobile_device_enrollment_profile" "test" {
+  depends_on  = [jamfplatform_pro_site.omit, jamfplatform_pro_department.omit, jamfplatform_pro_building.omit]
+  name        = %[1]q
+  description = "Omit-retains contract profile."
+  site_id     = jamfplatform_pro_site.omit.id
+}
+`, name)
+}
+
+// mdepRetainedOnServer asserts the server's copy still carries every value the
+// omit-retains config declared in its first step. wantRoom is the one leaf the
+// contract test deliberately clears mid-run (step 2 omits it inside a kept
+// block), so the caller states what the server should hold after each step.
+func mdepRetainedOnServer(t *testing.T, name, wantRoom string) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(resAddr,
+		func(ctx context.Context, id string) (*proclassic.MobileDeviceEnrollmentProfile, error) {
+			return c.GetMobileDeviceEnrollmentProfileByID(ctx, id)
+		},
+		func(p *proclassic.MobileDeviceEnrollmentProfile) error {
+			if p.Location == nil {
+				return fmt.Errorf("location: absent")
+			}
+			l := p.Location
+			for _, f := range []struct{ field, want, got string }{
+				{"location.username", "omit.retains", testhelpers.Deref(l.Username)},
+				{"location.real_name", "Omit Retains", testhelpers.Deref(l.RealName)},
+				{"location.email_address", "omit.retains@example.com", testhelpers.Deref(l.EmailAddress)},
+				{"location.phone_number", "+1 555 0100", testhelpers.Deref(l.PhoneNumber)},
+				{"location.department", name + "-dept", testhelpers.Deref(l.Department)},
+				{"location.building", name + "-bldg", testhelpers.Deref(l.Building)},
+				{"location.room", wantRoom, testhelpers.Deref(l.Room)},
+				{"location.position", "Retained Position", testhelpers.Deref(l.Position)},
+			} {
+				if err := testhelpers.RequireEqual(f.field, f.want, f.got); err != nil {
+					return err
+				}
+			}
+			if p.Purchasing == nil {
+				return fmt.Errorf("purchasing: absent")
+			}
+			u := p.Purchasing
+			if err := testhelpers.RequireEqual("purchasing.is_purchased", false, testhelpers.Deref(u.IsPurchased)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("purchasing.is_leased", true, testhelpers.Deref(u.IsLeased)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("purchasing.life_expectancy", 7, testhelpers.Deref(u.LifeExpectancy)); err != nil {
+				return err
+			}
+			for _, f := range []struct{ field, want, got string }{
+				{"purchasing.po_number", "PO-OMIT-1", testhelpers.Deref(u.PoNumber)},
+				{"purchasing.po_date", "2024-02-29", testhelpers.Deref(u.PoDate)},
+				{"purchasing.vendor", "Omit Vendor", testhelpers.Deref(u.Vendor)},
+				{"purchasing.warranty_expires", "2027-03-31", testhelpers.Deref(u.WarrantyExpires)},
+				{"purchasing.applecare_id", "AC-OMIT-1", testhelpers.Deref(u.ApplecareID)},
+				{"purchasing.lease_expires", "2028-04-30", testhelpers.Deref(u.LeaseExpires)},
+				{"purchasing.purchase_price", "1234.56", testhelpers.Deref(u.PurchasePrice)},
+				{"purchasing.purchasing_account", "ACCT-OMIT", testhelpers.Deref(u.PurchasingAccount)},
+				{"purchasing.purchasing_contact", "Contact Omit", testhelpers.Deref(u.PurchasingContact)},
+			} {
+				if err := testhelpers.RequireEqual(f.field, f.want, f.got); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+}
+
+// TestAccResource_ProMobileDeviceEnrollmentProfile_OmittedBlocksRetained pins
+// the omit-retains contract the plan output cannot show: dropping a gated
+// block from config plans it as removed, but the classic merge PUT omits the
+// element and the server keeps every value. This endpoint's merge has a second
+// half — an element that is present but empty clears — and the builder relies
+// on it by always emitting every plain-Optional leaf inside a declared block.
+// Step 2 keeps both blocks and drops one leaf of each kind: the
+// Optional+Computed life_expectancy (omitted, so retained) and the
+// plain-Optional room (emitted empty, so cleared); step 3 drops both blocks so
+// the PUT carries <general> alone and every step-1 value must survive. Each
+// step's implicit post-apply plan must be empty. If this test fails on content
+// the endpoint no longer merges and nothing that suppresses the removal plan
+// may ship for this resource.
+func TestAccResource_ProMobileDeviceEnrollmentProfile_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	name := "tf-acc-mdep-omit-" + testhelpers.RunSuffix()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEnrollmentProfileDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: mdepOmitRetainsConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resAddr, "location.room", "R-omit"),
+					resource.TestCheckResourceAttr(resAddr, "purchasing.life_expectancy", "7"),
+					mdepRetainedOnServer(t, name, "R-omit"),
+				),
+			},
+			{
+				Config: mdepOmitRetainsLeavesDroppedConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resAddr, "location.room"),
+					resource.TestCheckResourceAttr(resAddr, "purchasing.life_expectancy", "7"),
+					mdepRetainedOnServer(t, name, ""),
+				),
+			},
+			{
+				Config: mdepOmitRetainsGeneralOnlyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resAddr, "location.username"),
+					resource.TestCheckNoResourceAttr(resAddr, "purchasing.vendor"),
+					mdepRetainedOnServer(t, name, ""),
+				),
+			},
+		},
+	})
+}
