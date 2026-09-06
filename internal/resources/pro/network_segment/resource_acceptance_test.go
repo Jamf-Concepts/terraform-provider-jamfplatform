@@ -99,11 +99,24 @@ func networkSegmentConfigAllFields(name, building, department string) string {
 	`, building, department, name)
 }
 
+const networkSegmentResourceAddr = "jamfplatform_pro_network_segment.test"
+
+// networkSegmentLive fetches the server's copy of the segment under test and
+// hands it to assert, so the drop step can prove on the wire that the
+// always-emitted empty elements cleared building/department and turned the
+// override flags off — a null in state cannot tell a cleared value from one
+// the classic merge retained and the state builder reconciled away (#384).
+func networkSegmentLive(t *testing.T, assert func(*proclassic.NetworkSegment) error) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(networkSegmentResourceAddr, c.GetNetworkSegmentByID, assert)
+}
+
 // TestAccResource_ProNetworkSegment_Basic exercises create, in-place rename + IP range
 // change, populate-all-then-drop on the optional building/department + override fields,
 // and import for the classic /networksegments endpoint. The rename and clear-on-omit
 // steps implicitly verify the GET-after-Update path (classic Update returns 201 + empty
-// body) and the Optional drift reconciliation in state_builders.go.
+// body) and the Optional drift reconciliation in state_builders.go; the drop step also
+// asserts the clear on the wire (#384).
 func TestAccResource_ProNetworkSegment_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -139,16 +152,27 @@ func TestAccResource_ProNetworkSegment_Basic(t *testing.T) {
 				),
 			},
 			{
-				// Drop every optional field. Exercises Reconcile*Pointer null
-				// preservation and the classic write payload omitting fields the
-				// previous step set.
 				Config: networkSegmentConfigRenamedAndRanged(renamed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_network_segment.test", "name", renamed),
 					resource.TestCheckResourceAttr("jamfplatform_pro_network_segment.test", "starting_address", "10.10.11.0"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_network_segment.test", "ending_address", "10.10.11.255"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_network_segment.test", "building"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_network_segment.test", "department"),
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_network_segment.test", "override_buildings"),
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_network_segment.test", "override_departments"),
+					networkSegmentLive(t, func(s *proclassic.NetworkSegment) error {
+						if err := testhelpers.RequireEqual("building", "", testhelpers.Deref(s.Building)); err != nil {
+							return err
+						}
+						if err := testhelpers.RequireEqual("department", "", testhelpers.Deref(s.Department)); err != nil {
+							return err
+						}
+						if err := testhelpers.RequireEqual("override_buildings", false, testhelpers.Deref(s.OverrideBuildings)); err != nil {
+							return err
+						}
+						return testhelpers.RequireEqual("override_departments", false, testhelpers.Deref(s.OverrideDepartments))
+					}),
 				),
 			},
 			{
