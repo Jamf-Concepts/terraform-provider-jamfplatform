@@ -26,6 +26,13 @@ import (
 // in state — the schema exposes no nested block for PowerBroker since it
 // carries no per-type fields. The `type` field on its own conveys the
 // PowerBroker identity.
+//
+// `domain`, `username` and `computer_ou` are reconciled rather than copied:
+// the input builder always emits them, so an attribute the config omits is
+// sent empty and echoed back as "", which
+// helpers.ReconcileOptionalStringPointer folds to null against the incoming
+// model (plan on write, prior state on refresh) while keeping an explicit ""
+// the user configured.
 func assignDirectoryBindingResourceModel(state *DirectoryBindingResourceModel, b *proclassic.DirectoryBinding) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if b == nil {
@@ -36,9 +43,9 @@ func assignDirectoryBindingResourceModel(state *DirectoryBindingResourceModel, b
 	}
 	state.Name = helpers.StringPointerValueOrNull(b.Name)
 	state.Type = helpers.StringPointerValueOrNull(b.Type)
-	state.Domain = helpers.StringPointerValueOrNull(b.Domain)
-	state.Username = helpers.StringPointerValueOrNull(b.Username)
-	state.ComputerOU = helpers.StringPointerValueOrNull(b.ComputerOu)
+	state.Domain = helpers.ReconcileOptionalStringPointer(b.Domain, state.Domain)
+	state.Username = helpers.ReconcileOptionalStringPointer(b.Username, state.Username)
+	state.ComputerOU = helpers.ReconcileOptionalStringPointer(b.ComputerOu, state.ComputerOU)
 	state.Priority = helpers.Int64FromIntPtr(b.Priority)
 
 	state.ActiveDirectory = assignActiveDirectoryModel(b.ActiveDirectory)

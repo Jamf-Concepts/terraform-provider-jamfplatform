@@ -48,10 +48,24 @@ func testAccCheckDirectoryBindingDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
+const directoryBindingResourceAddr = "jamfplatform_pro_directory_binding.test"
+
+// directoryBindingLive fetches the server's copy of the binding under test and
+// hands it to assert, so the drop step can prove on the wire that the
+// always-emitted empty elements cleared username and computer_ou — a null in
+// state cannot tell a cleared value from one the classic merge retained and
+// the state builder reconciled away (#384).
+func directoryBindingLive(t *testing.T, assert func(*proclassic.DirectoryBinding) error) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(directoryBindingResourceAddr, c.GetDirectoryBindingByID, assert)
+}
+
 // TestAccResource_ProDirectoryBinding_ActiveDirectory exercises the full
 // AD path: every documented field in the nested block, plus the flat
 // envelope. Step 2 mutates a few fields to confirm PUT partial-merge
-// preserves the rest. Step 3 imports and verifies state.
+// preserves the rest. Step 3 drops username and computer_ou and asserts,
+// in state and on the wire, that they were cleared rather than retained
+// (#384). Step 4 imports and verifies state.
 func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -137,6 +151,47 @@ func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "active_directory.network_protocol", "afp"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "active_directory.multiple_domains", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "active_directory.admin_groups", "Mac Admins"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_directory_binding" "test" {
+						name        = %q
+						priority    = 2
+						type        = "Active Directory"
+						domain      = "corp.example.com"
+						password    = "rotated-pw"
+						password_wo_version = 2
+
+						active_directory = {
+							create_mobile_account      = false
+							require_confirmation       = true
+							force_local_home_directory = true
+							use_unc_path               = false
+							network_protocol           = "afp"
+							default_shell              = "/bin/zsh"
+							uid_attribute_mapping      = "uidNumber"
+							user_gid_attribute_mapping = "gidNumber"
+							gid_attribute_mapping      = "primaryGroupID"
+							multiple_domains           = true
+							preferred_domain           = "dc02.corp.example.com"
+							admin_groups               = "Mac Admins"
+						}
+					}
+				`, renamed),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "domain", "corp.example.com"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_directory_binding.test", "username"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_directory_binding.test", "computer_ou"),
+					directoryBindingLive(t, func(b *proclassic.DirectoryBinding) error {
+						if err := testhelpers.RequireEqual("domain", "corp.example.com", testhelpers.Deref(b.Domain)); err != nil {
+							return err
+						}
+						if err := testhelpers.RequireEqual("username", "", testhelpers.Deref(b.Username)); err != nil {
+							return err
+						}
+						return testhelpers.RequireEqual("computer_ou", "", testhelpers.Deref(b.ComputerOu))
+					}),
 				),
 			},
 			{
