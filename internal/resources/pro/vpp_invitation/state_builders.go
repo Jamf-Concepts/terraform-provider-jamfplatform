@@ -14,7 +14,11 @@ import (
 )
 
 // assignVPPInvitationResourceModel refreshes a resource model from a GET. General
-// scalars are always refreshed; the optional scope block is refreshed only when
+// scalars are always refreshed — the four email-mode strings through
+// helpers.ReconcileOptionalStringPointer, because the input builder always
+// emits them and an omitted attribute comes back as "", which must fold to
+// null against the incoming model (plan on write, prior state on refresh)
+// while an explicit "" the user configured is kept; the optional scope block is refreshed only when
 // the caller already manages it (state.Scope non-nil) so the server's
 // always-returned <scope> doesn't fabricate a block the user never declared.
 // invitation_usages (read-only) is always refreshed.
@@ -40,10 +44,10 @@ func assignVPPInvitationResourceModel(ctx context.Context, state *VPPInvitationR
 	}
 	state.DistributionMethod = helpers.StringPointerValueOrNull(g.DistributionMethod)
 	state.AutoRegisterManagedUsers = helpers.BoolPointerValueOrNull(g.AutoRegisterManagedUsers)
-	state.SenderName = helpers.StringPointerValueOrNull(g.SenderName)
-	state.SenderEmailAddress = helpers.StringPointerValueOrNull(g.SenderEmailAddress)
-	state.Subject = helpers.StringPointerValueOrNull(g.Subject)
-	state.Message = helpers.StringPointerValueOrNull(g.Message)
+	state.SenderName = helpers.ReconcileOptionalStringPointer(g.SenderName, state.SenderName)
+	state.SenderEmailAddress = helpers.ReconcileOptionalStringPointer(g.SenderEmailAddress, state.SenderEmailAddress)
+	state.Subject = helpers.ReconcileOptionalStringPointer(g.Subject, state.Subject)
+	state.Message = helpers.ReconcileOptionalStringPointer(g.Message, state.Message)
 	state.RequireLogin = helpers.BoolPointerValueOrNull(g.RequireLogin)
 
 	if includeUnmanaged && state.Scope == nil && api.Scope != nil {

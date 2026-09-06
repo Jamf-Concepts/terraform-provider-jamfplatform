@@ -18,9 +18,20 @@ import (
 // buildVPPInvitationInput projects the plan into an SDK *proclassic.VppInvitation
 // for Create / Update.
 //
-// General scalars are emitted as the plan holds them; email-mode fields are
-// omitted when null (the server stores them only for "Send emails"). Scope
-// follows per-category granular ownership: only declared categories are
+// General scalars are emitted as the plan holds them. The four email-mode
+// strings (sender_name, sender_email_address, subject, message) are emitted on
+// every write, empty when null (helpers.AlwaysEmitStringPointer): the classic
+// PUT merges field by field, so an omitted element would keep a value the
+// config dropped and Read would echo it back as an inconsistent result (issue
+// #384). Under "Send emails" the validator requires all four, so the empty
+// element only ever reaches the wire under the modes that do not use them.
+// This endpoint could not be probed here — the test estate holds no VPP token
+// — so the rule is carried over from the five sibling classic endpoints probed
+// 2026-09-06 (printers, networksegments, directorybindings, webhooks,
+// patchexternalsources), on each of which an empty element is accepted and
+// clears wherever the active mode does not require the field. require_login
+// stays omit-when-null: a boolean's clear token cannot be assumed unprobed.
+// Scope follows per-category granular ownership: only declared categories are
 // emitted (see buildScope). A nil Scope omits <scope> entirely and leaves the
 // server's scope untouched.
 //
@@ -33,9 +44,9 @@ func buildVPPInvitationInput(ctx context.Context, plan VPPInvitationResourceMode
 		Name:                     helpers.OptionalStringPointer(plan.Name),
 		DistributionMethod:       helpers.OptionalStringPointer(plan.DistributionMethod),
 		AutoRegisterManagedUsers: helpers.OptionalBoolPointer(plan.AutoRegisterManagedUsers),
-		SenderName:               helpers.OptionalStringPointer(plan.SenderName),
-		SenderEmailAddress:       helpers.OptionalStringPointer(plan.SenderEmailAddress),
-		Subject:                  helpers.OptionalStringPointer(plan.Subject),
+		SenderName:               helpers.AlwaysEmitStringPointer(plan.SenderName),
+		SenderEmailAddress:       helpers.AlwaysEmitStringPointer(plan.SenderEmailAddress),
+		Subject:                  helpers.AlwaysEmitStringPointer(plan.Subject),
 		Message:                  encodedMessagePointer(plan.Message),
 		RequireLogin:             helpers.OptionalBoolPointer(plan.RequireLogin),
 	}
@@ -138,11 +149,13 @@ func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppIn
 // two hex digits → HTTP 500; `+` → space; `%XX` → byte). url.QueryEscape makes
 // the message survive that decode exactly — including the `%@` registration-URL
 // placeholder and embedded newlines — so state (decoded on GET) matches config.
-// Returns nil for null/unknown so the field is omitted.
+// Null encodes to an empty element (the clear gesture, see
+// buildVPPInvitationInput); unknown is omitted.
 func encodedMessagePointer(v types.String) *string {
-	if v.IsNull() || v.IsUnknown() {
+	raw := helpers.AlwaysEmitStringPointer(v)
+	if raw == nil {
 		return nil
 	}
-	s := url.QueryEscape(v.ValueString())
+	s := url.QueryEscape(*raw)
 	return &s
 }
