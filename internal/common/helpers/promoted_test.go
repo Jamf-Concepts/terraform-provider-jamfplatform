@@ -52,29 +52,29 @@ func TestInt64FromIntPtr(t *testing.T) {
 	}
 }
 
-func TestPreferCurrentStringPointer(t *testing.T) {
+func TestStickyIgnoringDriftString(t *testing.T) {
 	// Configured current always wins, even when the API echoes a different value.
-	if got := PreferCurrentStringPointer(new("api"), types.StringValue("cfg")); got.ValueString() != "cfg" {
+	if got := StickyIgnoringDriftString(new("api"), types.StringValue("cfg")); got.ValueString() != "cfg" {
 		t.Errorf("configured current should win, got %v", got)
 	}
 	// Unset current adopts the API value.
-	if got := PreferCurrentStringPointer(new("api"), types.StringNull()); got.ValueString() != "api" {
+	if got := StickyIgnoringDriftString(new("api"), types.StringNull()); got.ValueString() != "api" {
 		t.Errorf("unset current should adopt API value, got %v", got)
 	}
 	// Nil API with unset current is null.
-	if got := PreferCurrentStringPointer(nil, types.StringNull()); !got.IsNull() {
+	if got := StickyIgnoringDriftString(nil, types.StringNull()); !got.IsNull() {
 		t.Errorf("nil API + unset current should be null, got %v", got)
 	}
 }
 
-func TestPreferCurrentBoolPointer(t *testing.T) {
-	if got := PreferCurrentBoolPointer(new(false), types.BoolValue(true)); got.ValueBool() != true {
+func TestStickyIgnoringDriftBool(t *testing.T) {
+	if got := StickyIgnoringDriftBool(new(false), types.BoolValue(true)); got.ValueBool() != true {
 		t.Errorf("configured current should win, got %v", got)
 	}
-	if got := PreferCurrentBoolPointer(new(true), types.BoolNull()); got.ValueBool() != true {
+	if got := StickyIgnoringDriftBool(new(true), types.BoolNull()); got.ValueBool() != true {
 		t.Errorf("unset current should adopt API value, got %v", got)
 	}
-	if got := PreferCurrentBoolPointer(nil, types.BoolNull()); !got.IsNull() {
+	if got := StickyIgnoringDriftBool(nil, types.BoolNull()); !got.IsNull() {
 		t.Errorf("nil API + unset current should be null, got %v", got)
 	}
 }

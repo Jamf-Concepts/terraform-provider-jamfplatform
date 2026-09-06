@@ -45,18 +45,28 @@ func buildNotificationEnabled(enabled types.Bool) *proclassic.NotificationValue 
 }
 
 // flattenNotificationEnabled extracts the bool leg from the SDK
-// NotificationValue (the boolean <notification> wire element). Follows the
-// preferCurrent pattern so configured caller values stick across refreshes.
+// NotificationValue (the boolean <notification> wire element).
+//
+// It keeps a sticky read, so a configured caller value survives every refresh
+// and server-side drift on it is never reported. The justification is that
+// there is no wire value to read: Jamf Pro stores the whole <notification>
+// family on a policy and omits every element of it from the GET, verified on a
+// POST that set all four fields and on a later PUT (Jamf Pro 11.31.1,
+// wire-probed 2026-09-06). See flattenPolicySelfService and issue #387.
 func flattenNotificationEnabled(n *proclassic.NotificationValue, current types.Bool) types.Bool {
 	var apiEnabled *bool
 	if n != nil {
 		apiEnabled = n.Enabled
 	}
-	return helpers.PreferCurrentBoolPointer(apiEnabled, current)
+	return helpers.StickyIgnoringDriftBool(apiEnabled, current)
 }
 
-// preferCurrentInt is the int64 sibling. API is *int (SDK convention).
-func preferCurrentInt(api *int, current types.Int64) types.Int64 {
+// stickyIgnoringDriftInt64 is the Int64 sibling of helpers.StickyIgnoringDriftString
+// and carries the same caveat: a set value is never re-read from the wire, so
+// server-side drift on it is never reported. API is *int (SDK convention).
+// Prefer helpers.Int64FromIntPtr unless the field is wire-probed as never
+// echoed or never persisted, and name that evidence at the call site.
+func stickyIgnoringDriftInt64(api *int, current types.Int64) types.Int64 {
 	if helpers.IsConfiguredValue(current) {
 		return current
 	}

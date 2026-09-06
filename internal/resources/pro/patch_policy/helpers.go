@@ -28,8 +28,12 @@ func extractPatchPolicyID(p *proclassic.PatchPolicy) string {
 	return ""
 }
 
-// preferCurrentInt64Pointer is the int64 sibling of preferCurrentStringPointer.
-func preferCurrentInt64Pointer(api *int, current types.Int64) types.Int64 {
+// stickyIgnoringDriftInt64 is the Int64 sibling of
+// helpers.StickyIgnoringDriftString and carries the same caveat: a set value
+// is never re-read from the wire, so server-side drift on it is never
+// reported. Prefer helpers.Int64FromIntPtr unless the field is wire-probed as
+// never echoed or never persisted, and name that evidence at the call site.
+func stickyIgnoringDriftInt64(api *int, current types.Int64) types.Int64 {
 	if helpers.IsConfiguredValue(current) {
 		return current
 	}

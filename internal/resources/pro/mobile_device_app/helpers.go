@@ -86,17 +86,6 @@ func serverWhenPresentString(api *string, current types.String) types.String {
 	return current
 }
 
-// preferCurrentInt64Pointer is the Int64 sibling of preferCurrentStringPointer.
-func preferCurrentInt64Pointer(api *int, current types.Int64) types.Int64 {
-	if !current.IsNull() && !current.IsUnknown() {
-		return current
-	}
-	if api == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*api))
-}
-
 // buildMobileNotification assembles the self_service notification_enabled
 // attribute into a proclassic.NotificationValue. Mobile apps carry only the
 // bool form of <notification> (no method, unlike mac apps), and NotificationValue

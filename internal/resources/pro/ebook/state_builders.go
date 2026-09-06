@@ -27,8 +27,9 @@ import (
 // plan to stay consistent with, so every wire-present optional section is
 // allocated and hydrated, yielding a complete exported config rather than a
 // general-only one. CRUD callers pass false. The ebook flatteners use the
-// PreferCurrent* helpers (which adopt the wire value when the current state is
-// null), so allocating an empty section is sufficient for it to fully hydrate.
+// wire-authoritative reads (helpers.ReconcileOptionalStringPointer /
+// helpers.BoolPointerValueOrNull), which adopt the wire value whatever state
+// holds, so allocating an empty section is sufficient for it to fully hydrate.
 func assignEbookResourceModel(ctx context.Context, state *EbookResourceModel, e *proclassic.Ebook, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
@@ -60,6 +61,15 @@ func assignEbookResourceModel(ctx context.Context, state *EbookResourceModel, e 
 	return diags
 }
 
+// flattenEbookGeneral maps the wire <general> block onto the model. Two fields
+// keep a sticky read. deploy_as_managed does not persist: a PUT sending false,
+// in isolation, left the GET reading true. file_type is canonicalised by the
+// server — a PUT sending `ePub` reads back `EPUB` while `EPUB` round-trips
+// unchanged, so reading the wire would rewrite the caller's spelling and never
+// converge (the schema already documents that no strict validation applies
+// here). Everything else, category_id and site_id included, is echoed
+// faithfully and reads from the wire. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 	if g == nil {
 		return
@@ -67,26 +77,26 @@ func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.URL = helpers.StringPointerValueOrNull(g.URL)
-	state.Author = helpers.PreferCurrentStringPointer(g.Author, state.Author)
-	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
-	state.DeployAsManaged = helpers.PreferCurrentBoolPointer(g.DeployAsManaged, state.DeployAsManaged)
-	state.Free = helpers.PreferCurrentBoolPointer(g.Free, state.Free)
-	state.FileType = helpers.PreferCurrentStringPointer(g.FileType, state.FileType)
-	state.Version = helpers.PreferCurrentStringPointer(g.Version, state.Version)
+	state.Author = helpers.ReconcileOptionalStringPointer(g.Author, state.Author)
+	state.DeploymentType = helpers.ReconcileOptionalStringPointer(g.DeploymentType, state.DeploymentType)
+	state.DeployAsManaged = helpers.StickyIgnoringDriftBool(g.DeployAsManaged, state.DeployAsManaged)
+	state.Free = helpers.BoolPointerValueOrNull(g.Free)
+	state.FileType = helpers.StickyIgnoringDriftString(g.FileType, state.FileType)
+	state.Version = helpers.ReconcileOptionalStringPointer(g.Version, state.Version)
 
 	if g.Category != nil {
-		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	} else {
-		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -155,12 +165,18 @@ func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *Ebo
 	}
 }
 
+// flattenEbookSelfService maps the wire <self_service> block onto the model.
+// The four notification_* fields keep a sticky read: Jamf Pro stores the
+// <notification> family and omits all of it from every GET, so nothing read
+// there can be compared with state. The rest of the block, the icon included,
+// is echoed faithfully and reads from the wire. Wire-probed against Jamf Pro
+// 11.31.1 on 2026-09-06; see issue #387.
 func flattenEbookSelfService(ss *proclassic.EbookSelfService, state *EbookSelfServiceModel) {
-	state.DisplayName = helpers.PreferCurrentStringPointer(ss.SelfServiceDisplayName, state.DisplayName)
-	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.ForceUsersToViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
-	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.DisplayName = helpers.ReconcileOptionalStringPointer(ss.SelfServiceDisplayName, state.DisplayName)
+	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.ForceUsersToViewDescription = helpers.BoolPointerValueOrNull(ss.ForceUsersToViewDescription)
+	state.FeatureOnMainPage = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	var apiMethod *string
@@ -168,16 +184,16 @@ func flattenEbookSelfService(ss *proclassic.EbookSelfService, state *EbookSelfSe
 		apiEnabled = ss.Notification.Enabled
 		apiMethod = ss.Notification.Method
 	}
-	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationMethod = helpers.PreferCurrentStringPointer(apiMethod, state.NotificationMethod)
-	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.StickyIgnoringDriftBool(apiEnabled, state.NotificationEnabled)
+	state.NotificationMethod = helpers.StickyIgnoringDriftString(apiMethod, state.NotificationMethod)
+	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
 
 	if ss.SelfServiceIcon != nil {
-		state.IconID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.IconID)
+		state.IconID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.IconID)
 		state.IconURI = helpers.StringPointerValueOrNull(ss.SelfServiceIcon.URI)
 	} else {
-		state.IconID = helpers.PreferCurrentStringPointer(nil, state.IconID)
+		state.IconID = helpers.ReconcileOptionalStringPointer(nil, state.IconID)
 		state.IconURI = types.StringNull()
 	}
 
@@ -204,9 +220,9 @@ func flattenEbookSelfServiceCategories(api []proclassic.EbookSelfServiceSelfServ
 		current := byID[idStr]
 		out = append(out, EbookSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
-			FeatureIn: helpers.PreferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
+			Name:      helpers.ReconcileOptionalStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
+			FeatureIn: helpers.BoolPointerValueOrNull(c.FeatureIn),
 		})
 	}
 	state.Categories = out

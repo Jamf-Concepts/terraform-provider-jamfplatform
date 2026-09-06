@@ -107,7 +107,7 @@ func StringIDPtr(value types.String) *int {
 
 // StringFromIntPtr converts a *int (the ProClassic SDK's integer wire shape) into
 // a *string, returning nil for nil input. Use when round-tripping an integer wire
-// ID through a string-typed helper such as PreferCurrentStringPointer.
+// ID through a string-typed helper such as StickyIgnoringDriftString.
 func StringFromIntPtr(p *int) *string {
 	if p == nil {
 		return nil
@@ -144,13 +144,33 @@ func Int64FromIntPtr(p *int) types.Int64 {
 	return types.Int64Value(int64(*p))
 }
 
-// PreferCurrentStringPointer returns the caller's configured value when it is set,
-// otherwise adopts the API value. Use for Optional+Computed string scalars nested
-// in a server-managed section where the classic API may echo a value the user did
-// not author — unlike ReconcileOptionalStringPointer (which prefers the API value
-// except for the explicit empty-string edge), this always preserves a configured
-// current value.
-func PreferCurrentStringPointer(api *string, current types.String) types.String {
+// StickyIgnoringDriftString returns the value already in state whenever it is
+// set, and adopts the API value only when state holds null or unknown. The
+// second half is what import hydration and `plan -generate-config-out` rely
+// on; the first half means that once an attribute holds a value, a change made
+// to it outside Terraform is never adopted — **at the cost of not detecting
+// server-side drift**. A `terraform plan` reports no change however far the
+// server has moved.
+//
+// That is a concession, not a null-handling nicety. It exists for classic Jamf
+// Pro fields the GET does not echo faithfully — a write the server stores but
+// never reads back, or one it echoes as a different value — where adopting the
+// wire would either null a configured attribute or flip it every refresh, and
+// trip "Provider produced inconsistent result after apply". It was introduced
+// for exactly one such field (`self_service.notification_enabled` on
+// `jamfplatform_pro_policy`) and then applied to every scalar in that resource
+// and six more; see issue #387.
+//
+// Do not reach for this by default. Prefer, in order:
+//
+//   - StringPointerValueOrNull — the wire is authoritative, so drift is
+//     reported. Correct for any field the classic GET echoes faithfully.
+//   - PreserveStringWhenWireEmpty — the wire is authoritative when it carries a
+//     value and state sticks only when the wire comes back empty. Correct for a
+//     field the server normalises or intermittently omits.
+//   - This helper — only for a field wire-probed as never echoed or never
+//     persisted. Name that evidence at the call site.
+func StickyIgnoringDriftString(api *string, current types.String) types.String {
 	if IsConfiguredValue(current) {
 		return current
 	}
@@ -160,8 +180,12 @@ func PreferCurrentStringPointer(api *string, current types.String) types.String 
 	return types.StringValue(*api)
 }
 
-// PreferCurrentBoolPointer is the bool sibling of PreferCurrentStringPointer.
-func PreferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
+// StickyIgnoringDriftBool is the bool sibling of StickyIgnoringDriftString and
+// carries the same caveat: a set value is never re-read from the wire, so
+// server-side drift on it is never reported. Prefer BoolPointerValueOrNull
+// unless the field is wire-probed as never echoed or never persisted, and name
+// that evidence at the call site.
+func StickyIgnoringDriftBool(api *bool, current types.Bool) types.Bool {
 	if IsConfiguredValue(current) {
 		return current
 	}

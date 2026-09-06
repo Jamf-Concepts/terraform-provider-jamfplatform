@@ -28,8 +28,9 @@ import (
 // plan to stay consistent with, so every wire-present optional section is
 // allocated and hydrated, yielding a complete exported config rather than a
 // general-only one. CRUD callers pass false. The mobile-app flatteners use the
-// PreferCurrent* helpers (which adopt the wire value when the current state is
-// null), so allocating an empty section is sufficient for it to fully hydrate.
+// wire-authoritative reads (helpers.ReconcileOptionalStringPointer /
+// helpers.BoolPointerValueOrNull), which adopt the wire value whatever state
+// holds, so allocating an empty section is sufficient for it to fully hydrate.
 func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceModel, a *proclassic.MobileDeviceApplication, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if a == nil {
@@ -76,6 +77,12 @@ func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceM
 	return diags
 }
 
+// flattenMobileAppGeneral maps the wire <general> block onto the model.
+// host_externally keeps a sticky read: while external_url is set the server
+// forces it true, and a PUT sending false, in isolation, left the GET reading
+// true. os_type has its own asymmetric rule, below. Everything else is echoed
+// faithfully and reads from the wire. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state *MobileAppGeneralModel) {
 	if g == nil {
 		return
@@ -98,37 +105,37 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
 
 	// Optional+Computed echoes.
-	state.IsFree = helpers.PreferCurrentBoolPointer(g.Free, state.IsFree)
-	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
-	state.ExternalURL = helpers.PreferCurrentStringPointer(g.ExternalURL, state.ExternalURL)
-	state.ItunesStoreURL = helpers.PreferCurrentStringPointer(g.ItunesStoreURL, state.ItunesStoreURL)
-	state.ItunesCountryRegion = helpers.PreferCurrentStringPointer(g.ItunesCountryRegion, state.ItunesCountryRegion)
-	state.ItunesSyncTime = preferCurrentInt64Pointer(g.ItunesSyncTime, state.ItunesSyncTime)
-	state.MakeAvailableAfterInstall = helpers.PreferCurrentBoolPointer(g.MakeAvailableAfterInstall, state.MakeAvailableAfterInstall)
-	state.KeepDescriptionAndIconUpToDate = helpers.PreferCurrentBoolPointer(g.KeepDescriptionAndIconUpToDate, state.KeepDescriptionAndIconUpToDate)
-	state.KeepAppUpdatedOnDevices = helpers.PreferCurrentBoolPointer(g.KeepAppUpdatedOnDevices, state.KeepAppUpdatedOnDevices)
-	state.DeployAsManagedApp = helpers.PreferCurrentBoolPointer(g.DeployAsManagedApp, state.DeployAsManagedApp)
-	state.TakeOverManagement = helpers.PreferCurrentBoolPointer(g.TakeOverManagement, state.TakeOverManagement)
-	state.DeployAutomatically = helpers.PreferCurrentBoolPointer(g.DeployAutomatically, state.DeployAutomatically)
-	state.RemoveAppWhenMDMProfileIsRemoved = helpers.PreferCurrentBoolPointer(g.RemoveAppWhenMDMProfileIsRemoved, state.RemoveAppWhenMDMProfileIsRemoved)
-	state.PreventBackupOfAppData = helpers.PreferCurrentBoolPointer(g.PreventBackupOfAppData, state.PreventBackupOfAppData)
-	state.AllowUserToDelete = helpers.PreferCurrentBoolPointer(g.AllowUserToDelete, state.AllowUserToDelete)
-	state.RequireNetworkTethered = helpers.PreferCurrentBoolPointer(g.RequireNetworkTethered, state.RequireNetworkTethered)
-	state.HostExternally = helpers.PreferCurrentBoolPointer(g.HostExternally, state.HostExternally)
+	state.IsFree = helpers.BoolPointerValueOrNull(g.Free)
+	state.DeploymentType = helpers.ReconcileOptionalStringPointer(g.DeploymentType, state.DeploymentType)
+	state.ExternalURL = helpers.ReconcileOptionalStringPointer(g.ExternalURL, state.ExternalURL)
+	state.ItunesStoreURL = helpers.ReconcileOptionalStringPointer(g.ItunesStoreURL, state.ItunesStoreURL)
+	state.ItunesCountryRegion = helpers.ReconcileOptionalStringPointer(g.ItunesCountryRegion, state.ItunesCountryRegion)
+	state.ItunesSyncTime = helpers.Int64FromIntPtr(g.ItunesSyncTime)
+	state.MakeAvailableAfterInstall = helpers.BoolPointerValueOrNull(g.MakeAvailableAfterInstall)
+	state.KeepDescriptionAndIconUpToDate = helpers.BoolPointerValueOrNull(g.KeepDescriptionAndIconUpToDate)
+	state.KeepAppUpdatedOnDevices = helpers.BoolPointerValueOrNull(g.KeepAppUpdatedOnDevices)
+	state.DeployAsManagedApp = helpers.BoolPointerValueOrNull(g.DeployAsManagedApp)
+	state.TakeOverManagement = helpers.BoolPointerValueOrNull(g.TakeOverManagement)
+	state.DeployAutomatically = helpers.BoolPointerValueOrNull(g.DeployAutomatically)
+	state.RemoveAppWhenMDMProfileIsRemoved = helpers.BoolPointerValueOrNull(g.RemoveAppWhenMDMProfileIsRemoved)
+	state.PreventBackupOfAppData = helpers.BoolPointerValueOrNull(g.PreventBackupOfAppData)
+	state.AllowUserToDelete = helpers.BoolPointerValueOrNull(g.AllowUserToDelete)
+	state.RequireNetworkTethered = helpers.BoolPointerValueOrNull(g.RequireNetworkTethered)
+	state.HostExternally = helpers.StickyIgnoringDriftBool(g.HostExternally, state.HostExternally)
 
 	if g.Category != nil {
-		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	} else {
-		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -193,23 +200,31 @@ func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplic
 	}
 }
 
+// flattenMobileAppSelfService maps the wire <self_service> block onto the
+// model. Four fields keep a sticky read. after_install_button_text is echoed on
+// create and never again: a POST stores and echoes it faithfully, but after any
+// PUT the element is absent from the GET, so state is the only record of it
+// once the object has been updated once. The three notification_* fields are
+// never echoed at all. The rest of the block, the icon included, is echoed
+// faithfully and reads from the wire. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfService, state *MobileAppSelfServiceModel) {
-	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
-	state.AfterInstallButtonText = helpers.PreferCurrentStringPointer(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
-	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
+	state.AfterInstallButtonText = helpers.StickyIgnoringDriftString(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.FeatureOnMainPage = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	if ss.Notification != nil {
 		apiEnabled = ss.Notification.Enabled
 	}
-	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.StickyIgnoringDriftBool(apiEnabled, state.NotificationEnabled)
+	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.ReconcileOptionalStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
 	}
 
 	if state.SelfServiceCategories != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
@@ -236,16 +251,16 @@ func flattenMobileAppSelfServiceCategories(api []proclassic.MobileDeviceApplicat
 		current := byID[idStr]
 		out = append(out, MobileAppSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
+			Name:      helpers.ReconcileOptionalStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
 		})
 	}
 	state.SelfServiceCategories = out
 }
 
 func flattenMobileAppVpp(v *proclassic.MobileDeviceApplicationVpp, state *MobileAppVppModel) {
-	state.AssignVppDeviceBasedLicenses = helpers.PreferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
-	state.VppAdminAccountID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
+	state.AssignVppDeviceBasedLicenses = helpers.BoolPointerValueOrNull(v.AssignVppDeviceBasedLicenses)
+	state.VppAdminAccountID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
 }
 
 // ---- scope sub-slice accessors -------------------------------------------------

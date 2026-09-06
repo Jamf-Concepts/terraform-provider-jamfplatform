@@ -179,7 +179,7 @@ func (d *PatchPolicyDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 // assignPatchPolicyDataSourceModel populates the flat data source model from the
 // SDK response. The data source adopts all general fields verbatim (no
-// preferCurrent gating — there is no plan to reconcile against).
+// sticky-read gating — there is no plan to reconcile against).
 func assignPatchPolicyDataSourceModel(ctx context.Context, data *PatchPolicyDataSourceModel, p *proclassic.PatchPolicy) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {

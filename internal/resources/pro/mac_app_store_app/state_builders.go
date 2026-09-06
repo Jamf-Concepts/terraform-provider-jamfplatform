@@ -28,8 +28,9 @@ import (
 // plan to stay consistent with, so every wire-present optional section is
 // allocated and hydrated, yielding a complete exported config rather than a
 // general-only one. CRUD callers pass false. The mac-app flatteners use the
-// PreferCurrent* helpers (which adopt the wire value when the current state is
-// null), so allocating an empty section is sufficient for it to fully hydrate.
+// wire-authoritative reads (helpers.ReconcileOptionalStringPointer /
+// helpers.BoolPointerValueOrNull), which adopt the wire value whatever state
+// holds, so allocating an empty section is sufficient for it to fully hydrate.
 func assignMacAppResourceModel(ctx context.Context, state *MacAppResourceModel, a *proclassic.MacApplication, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if a == nil {
@@ -67,6 +68,11 @@ func assignMacAppResourceModel(ctx context.Context, state *MacAppResourceModel, 
 	return diags
 }
 
+// flattenMacAppGeneral maps the wire <general> block onto the model. is_free
+// keeps a sticky read: Jamf Pro resolves it from the App Store listing, so a
+// PUT sending false, in isolation, left the GET reading true. Everything else
+// is echoed faithfully and reads from the wire. Wire-probed against Jamf Pro
+// 11.31.1 on 2026-09-06; see issue #387.
 func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGeneralModel) {
 	if g == nil {
 		return
@@ -76,22 +82,22 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 	state.Version = helpers.StringPointerValueOrNull(g.Version)
 	state.BundleID = helpers.StringPointerValueOrNull(g.BundleID)
 	state.URL = helpers.StringPointerValueOrNull(g.URL)
-	state.IsFree = helpers.PreferCurrentBoolPointer(g.IsFree, state.IsFree)
-	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
+	state.IsFree = helpers.StickyIgnoringDriftBool(g.IsFree, state.IsFree)
+	state.DeploymentType = helpers.ReconcileOptionalStringPointer(g.DeploymentType, state.DeploymentType)
 
 	if g.Category != nil {
-		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	} else {
-		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -154,11 +160,16 @@ func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, 
 	}
 }
 
+// flattenMacAppSelfService maps the wire <self_service> block onto the model.
+// The four notification_* fields keep a sticky read: the <notification> family
+// is stored and omitted from every GET. The rest of the block, the icon
+// included, is echoed faithfully and reads from the wire. Wire-probed against
+// Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
 func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *MacAppSelfServiceModel) {
-	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.ForceUsersToViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
-	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.ForceUsersToViewDescription = helpers.BoolPointerValueOrNull(ss.ForceUsersToViewDescription)
+	state.FeatureOnMainPage = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	var apiMethod *string
@@ -166,14 +177,14 @@ func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *M
 		apiEnabled = ss.Notification.Enabled
 		apiMethod = ss.Notification.Method
 	}
-	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationMethod = helpers.PreferCurrentStringPointer(apiMethod, state.NotificationMethod)
-	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.StickyIgnoringDriftBool(apiEnabled, state.NotificationEnabled)
+	state.NotificationMethod = helpers.StickyIgnoringDriftString(apiMethod, state.NotificationMethod)
+	state.NotificationSubject = helpers.StickyIgnoringDriftString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.StickyIgnoringDriftString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.ReconcileOptionalStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
 	}
 
 	if state.SelfServiceCategories != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
@@ -200,17 +211,17 @@ func flattenMacAppSelfServiceCategories(api []proclassic.MacApplicationSelfServi
 		current := byID[idStr]
 		out = append(out, MacAppSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
-			FeatureIn: helpers.PreferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
+			Name:      helpers.ReconcileOptionalStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
+			FeatureIn: helpers.BoolPointerValueOrNull(c.FeatureIn),
 		})
 	}
 	state.SelfServiceCategories = out
 }
 
 func flattenMacAppVpp(v *proclassic.MacApplicationVpp, state *MacAppVppModel) {
-	state.AssignVppDeviceBasedLicenses = helpers.PreferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
-	state.VppAdminAccountID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
+	state.AssignVppDeviceBasedLicenses = helpers.BoolPointerValueOrNull(v.AssignVppDeviceBasedLicenses)
+	state.VppAdminAccountID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
 	state.TotalVppLicenses = helpers.Int64FromIntPtr(v.TotalVppLicenses)
 	state.RemainingVppLicenses = helpers.Int64FromIntPtr(v.RemainingVppLicenses)
 	state.UsedVppLicenses = helpers.Int64FromIntPtr(v.UsedVppLicenses)
