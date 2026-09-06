@@ -7,16 +7,21 @@
 // Jamf Pro administrator accounts and account groups carry a privilege grid
 // split into seven wire categories (jss_objects, jss_settings, jss_actions,
 // casper_admin, casper_remote, casper_imaging, recon), each a list of
-// free-text privilege strings. Two server behaviours make this grid awkward to
-// manage declaratively (both wire-probed 2026-06-12):
+// free-text privilege strings. Three server behaviours make this grid awkward
+// to manage declaratively (the first two wire-probed 2026-06-12, the third
+// 2026-09-06 on Jamf Pro 11.31.1):
 //
 //   - The server SILENTLY EXPANDS a submitted set, adding dependency
 //     privileges the caller did not request — sometimes in a different
-//     category (e.g. submitting jss_objects=["Update Buildings"] yields a
-//     stored jss_settings=["Read Activation Code"]). Re-submitting the same
-//     subset reproduces the same superset, stably.
+//     category (e.g. submitting jss_objects=["Read Buildings"] yields a stored
+//     jss_settings=["Read License Information"]). Re-submitting the same subset
+//     reproduces the same superset, stably.
 //   - The server SILENTLY DROPS an unrecognised privilege string, returning
 //     201/200 with the bad value simply absent — no error.
+//   - A sent <privileges> element REPLACES THE WHOLE GRID on both
+//     /accounts/groupid and /accounts/userid: every category absent from the
+//     body is emptied, while omitting the element leaves the grid untouched.
+//     There is no per-category merge on the wire (issue #385).
 //
 // To keep a correct configuration free of perpetual diffs we use
 // INTERSECT-ON-READ: refresh-Read stores, per category, only the intersection
@@ -29,6 +34,13 @@
 // after apply" abort. The plan-time Validator (discovering the tenant's catalog
 // from an Administrator account/group) is what keeps invalid privileges from
 // reaching apply in the first place.
+//
+// The user-facing contract for a category is the one the scope helper uses:
+// declared (including []) means Terraform owns it, omitted means it is left as
+// configured outside Terraform. Because the wire replaces the whole grid, the
+// second half is emulated with a read-merge-write: a write GETs the live grid,
+// overlays the declared categories via MergeGrid and sends every merged
+// category, so an undeclared category survives exactly as the server held it.
 package accountprivileges
 
 // Category describes one of the seven privilege buckets: its Jamf classic wire
