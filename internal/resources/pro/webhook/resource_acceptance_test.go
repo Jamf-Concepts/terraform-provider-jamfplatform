@@ -186,6 +186,21 @@ func smartGroupClearedConfig(name string) string {
 	`, name, name)
 }
 
+// webhookLiveAuthFields fetches the server's copy of the webhook under test
+// and asserts the stored username and header, so the auth-type transitions can
+// prove on the wire that the always-emitted empty elements cleared the fields
+// the new type does not use — a null in state cannot tell a cleared value from
+// one the classic merge retained and the state builder reconciled away (#384).
+func webhookLiveAuthFields(t *testing.T, wantUsername, wantHeader string) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(webhookResourceAddr, c.GetWebhookByID, func(w *proclassic.Webhook) error {
+		if err := testhelpers.RequireEqual("username", wantUsername, testhelpers.Deref(w.Username)); err != nil {
+			return err
+		}
+		return testhelpers.RequireEqual("header", wantHeader, testhelpers.Deref(w.Header))
+	})
+}
+
 // ---- tests ----------------------------------------------------------------------
 
 // TestAccResource_ProWebhook_NoneLifecycle covers the NONE happy path, a full
@@ -260,6 +275,7 @@ func TestAccResource_ProWebhook_AuthTransitions(t *testing.T) {
 					resource.TestCheckResourceAttr(webhookResourceAddr, "authentication_type", "HEADER"),
 					resource.TestCheckResourceAttrSet(webhookResourceAddr, "header"),
 					resource.TestCheckNoResourceAttr(webhookResourceAddr, "username"),
+					webhookLiveAuthFields(t, "", `{"Authorization":"Bearer abc123"}`),
 				),
 			},
 			{ // HEADER -> HASH_SIGNATURE (header must clear; >=16 char secret)
@@ -268,6 +284,7 @@ func TestAccResource_ProWebhook_AuthTransitions(t *testing.T) {
 					resource.TestCheckResourceAttr(webhookResourceAddr, "authentication_type", "HASH_SIGNATURE"),
 					resource.TestCheckResourceAttr(webhookResourceAddr, "hash_algorithm", "SHA512"),
 					resource.TestCheckNoResourceAttr(webhookResourceAddr, "header"),
+					webhookLiveAuthFields(t, "", ""),
 				),
 			},
 			{ // HASH_SIGNATURE -> NONE
@@ -276,6 +293,7 @@ func TestAccResource_ProWebhook_AuthTransitions(t *testing.T) {
 					resource.TestCheckResourceAttr(webhookResourceAddr, "authentication_type", "NONE"),
 					resource.TestCheckNoResourceAttr(webhookResourceAddr, "header"),
 					resource.TestCheckNoResourceAttr(webhookResourceAddr, "username"),
+					webhookLiveAuthFields(t, "", ""),
 				),
 			},
 		},
@@ -465,6 +483,30 @@ func TestAccResource_ProWebhook_ValidatorErrors(t *testing.T) {
 					header = "{}"
 				}`, base+"-h"),
 			expect: regexp.MustCompile("header requires HEADER"),
+		},
+		{
+			name: "basic requires username",
+			config: fmt.Sprintf(`
+				resource "jamfplatform_pro_webhook" "test" {
+					name = %q
+					url = "https://e.com/x"
+					event = "ComputerAdded"
+					authentication_type = "BASIC"
+					password = "somesecretvalue!"
+					password_wo_version = 1
+				}`, base+"-bu"),
+			expect: regexp.MustCompile("username required for BASIC"),
+		},
+		{
+			name: "header auth requires header",
+			config: fmt.Sprintf(`
+				resource "jamfplatform_pro_webhook" "test" {
+					name = %q
+					url = "https://e.com/x"
+					event = "ComputerAdded"
+					authentication_type = "HEADER"
+				}`, base+"-hh"),
+			expect: regexp.MustCompile("header required for HEADER"),
 		},
 		{
 			name: "smart_group_id requires smart event",

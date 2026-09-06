@@ -83,6 +83,8 @@ func (r *WebhookResource) ConfigValidators(ctx context.Context) []resource.Confi
 		usernameRequiresBasicValidator{},
 		passwordRequiresBasicOrHashValidator{},
 		headerRequiresHeaderAuthValidator{},
+		basicRequiresUsernameValidator{},
+		headerAuthRequiresHeaderValidator{},
 		smartGroupIDRequiresSmartEventValidator{},
 	}
 }
@@ -146,7 +148,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.OneOf(webhookEvents...)},
 			},
 			"username": schema.StringAttribute{
-				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI (BASIC authentication). Only valid when `authentication_type = \"BASIC\"`.",
+				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI (BASIC authentication). Required when `authentication_type = \"BASIC\"` and not allowed otherwise.",
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
@@ -160,7 +162,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"header": schema.StringAttribute{
-				MarkdownDescription: "**\"Header Authentication\"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{\"Authorization\":\"Bearer …\"}`. Only valid when `authentication_type = \"HEADER\"`. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.",
+				MarkdownDescription: "**\"Header Authentication\"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{\"Authorization\":\"Bearer …\"}`. Required when `authentication_type = \"HEADER\"` and not allowed otherwise. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.",
 				Optional:            true,
 				Sensitive:           true,
 			},

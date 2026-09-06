@@ -82,6 +82,45 @@ func checkHeaderRequiresHeaderAuth(d WebhookResourceModel) *ruleViolation {
 	}
 }
 
+// checkBasicRequiresUsername enforces authentication_type=BASIC ⇒ username.
+// The server refuses a BASIC webhook without one — `409 Username is required`,
+// wire-probed 2026-09-06 — and, because the input builder sends `username`
+// as configured under BASIC, a config that drops it would otherwise omit the
+// element, the classic merge would retain the old value, and Read would echo
+// it back as an inconsistent result. An unknown username is skipped: it will
+// be known at apply.
+func checkBasicRequiresUsername(d WebhookResourceModel) *ruleViolation {
+	if !helpers.IsConfiguredValue(d.AuthenticationType) || d.AuthenticationType.ValueString() != authTypeBasic {
+		return nil
+	}
+	if !d.Username.IsNull() {
+		return nil
+	}
+	return &ruleViolation{
+		attr:    "username",
+		summary: "username required for BASIC authentication",
+		detail:  "`authentication_type` is \"BASIC\", which requires `username`. Set `username` (and `password`), or change `authentication_type`.",
+	}
+}
+
+// checkHeaderAuthRequiresHeader enforces authentication_type=HEADER ⇒ header.
+// The server refuses a HEADER webhook without one — `409 INVALID_REQUIRED`,
+// wire-probed 2026-09-06 — with the same retained-on-omission consequence
+// described on checkBasicRequiresUsername.
+func checkHeaderAuthRequiresHeader(d WebhookResourceModel) *ruleViolation {
+	if !helpers.IsConfiguredValue(d.AuthenticationType) || d.AuthenticationType.ValueString() != authTypeHeader {
+		return nil
+	}
+	if !d.Header.IsNull() {
+		return nil
+	}
+	return &ruleViolation{
+		attr:    "header",
+		summary: "header required for HEADER authentication",
+		detail:  "`authentication_type` is \"HEADER\", which requires `header`. Set `header` to a JSON object of header name/value pairs, or change `authentication_type`.",
+	}
+}
+
 // checkSmartGroupIDRequiresSmartEvent enforces smart_group_id ⇒ a SmartGroup* event.
 func checkSmartGroupIDRequiresSmartEvent(d WebhookResourceModel) *ruleViolation {
 	if !helpers.IsConfiguredValue(d.SmartGroupID) || !helpers.IsConfiguredValue(d.Event) {
@@ -156,6 +195,44 @@ func (headerRequiresHeaderAuthValidator) ValidateResource(ctx context.Context, r
 	}
 }
 
+type basicRequiresUsernameValidator struct{}
+
+func (basicRequiresUsernameValidator) Description(context.Context) string {
+	return "`username` is required when `authentication_type` is \"BASIC\""
+}
+func (v basicRequiresUsernameValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+func (basicRequiresUsernameValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data WebhookResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if rv := checkBasicRequiresUsername(data); rv != nil {
+		rv.add(resp)
+	}
+}
+
+type headerAuthRequiresHeaderValidator struct{}
+
+func (headerAuthRequiresHeaderValidator) Description(context.Context) string {
+	return "`header` is required when `authentication_type` is \"HEADER\""
+}
+func (v headerAuthRequiresHeaderValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+func (headerAuthRequiresHeaderValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var data WebhookResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if rv := checkHeaderAuthRequiresHeader(data); rv != nil {
+		rv.add(resp)
+	}
+}
+
 type smartGroupIDRequiresSmartEventValidator struct{}
 
 func (smartGroupIDRequiresSmartEventValidator) Description(context.Context) string {
@@ -180,5 +257,7 @@ var (
 	_ resource.ConfigValidator = usernameRequiresBasicValidator{}
 	_ resource.ConfigValidator = passwordRequiresBasicOrHashValidator{}
 	_ resource.ConfigValidator = headerRequiresHeaderAuthValidator{}
+	_ resource.ConfigValidator = basicRequiresUsernameValidator{}
+	_ resource.ConfigValidator = headerAuthRequiresHeaderValidator{}
 	_ resource.ConfigValidator = smartGroupIDRequiresSmartEventValidator{}
 )
