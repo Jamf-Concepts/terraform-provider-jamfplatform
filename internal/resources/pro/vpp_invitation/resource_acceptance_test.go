@@ -37,6 +37,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
+	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -415,6 +418,215 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
 }
 `, name),
 				Check: resource.TestCheckResourceAttrSet(resAddr, "id"),
+			},
+		},
+	})
+}
+
+// vppiOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: the one state-gated block this resource has is scope, so it
+// carries a target group and an exclusion group, each a distinctive tenant id
+// so that a server which stopped retaining an omitted element is caught on
+// content, not on presence. The directory-service limitation category is not
+// declared because it needs a real LDAP group and leaving one scoped through
+// destroy orphans the scope->LDAP association (see
+// TestAccResource_ProVPPInvitation_DSGroupScope). The group fixtures are
+// carried by every step so the server never sees a scoped group disappear
+// underneath the invitation.
+func vppiOmitRetainsConfig(token, suffix, name string) string {
+	return vppiOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_invitation" "test" {
+  name                        = %[1]q
+  vpp_account_id              = jamfplatform_pro_volume_purchasing_location.vpp.id
+  distribution_method         = "Prompt users to accept/make available in Self Service"
+  auto_register_managed_users = true
+
+  scope = {
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
+    exclusions = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.b.id]
+    }
+  }
+}
+`, name)
+}
+
+// vppiOmitRetainsChildrenDroppedConfig keeps the scope block but drops its
+// exclusions, which the granular merge re-emits from the server's copy.
+func vppiOmitRetainsChildrenDroppedConfig(token, suffix, name string) string {
+	return vppiOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_invitation" "test" {
+  name                        = %[1]q
+  vpp_account_id              = jamfplatform_pro_volume_purchasing_location.vpp.id
+  distribution_method         = "Prompt users to accept/make available in Self Service"
+  auto_register_managed_users = true
+
+  scope = {
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
+  }
+}
+`, name)
+}
+
+// vppiOmitRetainsGeneralOnlyConfig drops the scope, so the PUT carries
+// <general> alone.
+func vppiOmitRetainsGeneralOnlyConfig(token, suffix, name string) string {
+	return vppiOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_invitation" "test" {
+  name                        = %[1]q
+  vpp_account_id              = jamfplatform_pro_volume_purchasing_location.vpp.id
+  distribution_method         = "Prompt users to accept/make available in Self Service"
+  auto_register_managed_users = true
+}
+`, name)
+}
+
+// vppiOmitRetainsFixtures is the location + two static user groups every
+// omit-retains step shares.
+func vppiOmitRetainsFixtures(token, suffix, name string) string {
+	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_user_group" "a" {
+  name       = "%[1]s-grp-a"
+  group_type = "static"
+}
+
+resource "jamfplatform_pro_user_group" "b" {
+  name       = "%[1]s-grp-b"
+  group_type = "static"
+}
+`, name)
+}
+
+// vppiOmitRetainsWant holds the tenant-minted group ids step 1 scoped, read
+// from Terraform state so the wire assertion compares real ids.
+type vppiOmitRetainsWant struct {
+	targetGroup, excl int
+}
+
+// vppiOmitRetainsCapture records the step-1 group ids the later steps must
+// find on the wire. Runs before vppiRetainedOnServer in the same composed check.
+func vppiOmitRetainsCapture(want *vppiOmitRetainsWant) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		var err error
+		if want.targetGroup, err = vppiStateInt(s, "jamfplatform_pro_user_group.a", "id"); err != nil {
+			return err
+		}
+		want.excl, err = vppiStateInt(s, "jamfplatform_pro_user_group.b", "id")
+		return err
+	}
+}
+
+func vppiStateInt(s *terraform.State, addr, key string) (int, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return 0, fmt.Errorf("resource %s not found in state", addr)
+	}
+	raw, ok := rs.Primary.Attributes[key]
+	if !ok {
+		return 0, fmt.Errorf("%s: attribute %s not in state", addr, key)
+	}
+	return strconv.Atoi(raw)
+}
+
+// vppiRequireIDs compares a wire IDName list against the ids step 1 wrote,
+// order-insensitively. A nil wrapper is an empty list.
+func vppiRequireIDs(field string, want []int, got *[]proclassic.IDName) error {
+	ids := make([]int, 0)
+	if got != nil {
+		for _, it := range *got {
+			if it.ID != nil {
+				ids = append(ids, *it.ID)
+			}
+		}
+	}
+	sort.Ints(ids)
+	if !slices.Equal(want, ids) {
+		return fmt.Errorf("%s: want %v, got %v", field, want, ids)
+	}
+	return nil
+}
+
+// vppiRetainedOnServer asserts the server's copy still carries every scope
+// value the omit-retains config declared in its first step.
+func vppiRetainedOnServer(t *testing.T, want *vppiOmitRetainsWant) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(resAddr,
+		func(ctx context.Context, id string) (*proclassic.VppInvitation, error) {
+			return c.GetVPPInvitationByID(ctx, id)
+		},
+		func(inv *proclassic.VppInvitation) error {
+			if inv.Scope == nil {
+				return fmt.Errorf("scope: absent")
+			}
+			if err := testhelpers.RequireEqual("scope.all_jss_users", false, testhelpers.Deref(inv.Scope.AllJssUsers)); err != nil {
+				return err
+			}
+			var targetGroups *[]proclassic.IDName
+			if inv.Scope.JssUserGroups != nil {
+				targetGroups = inv.Scope.JssUserGroups.UserGroup
+			}
+			if err := vppiRequireIDs("scope.jss_user_groups", []int{want.targetGroup}, targetGroups); err != nil {
+				return err
+			}
+			if inv.Scope.Exclusions == nil {
+				return fmt.Errorf("scope.exclusions: absent")
+			}
+			var exclGroups *[]proclassic.IDName
+			if inv.Scope.Exclusions.JssUserGroups != nil {
+				exclGroups = inv.Scope.Exclusions.JssUserGroups.UserGroup
+			}
+			return vppiRequireIDs("scope.exclusions.jss_user_groups", []int{want.excl}, exclGroups)
+		})
+}
+
+// TestAccResource_ProVPPInvitation_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping the gated scope block from
+// config plans it as removed, but the classic PUT omits the element and the
+// server keeps every value. Step 2 keeps the scope and drops its exclusions
+// (through the granular merge); step 3 drops the scope so the PUT carries
+// <general> alone. Each step's implicit post-apply plan must be empty, which
+// is what makes the contract usable. If this test fails on content, the
+// endpoint no longer merges and nothing that suppresses the removal plan may
+// ship for this resource. Gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN like every
+// apply test here.
+func TestAccResource_ProVPPInvitation_OmittedBlocksRetained(t *testing.T) {
+	token := vppToken(t)
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-vpp-omit-" + suffix
+	var want vppiOmitRetainsWant
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckVPPInvitationDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: vppiOmitRetainsConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.exclusions.jss_user_group_ids.#", "1"),
+					vppiOmitRetainsCapture(&want),
+					vppiRetainedOnServer(t, &want),
+				),
+			},
+			{
+				Config: vppiOmitRetainsChildrenDroppedConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(resAddr, "scope.exclusions.jss_user_group_ids.#"),
+					vppiRetainedOnServer(t, &want),
+				),
+			},
+			{
+				Config: vppiOmitRetainsGeneralOnlyConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#"),
+					vppiRetainedOnServer(t, &want),
+				),
 			},
 		},
 	})
