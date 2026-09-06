@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -305,12 +306,7 @@ func hasPrivilege(category *[]string, want string) bool {
 	if category == nil {
 		return false
 	}
-	for _, p := range *category {
-		if p == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(*category, want)
 }
 
 // privilegeList renders a classic privilege category for a diagnostic, so a
