@@ -194,27 +194,6 @@ func TestBuildMobileAppAppConfiguration(t *testing.T) {
 	}
 }
 
-func TestServerWhenPresentString(t *testing.T) {
-	v := "tvOS"
-	// Server present → server value wins.
-	if got := serverWhenPresentString(&v, types.StringValue("iOS")); got.ValueString() != "tvOS" {
-		t.Errorf("server present: got %q want tvOS", got.ValueString())
-	}
-	// Server absent + known configured current → keep current.
-	if got := serverWhenPresentString(nil, types.StringValue("iOS")); got.ValueString() != "iOS" {
-		t.Errorf("server absent, known current: got %q want iOS", got.ValueString())
-	}
-	// Server absent + known null current → null.
-	if got := serverWhenPresentString(nil, types.StringNull()); !got.IsNull() {
-		t.Errorf("server absent, null current: got %q want null", got.ValueString())
-	}
-	// Server absent + UNKNOWN current (Optional+Computed unset on create) → null,
-	// never unknown (else "unknown value after apply").
-	if got := serverWhenPresentString(nil, types.StringUnknown()); got.IsUnknown() || !got.IsNull() {
-		t.Errorf("server absent, unknown current: got unknown=%v null=%v want null", got.IsUnknown(), got.IsNull())
-	}
-}
-
 func TestNormalizeNewlines(t *testing.T) {
 	if got := normalizeNewlines("a\r\nb\rc\nd"); got != "a\nb\nc\nd" {
 		t.Errorf("normalizeNewlines = %q", got)

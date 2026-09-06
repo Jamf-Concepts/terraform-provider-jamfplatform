@@ -8,8 +8,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // extractPatchPolicyID returns the assigned ID as a string from a Create/GET
@@ -26,17 +24,6 @@ func extractPatchPolicyID(p *proclassic.PatchPolicy) string {
 		return strconv.Itoa(*p.General.ID)
 	}
 	return ""
-}
-
-// preferCurrentInt64Pointer is the int64 sibling of preferCurrentStringPointer.
-func preferCurrentInt64Pointer(api *int, current types.Int64) types.Int64 {
-	if helpers.IsConfiguredValue(current) {
-		return current
-	}
-	if api == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*api))
 }
 
 // int64ValueOrNull maps an SDK *int onto a Terraform Int64, null for nil. Used

@@ -23,9 +23,15 @@ import (
 // plan to stay consistent with, so every wire-present optional section is
 // allocated and hydrated from the server, yielding a complete exported config
 // rather than a general-only one. CRUD callers pass false. Because the policy
-// flatteners use the PreferCurrent* helpers (which adopt the wire value when
-// the current state is null), allocating an empty section is sufficient for it
-// to fully hydrate.
+// flatteners read wire-authoritatively (helpers.ReconcileOptionalStringPointer
+// / helpers.BoolPointerValueOrNull), adopting the wire value whatever state
+// holds, allocating an empty section is sufficient for it to fully hydrate.
+//
+// A minority of fields keep a sticky read instead — one that returns the value
+// already in state and so never reports server-side drift on it. Each is a
+// field Jamf Pro does not echo, does not persist, or normalises; the evidence
+// is named in the doc comment of the flattener that holds it. See issue
+// #387.
 func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, p *proclassic.Policy, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
@@ -145,40 +151,40 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 	}
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
-	state.Enabled = helpers.PreferCurrentBoolPointer(g.Enabled, state.Enabled)
-	state.Trigger = helpers.PreferCurrentStringPointer(g.Trigger, state.Trigger)
-	state.TriggerCheckin = helpers.PreferCurrentBoolPointer(g.TriggerCheckin, state.TriggerCheckin)
-	state.TriggerEnrollmentComplete = helpers.PreferCurrentBoolPointer(g.TriggerEnrollmentComplete, state.TriggerEnrollmentComplete)
-	state.TriggerLogin = helpers.PreferCurrentBoolPointer(g.TriggerLogin, state.TriggerLogin)
-	state.TriggerNetworkStateChanged = helpers.PreferCurrentBoolPointer(g.TriggerNetworkStateChanged, state.TriggerNetworkStateChanged)
-	state.TriggerStartup = helpers.PreferCurrentBoolPointer(g.TriggerStartup, state.TriggerStartup)
-	state.TriggerOther = helpers.PreferCurrentStringPointer(g.TriggerOther, state.TriggerOther)
-	state.Frequency = helpers.PreferCurrentStringPointer(g.Frequency, state.Frequency)
-	state.RetryEvent = helpers.PreferCurrentStringPointer(g.RetryEvent, state.RetryEvent)
+	state.Enabled = helpers.BoolPointerValueOrNull(g.Enabled)
+	state.Trigger = helpers.ReconcileOptionalStringPointer(g.Trigger, state.Trigger)
+	state.TriggerCheckin = helpers.BoolPointerValueOrNull(g.TriggerCheckin)
+	state.TriggerEnrollmentComplete = helpers.BoolPointerValueOrNull(g.TriggerEnrollmentComplete)
+	state.TriggerLogin = helpers.BoolPointerValueOrNull(g.TriggerLogin)
+	state.TriggerNetworkStateChanged = helpers.BoolPointerValueOrNull(g.TriggerNetworkStateChanged)
+	state.TriggerStartup = helpers.BoolPointerValueOrNull(g.TriggerStartup)
+	state.TriggerOther = helpers.ReconcileOptionalStringPointer(g.TriggerOther, state.TriggerOther)
+	state.Frequency = helpers.ReconcileOptionalStringPointer(g.Frequency, state.Frequency)
+	state.RetryEvent = helpers.ReconcileOptionalStringPointer(g.RetryEvent, state.RetryEvent)
 	if g.RetryAttempts != nil {
-		state.RetryAttempts = preferCurrentInt(g.RetryAttempts, state.RetryAttempts)
+		state.RetryAttempts = helpers.Int64FromIntPtr(g.RetryAttempts)
 	} else {
 		state.RetryAttempts = types.Int64Null()
 	}
-	state.NotifyOnEachFailedRetry = helpers.PreferCurrentBoolPointer(g.NotifyOnEachFailedRetry, state.NotifyOnEachFailedRetry)
-	state.LimitToJamfProAssignedUser = helpers.PreferCurrentBoolPointer(g.LocationUserOnly, state.LimitToJamfProAssignedUser)
-	state.TargetDrive = helpers.PreferCurrentStringPointer(g.TargetDrive, state.TargetDrive)
-	state.Offline = helpers.PreferCurrentBoolPointer(g.Offline, state.Offline)
-	state.NetworkRequirements = helpers.PreferCurrentStringPointer(g.NetworkRequirements, state.NetworkRequirements)
+	state.NotifyOnEachFailedRetry = helpers.BoolPointerValueOrNull(g.NotifyOnEachFailedRetry)
+	state.LimitToJamfProAssignedUser = helpers.BoolPointerValueOrNull(g.LocationUserOnly)
+	state.TargetDrive = helpers.ReconcileOptionalStringPointer(g.TargetDrive, state.TargetDrive)
+	state.Offline = helpers.BoolPointerValueOrNull(g.Offline)
+	state.NetworkRequirements = helpers.ReconcileOptionalStringPointer(g.NetworkRequirements, state.NetworkRequirements)
 
 	if g.Category != nil {
-		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	} else {
-		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.ReconcileOptionalStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 
@@ -191,18 +197,27 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 		flattenPolicyNetworkLimitations(ctx, g.NetworkLimitations, state.NetworkLimitations)
 	}
 	if state.OverrideDefaultSettings != nil && g.OverrideDefaultSettings != nil {
-		state.OverrideDefaultSettings.TargetDrive = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.TargetDrive, state.OverrideDefaultSettings.TargetDrive)
-		state.OverrideDefaultSettings.DistributionPoint = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.DistributionPoint, state.OverrideDefaultSettings.DistributionPoint)
-		state.OverrideDefaultSettings.ForceAfpSmb = helpers.PreferCurrentBoolPointer(g.OverrideDefaultSettings.ForceAfpSmb, state.OverrideDefaultSettings.ForceAfpSmb)
-		state.OverrideDefaultSettings.Sus = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.Sus, state.OverrideDefaultSettings.Sus)
+		state.OverrideDefaultSettings.TargetDrive = helpers.StickyIgnoringDriftString(g.OverrideDefaultSettings.TargetDrive, state.OverrideDefaultSettings.TargetDrive)
+		state.OverrideDefaultSettings.DistributionPoint = helpers.ReconcileOptionalStringPointer(g.OverrideDefaultSettings.DistributionPoint, state.OverrideDefaultSettings.DistributionPoint)
+		state.OverrideDefaultSettings.ForceAfpSmb = helpers.StickyIgnoringDriftBool(g.OverrideDefaultSettings.ForceAfpSmb, state.OverrideDefaultSettings.ForceAfpSmb)
+		state.OverrideDefaultSettings.Sus = helpers.ReconcileOptionalStringPointer(g.OverrideDefaultSettings.Sus, state.OverrideDefaultSettings.Sus)
 	}
 }
 
+// flattenPolicyDateTimeLimitations maps the wire <date_time_limitations>
+// sub-block onto the model.
+//
+// no_execute_start and no_execute_end keep a sticky read: Jamf Pro stores them
+// but echoes <no_execute_start/> and <no_execute_end/> empty on every GET, on
+// both the POST and the PUT path, so the wire can neither confirm nor
+// contradict state. Everything else here is wire-authoritative — the two
+// activation/expiration timestamps round-trip verbatim. Wire-probed against
+// Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
 func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.PolicyGeneralDateTimeLimitations, state *PolicyGeneralDateTimeLimitationsModel) {
-	state.ActivationDate = helpers.PreferCurrentStringPointer(dtl.ActivationDate, state.ActivationDate)
-	state.ExpirationDate = helpers.PreferCurrentStringPointer(dtl.ExpirationDate, state.ExpirationDate)
-	state.NoExecuteStart = helpers.PreferCurrentStringPointer(dtl.NoExecuteStart, state.NoExecuteStart)
-	state.NoExecuteEnd = helpers.PreferCurrentStringPointer(dtl.NoExecuteEnd, state.NoExecuteEnd)
+	state.ActivationDate = helpers.ReconcileOptionalStringPointer(dtl.ActivationDate, state.ActivationDate)
+	state.ExpirationDate = helpers.ReconcileOptionalStringPointer(dtl.ExpirationDate, state.ExpirationDate)
+	state.NoExecuteStart = helpers.StickyIgnoringDriftString(dtl.NoExecuteStart, state.NoExecuteStart)
+	state.NoExecuteEnd = helpers.StickyIgnoringDriftString(dtl.NoExecuteEnd, state.NoExecuteEnd)
 
 	if dtl.NoExecuteOn != nil && dtl.NoExecuteOn.Day != nil && len(*dtl.NoExecuteOn.Day) > 0 {
 		set, diagsLocal := types.SetValueFrom(ctx, types.StringType, *dtl.NoExecuteOn.Day)
@@ -214,9 +229,20 @@ func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.Polic
 	}
 }
 
+// flattenPolicyNetworkLimitations maps the wire <network_limitations>
+// sub-block onto the model.
+//
+// Both scalars keep a sticky read, for different reasons. any_ip_address is
+// server-derived: Jamf Pro forces it true while <network_segments> is empty, so
+// a write of false is ignored. minimum_network_connection is create-only: the
+// value a POST stores is echoed faithfully, but a PUT changing it is ignored —
+// sending `No Minimum` over a created `Ethernet` left the GET reading
+// `Ethernet`, so reading the wire would turn an unappliable config change into
+// a plan that never converges. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyGeneralNetworkLimitations, state *PolicyGeneralNetworkLimitationsModel) {
-	state.MinimumNetworkConnection = helpers.PreferCurrentStringPointer(nl.MinimumNetworkConnection, state.MinimumNetworkConnection)
-	state.AnyIPAddress = helpers.PreferCurrentBoolPointer(nl.AnyIPAddress, state.AnyIPAddress)
+	state.MinimumNetworkConnection = helpers.StickyIgnoringDriftString(nl.MinimumNetworkConnection, state.MinimumNetworkConnection)
+	state.AnyIPAddress = helpers.StickyIgnoringDriftBool(nl.AnyIPAddress, state.AnyIPAddress)
 	if nl.NetworkSegments != nil {
 		set, _ := scope.FlattenIDSlice(ctx, nl.NetworkSegments.NetworkSegment, func(i proclassic.IDName) *int { return i.ID })
 		state.NetworkSegmentIDs = set
@@ -447,6 +473,20 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.PolicyScopeExclu
 
 // ---- self_service / packages / scripts / printers / dock_items / etc. ----------
 
+// flattenPolicySelfService maps the wire <self_service> block onto the model.
+//
+// The Self Service notification fields are echoed only while the tenant-level
+// Settings -> Self Service -> macOS -> "Enable Self Service notifications"
+// toggle is on. With it off the write is accepted and the GET omits the whole
+// <notification> family, so they read through helpers.WireWhenPresent*: the
+// wire wins whenever it carries a value (drift reported), and state is kept
+// when it does not (no "inconsistent result after apply" on a tenant that has
+// notifications disabled). That gate is a tenant setting this resource does not
+// own, which is why neither a plain wire read nor a sticky read is right.
+//
+// Every other field here, the self_service_icon triple included, is echoed
+// unconditionally and reads from the wire. Wire-probed against Jamf Pro
+// 11.31.1 on 2026-09-06; see issue #387.
 func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySelfServiceModel, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.SelfServiceIcon == nil && ss.SelfServiceIcon != nil {
@@ -456,28 +496,28 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 			state.Categories = []PolicySelfServiceCategoryItemModel{}
 		}
 	}
-	state.UseForSelfService = helpers.PreferCurrentBoolPointer(ss.UseForSelfService, state.UseForSelfService)
-	state.SelfServiceDisplayName = helpers.PreferCurrentStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
-	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.ReinstallButtonText = helpers.PreferCurrentStringPointer(ss.ReinstallButtonText, state.ReinstallButtonText)
-	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.EnsureUsersViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.EnsureUsersViewDescription)
-	state.IncludeInFeaturedCategory = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.IncludeInFeaturedCategory)
+	state.UseForSelfService = helpers.BoolPointerValueOrNull(ss.UseForSelfService)
+	state.SelfServiceDisplayName = helpers.ReconcileOptionalStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
+	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.ReinstallButtonText = helpers.ReconcileOptionalStringPointer(ss.ReinstallButtonText, state.ReinstallButtonText)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.EnsureUsersViewDescription = helpers.BoolPointerValueOrNull(ss.ForceUsersToViewDescription)
+	state.IncludeInFeaturedCategory = helpers.BoolPointerValueOrNull(ss.FeatureOnMainPage)
 	state.DisplayNotifications = flattenNotificationEnabled(ss.Notification, state.DisplayNotifications)
-	state.NotificationLocation = helpers.PreferCurrentStringPointer(ss.NotificationType, state.NotificationLocation)
-	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationLocation = helpers.WireWhenPresentString(ss.NotificationType, state.NotificationLocation)
+	state.NotificationSubject = helpers.WireWhenPresentString(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.WireWhenPresentString(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
-		state.SelfServiceIcon.Filename = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
+		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.ReconcileOptionalStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.Filename = helpers.ReconcileOptionalStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
 	}
 
 	// Self Service categories are an unordered Set; rebuild the slice
 	// directly from the wire. The classic /policies endpoint always echoes
 	// id/name/display_in/feature_in for each surviving category, so the
-	// Optional+Computed flags never come back null (no preferCurrent
+	// Optional+Computed flags never come back null (no sticky read
 	// needed). Refresh only when the caller manages the block.
 	if state.Categories != nil {
 		if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
@@ -499,7 +539,7 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 }
 
 func flattenPolicyPackageConfiguration(pc *proclassic.PolicyPackageConfiguration, state *PolicyPackagesModel) {
-	state.DistributionPoint = helpers.PreferCurrentStringPointer(pc.DistributionPoint, state.DistributionPoint)
+	state.DistributionPoint = helpers.ReconcileOptionalStringPointer(pc.DistributionPoint, state.DistributionPoint)
 
 	if pc.Packages == nil || pc.Packages.Package == nil {
 		state.Packages = nil
@@ -545,8 +585,14 @@ func flattenPolicyScripts(sc *proclassic.PolicyScripts, state *PolicyScriptsMode
 	state.Scripts = out
 }
 
+// flattenPolicyPrinters maps the wire <printers> block onto the model.
+//
+// leave_existing_default keeps a sticky read: a POST and a PUT both sending
+// true read back as <leave_existing_default/>, so the write does not persist
+// and the wire says nothing. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenPolicyPrinters(pr *proclassic.PolicyPrinters, state *PolicyPrintersModel) {
-	state.LeaveExistingDefault = helpers.PreferCurrentBoolPointer(pr.LeaveExistingDefault, state.LeaveExistingDefault)
+	state.LeaveExistingDefault = helpers.StickyIgnoringDriftBool(pr.LeaveExistingDefault, state.LeaveExistingDefault)
 
 	if pr.Printer == nil {
 		state.Printers = nil
@@ -728,16 +774,16 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	// Mirror the assignPolicyResourceModel section-level gate — only refresh
 	// when the caller already manages the sub-block.
 	if state.ManagementAccount != nil && am.ManagementAccount != nil {
-		state.ManagementAccount.Action = helpers.PreferCurrentStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
+		state.ManagementAccount.Action = helpers.ReconcileOptionalStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
 		// managed_password is WriteOnly — framework strips from state.
 		// managed_password_wo_version round-trips as a regular Optional
 		// Int64; assignPolicyResourceModel does not overwrite the prior
 		// state value here (the API never echoes it).
-		state.ManagementAccount.ManagedPasswordLength = preferCurrentInt(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
+		state.ManagementAccount.ManagedPasswordLength = stickyIgnoringDriftInt64(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
 	}
 
 	if state.EfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
-		state.EfiPassword.OfMode = helpers.PreferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.EfiPassword.OfMode)
+		state.EfiPassword.OfMode = helpers.ReconcileOptionalStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.EfiPassword.OfMode)
 		// of_password is WriteOnly — framework strips from state.
 		// of_password_wo_version round-trips as a regular Optional Int64;
 		// the API never echoes it, so the prior state value passes through
@@ -746,36 +792,36 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 }
 
 func flattenPolicyReboot(r *proclassic.PolicyReboot, state *PolicyRestartOptionsModel) {
-	state.Message = helpers.PreferCurrentStringPointer(r.Message, state.Message)
-	state.StartupDisk = helpers.PreferCurrentStringPointer(r.StartupDisk, state.StartupDisk)
-	state.SpecifyStartup = helpers.PreferCurrentStringPointer(r.SpecifyStartup, state.SpecifyStartup)
-	state.NoUserLoggedIn = helpers.PreferCurrentStringPointer(r.NoUserLoggedIn, state.NoUserLoggedIn)
-	state.UserLoggedIn = helpers.PreferCurrentStringPointer(r.UserLoggedIn, state.UserLoggedIn)
-	state.DelayMinutes = preferCurrentInt(r.MinutesUntilReboot, state.DelayMinutes)
-	state.StartRebootTimerImmediately = helpers.PreferCurrentBoolPointer(r.StartRebootTimerImmediately, state.StartRebootTimerImmediately)
-	state.FileVault2Reboot = helpers.PreferCurrentBoolPointer(r.FileVault2Reboot, state.FileVault2Reboot)
+	state.Message = helpers.ReconcileOptionalStringPointer(r.Message, state.Message)
+	state.StartupDisk = helpers.ReconcileOptionalStringPointer(r.StartupDisk, state.StartupDisk)
+	state.SpecifyStartup = helpers.ReconcileOptionalStringPointer(r.SpecifyStartup, state.SpecifyStartup)
+	state.NoUserLoggedIn = helpers.ReconcileOptionalStringPointer(r.NoUserLoggedIn, state.NoUserLoggedIn)
+	state.UserLoggedIn = helpers.ReconcileOptionalStringPointer(r.UserLoggedIn, state.UserLoggedIn)
+	state.DelayMinutes = helpers.Int64FromIntPtr(r.MinutesUntilReboot)
+	state.StartRebootTimerImmediately = helpers.BoolPointerValueOrNull(r.StartRebootTimerImmediately)
+	state.FileVault2Reboot = helpers.BoolPointerValueOrNull(r.FileVault2Reboot)
 }
 
 func flattenPolicyMaintenance(m *proclassic.PolicyMaintenance, state *PolicyMaintenanceModel) {
-	state.UpdateInventory = helpers.PreferCurrentBoolPointer(m.Recon, state.UpdateInventory)
-	state.ResetComputerNames = helpers.PreferCurrentBoolPointer(m.ResetName, state.ResetComputerNames)
-	state.InstallCachedPackages = helpers.PreferCurrentBoolPointer(m.InstallAllCachedPackages, state.InstallCachedPackages)
-	state.FixDiskPermissions = helpers.PreferCurrentBoolPointer(m.Permissions, state.FixDiskPermissions)
-	state.FixByhostFiles = helpers.PreferCurrentBoolPointer(m.Byhost, state.FixByhostFiles)
-	state.FlushSystemCaches = helpers.PreferCurrentBoolPointer(m.SystemCache, state.FlushSystemCaches)
-	state.FlushUserCaches = helpers.PreferCurrentBoolPointer(m.UserCache, state.FlushUserCaches)
-	state.VerifyStartupDisk = helpers.PreferCurrentBoolPointer(m.Verify, state.VerifyStartupDisk)
+	state.UpdateInventory = helpers.BoolPointerValueOrNull(m.Recon)
+	state.ResetComputerNames = helpers.BoolPointerValueOrNull(m.ResetName)
+	state.InstallCachedPackages = helpers.BoolPointerValueOrNull(m.InstallAllCachedPackages)
+	state.FixDiskPermissions = helpers.BoolPointerValueOrNull(m.Permissions)
+	state.FixByhostFiles = helpers.BoolPointerValueOrNull(m.Byhost)
+	state.FlushSystemCaches = helpers.BoolPointerValueOrNull(m.SystemCache)
+	state.FlushUserCaches = helpers.BoolPointerValueOrNull(m.UserCache)
+	state.VerifyStartupDisk = helpers.BoolPointerValueOrNull(m.Verify)
 }
 
 func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *PolicyFilesAndProcessesModel) {
-	state.SearchByPath = helpers.PreferCurrentStringPointer(fp.SearchByPath, state.SearchByPath)
-	state.DeleteFileIfFound = helpers.PreferCurrentBoolPointer(fp.DeleteFile, state.DeleteFileIfFound)
-	state.SearchByFilename = helpers.PreferCurrentStringPointer(fp.LocateFile, state.SearchByFilename)
-	state.UpdateLocateDatabase = helpers.PreferCurrentBoolPointer(fp.UpdateLocateDatabase, state.UpdateLocateDatabase)
-	state.SearchBySpotlight = helpers.PreferCurrentStringPointer(fp.SpotlightSearch, state.SearchBySpotlight)
-	state.SearchForProcess = helpers.PreferCurrentStringPointer(fp.SearchForProcess, state.SearchForProcess)
-	state.KillProcessIfFound = helpers.PreferCurrentBoolPointer(fp.KillProcess, state.KillProcessIfFound)
-	state.ExecuteCommand = helpers.PreferCurrentStringPointer(fp.RunCommand, state.ExecuteCommand)
+	state.SearchByPath = helpers.ReconcileOptionalStringPointer(fp.SearchByPath, state.SearchByPath)
+	state.DeleteFileIfFound = helpers.BoolPointerValueOrNull(fp.DeleteFile)
+	state.SearchByFilename = helpers.ReconcileOptionalStringPointer(fp.LocateFile, state.SearchByFilename)
+	state.UpdateLocateDatabase = helpers.BoolPointerValueOrNull(fp.UpdateLocateDatabase)
+	state.SearchBySpotlight = helpers.ReconcileOptionalStringPointer(fp.SpotlightSearch, state.SearchBySpotlight)
+	state.SearchForProcess = helpers.ReconcileOptionalStringPointer(fp.SearchForProcess, state.SearchForProcess)
+	state.KillProcessIfFound = helpers.BoolPointerValueOrNull(fp.KillProcess)
+	state.ExecuteCommand = helpers.ReconcileOptionalStringPointer(fp.RunCommand, state.ExecuteCommand)
 }
 
 // flattenPolicyUserInteraction collapses the wire's three-field deferral
@@ -784,8 +830,8 @@ func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *Pol
 // here (server enforces the cross-field invariants on every PUT, so the
 // stored values are always self-consistent).
 func flattenPolicyUserInteraction(u *proclassic.PolicyUserInteraction, state *PolicyUserInteractionModel) {
-	state.StartMessage = helpers.PreferCurrentStringPointer(u.MessageStart, state.StartMessage)
-	state.CompleteMessage = helpers.PreferCurrentStringPointer(u.MessageFinish, state.CompleteMessage)
+	state.StartMessage = helpers.ReconcileOptionalStringPointer(u.MessageStart, state.StartMessage)
+	state.CompleteMessage = helpers.ReconcileOptionalStringPointer(u.MessageFinish, state.CompleteMessage)
 
 	defer_ := false
 	if u.AllowUsersToDefer != nil {
@@ -819,12 +865,22 @@ func flattenPolicyUserInteraction(u *proclassic.PolicyUserInteraction, state *Po
 	}
 }
 
+// flattenPolicyDiskEncryption maps the wire <disk_encryption> block onto the
+// model. The whole block keeps a sticky read because it is discriminator-gated
+// and the echoed element set depends on `action`: with action=apply the GET
+// carries action, disk_encryption_configuration_id and auth_restart and omits
+// both remediate_* elements; with action=remediate it carries action and
+// remediate_key_type and omits the other three;
+// remediate_disk_encryption_configuration_id is omitted in both modes. A
+// wire-authoritative read would therefore null whichever configured leaf the
+// active mode does not echo. Wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06; see issue #387.
 func flattenPolicyDiskEncryption(d *proclassic.PolicyDiskEncryption, state *PolicyDiskEncryptionModel) {
-	state.Action = helpers.PreferCurrentStringPointer(d.Action, state.Action)
-	state.DiskEncryptionConfigurationID = preferCurrentInt(d.DiskEncryptionConfigurationID, state.DiskEncryptionConfigurationID)
-	state.AuthRestart = helpers.PreferCurrentBoolPointer(d.AuthRestart, state.AuthRestart)
-	state.RemediateKeyType = helpers.PreferCurrentStringPointer(d.RemediateKeyType, state.RemediateKeyType)
-	state.RemediateDiskEncryptionConfigurationID = preferCurrentInt(d.RemediateDiskEncryptionConfigurationID, state.RemediateDiskEncryptionConfigurationID)
+	state.Action = helpers.StickyIgnoringDriftString(d.Action, state.Action)
+	state.DiskEncryptionConfigurationID = stickyIgnoringDriftInt64(d.DiskEncryptionConfigurationID, state.DiskEncryptionConfigurationID)
+	state.AuthRestart = helpers.StickyIgnoringDriftBool(d.AuthRestart, state.AuthRestart)
+	state.RemediateKeyType = helpers.StickyIgnoringDriftString(d.RemediateKeyType, state.RemediateKeyType)
+	state.RemediateDiskEncryptionConfigurationID = stickyIgnoringDriftInt64(d.RemediateDiskEncryptionConfigurationID, state.RemediateDiskEncryptionConfigurationID)
 }
 
 // ---- small helpers -------------------------------------------------------------

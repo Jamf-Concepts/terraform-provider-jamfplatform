@@ -62,10 +62,12 @@
 //     emitting every merged category explicitly. Omitted categories stay owned
 //     by the admin UI; declared `[]` clears. See STYLE_GUIDE.md §Scope helper
 //     omission semantics.
-//   - GET does NOT echo <software_title_configuration_id> (wire-probed): it is a
-//     create-time-only path parameter. Read therefore preserves the configured
-//     value (preferCurrent*); on import it cannot be reconstructed, so it lands
-//     in the acceptance ImportStateVerifyIgnore list.
+//   - GET DOES echo <software_title_configuration_id>, on both the POST->GET and
+//     the PUT->GET path (re-probed against Jamf Pro 11.31.1 on 2026-09-06,
+//     correcting an earlier recorded finding that it did not). It is a
+//     create-time-only path parameter but a readable field, so Read adopts the
+//     wire value and drift on it is reported. It stays in the acceptance
+//     ImportStateVerifyIgnore list only because removing it is untested here.
 //   - PUT returns 201 with an empty body — Update must GET to refresh state.
 //   - DELETE returns 200; a repeat DELETE / GET of a removed policy returns 404,
 //     so Read and Delete self-heal via helpers.IsNotFoundError.

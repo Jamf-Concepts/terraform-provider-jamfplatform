@@ -72,18 +72,18 @@ func flattenGeneral(g *proclassic.LicensedSoftwareGeneral, state *LicensedSoftwa
 		return
 	}
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
-	state.Publisher = preferCurrentStringPointer(g.Publisher, state.Publisher)
-	state.Platform = preferCurrentStringPointer(g.Platform, state.Platform)
-	state.Notes = preferCurrentStringPointer(g.Notes, state.Notes)
-	state.SendEmailOnViolation = helpers.PreferCurrentBoolPointer(g.SendEmailOnViolation, state.SendEmailOnViolation)
-	state.RemoveTitlesFromInventoryReports = helpers.PreferCurrentBoolPointer(g.RemoveTitlesFromInventoryReports, state.RemoveTitlesFromInventoryReports)
-	state.ExcludeTitlesPurchasedFromAppStore = helpers.PreferCurrentBoolPointer(g.ExcludeTitlesPurchasedFromAppStore, state.ExcludeTitlesPurchasedFromAppStore)
+	state.Publisher = helpers.ReconcileOptionalStringPointer(g.Publisher, state.Publisher)
+	state.Platform = helpers.ReconcileOptionalStringPointer(g.Platform, state.Platform)
+	state.Notes = helpers.ReconcileOptionalStringPointer(g.Notes, state.Notes)
+	state.SendEmailOnViolation = helpers.BoolPointerValueOrNull(g.SendEmailOnViolation)
+	state.RemoveTitlesFromInventoryReports = helpers.BoolPointerValueOrNull(g.RemoveTitlesFromInventoryReports)
+	state.ExcludeTitlesPurchasedFromAppStore = helpers.BoolPointerValueOrNull(g.ExcludeTitlesPurchasedFromAppStore)
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -102,9 +102,9 @@ func flattenDefinitions(wire []proclassic.LicensedSoftwareDefintion, prior []Lic
 			cur = prior[i]
 		}
 		out = append(out, LicensedSoftwareDefinitionModel{
-			Name:        preferCurrentStringPointer(d.Name, cur.Name),
-			Version:     preferCurrentStringPointer(d.Version, cur.Version),
-			CompareType: preferCurrentStringPointer(d.CompareType, cur.CompareType),
+			Name:        helpers.ReconcileOptionalStringPointer(d.Name, cur.Name),
+			Version:     helpers.ReconcileOptionalStringPointer(d.Version, cur.Version),
+			CompareType: helpers.ReconcileOptionalStringPointer(d.CompareType, cur.CompareType),
 		})
 	}
 	return out
@@ -126,13 +126,13 @@ func flattenLicenses(ctx context.Context, wire []proclassic.LicensedSoftwareLice
 		}
 
 		lm := LicensedSoftwareLicenseModel{
-			SerialNumber1:    preferCurrentStringPointer(w.SerialNumber1, cur.SerialNumber1),
-			SerialNumber2:    preferCurrentStringPointer(w.SerialNumber2, cur.SerialNumber2),
-			OrganizationName: preferCurrentStringPointer(w.OrganizationName, cur.OrganizationName),
-			RegisteredTo:     preferCurrentStringPointer(w.RegisteredTo, cur.RegisteredTo),
-			LicenseType:      preferCurrentStringPointer(w.LicenseType, cur.LicenseType),
+			SerialNumber1:    helpers.ReconcileOptionalStringPointer(w.SerialNumber1, cur.SerialNumber1),
+			SerialNumber2:    helpers.ReconcileOptionalStringPointer(w.SerialNumber2, cur.SerialNumber2),
+			OrganizationName: helpers.ReconcileOptionalStringPointer(w.OrganizationName, cur.OrganizationName),
+			RegisteredTo:     helpers.ReconcileOptionalStringPointer(w.RegisteredTo, cur.RegisteredTo),
+			LicenseType:      helpers.ReconcileOptionalStringPointer(w.LicenseType, cur.LicenseType),
 			LicenseCount:     int64ValueOrZero(w.LicenseCount),
-			Notes:            preferCurrentStringPointer(w.Notes, cur.Notes),
+			Notes:            helpers.ReconcileOptionalStringPointer(w.Notes, cur.Notes),
 			Attachments:      flattenAttachments(ctx, attachmentSlice(w.Attachments), diags),
 		}
 
@@ -161,18 +161,18 @@ func flattenPurchasing(w *proclassic.LicensedSoftwareLicensesLicenseItemPurchasi
 	}
 	return &LicensedSoftwarePurchasingModel{
 		LicenseTerm:         licenseTermValue(licenseTermFromBools(w.IsPerpetual, w.IsAnnual), c.LicenseTerm),
-		PoNumber:            preferCurrentStringPointer(w.PoNumber, c.PoNumber),
-		PoDate:              preferCurrentStringPointer(w.PoDate, c.PoDate),
+		PoNumber:            helpers.ReconcileOptionalStringPointer(w.PoNumber, c.PoNumber),
+		PoDate:              helpers.ReconcileOptionalStringPointer(w.PoDate, c.PoDate),
 		PoDateEpoch:         int64ValueOrNullZero(w.PoDateEpoch),
 		PoDateUtc:           stringValueOrNullEmpty(w.PoDateUtc),
-		Vendor:              preferCurrentStringPointer(w.Vendor, c.Vendor),
-		LicenseExpires:      preferCurrentStringPointer(w.LicenseExpires, c.LicenseExpires),
+		Vendor:              helpers.ReconcileOptionalStringPointer(w.Vendor, c.Vendor),
+		LicenseExpires:      helpers.ReconcileOptionalStringPointer(w.LicenseExpires, c.LicenseExpires),
 		LicenseExpiresEpoch: int64ValueOrNullZero(w.LicenseExpiresEpoch),
 		LicenseExpiresUtc:   stringValueOrNullEmpty(w.LicenseExpiresUtc),
-		PurchasePrice:       preferCurrentStringPointer(w.PurchasePrice, c.PurchasePrice),
+		PurchasePrice:       helpers.ReconcileOptionalStringPointer(w.PurchasePrice, c.PurchasePrice),
 		LifeExpectancy:      int64ValueOrNullZero(w.LifeExpectancy),
-		PurchasingAccount:   preferCurrentStringPointer(w.PurchasingAccount, c.PurchasingAccount),
-		PurchasingContact:   preferCurrentStringPointer(w.PurchasingContact, c.PurchasingContact),
+		PurchasingAccount:   helpers.ReconcileOptionalStringPointer(w.PurchasingAccount, c.PurchasingAccount),
+		PurchasingContact:   helpers.ReconcileOptionalStringPointer(w.PurchasingContact, c.PurchasingContact),
 	}
 }
 
