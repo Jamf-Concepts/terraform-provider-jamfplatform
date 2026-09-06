@@ -23,10 +23,13 @@
 package ebook_test
 
 import (
+	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
@@ -425,6 +428,396 @@ resource "jamfplatform_pro_ebook" "test" {
 				// ownership). Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}
+
+// ebookOmitRetainsFixtures declares the tenant objects the omit-retains configs
+// reference: a department, building, static computer group and static mobile
+// device group for the targets tab, a network segment and a second department
+// and building for the exclusions tab, a network segment for the limitations
+// tab, and a category shared by general.category_id and the Self Service
+// category set. Every ID-keyed category the test covers therefore carries a
+// real, distinct member. The Platform device groups bridge to the classic
+// scope through jamf_pro_id. class_ids is not covered: there is no
+// jamfplatform_pro_class resource to mint a class id.
+func ebookOmitRetainsFixtures(suffix string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "tf-acc-ebook-omit-cat-%[1]s"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_department" "target" {
+			name = "tf-acc-ebook-omit-dept-target-%[1]s"
+		}
+
+		resource "jamfplatform_pro_department" "excluded" {
+			name = "tf-acc-ebook-omit-dept-excluded-%[1]s"
+		}
+
+		resource "jamfplatform_pro_building" "target" {
+			name = "tf-acc-ebook-omit-bldg-target-%[1]s"
+		}
+
+		resource "jamfplatform_pro_building" "excluded" {
+			name = "tf-acc-ebook-omit-bldg-excluded-%[1]s"
+		}
+
+		resource "jamfplatform_pro_network_segment" "limited" {
+			name             = "tf-acc-ebook-omit-seg-limited-%[1]s"
+			starting_address = "10.98.0.0"
+			ending_address   = "10.98.0.255"
+		}
+
+		resource "jamfplatform_pro_network_segment" "excluded" {
+			name             = "tf-acc-ebook-omit-seg-excluded-%[1]s"
+			starting_address = "10.98.1.0"
+			ending_address   = "10.98.1.255"
+		}
+
+		resource "jamfplatform_device_group" "computers" {
+			name        = "tf-acc-ebook-omit-computers-%[1]s"
+			description = "tf-acc omit-retains computer scope fixture"
+			group_type  = "static"
+			device_type = "computer"
+		}
+
+		resource "jamfplatform_device_group" "mobile" {
+			name        = "tf-acc-ebook-omit-mobile-%[1]s"
+			description = "tf-acc omit-retains mobile scope fixture"
+			group_type  = "static"
+			device_type = "mobile"
+		}
+	`, suffix)
+}
+
+// ebookOmitRetainsGeneral is the general block every omit-retains step shares.
+// It carries non-default Optional+Computed values (author, category_id) so the
+// wire check can tell a retained general from a defaulted one.
+func ebookOmitRetainsGeneral(name string) string {
+	return fmt.Sprintf(`
+			general = {
+				name            = %q
+				author          = "Omit Retains"
+				url             = "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf"
+				file_type       = "PDF"
+				version         = "1.0"
+				deployment_type = "Make Available in Self Service"
+				category_id     = jamfplatform_pro_category.omit.id
+			}
+	`, name)
+}
+
+// ebookOmitRetainsTargets is the scope.targets sub-block every omit-retains
+// step that declares a scope shares: the computer and mobile halves of the
+// dual-target union each carry a real group, plus a department and a building.
+const ebookOmitRetainsTargets = `
+				targets = {
+					department_ids          = [jamfplatform_pro_department.target.id]
+					building_ids            = [jamfplatform_pro_building.target.id]
+					computer_group_ids      = [jamfplatform_device_group.computers.jamf_pro_id]
+					mobile_device_group_ids = [jamfplatform_device_group.mobile.jamf_pro_id]
+				}
+`
+
+// ebookOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: all three scope tabs, a self_service block with every wire-echoed
+// leaf set to a distinctive value, and a Self Service category set, so a server that stopped
+// retaining an omitted element is caught on content, not on presence.
+func ebookOmitRetainsConfig(name, suffix string) string {
+	return ebookOmitRetainsFixtures(suffix) + `
+		resource "jamfplatform_pro_ebook" "test" {
+` + ebookOmitRetainsGeneral(name) + `
+			scope = {
+` + ebookOmitRetainsTargets + `
+				limitations = {
+					network_segment_ids                   = [jamfplatform_pro_network_segment.limited.id]
+					directory_service_or_local_user_names = ["tf-acc-omit-limited-user"]
+				}
+				exclusions = {
+					department_ids                        = [jamfplatform_pro_department.excluded.id]
+					building_ids                          = [jamfplatform_pro_building.excluded.id]
+					network_segment_ids                   = [jamfplatform_pro_network_segment.excluded.id]
+					directory_service_or_local_user_names = ["tf-acc-omit-excluded-user"]
+				}
+			}
+			self_service = {
+				display_name                    = "Omit-retains display name"
+				install_button_text             = "Retain me"
+				self_service_description        = "Omit-retains contract description."
+				force_users_to_view_description = true
+				feature_on_main_page            = true
+				categories = [
+					{ id = jamfplatform_pro_category.omit.id, display_in = true, feature_in = true }
+				]
+			}
+		}
+	`
+}
+
+// ebookOmitRetainsParentsOnlyConfig keeps the parents that have gated children
+// but drops the children: scope keeps targets and loses limitations and
+// exclusions, self_service loses its categories and the Optional+Computed
+// display_name. The PUT re-emits the scope from the granular merge with
+// the two dropped tabs folded in from the live object, and carries a
+// self_service element with no self_service_categories at all.
+func ebookOmitRetainsParentsOnlyConfig(name, suffix string) string {
+	return ebookOmitRetainsFixtures(suffix) + `
+		resource "jamfplatform_pro_ebook" "test" {
+` + ebookOmitRetainsGeneral(name) + `
+			scope = {
+` + ebookOmitRetainsTargets + `
+			}
+			self_service = {
+				install_button_text             = "Retain me"
+				self_service_description        = "Omit-retains contract description."
+				force_users_to_view_description = true
+				feature_on_main_page            = true
+			}
+		}
+	`
+}
+
+// ebookOmitRetainsGeneralOnlyConfig drops every optional block, so the PUT
+// carries <general> alone. The fixtures stay declared so the server's retained
+// scope and categories keep pointing at live objects, and depends_on keeps the
+// destroy order the dropped references no longer imply: the Platform
+// device-groups API refuses to delete a group the retained scope still names
+// (422 HAS_DEPENDENCIES), so the ebook must go before its groups.
+func ebookOmitRetainsGeneralOnlyConfig(name, suffix string) string {
+	return ebookOmitRetainsFixtures(suffix) + `
+		resource "jamfplatform_pro_ebook" "test" {
+			depends_on = [jamfplatform_device_group.computers, jamfplatform_device_group.mobile]
+` + ebookOmitRetainsGeneral(name) + `
+		}
+	`
+}
+
+// ebookStateAttr returns one attribute of a resource in the Terraform state, so
+// a wire assertion can compare against the id a fixture was actually allocated.
+func ebookStateAttr(s *terraform.State, addr, key string) (string, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return "", fmt.Errorf("fixture %s not found in state", addr)
+	}
+	v, ok := rs.Primary.Attributes[key]
+	if !ok || v == "" {
+		return "", fmt.Errorf("fixture %s has no %s in state", addr, key)
+	}
+	return v, nil
+}
+
+// ebookRequireSingleIDName asserts a classic id/name collection holds exactly
+// one member carrying the wanted id.
+func ebookRequireSingleIDName(field, want string, items *[]proclassic.IDName) error {
+	if items == nil || len(*items) != 1 {
+		return fmt.Errorf("%s: want exactly one member, got %+v", field, items)
+	}
+	return testhelpers.RequireEqual(field+"[0].id", want, strconv.Itoa(testhelpers.Deref((*items)[0].ID)))
+}
+
+// ebookRequireSingleID is the generic sibling of ebookRequireSingleIDName for
+// the ebook scope collections whose item type is not IDName.
+func ebookRequireSingleID[T any](field, want string, items *[]T, id func(T) *int) error {
+	if items == nil || len(*items) != 1 {
+		return fmt.Errorf("%s: want exactly one member, got %+v", field, items)
+	}
+	return testhelpers.RequireEqual(field+"[0].id", want, strconv.Itoa(testhelpers.Deref(id((*items)[0]))))
+}
+
+// ebookRetainedOnServer asserts the server's copy still carries every value the
+// omit-retains config declared in its first step. The fixture ids are read from
+// the Terraform state rather than assumed, so the check compares against what
+// the tenant allocated.
+func ebookRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return func(s *terraform.State) error {
+		ids := map[string]string{}
+		for _, f := range []struct{ key, addr, attr string }{
+			{"category", "jamfplatform_pro_category.omit", "id"},
+			{"department.target", "jamfplatform_pro_department.target", "id"},
+			{"department.excluded", "jamfplatform_pro_department.excluded", "id"},
+			{"building.target", "jamfplatform_pro_building.target", "id"},
+			{"building.excluded", "jamfplatform_pro_building.excluded", "id"},
+			{"segment.limited", "jamfplatform_pro_network_segment.limited", "id"},
+			{"segment.excluded", "jamfplatform_pro_network_segment.excluded", "id"},
+			{"group.computers", "jamfplatform_device_group.computers", "jamf_pro_id"},
+			{"group.mobile", "jamfplatform_device_group.mobile", "jamf_pro_id"},
+		} {
+			v, err := ebookStateAttr(s, f.addr, f.attr)
+			if err != nil {
+				return err
+			}
+			ids[f.key] = v
+		}
+		return testhelpers.CheckLiveObject(ebookResourceAddr,
+			func(ctx context.Context, id string) (*proclassic.Ebook, error) {
+				return c.GetEbookByID(ctx, id)
+			},
+			func(e *proclassic.Ebook) error {
+				if e.General == nil || e.General.Category == nil {
+					return fmt.Errorf("general.category: absent")
+				}
+				if err := testhelpers.RequireEqual("general.author", "Omit Retains", testhelpers.Deref(e.General.Author)); err != nil {
+					return err
+				}
+				if err := testhelpers.RequireEqual("general.category.id", ids["category"], strconv.Itoa(testhelpers.Deref(e.General.Category.ID))); err != nil {
+					return err
+				}
+				if err := ebookScopeRetained(e.Scope, ids); err != nil {
+					return err
+				}
+				return ebookSelfServiceRetained(e.SelfService, ids["category"])
+			})(s)
+	}
+}
+
+// ebookScopeRetained checks every scope category the omit-retains config
+// declared across all three tabs.
+func ebookScopeRetained(sc *proclassic.EbookScope, ids map[string]string) error {
+	if sc == nil {
+		return fmt.Errorf("scope: absent")
+	}
+	if sc.Departments == nil || sc.Buildings == nil || sc.ComputerGroups == nil || sc.MobileDeviceGroups == nil {
+		return fmt.Errorf("scope.targets: a category is absent: %+v", sc)
+	}
+	if err := ebookRequireSingleIDName("scope.targets.departments", ids["department.target"], sc.Departments.Department); err != nil {
+		return err
+	}
+	if err := ebookRequireSingleIDName("scope.targets.buildings", ids["building.target"], sc.Buildings.Building); err != nil {
+		return err
+	}
+	if err := ebookRequireSingleIDName("scope.targets.computer_groups", ids["group.computers"], sc.ComputerGroups.ComputerGroup); err != nil {
+		return err
+	}
+	if err := ebookRequireSingleIDName("scope.targets.mobile_device_groups", ids["group.mobile"], sc.MobileDeviceGroups.MobileDeviceGroup); err != nil {
+		return err
+	}
+
+	l := sc.Limitations
+	if l == nil || l.NetworkSegments == nil || l.Users == nil {
+		return fmt.Errorf("scope.limitations: a category is absent: %+v", l)
+	}
+	if err := ebookRequireSingleIDName("scope.limitations.network_segments", ids["segment.limited"], l.NetworkSegments.NetworkSegment); err != nil {
+		return err
+	}
+	if l.Users.User == nil || len(*l.Users.User) != 1 {
+		return fmt.Errorf("scope.limitations.users: want exactly one user, got %+v", l.Users)
+	}
+	if err := testhelpers.RequireEqual("scope.limitations.users[0].name", "tf-acc-omit-limited-user", testhelpers.Deref((*l.Users.User)[0].Name)); err != nil {
+		return err
+	}
+
+	x := sc.Exclusions
+	if x == nil || x.Departments == nil || x.Buildings == nil || x.NetworkSegments == nil || x.Users == nil {
+		return fmt.Errorf("scope.exclusions: a category is absent: %+v", x)
+	}
+	if err := ebookRequireSingleIDName("scope.exclusions.departments", ids["department.excluded"], x.Departments.Department); err != nil {
+		return err
+	}
+	if err := ebookRequireSingleIDName("scope.exclusions.buildings", ids["building.excluded"], x.Buildings.Building); err != nil {
+		return err
+	}
+	if err := ebookRequireSingleID("scope.exclusions.network_segments", ids["segment.excluded"], x.NetworkSegments.NetworkSegment,
+		func(i proclassic.EbookScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int { return i.ID }); err != nil {
+		return err
+	}
+	if x.Users.User == nil || len(*x.Users.User) != 1 {
+		return fmt.Errorf("scope.exclusions.users: want exactly one user, got %+v", x.Users)
+	}
+	return testhelpers.RequireEqual("scope.exclusions.users[0].name", "tf-acc-omit-excluded-user", testhelpers.Deref((*x.Users.User)[0].Name))
+}
+
+// ebookSelfServiceRetained checks every self_service leaf and the category set
+// the omit-retains config declared. The notification_* leaves are deliberately
+// not declared or checked: the /ebooks GET never echoes <notification>,
+// <notification_subject> or <notification_message> (wire-observed 2026-09-06 —
+// the POST carried all three, the GET after it carried none), so their storage
+// cannot be witnessed on the wire and PreferCurrent is all that holds them in
+// state.
+func ebookSelfServiceRetained(ss *proclassic.EbookSelfService, categoryID string) error {
+	if ss == nil {
+		return fmt.Errorf("self_service: absent")
+	}
+	if err := testhelpers.RequireEqual("self_service.display_name", "Omit-retains display name", testhelpers.Deref(ss.SelfServiceDisplayName)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("self_service.install_button_text", "Retain me", testhelpers.Deref(ss.InstallButtonText)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("self_service.self_service_description", "Omit-retains contract description.", testhelpers.Deref(ss.SelfServiceDescription)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("self_service.force_users_to_view_description", true, testhelpers.Deref(ss.ForceUsersToViewDescription)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("self_service.feature_on_main_page", true, testhelpers.Deref(ss.FeatureOnMainPage)); err != nil {
+		return err
+	}
+	if ss.SelfServiceCategories == nil || ss.SelfServiceCategories.Category == nil || len(*ss.SelfServiceCategories.Category) != 1 {
+		return fmt.Errorf("self_service.categories: want exactly one category, got %+v", ss.SelfServiceCategories)
+	}
+	cat := (*ss.SelfServiceCategories.Category)[0]
+	if err := testhelpers.RequireEqual("self_service.categories[0].id", categoryID, strconv.Itoa(testhelpers.Deref(cat.ID))); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("self_service.categories[0].display_in", true, testhelpers.Deref(cat.DisplayIn)); err != nil {
+		return err
+	}
+	return testhelpers.RequireEqual("self_service.categories[0].feature_in", true, testhelpers.Deref(cat.FeatureIn))
+}
+
+// TestAccResource_ProEbook_OmittedBlocksRetained pins the omit-retains contract
+// the plan output cannot show: dropping scope.limitations, scope.exclusions and
+// self_service.categories, then the whole scope and self_service, from config
+// plans them as removed, but the classic PUT omits the elements and the server
+// keeps every value. Step 2 keeps scope.targets so the scope goes through the
+// granular read-merge-write, which must fold the two live tabs back in rather
+// than emitting them empty, and keeps self_service without categories so the
+// element is sent with no self_service_categories at all. Step 3 drops both
+// blocks so the PUT carries <general> alone. Each step's implicit post-apply
+// plan must be empty, which is what makes the contract usable. If this test
+// fails on content, the endpoint no longer merges and nothing that suppresses
+// the removal plan may ship for this resource. CheckDestroy is the file's
+// documented no-op: the /ebooks delete is asynchronous and GET-sensitive.
+func TestAccResource_ProEbook_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ebook-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEbookDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: ebookOmitRetainsConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ebookResourceAddr, "self_service.categories.#", "1"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "1"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.exclusions.department_ids.#", "1"),
+					ebookRetainedOnServer(t),
+				),
+			},
+			{
+				Config: ebookOmitRetainsParentsOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(ebookResourceAddr, "self_service.categories.#"),
+					resource.TestCheckNoResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#"),
+					resource.TestCheckNoResourceAttr(ebookResourceAddr, "scope.exclusions.department_ids.#"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.targets.department_ids.#", "1"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "self_service.display_name", "Omit-retains display name"),
+					ebookRetainedOnServer(t),
+				),
+			},
+			{
+				Config: ebookOmitRetainsGeneralOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(ebookResourceAddr, "scope.targets.department_ids.#"),
+					resource.TestCheckNoResourceAttr(ebookResourceAddr, "self_service.install_button_text"),
+					ebookRetainedOnServer(t),
+				),
 			},
 		},
 	})

@@ -13,10 +13,12 @@ package account_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
@@ -201,6 +203,228 @@ func TestAccResource_ProAccount_BaseUpdate(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "password_wo_version", "2"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "full_name", "TF Acc Base Renamed"),
+				),
+			},
+		},
+	})
+}
+
+const accountOmitRetainsAddr = "jamfplatform_pro_account.omit"
+
+// accountOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: three privilege categories plus the Optional+Computed site_id and
+// force_password_change, each carrying a distinctive value so a server that
+// stopped retaining an omitted element is caught on content, not presence.
+func accountOmitRetainsConfig(suffix string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "omit" {
+  username      = "tf-acc-acct-omit-%[1]s"
+  full_name     = "TF Acc Account Omit"
+  email_address = "tf-acc-acct-omit-%[1]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  site_id               = -1
+  force_password_change = true
+
+  password            = "Pr0bePassw0rd-%[1]s"
+  password_wo_version = 1
+
+  privileges = {
+    jamf_pro_server_objects  = ["Read Buildings", "Read Departments"]
+    jamf_pro_server_settings = ["Read SMTP Server"]
+    jamf_pro_server_actions  = ["Send Computer Remote Lock Command"]
+  }
+}
+`, suffix)
+}
+
+// accountOmitRetainsObjectsOnlyConfig keeps the privileges block but declares
+// only jamf_pro_server_objects, and drops site_id and force_password_change, so
+// the classic PUT carries a <privileges> element missing two categories and the
+// Pro side is not written at all.
+func accountOmitRetainsObjectsOnlyConfig(suffix string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "omit" {
+  username      = "tf-acc-acct-omit-%[1]s"
+  full_name     = "TF Acc Account Omit"
+  email_address = "tf-acc-acct-omit-%[1]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  password            = "Pr0bePassw0rd-%[1]s"
+  password_wo_version = 1
+
+  privileges = {
+    jamf_pro_server_objects = ["Read Buildings", "Read Departments"]
+  }
+}
+`, suffix)
+}
+
+// accountOmitRetainsHeaderOnlyConfig drops every optional block, so no classic
+// PUT is issued at all and the Pro side sees no base-field change.
+func accountOmitRetainsHeaderOnlyConfig(suffix string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "omit" {
+  username      = "tf-acc-acct-omit-%[1]s"
+  full_name     = "TF Acc Account Omit"
+  email_address = "tf-acc-acct-omit-%[1]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  password            = "Pr0bePassw0rd-%[1]s"
+  password_wo_version = 1
+}
+`, suffix)
+}
+
+// hasPrivilege reports whether a classic privilege category carries want. The
+// server silently expands a submitted grid with dependency privileges, so the
+// retained-on-server assertion is containment, never equality.
+func hasPrivilege(category *[]string, want string) bool {
+	if category == nil {
+		return false
+	}
+	return slices.Contains(*category, want)
+}
+
+// privilegeList renders a classic privilege category for a diagnostic, so a
+// missing category reads as "absent" rather than a struct pointer.
+func privilegeList[T any](category *T, privileges func(*T) *[]string) []string {
+	if category == nil {
+		return nil
+	}
+	return testhelpers.Deref(privileges(category))
+}
+
+// liveAccount is the server's copy of an account read from both sides the
+// resource writes: the classic /accounts/userid object carries the privilege
+// grid and force_password_change, while site is reported only by Pro v1 (the
+// classic response for a Full Access account carries no <site> element,
+// wire-observed 2026-09-06 on Jamf Pro 11.31.1).
+type liveAccount struct {
+	classic *proclassic.Account
+	base    *pro.UserAccount
+}
+
+// accountRetainedOnServer asserts the server's copy still carries every
+// privilege, the forced password change and the site the omit-retains config
+// declared in its first step.
+func accountRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	sdk := testhelpers.NewAcceptanceClient(t)
+	classic := proclassic.New(sdk)
+	base := pro.New(sdk)
+	return testhelpers.CheckLiveObject(accountOmitRetainsAddr,
+		func(ctx context.Context, id string) (liveAccount, error) {
+			c, err := classic.GetAccountByUserID(ctx, id)
+			if err != nil {
+				return liveAccount{}, err
+			}
+			b, err := base.GetAccountV1(ctx, id)
+			if err != nil {
+				return liveAccount{}, err
+			}
+			return liveAccount{classic: c, base: b}, nil
+		},
+		func(got liveAccount) error {
+			a := got.classic
+			if a.Privileges == nil {
+				return fmt.Errorf("privileges: absent")
+			}
+			if a.Privileges.JssObjects == nil {
+				return fmt.Errorf("privileges.jamf_pro_server_objects: absent")
+			}
+			for _, want := range []string{"Read Buildings", "Read Departments"} {
+				if !hasPrivilege(a.Privileges.JssObjects.Privilege, want) {
+					return fmt.Errorf("privileges.jamf_pro_server_objects: want %q, got %v", want, testhelpers.Deref(a.Privileges.JssObjects.Privilege))
+				}
+			}
+			if a.Privileges.JssSettings == nil || !hasPrivilege(a.Privileges.JssSettings.Privilege, "Read SMTP Server") {
+				return fmt.Errorf("privileges.jamf_pro_server_settings: want %q, got %v", "Read SMTP Server", privilegeList(a.Privileges.JssSettings, func(c *proclassic.AccountPrivilegesJssSettings) *[]string { return c.Privilege }))
+			}
+			if a.Privileges.JssActions == nil || !hasPrivilege(a.Privileges.JssActions.Privilege, "Send Computer Remote Lock Command") {
+				return fmt.Errorf("privileges.jamf_pro_server_actions: want %q, got %v", "Send Computer Remote Lock Command", privilegeList(a.Privileges.JssActions, func(c *proclassic.AccountPrivilegesJssActions) *[]string { return c.Privilege }))
+			}
+			if err := testhelpers.RequireEqual("force_password_change", true, testhelpers.Deref(a.ForcePasswordChange)); err != nil {
+				return err
+			}
+			if got.base.SiteID == nil {
+				return fmt.Errorf("site_id: absent")
+			}
+			return testhelpers.RequireEqual("site_id", -1, *got.base.SiteID)
+		})
+}
+
+// TestAccResource_ProAccount_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping two privilege categories, the
+// Optional+Computed site_id and force_password_change, and finally the whole
+// privileges block from config plans them as removed, but the classic
+// /accounts/userid PUT omits the elements and the server keeps every value.
+// Step 2 keeps the privileges block with one category so the PUT carries a
+// partial <privileges>, exercising the category-level merge the resource
+// documents; step 3 drops privileges too so no classic write is issued and the
+// Pro side sees no base-field change. Each step's implicit post-apply plan must
+// be empty, which is what makes the contract usable.
+//
+// Step 2 fails today, and the failure is the resource's, not the server's: it
+// builds the <privileges> element through the same accountprivileges.ToMap
+// per-category omission as jamfplatform_pro_account_group, and the server
+// treats a sent <privileges> as a whole-grid replace, so the two undeclared
+// categories are emptied while Read's null-means-unmanaged gate hides the loss
+// (issue #385). Wire-probed 2026-09-06 on Jamf Pro 11.31.1 through the SDK: a
+// PUT /accounts/userid/{id} carrying only <jss_objects> left jss_settings as
+// the server-injected "Read License Information" alone and jss_actions empty.
+// The whole-block omission in step 3 retains correctly, verified by running
+// the steps in the order full, header-only, objects-only: the header-only step
+// issued no classic PUT, the post-apply plan was empty and every step-1 value
+// survived. The test stays written as the contract the resource claims, and
+// skips until #385 is fixed, so that the fix is proven by deleting the skip
+// rather than by rewriting the assertion.
+// skipUntilPrivilegeCategoryMergeIsFixed gates the omit-retains test on issue
+// #385. Delete this function, and the call to it, when the resource either
+// emulates the category-level retention it promises or stops promising it.
+func skipUntilPrivilegeCategoryMergeIsFixed(t *testing.T) {
+	t.Helper()
+	t.Skip("jamfplatform_pro_account sends a partial <privileges> that the server treats as a full replace, wiping undeclared categories; see issue #385")
+}
+
+func TestAccResource_ProAccount_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	skipUntilPrivilegeCategoryMergeIsFixed(t)
+	suffix := testhelpers.RunSuffix()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAccountDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: accountOmitRetainsConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_objects.#", "2"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_settings.#", "1"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_actions.#", "1"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "force_password_change", "true"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "site_id", "-1"),
+					accountRetainedOnServer(t),
+				),
+			},
+			{
+				Config: accountOmitRetainsObjectsOnlyConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_settings.#"),
+					resource.TestCheckNoResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_actions.#"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_objects.#", "2"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "force_password_change", "true"),
+					resource.TestCheckResourceAttr(accountOmitRetainsAddr, "site_id", "-1"),
+					accountRetainedOnServer(t),
+				),
+			},
+			{
+				Config: accountOmitRetainsHeaderOnlyConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(accountOmitRetainsAddr, "privileges.jamf_pro_server_objects.#"),
+					accountRetainedOnServer(t),
 				),
 			},
 		},
