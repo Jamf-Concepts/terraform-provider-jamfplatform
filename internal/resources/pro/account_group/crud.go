@@ -10,7 +10,12 @@
 //   proclassic.DeleteAccountGroupByID
 //   proclassic.ListAccounts             (list-resource enumeration; privilege-catalog discovery in ModifyPlan)
 //
-// Status: current. Last reviewed 2026-06-24.
+// Write semantics: the PUT merges field by field; an omitted <ldap_server>
+// keeps the stored server and <ldap_server><id>-1</id></ldap_server> clears it
+// (wire-probed 2026-09-06; 0 is refused, an empty element retains). See
+// ldapServerIDForWrite.
+//
+// Status: current. Last reviewed 2026-09-06.
 
 package account_group
 
