@@ -7,11 +7,11 @@
 //   pro.UpdateAccountV1               (PUT base fields)
 //   pro.DeleteAccountV1
 //   pro.ResolveAccountV1IDByName      (data source username lookup)
-//   proclassic.GetAccountByUserID     (Custom privilege grid read)
-//   proclassic.UpdateAccountByUserID  (Custom privilege grid write — merge)
+//   proclassic.GetAccountByUserID     (Custom privilege grid read; live grid before every privilege write)
+//   proclassic.UpdateAccountByUserID  (Custom privilege grid write; a sent <privileges> replaces the whole grid — merged client-side)
 //   proclassic.ListAccounts           (privilege-catalog discovery, ModifyPlan)
 //
-// Status: current. Last reviewed 2026-06-24.
+// Status: current. Last reviewed 2026-09-06.
 
 package account
 
@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -28,9 +29,11 @@ import (
 )
 
 // Create creates a Jamf Pro admin account via the Pro API, then (for a Custom +
-// Full Access account) writes the privilege grid via the classic API. If the
-// classic step fails, the just-created account is deleted so no half-built
-// account is left behind. Privileges are trusted from the plan (not re-read).
+// Full Access account) writes the privilege grid via the classic API through
+// writeCustomPrivileges, which merges against whatever grid the new account
+// already carries. If the classic step fails, the just-created account is
+// deleted so no half-built account is left behind. Privileges are trusted from
+// the plan (not re-read).
 func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan, cfg AccountResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -60,21 +63,15 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 	id := plan.ID.ValueString()
 
 	if custPrivApplicable(plan.PrivilegeSet, plan.AccessLevel) {
-		classicInput, d := buildClassicPrivileges(createCtx, plan)
-		resp.Diagnostics.Append(d...)
-		if resp.Diagnostics.HasError() {
+		d := r.writeCustomPrivileges(createCtx, id, plan, "Error writing Jamf Pro account privileges")
+		if d.HasError() {
+			if delErr := r.proClient.DeleteAccountV1(createCtx, id); delErr != nil {
+				tflog.Error(ctx, "failed to roll back account after privilege write failure", map[string]any{"id": id, "delete_error": delErr.Error()})
+			}
+			resp.Diagnostics.Append(d...)
 			return
 		}
-		if classicInput != nil {
-			if err := r.classicClient.UpdateAccountByUserID(createCtx, id, classicInput); err != nil {
-				// Roll back the account so we do not leave a privilege-less husk.
-				if delErr := r.proClient.DeleteAccountV1(createCtx, id); delErr != nil {
-					tflog.Error(ctx, "failed to roll back account after privilege write failure", map[string]any{"id": id, "delete_error": delErr.Error()})
-				}
-				resp.Diagnostics.AddError("Error writing Jamf Pro account privileges", err.Error())
-				return
-			}
-		}
+		resp.Diagnostics.Append(d...)
 	}
 
 	got, err := r.proClient.GetAccountV1(createCtx, id)
@@ -182,9 +179,9 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 // Update applies base-field changes via Pro PUT and Custom privilege changes via
-// the classic API. Each side is called only when its inputs actually changed, so
-// a privilege-only edit skips the Pro PUT and a base-only edit skips the classic
-// write.
+// the classic API through writeCustomPrivileges. Each side is called only when
+// it has something to send, so a privilege-only edit skips the Pro PUT and a
+// plan with no declared privilege category skips the classic write.
 func (r *AccountResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state, cfg AccountResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -217,16 +214,9 @@ func (r *AccountResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if custPrivApplicable(plan.PrivilegeSet, plan.AccessLevel) {
-		classicInput, d := buildClassicPrivileges(updateCtx, plan)
-		resp.Diagnostics.Append(d...)
+		resp.Diagnostics.Append(r.writeCustomPrivileges(updateCtx, id, plan, "Error updating Jamf Pro account privileges")...)
 		if resp.Diagnostics.HasError() {
 			return
-		}
-		if classicInput != nil {
-			if err := r.classicClient.UpdateAccountByUserID(updateCtx, id, classicInput); err != nil {
-				resp.Diagnostics.AddError("Error updating Jamf Pro account privileges", err.Error())
-				return
-			}
 		}
 	}
 
@@ -272,6 +262,37 @@ func (r *AccountResource) Delete(ctx context.Context, req resource.DeleteRequest
 		}
 		resp.Diagnostics.AddError("Error deleting Jamf Pro account", fmt.Sprintf("API error: %v", err))
 	}
+}
+
+// writeCustomPrivileges sends the Custom privilege grid for account id through
+// the classic API as a read-merge-write: the live grid is read first and every
+// category the plan declares replaces the server's, while undeclared categories
+// are re-sent as the server holds them. That is what makes "omit a category and
+// the server keeps it" true — the endpoint replaces the whole grid on any sent
+// <privileges> (wire-probed 2026-09-06, Jamf Pro 11.31.1, issue #385), so a
+// partial body would empty the rest. Nothing is sent, and nothing read, when the
+// plan declares no category at all; the server then keeps its grid untouched.
+// errSummary is the diagnostic summary for a failed write, so Create and Update
+// read distinctly in the output.
+func (r *AccountResource) writeCustomPrivileges(ctx context.Context, id string, plan AccountResourceModel, errSummary string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if !managesPrivileges(plan) {
+		return diags
+	}
+	live, err := r.classicClient.GetAccountByUserID(ctx, id)
+	if err != nil {
+		diags.AddError("Error reading Jamf Pro account privileges before write", err.Error())
+		return diags
+	}
+	classicInput, d := buildClassicPrivileges(ctx, plan, live)
+	diags.Append(d...)
+	if diags.HasError() || classicInput == nil {
+		return diags
+	}
+	if err := r.classicClient.UpdateAccountByUserID(ctx, id, classicInput); err != nil {
+		diags.AddError(errSummary, err.Error())
+	}
+	return diags
 }
 
 // baseFieldsChanged reports whether any Pro-owned base field differs between

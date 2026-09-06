@@ -367,31 +367,22 @@ func accountRetainedOnServer(t *testing.T) resource.TestCheckFunc {
 // Pro side sees no base-field change. Each step's implicit post-apply plan must
 // be empty, which is what makes the contract usable.
 //
-// Step 2 fails today, and the failure is the resource's, not the server's: it
-// builds the <privileges> element through the same accountprivileges.ToMap
-// per-category omission as jamfplatform_pro_account_group, and the server
-// treats a sent <privileges> as a whole-grid replace, so the two undeclared
-// categories are emptied while Read's null-means-unmanaged gate hides the loss
-// (issue #385). Wire-probed 2026-09-06 on Jamf Pro 11.31.1 through the SDK: a
-// PUT /accounts/userid/{id} carrying only <jss_objects> left jss_settings as
-// the server-injected "Read License Information" alone and jss_actions empty.
-// The whole-block omission in step 3 retains correctly, verified by running
-// the steps in the order full, header-only, objects-only: the header-only step
-// issued no classic PUT, the post-apply plan was empty and every step-1 value
-// survived. The test stays written as the contract the resource claims, and
-// skips until #385 is fixed, so that the fix is proven by deleting the skip
-// rather than by rewriting the assertion.
-// skipUntilPrivilegeCategoryMergeIsFixed gates the omit-retains test on issue
-// #385. Delete this function, and the call to it, when the resource either
-// emulates the category-level retention it promises or stops promising it.
-func skipUntilPrivilegeCategoryMergeIsFixed(t *testing.T) {
-	t.Helper()
-	t.Skip("jamfplatform_pro_account sends a partial <privileges> that the server treats as a full replace, wiping undeclared categories; see issue #385")
-}
-
+// Step 2 is the step the wire cannot satisfy on its own. Wire-probed 2026-09-06
+// on Jamf Pro 11.31.1 through the SDK: a PUT /accounts/userid/{id} carrying only
+// <jss_objects> left jss_settings as the server-injected "Read License
+// Information" alone and jss_actions empty — the server treats a sent
+// <privileges> as a whole-grid replace, and Read's null-means-unmanaged gate
+// hid the loss (issue #385). The resource now emulates the retention it
+// documents — every privilege write reads the live grid first and re-emits the
+// undeclared categories through accountprivileges.MergeGrid — and this step is
+// the proof: the server-side check after step 2 must still find "Read SMTP
+// Server" and the remote-lock action that only the carry-over could have sent.
+// The whole-block omission in step 3 retains on the wire itself, verified by
+// running the steps in the order full, header-only, objects-only: the
+// header-only step issued no classic PUT, the post-apply plan was empty and
+// every step-1 value survived.
 func TestAccResource_ProAccount_OmittedBlocksRetained(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	skipUntilPrivilegeCategoryMergeIsFixed(t)
 	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{

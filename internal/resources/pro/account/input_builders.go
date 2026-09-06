@@ -84,22 +84,38 @@ func boolOrDefault(v types.Bool, def bool) *bool {
 }
 
 // buildClassicPrivileges projects the Custom privilege grid into a ProClassic
-// Account payload carrying only <privileges>. The classic PUT merges, so other
-// account fields are intentionally omitted (they are owned by the Pro side).
+// Account payload carrying only <privileges>. The classic PUT merges at the top
+// level, so other account fields are intentionally omitted (they are owned by
+// the Pro side). Inside <privileges> it does not merge: a sent element replaces
+// the whole grid (wire-probed 2026-09-06, Jamf Pro 11.31.1, issue #385), so the
+// grid is built by accountprivileges.MergeGrid from live, the account as the
+// classic endpoint currently returns it, replacing only the declared categories
+// and carrying the rest verbatim. live may be nil when nothing has been read.
 // Returns nil when there are no privileges to send.
-func buildClassicPrivileges(ctx context.Context, plan AccountResourceModel) (*proclassic.Account, diag.Diagnostics) {
+func buildClassicPrivileges(ctx context.Context, plan AccountResourceModel, live *proclassic.Account) (*proclassic.Account, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if plan.Privileges == nil || plan.Privileges.IsEmpty() {
+	if !managesPrivileges(plan) {
 		return nil, diags
 	}
-	privMap, d := plan.Privileges.ToMap(ctx)
+	var serverGrid map[string][]string
+	if live != nil {
+		serverGrid = accountprivileges.FromAccountPrivileges(live.Privileges)
+	}
+	merged, d := accountprivileges.MergeGrid(ctx, plan.Privileges, serverGrid)
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
 	}
-	grid := accountprivileges.ToAccountPrivileges(privMap)
+	grid := accountprivileges.ToAccountPrivileges(merged)
 	if grid == nil {
 		return nil, diags
 	}
 	return &proclassic.Account{Privileges: grid}, diags
+}
+
+// managesPrivileges reports whether the plan declares at least one privilege
+// category. When false no classic write is issued and the server keeps its
+// grid, which is the one retention the wire does provide.
+func managesPrivileges(plan AccountResourceModel) bool {
+	return plan.Privileges != nil && !plan.Privileges.IsEmpty()
 }
