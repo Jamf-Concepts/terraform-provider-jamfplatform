@@ -18,7 +18,7 @@ func TestBuildPatchExternalSourceInput_FullRoundTrip(t *testing.T) {
 		SslEnabled:                   types.BoolValue(true),
 		CertificateValidationEnabled: types.BoolValue(false),
 	}
-	got := buildPatchExternalSourceInput(plan)
+	got := buildPatchExternalSourceInput(plan, types.Int64Null())
 
 	if got.Name == nil || *got.Name != "Jamf Auto Update" {
 		t.Errorf("Name not round-tripped: %v", got.Name)
@@ -53,7 +53,7 @@ func TestBuildPatchExternalSourceInput_FalseBoolsAreSentExplicitly(t *testing.T)
 		SslEnabled:                   types.BoolValue(false),
 		CertificateValidationEnabled: types.BoolValue(false),
 	}
-	got := buildPatchExternalSourceInput(plan)
+	got := buildPatchExternalSourceInput(plan, types.Int64Null())
 	for label, b := range map[string]*bool{
 		"Enabled":                      got.Enabled,
 		"SslEnabled":                   got.SslEnabled,
@@ -102,7 +102,7 @@ func TestBuildPatchExternalSourceInput_NullUnknownBecomeNilPointers(t *testing.T
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := buildPatchExternalSourceInput(tc.plan)
+			got := buildPatchExternalSourceInput(tc.plan, types.Int64Null())
 			if got.Name != nil {
 				t.Errorf("Name: expected nil, got %q", *got.Name)
 			}
@@ -120,6 +120,40 @@ func TestBuildPatchExternalSourceInput_NullUnknownBecomeNilPointers(t *testing.T
 			}
 			if got.CertificateValidationEnabled != nil {
 				t.Errorf("CertificateValidationEnabled: expected nil, got %v", *got.CertificateValidationEnabled)
+			}
+		})
+	}
+}
+
+// TestPortForWrite pins the clear token for port: 0 goes on the wire only when
+// the plan is null and Terraform holds a prior value to clear; a null plan
+// with no prior value stays off the wire so a fresh source keeps the server's
+// empty port; a configured port is sent as-is.
+func TestPortForWrite(t *testing.T) {
+	cases := []struct {
+		name    string
+		planned types.Int64
+		prior   types.Int64
+		wantNil bool
+		want    int
+	}{
+		{"null plan, prior set: clear with 0", types.Int64Null(), types.Int64Value(8443), false, 0},
+		{"null plan, prior null: omit", types.Int64Null(), types.Int64Null(), true, 0},
+		{"null plan, prior unknown: omit", types.Int64Null(), types.Int64Unknown(), true, 0},
+		{"configured: sent", types.Int64Value(9000), types.Int64Value(8443), false, 9000},
+		{"configured on create: sent", types.Int64Value(9000), types.Int64Null(), false, 9000},
+		{"unknown: omit", types.Int64Unknown(), types.Int64Value(8443), true, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := portForWrite(tc.planned, tc.prior)
+			switch {
+			case tc.wantNil && got != nil:
+				t.Errorf("want nil, got %d", *got)
+			case !tc.wantNil && got == nil:
+				t.Errorf("want %d, got nil", tc.want)
+			case !tc.wantNil && *got != tc.want:
+				t.Errorf("want %d, got %d", tc.want, *got)
 			}
 		})
 	}

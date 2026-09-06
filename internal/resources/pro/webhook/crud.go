@@ -9,7 +9,7 @@
 //   proclassic.ListWebhooks        (data source / list resource)
 //   proclassic.GetWebhookByName    (data source name lookup)
 //
-// Status: current. Last reviewed 2026-05-31.
+// Status: current. Last reviewed 2026-09-06.
 //
 // Server invariants (wire-probed — WEBHOOK_SPIKE.md §5):
 //   - Create POSTs to id="0"; the server allocates the integer ID and returns
@@ -22,7 +22,12 @@
 //     hash_algorithm=SHA256.
 //   - Auth fields are auto-cleared by the server when they do not match
 //     authentication_type (silent, not 409); the plan-time ConfigValidators
-//     prevent the resulting drift.
+//     prevent the resulting drift. The field the active type requires is
+//     refused when empty — <header> under HEADER → 409 INVALID_REQUIRED,
+//     <username> under BASIC → 409 "Username is required" (wire-probed
+//     2026-09-06) — so buildWebhookInput sends it as configured there and
+//     emits it empty under every other type, where the merge would otherwise
+//     retain a value the config dropped (#384).
 //   - smart_group_id is valid only for the three SmartGroup* events (else 409),
 //     and a bogus group id 409s — so no preflight is needed. A smart event with
 //     no group stores/returns the -1 sentinel; non-smart events omit the

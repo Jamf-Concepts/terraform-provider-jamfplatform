@@ -7,32 +7,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-func TestStringPtrEmitAlways(t *testing.T) {
-	cases := []struct {
-		name string
-		in   types.String
-		want string
-	}{
-		{"value", types.StringValue("Printers"), "Printers"},
-		{"empty", types.StringValue(""), ""},
-		{"null", types.StringNull(), ""},
-		{"unknown", types.StringUnknown(), ""},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got := stringPtrEmitAlways(c.in)
-			if got == nil {
-				t.Fatalf("expected non-nil pointer regardless of null state")
-			}
-			if *got != c.want {
-				t.Errorf("expected %q, got %q", c.want, *got)
-			}
-		})
-	}
-}
 
 func TestDecodeCategory(t *testing.T) {
 	sentinel := categoryUnassignedSentinel

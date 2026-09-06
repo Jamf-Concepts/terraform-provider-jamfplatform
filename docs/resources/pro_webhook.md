@@ -116,13 +116,13 @@ variable "webhook_signing_secret" {
 - `enable_display_fields_for_group_object` (Boolean) **"Include Display Fields for the Group Object"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. The display field list itself cannot be set here; see `display_fields`.
 - `enabled` (Boolean) **"Enabled"** in the Jamf Pro admin UI. Whether the webhook is active. Defaults to `true`.
 - `hash_algorithm` (String) **"Algorithm"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.
-- `header` (String, Sensitive) **"Header Authentication"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{"Authorization":"Bearer …"}`. Only valid when `authentication_type = "HEADER"`. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.
+- `header` (String, Sensitive) **"Header Authentication"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{"Authorization":"Bearer …"}`. Required when `authentication_type = "HEADER"` and not allowed otherwise. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** (BASIC) / **"Signing Secret"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state; Jamf Pro returns a redaction sentinel on read. Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the password must be at least 16 characters.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Set `password_wo_version = 1` on create. Leave it unset or unchanged to keep the stored secret: the provider omits the password from the next update, so Jamf Pro retains the existing value.
 - `read_timeout` (Number) **"Read Timeout"** in the Jamf Pro admin UI. Seconds to wait for a response after sending the request. Defaults to `2`.
 - `smart_group_id` (Number) Jamf Pro smart group ID for the SmartGroup membership-change events. Only valid when `event` is `SmartGroupComputerMembershipChange`, `SmartGroupMobileDeviceMembershipChange`, or `SmartGroupUserMembershipChange`. Interpolate a Jamf Pro smart group ID (e.g. `jamfplatform_device_group.<x>.jamf_pro_id`). Omit for "any" group.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `username` (String) **"Username"** in the Jamf Pro admin UI (BASIC authentication). Only valid when `authentication_type = "BASIC"`.
+- `username` (String) **"Username"** in the Jamf Pro admin UI (BASIC authentication). Required when `authentication_type = "BASIC"` and not allowed otherwise.
 
 ### Read-Only
 

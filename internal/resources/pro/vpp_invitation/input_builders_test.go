@@ -81,8 +81,8 @@ func TestBuildInput_EmailFields(t *testing.T) {
 }
 
 func TestEncodedMessagePointer(t *testing.T) {
-	if encodedMessagePointer(types.StringNull()) != nil {
-		t.Error("null message must omit")
+	if got := encodedMessagePointer(types.StringNull()); got == nil || *got != "" {
+		t.Errorf("null message must emit an empty element (clear), got %v", got)
 	}
 	if encodedMessagePointer(types.StringUnknown()) != nil {
 		t.Error("unknown message must omit")
@@ -236,5 +236,36 @@ func TestStringIDPtr(t *testing.T) {
 	}
 	if p := helpers.StringIDPtr(types.StringValue("42")); p == nil || *p != 42 {
 		t.Errorf("42 must parse, got %v", p)
+	}
+}
+
+// TestBuildInput_EmailFieldsEmitEmptyWhenNull pins the always-emit contract
+// for the email-mode strings under a non-email distribution method: null must
+// reach the wire as an empty element so a value the config dropped is cleared
+// by the classic merge, while require_login stays omit-when-null.
+func TestBuildInput_EmailFieldsEmitEmptyWhenNull(t *testing.T) {
+	plan := VPPInvitationResourceModel{
+		Name:               types.StringValue("x"),
+		VPPAccountID:       types.StringValue("3"),
+		DistributionMethod: types.StringValue("Make available in Self Service only"),
+		SenderName:         types.StringNull(),
+		SenderEmailAddress: types.StringNull(),
+		Subject:            types.StringNull(),
+		Message:            types.StringNull(),
+		RequireLogin:       types.BoolNull(),
+	}
+	in, _ := buildVPPInvitationInput(context.Background(), plan)
+	for name, p := range map[string]*string{
+		"sender_name":          in.General.SenderName,
+		"sender_email_address": in.General.SenderEmailAddress,
+		"subject":              in.General.Subject,
+		"message":              in.General.Message,
+	} {
+		if p == nil || *p != "" {
+			t.Errorf("%s: null must emit an empty element, got %v", name, p)
+		}
+	}
+	if in.General.RequireLogin != nil {
+		t.Errorf("require_login: null must be omitted, got %v", *in.General.RequireLogin)
 	}
 }

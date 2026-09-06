@@ -31,9 +31,7 @@ func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel)
 	if id := helpers.OptionalInt64Pointer(plan.SiteID); id != nil {
 		group.Site = &proclassic.Site{ID: id}
 	}
-	if id := helpers.OptionalInt64Pointer(plan.LdapServerID); id != nil {
-		group.LdapServer = &proclassic.GroupLdapServer{ID: id}
-	}
+	group.LdapServer = &proclassic.GroupLdapServer{ID: ldapServerIDForWrite(plan.LdapServerID)}
 
 	// Members: null => omit (retain server/directory membership); set (incl.
 	// empty) => send, where empty clears.

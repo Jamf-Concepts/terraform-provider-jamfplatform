@@ -8,7 +8,11 @@
 //   proclassic.DeleteVPPInvitationByID  (→ 200)
 //   proclassic.ListVPPInvitations       (data source / list resource)
 //
-// Writes are a MERGE (omit=retain). General scalars are emitted as planned.
+// Writes are a MERGE (omit=retain). General scalars are emitted as planned;
+// the four email-mode strings are always emitted, empty when null, so a value
+// the config dropped is cleared rather than retained — reasoned from the five
+// sibling classic endpoints probed 2026-09-06, not probed here (no VPP token
+// on the test estate). See buildVPPInvitationInput.
 //
 // Scope is the exception to the merge: within a sent <scope> the server
 // replaces the whole subtree — any category element present, even empty, wipes
@@ -25,7 +29,7 @@
 // categories stay owned by the admin UI; declared `[]` clears. See
 // STYLE_GUIDE.md §Scope helper omission semantics.
 //
-// Status: current. Last reviewed 2026-07-08.
+// Status: current. Last reviewed 2026-09-06.
 
 package vpp_invitation
 
