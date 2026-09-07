@@ -101,3 +101,46 @@ func TestAssignSsoSettingsResourceModel_PopulatesAuthoredBranch(t *testing.T) {
 		t.Errorf("user_mapping = %q, want EMAIL", state.OidcSettings.UserMapping.ValueString())
 	}
 }
+
+// TestAssignSigningCertificateState_NeverHydratesAnUnauthoredBlock pins a
+// behaviour that looks like the import-hydration bug fixed elsewhere in this
+// provider (#391, #399) but must NOT be "fixed" the same way.
+//
+// assignSigningCertificateState leaves signing_certificate nil when the
+// incoming model has none, even for a fully populated wire certificate. On
+// every other resource that shape is the bug: import leaves a declared block
+// null and it plans as an addition. Here it is load-bearing.
+//
+// applyCertificateOnUpdate opens with
+//
+//	if plan.SigningCertificate == nil && state.SigningCertificate == nil { return true }
+//
+// which is what stops Terraform deleting a certificate it did not create, and
+// falls back to a wire read (currentCertSetupType) when state carries no setup
+// type — so GENERATED → GENERATED is already a no-op after an import, with no
+// hydration needed. Populate state here and that guard stops firing: a
+// practitioner who imports and does not declare the block then hits the
+// transition table's GEN → nil row, which is DELETE, and loses the tenant's SSO
+// signing certificate. The block is Optional, so that path is fully reachable.
+//
+// If this test fails because someone applied the #391 pattern uniformly, the
+// fix is to revert that, not to update this test.
+func TestAssignSigningCertificateState_NeverHydratesAnUnauthoredBlock(t *testing.T) {
+	state := &SsoSettingsResourceModel{} // no signing_certificate authored
+	cert := &pro.SsoKeystoreResponseWithDetails{
+		Keystore: &pro.SsoKeystoreResponse{
+			Key:               "jamf",
+			KeystoreFileName:  "sso.p12",
+			KeystoreSetupType: "GENERATED",
+			Type:              "PKCS12",
+		},
+	}
+
+	diags := assignSigningCertificateState(context.Background(), state, cert)
+	if diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+	if state.SigningCertificate != nil {
+		t.Fatalf("signing_certificate must stay nil for an unauthored block; hydrating it defeats the delete guard in applyCertificateOnUpdate. Got %+v", state.SigningCertificate)
+	}
+}
