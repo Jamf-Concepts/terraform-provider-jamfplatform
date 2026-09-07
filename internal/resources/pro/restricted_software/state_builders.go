@@ -26,9 +26,12 @@ import (
 // path (terraform query -generate-config-out): there is no plan to stay
 // consistent with, so a wire-present scope is allocated and hydrated, yielding a
 // complete exported config rather than a general-only one. CRUD callers pass
-// false. The flatteners use the PreferCurrent* helpers (which adopt the wire
-// value when the current state is null), so allocating an empty section is
-// sufficient for it to fully hydrate.
+// false. The flatteners read wire-authoritatively
+// (helpers.ReconcileOptionalStringPointer / helpers.BoolPointerValueOrNull),
+// adopting the wire value whatever state holds, so allocating an empty section
+// is sufficient for it to fully hydrate. Every field on this resource is echoed
+// faithfully by the classic GET — wire-probed against Jamf Pro 11.31.1 on
+// 2026-09-06 — so none of them keeps a sticky read. See issue #387.
 func assignRestrictedSoftwareResourceModel(ctx context.Context, state *RestrictedSoftwareResourceModel, rs *proclassic.RestrictedSoftware, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if rs == nil {
@@ -61,17 +64,17 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.ProcessName = helpers.StringPointerValueOrNull(g.ProcessName)
-	state.RestrictExactProcessName = helpers.PreferCurrentBoolPointer(g.MatchExactProcessName, state.RestrictExactProcessName)
-	state.SendEmailNotificationOnViolation = helpers.PreferCurrentBoolPointer(g.SendNotification, state.SendEmailNotificationOnViolation)
-	state.KillProcess = helpers.PreferCurrentBoolPointer(g.KillProcess, state.KillProcess)
-	state.DeleteApplication = helpers.PreferCurrentBoolPointer(g.DeleteExecutable, state.DeleteApplication)
-	state.DisplayMessage = helpers.PreferCurrentStringPointer(g.DisplayMessage, state.DisplayMessage)
+	state.RestrictExactProcessName = helpers.BoolPointerValueOrNull(g.MatchExactProcessName)
+	state.SendEmailNotificationOnViolation = helpers.BoolPointerValueOrNull(g.SendNotification)
+	state.KillProcess = helpers.BoolPointerValueOrNull(g.KillProcess)
+	state.DeleteApplication = helpers.BoolPointerValueOrNull(g.DeleteExecutable)
+	state.DisplayMessage = helpers.ReconcileOptionalStringPointer(g.DisplayMessage, state.DisplayMessage)
 
 	if g.Site != nil {
-		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
-		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.ReconcileOptionalStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }

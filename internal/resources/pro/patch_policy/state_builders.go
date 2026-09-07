@@ -29,8 +29,9 @@ import (
 // plan to stay consistent with, so every wire-present optional section is
 // allocated and hydrated, yielding a complete exported config rather than a
 // general-only one. CRUD callers pass false. The patch-policy flatteners use the
-// PreferCurrent* helpers (which adopt the wire value when the current state is
-// null), so allocating an empty section is sufficient for it to fully hydrate.
+// wire-authoritative reads (helpers.ReconcileOptionalStringPointer /
+// helpers.BoolPointerValueOrNull), which adopt the wire value whatever state
+// holds, so allocating an empty section is sufficient for it to fully hydrate.
 func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResourceModel, p *proclassic.PatchPolicy, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
@@ -41,7 +42,7 @@ func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResou
 		state.ID = types.StringValue(id)
 	}
 	if p.SoftwareTitleConfigurationID != nil {
-		state.SoftwareTitleConfigurationID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(p.SoftwareTitleConfigurationID), state.SoftwareTitleConfigurationID)
+		state.SoftwareTitleConfigurationID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(p.SoftwareTitleConfigurationID), state.SoftwareTitleConfigurationID)
 	}
 
 	diags.Append(flattenGeneral(ctx, p.General, state)...)
@@ -64,7 +65,10 @@ func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResou
 }
 
 // flattenGeneral maps the wire general block onto the model. Writable fields use
-// the preferCurrent helpers (managed-section echo protection); the server-derived
+// wire-authoritative reads (helpers.ReconcileOptionalStringPointer /
+// helpers.BoolPointerValueOrNull), all six being echoed faithfully by the
+// classic GET (wire-probed against Jamf Pro 11.31.1 on 2026-09-06); the
+// server-derived
 // fields (release_date, incremental_update, reboot, minimum_os, kill_apps) are
 // adopted verbatim — they are Computed-only and reflect the patch definition.
 func flattenGeneral(ctx context.Context, g *proclassic.PatchPolicyGeneral, state *PatchPolicyResourceModel) diag.Diagnostics {
@@ -73,12 +77,12 @@ func flattenGeneral(ctx context.Context, g *proclassic.PatchPolicyGeneral, state
 		return diags
 	}
 
-	state.Name = helpers.PreferCurrentStringPointer(g.Name, state.Name)
-	state.TargetVersion = helpers.PreferCurrentStringPointer(g.TargetVersion, state.TargetVersion)
-	state.Enabled = helpers.PreferCurrentBoolPointer(g.Enabled, state.Enabled)
-	state.DistributionMethod = helpers.PreferCurrentStringPointer(g.DistributionMethod, state.DistributionMethod)
-	state.AllowDowngrade = helpers.PreferCurrentBoolPointer(g.AllowDowngrade, state.AllowDowngrade)
-	state.PatchUnknown = helpers.PreferCurrentBoolPointer(g.PatchUnknown, state.PatchUnknown)
+	state.Name = helpers.ReconcileOptionalStringPointer(g.Name, state.Name)
+	state.TargetVersion = helpers.ReconcileOptionalStringPointer(g.TargetVersion, state.TargetVersion)
+	state.Enabled = helpers.BoolPointerValueOrNull(g.Enabled)
+	state.DistributionMethod = helpers.ReconcileOptionalStringPointer(g.DistributionMethod, state.DistributionMethod)
+	state.AllowDowngrade = helpers.BoolPointerValueOrNull(g.AllowDowngrade)
+	state.PatchUnknown = helpers.BoolPointerValueOrNull(g.PatchUnknown)
 
 	// Server-derived (Computed-only): adopt verbatim.
 	state.ReleaseDate = int64ValueOrNull(g.ReleaseDate)
@@ -172,6 +176,38 @@ func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *Pa
 // wire-present sub-block (and the reminders block nested under notifications) is
 // first allocated so the from-scratch read hydrates the full block rather than
 // leaving unmanaged notifications/deadlines/grace_period null.
+//
+// The notifications sub-block splits. enabled, subject and both reminders
+// fields are echoed while the tenant-level Settings -> Self Service -> macOS ->
+// "Enable Self Service notifications" toggle is on, and omitted with it off, so
+// they read through helpers.WireWhenPresent*: the wire wins whenever it carries
+// a value, and state is kept when it does not. message and type are omitted
+// even with the toggle on — a GET taken straight after the POST that set all
+// four returned the other three and dropped exactly these two — so they keep a
+// sticky read, and the schema models them Optional-only for the same reason.
+//
+// Everything else in the block reads through helpers.WireWhenPresent* as well,
+// for a blunter reason: the GET taken straight after a PUT returns a PARTIAL
+// <user_interaction>. Captured on the wire on 2026-09-07, the response to a PUT
+// that had set the button text, the description, notifications, deadlines and
+// the grace period was:
+//
+//	<user_interaction>
+//	  <grace_period>
+//	    <grace_period_duration>30</grace_period_duration>
+//	    <notification_center_subject>Heads up</notification_center_subject>
+//	    <message>$APP_NAMES will quit in ...</message>
+//	  </grace_period>
+//	</user_interaction>
+//
+// — one child, the other four silently absent. A wire-authoritative read nulls
+// every configured value in them and the apply fails with "Provider produced
+// inconsistent result after apply" on each. So the whole block treats absence
+// as "the wire has nothing to say" and keeps state, while still adopting any
+// value the wire does carry, which is what keeps drift detectable. The earlier
+// reading of this function had these fields down as echoed unconditionally;
+// that was true of the reads it happened to observe, not of the post-PUT one.
+// Wire-probed against Jamf Pro 11.31.1; see issue #387.
 func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *PatchPolicyUserInteractionModel, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.Notifications == nil && ui.Notifications != nil {
@@ -188,16 +224,16 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		}
 	}
 
-	state.InstallButtonText = helpers.PreferCurrentStringPointer(ui.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ui.SelfServiceDescription, state.SelfServiceDescription)
+	state.InstallButtonText = helpers.WireWhenPresentString(ui.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ui.SelfServiceDescription, state.SelfServiceDescription)
+	var iconID *string
 	if ui.SelfServiceIcon != nil {
-		state.SelfServiceIconID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ui.SelfServiceIcon.ID), state.SelfServiceIconID)
-	} else {
-		state.SelfServiceIconID = helpers.PreferCurrentStringPointer(nil, state.SelfServiceIconID)
+		iconID = helpers.StringFromIntPtr(ui.SelfServiceIcon.ID)
 	}
+	state.SelfServiceIconID = helpers.WireWhenPresentString(iconID, state.SelfServiceIconID)
 
 	// A managed sub-block resolves ALL its Computed leaves even when the server
-	// omits that sub-block on the post-PUT GET (n/d/g may be nil). preferCurrent
+	// omits that sub-block on the post-PUT GET (n/d/g may be nil). StickyIgnoringDrift*
 	// treats a nil API value as "no echo" → keeps a configured value, else null.
 	// Guarding on `ui.X != nil` (the old shape) skipped the branch wholesale and
 	// left an unset Computed leaf stuck Unknown → "invalid result object after
@@ -213,10 +249,10 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if n != nil {
 			nEnabled, nSubject, nMsg, nType, nReminders = n.NotificationEnabled, n.NotificationSubject, n.NotificationMessage, n.NotificationType, n.Reminders
 		}
-		state.Notifications.Enabled = helpers.PreferCurrentBoolPointer(nEnabled, state.Notifications.Enabled)
-		state.Notifications.Subject = helpers.PreferCurrentStringPointer(nSubject, state.Notifications.Subject)
-		state.Notifications.Message = helpers.PreferCurrentStringPointer(nMsg, state.Notifications.Message)
-		state.Notifications.Type = helpers.PreferCurrentStringPointer(nType, state.Notifications.Type)
+		state.Notifications.Enabled = helpers.WireWhenPresentBool(nEnabled, state.Notifications.Enabled)
+		state.Notifications.Subject = helpers.WireWhenPresentString(nSubject, state.Notifications.Subject)
+		state.Notifications.Message = helpers.StickyIgnoringDriftString(nMsg, state.Notifications.Message)
+		state.Notifications.Type = helpers.StickyIgnoringDriftString(nType, state.Notifications.Type)
 		if state.Notifications.Reminders != nil {
 			var (
 				rEnabled *bool
@@ -225,8 +261,8 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 			if nReminders != nil {
 				rEnabled, rFreq = nReminders.NotificationRemindersEnabled, nReminders.NotificationReminderFrequency
 			}
-			state.Notifications.Reminders.Enabled = helpers.PreferCurrentBoolPointer(rEnabled, state.Notifications.Reminders.Enabled)
-			state.Notifications.Reminders.Frequency = preferCurrentInt64Pointer(rFreq, state.Notifications.Reminders.Frequency)
+			state.Notifications.Reminders.Enabled = helpers.WireWhenPresentBool(rEnabled, state.Notifications.Reminders.Enabled)
+			state.Notifications.Reminders.Frequency = helpers.WireWhenPresentInt64(rFreq, state.Notifications.Reminders.Frequency)
 		}
 	}
 
@@ -238,8 +274,8 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if ui.Deadlines != nil {
 			dEnabled, dPeriod = ui.Deadlines.DeadlineEnabled, ui.Deadlines.DeadlinePeriod
 		}
-		state.Deadlines.Enabled = helpers.PreferCurrentBoolPointer(dEnabled, state.Deadlines.Enabled)
-		state.Deadlines.Period = preferCurrentInt64Pointer(dPeriod, state.Deadlines.Period)
+		state.Deadlines.Enabled = helpers.WireWhenPresentBool(dEnabled, state.Deadlines.Enabled)
+		state.Deadlines.Period = helpers.WireWhenPresentInt64(dPeriod, state.Deadlines.Period)
 	}
 
 	if state.GracePeriod != nil {
@@ -250,9 +286,9 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if ui.GracePeriod != nil {
 			gDuration, gSubject, gMsg = ui.GracePeriod.GracePeriodDuration, ui.GracePeriod.NotificationCenterSubject, ui.GracePeriod.Message
 		}
-		state.GracePeriod.Duration = preferCurrentInt64Pointer(gDuration, state.GracePeriod.Duration)
-		state.GracePeriod.NotificationCenterSubject = helpers.PreferCurrentStringPointer(gSubject, state.GracePeriod.NotificationCenterSubject)
-		state.GracePeriod.Message = helpers.PreferCurrentStringPointer(gMsg, state.GracePeriod.Message)
+		state.GracePeriod.Duration = helpers.WireWhenPresentInt64(gDuration, state.GracePeriod.Duration)
+		state.GracePeriod.NotificationCenterSubject = helpers.WireWhenPresentString(gSubject, state.GracePeriod.NotificationCenterSubject)
+		state.GracePeriod.Message = helpers.WireWhenPresentString(gMsg, state.GracePeriod.Message)
 	}
 }
 

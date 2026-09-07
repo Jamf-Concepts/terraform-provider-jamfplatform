@@ -144,7 +144,6 @@ Optional:
 - `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
 - `deploy_as_managed_app` (Boolean) Deploy as a managed app (enables managed-app capabilities such as app configuration).
 - `deploy_automatically` (Boolean) Automatically push the app to in-scope devices.
-- `deployment_type` (String) Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Defaults to `Make Available in Self Service`.
 - `external_url` (String) External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side.
 - `host_externally` (Boolean) Host the app externally (in-house hosting). Flips to true automatically when an `external_url` or App Store URL is set.
 - `is_free` (Boolean) Whether the app is free.
@@ -164,7 +163,8 @@ Optional:
 Read-Only:
 
 - `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
-- `description` (String) App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable.
+- `deployment_type` (String) Install method, shown in the admin UI as "Distribution Method": `Make Available in Self Service` while `deploy_automatically` is `false`, and `Install Automatically/Prompt Users to Install` while it is `true`. Set `deploy_automatically` to choose the install method.
+- `description` (String) App description, which Jamf Pro keeps in step with `self_service.self_service_description`, and syncs from the App Store while `keep_description_and_icon_up_to_date = true`. Set `self_service.self_service_description` to change it.
 - `id` (String) App ID under `general`. Matches the top-level `id`. Returned by Jamf Pro.
 - `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
 
@@ -233,7 +233,7 @@ Optional:
 
 Optional:
 
-- `after_install_button_text` (String) Button label shown after the app is installed.
+- `after_install_button_text` (String) Button label shown after the app is installed. Requires `general.make_available_after_install = true`; Jamf Pro discards the label otherwise and never returns it.
 - `feature_on_main_page` (Boolean) Feature the app on the Self Service main page.
 - `install_button_text` (String) Install-button label.
 - `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available.

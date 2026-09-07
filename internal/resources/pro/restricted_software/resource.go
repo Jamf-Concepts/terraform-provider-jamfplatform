@@ -52,6 +52,14 @@ var _ resource.Resource = &RestrictedSoftwareResource{}
 var _ resource.ResourceWithImportState = &RestrictedSoftwareResource{}
 var _ resource.ResourceWithIdentity = &RestrictedSoftwareResource{}
 var _ resource.ResourceWithModifyPlan = &RestrictedSoftwareResource{}
+var _ resource.ResourceWithConfigValidators = &RestrictedSoftwareResource{}
+
+// ConfigValidators returns the resource's plan-time cross-field checks.
+func (r *RestrictedSoftwareResource) ConfigValidators(context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		deleteApplicationRequiresExactMatchValidator{},
+	}
+}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -161,7 +169,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 					},
 					// Wire: <delete_executable>.
 					"delete_application": schema.BoolAttribute{
-						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`.",
+						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},

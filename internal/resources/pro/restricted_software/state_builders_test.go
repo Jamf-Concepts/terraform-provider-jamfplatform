@@ -53,20 +53,45 @@ func TestFlattenGeneral_RenameMapping(t *testing.T) {
 	}
 }
 
-// TestFlattenGeneral_PrefersConfigured confirms a caller-set value is preserved
-// over a divergent server echo (the documented ProClassic tradeoff).
-func TestFlattenGeneral_PrefersConfigured(t *testing.T) {
+// TestFlattenGeneral_ReportsDrift confirms the wire value wins over a divergent
+// state value, so a change made outside Terraform is reported as drift. Every
+// field on this resource is echoed faithfully by the classic
+// /restrictedsoftware GET, display_message included — that is the exact case
+// issue #387 was filed on, where the value changed server-side and
+// `terraform plan` reported no change indefinitely.
+func TestFlattenGeneral_ReportsDrift(t *testing.T) {
 	g := &proclassic.RestrictedSoftwareGeneral{
-		Name:           new("x"),
-		ProcessName:    new("y"),
-		DisplayMessage: new("server-message"),
+		Name:                  new("x"),
+		ProcessName:           new("y"),
+		DisplayMessage:        new("server-message"),
+		MatchExactProcessName: new(true),
+		KillProcess:           new(true),
+		DeleteExecutable:      new(true),
+		SendNotification:      new(true),
 	}
 	state := &RestrictedSoftwareGeneralModel{
-		DisplayMessage: types.StringValue("user-message"),
+		DisplayMessage:                   types.StringValue("user-message"),
+		RestrictExactProcessName:         types.BoolValue(false),
+		KillProcess:                      types.BoolValue(false),
+		DeleteApplication:                types.BoolValue(false),
+		SendEmailNotificationOnViolation: types.BoolValue(false),
 	}
 	flattenGeneral(g, state)
-	if state.DisplayMessage.ValueString() != "user-message" {
-		t.Errorf("configured display_message must win, got %q", state.DisplayMessage.ValueString())
+	if state.DisplayMessage.ValueString() != "server-message" {
+		t.Errorf("display_message: wire value must win, got %q", state.DisplayMessage.ValueString())
+	}
+	for _, tc := range []struct {
+		name string
+		got  types.Bool
+	}{
+		{"restrict_exact_process_name", state.RestrictExactProcessName},
+		{"kill_process", state.KillProcess},
+		{"delete_application", state.DeleteApplication},
+		{"send_email_notification_on_violation", state.SendEmailNotificationOnViolation},
+	} {
+		if !tc.got.ValueBool() {
+			t.Errorf("%s: wire value must win, got false", tc.name)
+		}
 	}
 }
 

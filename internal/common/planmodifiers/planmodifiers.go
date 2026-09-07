@@ -8,6 +8,7 @@ package planmodifiers
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -104,4 +105,136 @@ func DecideResetForUnchangedString(sourceEqual bool, stateValue types.String) (t
 		return types.StringNull(), false
 	}
 	return stateValue, true
+}
+
+// MirrorOfString returns a plan modifier for a Computed-only string attribute
+// that Jamf Pro derives from one or more SIBLING attributes the same resource
+// manages — a mirror, not an independent server-assigned value.
+//
+// Neither of the obvious answers is right for a mirror. Plain
+// UseStateForUnknown promises the value cannot change unless the practitioner
+// changes this attribute, but it changes when the *source* changes, so the plan
+// carries a stale value into an apply that returns a fresh one and Terraform
+// reports "Provider produced inconsistent result after apply". Omitting the
+// modifier entirely leaves the attribute Unknown on every plan, which makes
+// `terraform plan -refresh=false` permanently dirty for a value nobody touched.
+//
+// So: carry the prior value forward while every watched source is unchanged
+// between state and plan, and go Unknown as soon as one of them moves. The
+// sources may be of any type — pass StringSource or BoolSource per path.
+//
+// Used by jamfplatform_pro_mobile_device_app for general.description (mirrors
+// self_service.self_service_description) and general.deployment_type (mirrors
+// general.deploy_automatically).
+func MirrorOfString(sources ...SourceComparer) planmodifier.String {
+	return mirrorOfString{sources: sources}
+}
+
+// SourceComparer reports whether one watched source attribute is unchanged by
+// this plan. ok is false when the value could not be read at all, which the
+// caller treats as "cannot tell" and resolves conservatively.
+type SourceComparer func(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) (unchanged, ok bool)
+
+// StringSource watches a string attribute.
+func StringSource(p path.Expression) SourceComparer { return compareSource[types.String](p) }
+
+// BoolSource watches a bool attribute.
+func BoolSource(p path.Expression) SourceComparer { return compareSource[types.Bool](p) }
+
+// ObjectSource watches a whole single-nested block.
+//
+// Use it in preference to a path *into* an Optional block: when such a block is
+// null, PathMatches resolves the expression only as far as the block itself, so
+// a nested-attribute watcher is handed the object's path and fails with "Cannot
+// use attr.Value basetypes.StringValue, only basetypes.ObjectValue is
+// supported". Watching the block is coarser — any change inside it marks the
+// mirror Unknown — but a wider Unknown is only ever a slightly noisier plan,
+// whereas a carried-forward stale value is a broken apply.
+func ObjectSource(p path.Expression) SourceComparer { return compareSource[types.Object](p) }
+
+// compareSource builds a SourceComparer for any framework value type. The type
+// parameter is what lets GetAttribute reflect into a concrete target: an
+// attr.Value interface target is not something the framework can populate.
+//
+// The source is read from the CONFIG, not the plan. Reading a sibling from
+// req.Plan looks natural and is unreliable: the plan is the proposed new state,
+// where a Computed sibling with no configured value is still Unknown until its
+// own plan modifier runs, and modifier order within a nested object is not
+// something a caller controls. So a plan read intermittently sees Unknown,
+// concludes "changed", and leaves the mirror Unknown on a plan where nothing
+// moved — which is exactly the dirty-plan symptom this modifier exists to fix.
+//
+// The config is stable, and it answers the question that actually matters. A
+// source the practitioner has not configured cannot be changing: its own
+// Optional+Computed handling carries the prior value forward. A source they
+// have configured is unchanged precisely when the configured value equals what
+// state holds. A null or unknown configured value therefore reports unchanged:
+// the practitioner is not moving it.
+func compareSource[T attr.Value](p path.Expression) SourceComparer {
+	return func(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) (bool, bool) {
+		configPaths, diags := req.Config.PathMatches(ctx, p)
+		resp.Diagnostics.Append(diags...)
+		if diags.HasError() || len(configPaths) == 0 {
+			return false, false
+		}
+		statePaths, diags := req.State.PathMatches(ctx, p)
+		resp.Diagnostics.Append(diags...)
+		if diags.HasError() || len(statePaths) == 0 {
+			return false, false
+		}
+		var configSrc, stateSrc T
+		if diags := req.Config.GetAttribute(ctx, configPaths[0], &configSrc); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return false, false
+		}
+		if diags := req.State.GetAttribute(ctx, statePaths[0], &stateSrc); diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return false, false
+		}
+		if configSrc.IsNull() || configSrc.IsUnknown() {
+			return true, true
+		}
+		return configSrc.Equal(stateSrc), true
+	}
+}
+
+type mirrorOfString struct{ sources []SourceComparer }
+
+func (m mirrorOfString) Description(_ context.Context) string {
+	return "Carry the prior value forward while every attribute this one mirrors is unchanged; go Unknown as soon as one of them moves."
+}
+
+func (m mirrorOfString) MarkdownDescription(ctx context.Context) string { return m.Description(ctx) }
+
+// PlanModifyString carries the prior value forward when every watched source is
+// unchanged, and otherwise leaves the plan value Unknown for the apply to fill.
+//
+// Three early returns leave it Unknown. Create has no prior state and destroy
+// has no plan, so neither has anything to carry. A source that could not be read
+// is treated as "cannot tell": an apply then writes whatever the server says,
+// which is always right, where assuming "unchanged" would risk the
+// inconsistent-result error this modifier exists to avoid. And a source that
+// moved means the mirror moves with it.
+//
+// The carry itself differs from DecideResetForUnchangedString in taking a NULL
+// prior value as well. A mirror whose source has no value has none either, and
+// refusing to carry null leaves `plan -refresh=false` permanently dirty on
+// exactly the configurations that never touch the source, which is most of
+// them. Unknown prior state is the one thing not carried, there being no value
+// there to carry.
+func (m mirrorOfString) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+
+	for _, src := range m.sources {
+		unchanged, ok := src(ctx, req, resp)
+		if !ok || !unchanged {
+			return
+		}
+	}
+
+	if !req.StateValue.IsUnknown() {
+		resp.PlanValue = req.StateValue
+	}
 }

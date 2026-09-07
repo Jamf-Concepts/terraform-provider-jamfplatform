@@ -531,22 +531,44 @@ resource "jamfplatform_pro_policy" "test" {
 }
 
 // policyConfigGeneralWithSubBlocks layers the three nested sub-blocks
-// (date_time_limitations, network_limitations, override_default_settings)
-// on top of the full general block. Retry attributes are explicitly cleared
-// because Jamf Pro rejects any retry configuration when frequency is not
-// "Once per computer", and Optional+Computed values otherwise carry over
-// from the prior step via UseStateForUnknown.
+// (date_time_limitations, network_limitations, override_default_settings) on
+// top of the full general block.
+//
+// All three retry attributes are cleared explicitly, not just two. Jamf Pro
+// keeps a retry configuration only under frequency "Once per computer", and
+// every one of the three is Optional+Computed, so a value the previous step set
+// carries into this plan through UseNonNullStateForUnknown even though the
+// configuration no longer mentions it. Leaving notify_on_each_failed_retry out
+// is what made this step fail once the read stopped being sticky, and it is now
+// refused at plan time by retryRequiresOncePerComputerValidator.
+//
+// network_limitations and override_default_settings are declared empty. Every
+// attribute in both is Computed-only — Jamf Pro derives each from somewhere
+// else and discards a write — so declaring the block is the whole gesture: it
+// tells the provider to read the derived values into state. The writable
+// counterparts are set on the general block itself: network_requirements drives
+// minimum_network_connection, and target_drive drives
+// override_default_settings.target_drive.
+//
+// no_execute_start / no_execute_end round-trip, but only because the write
+// side offsets them a full day forward — see no_execute.go. They get their own
+// coverage in TestAccPolicyResource_NoExecuteWindowRoundTrips; asserting them
+// here too is deliberate, because this is the config that also exercises the
+// sibling activation/expiration timestamps in the same element.
 func policyConfigGeneralWithSubBlocks(name string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
-    name           = %q
-    enabled        = true
-    frequency      = "Ongoing"
-    retry_event    = "none"
-    retry_attempts = -1
-    category_id    = "-1"
-    site_id        = "-1"
+    name                        = %q
+    enabled                     = true
+    frequency                   = "Ongoing"
+    retry_event                 = "none"
+    retry_attempts              = -1
+    notify_on_each_failed_retry = false
+    target_drive                = "/override"
+    network_requirements        = "Ethernet"
+    category_id                 = "-1"
+    site_id                     = "-1"
 
     date_time_limitations = {
       activation_date  = "2026-01-01 01:00:00"
@@ -556,17 +578,8 @@ resource "jamfplatform_pro_policy" "test" {
       no_execute_end   = "2:00 AM"
     }
 
-    network_limitations = {
-      minimum_network_connection = "Ethernet"
-      any_ip_address             = true
-    }
-
-    override_default_settings = {
-      target_drive       = "/"
-      distribution_point = "default"
-      force_afp_smb      = false
-      sus                = "default"
-    }
+    network_limitations       = {}
+    override_default_settings = {}
   }
 }
 `, name)
@@ -661,6 +674,10 @@ func TestAccPolicyResource_GeneralFullCoverage(t *testing.T) {
 							knownvalue.StringExact("Sun"),
 						}),
 					),
+					// network_limitations is a projection. minimum_network_connection
+					// follows general.network_requirements = "Ethernet" set above,
+					// and any_ip_address follows scope.limitations.network_segment_ids
+					// being empty. Neither was configured here — and neither could be.
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("general").AtMapKey("network_limitations").AtMapKey("minimum_network_connection"),
@@ -670,6 +687,19 @@ func TestAccPolicyResource_GeneralFullCoverage(t *testing.T) {
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("general").AtMapKey("network_limitations").AtMapKey("any_ip_address"),
 						knownvalue.Bool(true),
+					),
+					// override_default_settings is a projection too. target_drive
+					// follows the general.target_drive = "/override" set above, which
+					// is the pairing most likely to regress silently.
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("override_default_settings").AtMapKey("target_drive"),
+						knownvalue.StringExact("/override"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("override_default_settings").AtMapKey("force_afp_smb"),
+						knownvalue.Bool(false),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1006,7 +1036,7 @@ func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigPrinters(policyName, printerName, action string, makeDefault, leaveExistingDefault bool) string {
+func policyConfigPrinters(policyName, printerName, action string, makeDefault bool) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_printer" "fixture" {
   name = %q
@@ -1018,7 +1048,6 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   printers = {
-    leave_existing_default = %t
     printers = [
       {
         id           = jamfplatform_pro_printer.fixture.id
@@ -1028,15 +1057,20 @@ resource "jamfplatform_pro_policy" "test" {
     ]
   }
 }
-`, printerName, policyName, leaveExistingDefault, action, makeDefault)
+`, printerName, policyName, action, makeDefault)
 }
 
 // TestAccPolicyResource_PrintersFullCoverage creates a jamfplatform_pro_printer
 // fixture and references it from policy.printers.printers. Step 2 swaps action
 // `Map` → `Unmap` (the UI-canonical values exposed by the schema; the provider
 // translates to/from the wire `install`/`uninstall` form via printerActionToWire
-// / printerActionFromWire) and toggles make_default + leave_existing_default
-// to exercise the Update path.
+// / printerActionFromWire) and toggles make_default to exercise the Update path.
+//
+// leave_existing_default is gone: it modelled a wire element Jamf Pro answers
+// as <leave_existing_default/> whatever is written, including on a policy whose
+// printers were configured in the admin UI with the default-printer choice
+// toggled both ways. make_default is the attribute that actually carries that
+// choice, and it round-trips — which is what the two steps below assert.
 func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1048,7 +1082,7 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigPrinters(policyName, printerName, "Map", true, false),
+				Config: policyConfigPrinters(policyName, printerName, "Map", true),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1065,15 +1099,10 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("make_default"),
 						knownvalue.Bool(true),
 					),
-					statecheck.ExpectKnownValue(
-						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("printers").AtMapKey("leave_existing_default"),
-						knownvalue.Bool(false),
-					),
 				},
 			},
 			{
-				Config: policyConfigPrinters(policyName, printerName, "Unmap", false, true),
+				Config: policyConfigPrinters(policyName, printerName, "Unmap", false),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1084,11 +1113,6 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("make_default"),
 						knownvalue.Bool(false),
-					),
-					statecheck.ExpectKnownValue(
-						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("printers").AtMapKey("leave_existing_default"),
-						knownvalue.Bool(true),
 					),
 				},
 			},
@@ -2321,7 +2345,7 @@ func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *te
 	})
 }
 
-func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, woVersion, length int64) string {
+func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, woVersion int64) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -2331,17 +2355,20 @@ resource "jamfplatform_pro_policy" "test" {
     action                      = %q
     managed_password            = %q
     managed_password_wo_version = %d
-    managed_password_length     = %d
   }
 }
-`, name, action, managedPassword, woVersion, length)
+`, name, action, managedPassword, woVersion)
 }
 
 // TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage
-// exercises the management_account block. Step 1 rotates the management
-// account using a literal managed_password; step 2 switches to the
-// rotate-with-length variant (no plaintext) to confirm the
-// managed_password_length attribute round-trips.
+// exercises the management_account block. Step 1 rotates the management account
+// with a literal managed_password; step 2 bumps the WriteOnly version to
+// confirm the rotation gate fires without a plaintext value in the diff.
+//
+// It used to assert managed_password_length as well. That attribute is gone:
+// Jamf Pro never returns it, does not parse it (a length of "abc" is accepted
+// as readily as 16), and offers no action for a generated-password length to
+// apply to — the enum is rotate or doNotChange.
 func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -2352,7 +2379,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 1, 0),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 1),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -2362,12 +2389,12 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 				},
 			},
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "", 1, 16),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "R0tat3dSecret!", 2),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("management_account").AtMapKey("managed_password_length"),
-						knownvalue.Int64Exact(16),
+						tfjsonpath.New("management_account").AtMapKey("managed_password_wo_version"),
+						knownvalue.Int64Exact(2),
 					),
 				},
 			},
@@ -2393,9 +2420,17 @@ resource "jamfplatform_pro_policy" "test" {
 // TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 // exercises the efi_password block. The plaintext of_password
 // is `WriteOnly` (sent on writes, never persisted in state); rotation is
-// triggered via `of_password_wo_version`. Step 2 switches of_mode
-// `command` → `full` AND bumps `of_password_wo_version` 1 → 2 to exercise
-// both the Update path and the WriteOnly rotation gate.
+// triggered via `of_password_wo_version`. Step 2 bumps
+// `of_password_wo_version` 1 → 2 to exercise both the Update path and the
+// WriteOnly rotation gate, keeping of_mode on `command`.
+//
+// It used to switch of_mode `command` → `full`, which is not a value Jamf Pro
+// accepts: the enum is {command, none}. Sending `full` returns HTTP 201 and
+// then resets the whole block to `none` AND clears the stored password, so the
+// step failed as ".efi_password: inconsistent values for sensitive attribute"
+// — the framework masking the real culprit, the non-sensitive of_mode sibling,
+// to the nearest non-sensitive parent. of_mode now carries a OneOf validator
+// built from the SDK's own enum, so the same mistake is a plan-time error.
 func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -2416,12 +2451,36 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 				},
 			},
 			{
-				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "full", "OF-tf-acc-2!", 2),
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "command", "OF-tf-acc-2!", 2),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("efi_password").AtMapKey("of_mode"),
-						knownvalue.StringExact("full"),
+						knownvalue.StringExact("command"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("efi_password").AtMapKey("of_password_wo_version"),
+						knownvalue.Int64Exact(2),
+					),
+				},
+			},
+			{
+				// `full` is refused at plan time now rather than silently
+				// wiping the block server-side.
+				Config:      policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "full", "OF-tf-acc-3!", 3),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`Attribute efi_password.of_mode value must be one of`),
+			},
+			{
+				// of_mode = "none" clears the payload, and is the other half of
+				// the enum.
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "none", "", 3),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("efi_password").AtMapKey("of_mode"),
+						knownvalue.StringExact("none"),
 					),
 				},
 			},
