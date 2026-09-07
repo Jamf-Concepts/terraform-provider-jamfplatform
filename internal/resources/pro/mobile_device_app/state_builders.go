@@ -83,6 +83,24 @@ func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceM
 // true. os_type has its own asymmetric rule, below. Everything else is echoed
 // faithfully and reads from the wire. Wire-probed against Jamf Pro 11.31.1 on
 // 2026-09-06; see issue #387.
+//
+// description and deployment_type are read-only mirrors of a sibling this
+// resource manages, and read straight from the wire like the rest.
+// (display_name and internal_app are not modeled — see MobileAppGeneralModel.)
+// Wire-proven on 2026-09-07:
+//
+//   - description mirrors self_service.self_service_description. A create
+//     sending only the Self Service description made BOTH echo it, a write to
+//     general.description alone was accepted and discarded, and a later write
+//     to the Self Service description moved both.
+//   - deployment_type mirrors general.deploy_automatically: false echoes "Make
+//     Available in Self Service", true echoes "Install Automatically/Prompt
+//     Users to Install". A write to deployment_type itself is discarded on
+//     create and on update, so it never worked — the previous sticky read hid
+//     that.
+//
+// Neither carries UseStateForUnknown, for the reason in mirrorString: pinning a
+// mirror's prior value makes the plan disagree with the apply.
 func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state *MobileAppGeneralModel) {
 	if g == nil {
 		return
@@ -100,23 +118,6 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	// follow-up PUT precisely so the server persists it and this echo is present.
 	state.OsType = helpers.WireWhenPresentString(g.OsType, state.OsType)
 
-	// Two server-derived read-only fields, both mirrors of a sibling this
-	// resource manages, both read straight from the wire. (display_name and
-	// internal_app are not modeled — see MobileAppGeneralModel.)
-	//
-	//   - description mirrors self_service.self_service_description. Wire-proven
-	//     on 2026-09-07: a create sending only the Self Service description made
-	//     BOTH echo it, a write to general.description alone was accepted with
-	//     HTTP 201 and discarded, and a later write to the Self Service
-	//     description moved both.
-	//   - deployment_type mirrors general.deploy_automatically: false echoes
-	//     "Make Available in Self Service", true echoes "Install
-	//     Automatically/Prompt Users to Install". A write to deployment_type
-	//     itself is discarded on create and on update, so it never worked —
-	//     the previous sticky read simply hid that.
-	//
-	// Neither carries UseStateForUnknown, for the reason in serverDerivedString:
-	// pinning a mirror's prior value makes the plan disagree with the apply.
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
 	state.DeploymentType = helpers.StringPointerValueOrNull(g.DeploymentType)
 

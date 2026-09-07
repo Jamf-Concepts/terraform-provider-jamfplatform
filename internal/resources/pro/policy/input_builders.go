@@ -113,6 +113,16 @@ func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *po
 	return out, diags
 }
 
+// buildPolicyGeneral maps the general section onto the wire payload.
+//
+// network_limitations and override_default_settings are never sent. Every child
+// of both is a value Jamf Pro derives from somewhere else and refuses a write
+// for, so emitting them would be dead weight on every request, and for the two
+// that no route can write at all (override_default_settings.force_afp_smb and
+// .sus) it would invite a reader to believe the provider had tried. Wire-probed
+// against 11.31.1 on two tenants, on create and update, including on a policy
+// that already held non-default values, and identically through raw XML and the
+// SDK. See the schema descriptions in resource.go and issue #387.
 func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic.PolicyPostGeneral, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	g := &proclassic.PolicyPostGeneral{
@@ -147,16 +157,6 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 		diags.Append(d...)
 		g.DateTimeLimitations = dtl
 	}
-
-	// network_limitations and override_default_settings are never sent. Every
-	// child of both is a value Jamf Pro derives from somewhere else and refuses
-	// to accept a write for, so emitting them would be dead weight on every
-	// request — and for the two that no API path can write at all
-	// (override_default_settings.force_afp_smb and .sus) it would additionally
-	// invite the reader to believe the provider had tried. Wire-probed against
-	// 11.31.1 on two tenants, on create and update, including on a policy that
-	// already held non-default values, and identically through raw XML and the
-	// SDK; see the schema descriptions in resource.go and issue #387.
 
 	return g, diags
 }
@@ -620,9 +620,8 @@ func buildPolicyAccountMaintenance(plan PolicyResourceModel, secrets *policyAcco
 
 	if plan.ManagementAccount != nil {
 		am.ManagementAccount = &proclassic.PolicyAccountMaintenanceManagementAccount{
-			Action:                helpers.OptionalStringPointer(plan.ManagementAccount.Action),
-			ManagedPassword:       secrets.managedPassword,
-			ManagedPasswordLength: optionalInt64ToInt(plan.ManagementAccount.ManagedPasswordLength),
+			Action:          helpers.OptionalStringPointer(plan.ManagementAccount.Action),
+			ManagedPassword: secrets.managedPassword,
 		}
 	}
 

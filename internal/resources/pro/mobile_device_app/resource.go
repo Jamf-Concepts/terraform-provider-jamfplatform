@@ -142,15 +142,12 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 						},
 					},
 					"description": mirrorString(
-						"App description. Mirrors `self_service.self_service_description`, and is App-Store-synced when `keep_description_and_icon_up_to_date = true`. Not user-settable: a write to it is discarded — set `self_service.self_service_description` instead.",
-						// The whole block, not the description within it:
-						// self_service is Optional, and a path into a null block
-						// resolves only as far as the block. See ObjectSource.
+						"App description, which Jamf Pro keeps in step with `self_service.self_service_description`, and syncs from the App Store while `keep_description_and_icon_up_to_date = true`. Set `self_service.self_service_description` to change it.",
 						planmodifiers.ObjectSource(path.MatchRoot("self_service")),
 					),
 					"is_free": optComputedBool("Whether the app is free."),
 					"deployment_type": mirrorString(
-						"Install method, as the admin UI's \"Distribution Method\" reports it: `Make Available in Self Service` while `deploy_automatically` is false, `Install Automatically/Prompt Users to Install` once it is true. Not user-settable — a write to this attribute is discarded on create and on update. Set `deploy_automatically` instead.",
+						"Install method, shown in the admin UI as \"Distribution Method\": `Make Available in Self Service` while `deploy_automatically` is `false`, and `Install Automatically/Prompt Users to Install` while it is `true`. Set `deploy_automatically` to choose the install method.",
 						planmodifiers.BoolSource(path.MatchRoot("general").AtName("deploy_automatically")),
 					),
 					"external_url":                           optComputedString("External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side."),
@@ -417,6 +414,10 @@ func computedString(desc string) schema.StringAttribute {
 // general.description mirrors self_service.self_service_description and
 // general.deployment_type mirrors general.deploy_automatically, both wire-proven
 // against Jamf Pro 11.31.1 on 2026-09-07 — see flattenMobileAppGeneral.
+//
+// description watches the whole self_service block rather than the description
+// within it: self_service is Optional, and a path into a null block resolves
+// only as far as the block. See planmodifiers.ObjectSource.
 func mirrorString(desc string, sources ...planmodifiers.SourceComparer) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,

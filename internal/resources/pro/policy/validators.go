@@ -215,11 +215,12 @@ func (v retryRequiresOncePerComputerValidator) MarkdownDescription(ctx context.C
 }
 
 // ValidateResource implements the plan-time cross-field check.
+//
+// It reads one attribute at a time rather than decoding the whole model. A
+// policy configuration routinely carries unknown nested values (an interpolated
+// scope id, a package reference), and Config.Get on the whole model fails
+// outright on those, which would disable every validator on the resource.
 func (retryRequiresOncePerComputerValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	// Read one attribute at a time rather than decoding the whole model: a
-	// policy config routinely carries unknown nested values (an interpolated
-	// scope id, a package reference), and Config.Get on the whole model fails
-	// outright on those, which would disable every validator on the resource.
 	var frequency types.String
 	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("frequency"), &frequency); diags.HasError() {
 		return
@@ -265,11 +266,11 @@ func addRetryFrequencyError(resp *resource.ValidateConfigResponse, attr, frequen
 		path.Root("general").AtName(attr),
 		fmt.Sprintf("general.%s requires frequency %q", attr, frequencyOncePerComputer),
 		fmt.Sprintf(
-			"general.frequency is %q, and Jamf Pro keeps a policy's retry configuration only under %q. It accepts this write and then silently resets general.%s to %s, "+
-				"which surfaces as \"Provider produced inconsistent result after apply\".\n\n"+
-				"Either set general.frequency = %q, or set general.%s = %s.\n\n"+
-				"Note that general.%s is Optional+Computed: if an earlier apply set it under %q, it carries into this plan even when the configuration no longer mentions it, "+
-				"so it may need setting to %s explicitly.",
+			"general.frequency is %q, and Jamf Pro keeps a policy's retry configuration only under %q. It accepts the change and then resets general.%s to %s without reporting an error, "+
+				"which Terraform reports as \"Provider produced inconsistent result after apply\".\n\n"+
+				"Set general.frequency = %q, or set general.%s = %s.\n\n"+
+				"general.%s is Optional+Computed, so a value an earlier apply set under %q carries into this plan even when the configuration no longer mentions it. "+
+				"You may need to set %s here to clear it.",
 			frequency, frequencyOncePerComputer, attr, allowed,
 			frequencyOncePerComputer, attr, allowed,
 			attr, frequencyOncePerComputer, allowed,

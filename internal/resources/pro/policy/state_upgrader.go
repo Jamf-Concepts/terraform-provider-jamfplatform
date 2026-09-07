@@ -26,13 +26,16 @@ var _ resource.ResourceWithUpgradeState = &PolicyResource{}
 // snake_case attribute convention. A nested-object attribute rename is
 // something the framework cannot decode against the newer schema on its own.
 //
-// v1 → v2: `printers.leave_existing_default` was removed. It modelled a dead
-// wire element — Jamf Pro answers `<leave_existing_default/>` however the
-// field was written, on an admin-UI-configured policy as much as a
-// Terraform-managed one, and the default-printer choice it appeared to express
-// is actually persisted per printer as `printers[].make_default`. An attribute
-// that is gone from the schema must be gone from prior state too, or the decode
-// fails on the surplus key.
+// v1 → v2: two dead attributes were removed, and an attribute gone from the
+// schema must be gone from prior state too or the decode fails on the surplus
+// key. `printers.leave_existing_default` modelled a dead wire element — Jamf
+// Pro answers `<leave_existing_default/>` however the field was written, on an
+// admin-UI-configured policy as much as a Terraform-managed one, and the
+// default-printer choice it appeared to express is persisted per printer as
+// `printers[].make_default`. `management_account.managed_password_length` was
+// the same shape: never returned, never parsed (a length of "abc" is accepted
+// as readily as 16), and with no action for a generated-password length to
+// apply to, the enum being rotate or doNotChange.
 //
 // The v0 upgrader applies both rewrites, because state written against v0 has
 // never been through the v1 → v2 step either. Terraform runs exactly one
@@ -46,13 +49,13 @@ func (r *PolicyResource) UpgradeState(ctx context.Context) map[int64]resource.St
 					if err != nil {
 						return nil, fmt.Errorf("renaming script parameter keys: %w", err)
 					}
-					return dropPrintersLeaveExistingDefault(renamed)
+					return dropRemovedV2Attributes(renamed)
 				})
 			},
 		},
 		1: {
 			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
-				r.upgradeRawState(ctx, req, resp, "v1", dropPrintersLeaveExistingDefault)
+				r.upgradeRawState(ctx, req, resp, "v1", dropRemovedV2Attributes)
 			},
 		},
 	}
@@ -104,36 +107,45 @@ func (r *PolicyResource) upgradeRawState(
 	resp.DynamicValue = &dynamicValue
 }
 
-// dropPrintersLeaveExistingDefault removes the printers.leave_existing_default
-// key from prior-state JSON. Everything else is preserved as raw JSON bytes, so
-// numeric IDs and other values keep their exact representation. A state that
-// never carried the key, or carries a null printers block, is returned
-// untouched.
-func dropPrintersLeaveExistingDefault(rawJSON []byte) ([]byte, error) {
+// dropRemovedV2Attributes removes the two attributes v2 deleted from
+// prior-state JSON: printers.leave_existing_default and
+// management_account.managed_password_length. Everything else is preserved as
+// raw JSON bytes, so numeric IDs and other values keep their exact
+// representation. A state that never carried a key, or carries a null parent
+// block, is returned untouched.
+func dropRemovedV2Attributes(rawJSON []byte) ([]byte, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(rawJSON, &top); err != nil {
 		return nil, err
 	}
 
-	printersRaw, ok := top["printers"]
-	if !ok || string(printersRaw) == "null" {
+	changed := false
+	for _, removed := range []struct{ block, key string }{
+		{"printers", "leave_existing_default"},
+		{"management_account", "managed_password_length"},
+	} {
+		blockRaw, ok := top[removed.block]
+		if !ok || string(blockRaw) == "null" {
+			continue
+		}
+		var block map[string]json.RawMessage
+		if err := json.Unmarshal(blockRaw, &block); err != nil {
+			return nil, err
+		}
+		if _, present := block[removed.key]; !present {
+			continue
+		}
+		delete(block, removed.key)
+		rewritten, err := json.Marshal(block)
+		if err != nil {
+			return nil, err
+		}
+		top[removed.block] = rewritten
+		changed = true
+	}
+	if !changed {
 		return rawJSON, nil
 	}
-
-	var printersBlock map[string]json.RawMessage
-	if err := json.Unmarshal(printersRaw, &printersBlock); err != nil {
-		return nil, err
-	}
-	if _, present := printersBlock["leave_existing_default"]; !present {
-		return rawJSON, nil
-	}
-	delete(printersBlock, "leave_existing_default")
-
-	newPrinters, err := json.Marshal(printersBlock)
-	if err != nil {
-		return nil, err
-	}
-	top["printers"] = newPrinters
 
 	return json.Marshal(top)
 }

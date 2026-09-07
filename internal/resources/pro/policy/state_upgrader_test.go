@@ -101,11 +101,11 @@ func TestRenameScriptParameterKeys(t *testing.T) {
 	}
 }
 
-// TestDropPrintersLeaveExistingDefault pins the v1 → v2 migration. The
+// TestDropRemovedV2Attributes pins the v1 → v2 migration. The
 // attribute is gone from the schema, so a surplus key in prior state fails the
 // decode outright — and the migration must leave every other value byte-exact,
 // because it re-marshals the whole document to get there.
-func TestDropPrintersLeaveExistingDefault(t *testing.T) {
+func TestDropRemovedV2Attributes(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
@@ -130,6 +130,21 @@ func TestDropPrintersLeaveExistingDefault(t *testing.T) {
 			want: `{"printers":{"printers":[{"id":"12"}]}}`,
 		},
 		{
+			name: "drops managed_password_length and keeps its siblings",
+			in:   `{"management_account":{"action":"rotate","managed_password_wo_version":2,"managed_password_length":16}}`,
+			want: `{"management_account":{"action":"rotate","managed_password_wo_version":2}}`,
+		},
+		{
+			name: "drops both removed attributes in one pass",
+			in:   `{"printers":{"leave_existing_default":true},"management_account":{"managed_password_length":16,"action":"rotate"}}`,
+			want: `{"printers":{},"management_account":{"action":"rotate"}}`,
+		},
+		{
+			name: "a null management_account block is untouched",
+			in:   `{"management_account":null}`,
+			want: `{"management_account":null}`,
+		},
+		{
 			name: "a null printers block is untouched",
 			in:   `{"id":"7029","printers":null}`,
 			want: `{"id":"7029","printers":null}`,
@@ -142,7 +157,7 @@ func TestDropPrintersLeaveExistingDefault(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := dropPrintersLeaveExistingDefault([]byte(tc.in))
+			got, err := dropRemovedV2Attributes([]byte(tc.in))
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -160,16 +175,16 @@ func TestDropPrintersLeaveExistingDefault(t *testing.T) {
 	}
 }
 
-// TestDropPrintersLeaveExistingDefault_PreservesLargeIntegersVerbatim guards
+// TestDropRemovedV2Attributes_PreservesLargeIntegersVerbatim guards
 // the hazard of a whole-document re-marshal: encoding/json turns a number into
 // a float64 on the way through a map[string]any, which silently mangles a large
 // Jamf Pro ID. The migration only ever unmarshals into json.RawMessage for that
 // reason, and this test fails if someone loosens it.
-func TestDropPrintersLeaveExistingDefault_PreservesLargeIntegersVerbatim(t *testing.T) {
+func TestDropRemovedV2Attributes_PreservesLargeIntegersVerbatim(t *testing.T) {
 	t.Parallel()
 
 	const in = `{"printers":{"leave_existing_default":true,"printers":[{"id":9007199254740993}]}}`
-	got, err := dropPrintersLeaveExistingDefault([]byte(in))
+	got, err := dropRemovedV2Attributes([]byte(in))
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

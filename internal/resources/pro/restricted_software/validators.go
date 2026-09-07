@@ -40,10 +40,14 @@ func (v deleteApplicationRequiresExactMatchValidator) MarkdownDescription(ctx co
 }
 
 // ValidateResource implements the plan-time cross-field check.
+//
+// It reads one attribute at a time rather than the whole model: a configuration
+// carrying an unknown nested value (an interpolated scope id) makes Config.Get
+// on the model fail outright, which would disable every validator on the
+// resource. A null or unknown restrict_exact_process_name is no violation
+// either, since null takes the server default of true and unknown resolves
+// after apply.
 func (deleteApplicationRequiresExactMatchValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	// One attribute at a time rather than the whole model: a config carrying an
-	// unknown nested value (an interpolated scope id) makes Config.Get on the
-	// model fail outright, which would disable every validator on the resource.
 	var deleteApplication types.Bool
 	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("delete_application"), &deleteApplication); diags.HasError() {
 		return
@@ -56,8 +60,6 @@ func (deleteApplicationRequiresExactMatchValidator) ValidateResource(ctx context
 	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("restrict_exact_process_name"), &exactMatch); diags.HasError() {
 		return
 	}
-	// Null or unknown is not a violation: null takes the server default, which
-	// is true, and unknown resolves after apply.
 	if exactMatch.IsNull() || exactMatch.IsUnknown() || exactMatch.ValueBool() {
 		return
 	}
@@ -66,10 +68,10 @@ func (deleteApplicationRequiresExactMatchValidator) ValidateResource(ctx context
 		path.Root("general").AtName("delete_application"),
 		"general.delete_application requires general.restrict_exact_process_name = true",
 		"Jamf Pro deletes the application running a restricted process only when it can identify that application by an exact process name. "+
-			"With general.restrict_exact_process_name = false it accepts this write and then silently clears general.delete_application, "+
-			"which surfaces as \"Provider produced inconsistent result after apply\".\n\n"+
-			"Either set general.restrict_exact_process_name = true, or set general.delete_application = false.\n\n"+
-			"Note that general.delete_application is Optional+Computed: if an earlier apply set it while the exact match was on, it carries into this plan "+
-			"even when the configuration no longer mentions it, so it may need setting to false explicitly.",
+			"With general.restrict_exact_process_name = false it accepts the change and then clears general.delete_application without reporting an error, "+
+			"which Terraform reports as \"Provider produced inconsistent result after apply\".\n\n"+
+			"Set general.restrict_exact_process_name = true, or set general.delete_application = false.\n\n"+
+			"general.delete_application is Optional+Computed, so a value an earlier apply set while the exact match was on carries into this plan "+
+			"even when the configuration no longer mentions it. You may need to set false here to clear it.",
 	)
 }

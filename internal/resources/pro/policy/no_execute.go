@@ -76,6 +76,9 @@ var noExecuteWireTimePattern = regexp.MustCompile(`^(1[0-2]|[1-9]):([0-5]\d) (AM
 // discarded (`24:00 AM` stores nothing, while `24:01 AM` stores `12:01 AM`).
 // 48 hours clears it for every minute of the day, midnight included.
 //
+// The 12-hour conversion has the two boundaries worth stating: 12 AM is hour 0
+// and 12 PM is hour 12, while every other PM hour adds 12.
+//
 // A value that does not match noExecuteWireTimePattern is returned unchanged.
 // The schema validator makes that unreachable from configuration; it matters
 // for a value a Read adopted from the wire, which is already in this shape, and
@@ -89,7 +92,6 @@ func encodeNoExecuteTime(value string) string {
 	if err != nil {
 		return value
 	}
-	// 12 AM is hour 0 and 12 PM is hour 12; every other PM hour adds 12.
 	switch {
 	case m[3] == "AM" && hour == 12:
 		hour = 0

@@ -168,7 +168,8 @@ func ObjectSource(p path.Expression) SourceComparer { return compareSource[types
 // source the practitioner has not configured cannot be changing: its own
 // Optional+Computed handling carries the prior value forward. A source they
 // have configured is unchanged precisely when the configured value equals what
-// state holds.
+// state holds. A null or unknown configured value therefore reports unchanged:
+// the practitioner is not moving it.
 func compareSource[T attr.Value](p path.Expression) SourceComparer {
 	return func(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) (bool, bool) {
 		configPaths, diags := req.Config.PathMatches(ctx, p)
@@ -190,7 +191,6 @@ func compareSource[T attr.Value](p path.Expression) SourceComparer {
 			resp.Diagnostics.Append(diags...)
 			return false, false
 		}
-		// Not configured: the practitioner is not moving it.
 		if configSrc.IsNull() || configSrc.IsUnknown() {
 			return true, true
 		}
@@ -206,33 +206,34 @@ func (m mirrorOfString) Description(_ context.Context) string {
 
 func (m mirrorOfString) MarkdownDescription(ctx context.Context) string { return m.Description(ctx) }
 
+// PlanModifyString carries the prior value forward when every watched source is
+// unchanged, and otherwise leaves the plan value Unknown for the apply to fill.
+//
+// Three early returns leave it Unknown. Create has no prior state and destroy
+// has no plan, so neither has anything to carry. A source that could not be read
+// is treated as "cannot tell": an apply then writes whatever the server says,
+// which is always right, where assuming "unchanged" would risk the
+// inconsistent-result error this modifier exists to avoid. And a source that
+// moved means the mirror moves with it.
+//
+// The carry itself differs from DecideResetForUnchangedString in taking a NULL
+// prior value as well. A mirror whose source has no value has none either, and
+// refusing to carry null leaves `plan -refresh=false` permanently dirty on
+// exactly the configurations that never touch the source, which is most of
+// them. Unknown prior state is the one thing not carried, there being no value
+// there to carry.
 func (m mirrorOfString) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	// Create (no prior state) and destroy (no plan) have nothing to carry.
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		return
 	}
 
 	for _, src := range m.sources {
-		equal, ok := src(ctx, req, resp)
-		if !ok {
-			// The source could not be read. Leave the attribute Unknown: an
-			// apply then writes whatever the server says, which is always
-			// correct, where guessing "unchanged" risks the inconsistent-result
-			// error this modifier exists to avoid.
-			return
-		}
-		if !equal {
+		unchanged, ok := src(ctx, req, resp)
+		if !ok || !unchanged {
 			return
 		}
 	}
 
-	// Every source is unchanged, so the mirror cannot move: carry the prior
-	// value forward. Unlike DecideResetForUnchangedString this carries a NULL
-	// state value too. A mirror whose source has no value has no value either,
-	// and leaving it Unknown would leave `plan -refresh=false` permanently
-	// dirty on exactly the configs that never touch the source — which is most
-	// of them. Unknown prior state is the one thing not carried: there is no
-	// value there to carry.
 	if !req.StateValue.IsUnknown() {
 		resp.PlanValue = req.StateValue
 	}

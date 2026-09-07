@@ -163,8 +163,8 @@ Optional:
 Read-Only:
 
 - `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
-- `deployment_type` (String) Install method, as the admin UI's "Distribution Method" reports it: `Make Available in Self Service` while `deploy_automatically` is false, `Install Automatically/Prompt Users to Install` once it is true. Not user-settable — a write to this attribute is discarded on create and on update. Set `deploy_automatically` instead.
-- `description` (String) App description. Mirrors `self_service.self_service_description`, and is App-Store-synced when `keep_description_and_icon_up_to_date = true`. Not user-settable: a write to it is discarded — set `self_service.self_service_description` instead.
+- `deployment_type` (String) Install method, shown in the admin UI as "Distribution Method": `Make Available in Self Service` while `deploy_automatically` is `false`, and `Install Automatically/Prompt Users to Install` while it is `true`. Set `deploy_automatically` to choose the install method.
+- `description` (String) App description, which Jamf Pro keeps in step with `self_service.self_service_description`, and syncs from the App Store while `keep_description_and_icon_up_to_date = true`. Set `self_service.self_service_description` to change it.
 - `id` (String) App ID under `general`. Matches the top-level `id`. Returned by Jamf Pro.
 - `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
 

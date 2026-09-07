@@ -169,7 +169,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 					},
 					// Wire: <delete_executable>.
 					"delete_application": schema.BoolAttribute{
-						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true` — Jamf Pro can only identify the application to delete from an exact process name, and silently clears this flag otherwise, so the pairing is checked at plan time.",
+						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},

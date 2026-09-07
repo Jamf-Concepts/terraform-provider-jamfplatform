@@ -133,6 +133,14 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	return diags
 }
 
+// flattenPolicyGeneral maps the wire <general> section onto the model.
+//
+// override_default_settings reads wire-first with no stickiness: every child is
+// Computed-only and a projection of a setting that lives elsewhere, so the wire
+// is the only thing that can be right about it. target_drive follows
+// general.target_drive, distribution_point follows packages.distribution_point,
+// and force_afp_smb and sus follow admin UI settings no route can write. See
+// the schema descriptions in resource.go.
 func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, state *PolicyGeneralModel, includeUnmanaged bool) {
 	if g == nil {
 		return
@@ -196,12 +204,6 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 	if state.NetworkLimitations != nil && g.NetworkLimitations != nil {
 		flattenPolicyNetworkLimitations(ctx, g.NetworkLimitations, state.NetworkLimitations)
 	}
-	// override_default_settings is read wire-first with no stickiness: every
-	// child is Computed-only and a pure projection of a setting that lives
-	// elsewhere, so the wire is the only thing that can be right and drift on
-	// it is real. target_drive follows general.target_drive, distribution_point
-	// follows packages.distribution_point, and force_afp_smb / sus follow admin
-	// UI settings with no API write path at all. See the schema descriptions.
 	if state.OverrideDefaultSettings != nil && g.OverrideDefaultSettings != nil {
 		state.OverrideDefaultSettings.TargetDrive = helpers.StringPointerValueOrNull(g.OverrideDefaultSettings.TargetDrive)
 		state.OverrideDefaultSettings.DistributionPoint = helpers.StringPointerValueOrNull(g.OverrideDefaultSettings.DistributionPoint)
@@ -796,11 +798,6 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	// when the caller already manages the sub-block.
 	if state.ManagementAccount != nil && am.ManagementAccount != nil {
 		state.ManagementAccount.Action = helpers.ReconcileOptionalStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
-		// managed_password is WriteOnly — framework strips from state.
-		// managed_password_wo_version round-trips as a regular Optional
-		// Int64; assignPolicyResourceModel does not overwrite the prior
-		// state value here (the API never echoes it).
-		state.ManagementAccount.ManagedPasswordLength = stickyIgnoringDriftInt64(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
 	}
 
 	if state.EfiPassword != nil && am.OpenFirmwareEfiPassword != nil {

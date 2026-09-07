@@ -2345,7 +2345,7 @@ func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *te
 	})
 }
 
-func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, woVersion, length int64) string {
+func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, woVersion int64) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -2355,17 +2355,20 @@ resource "jamfplatform_pro_policy" "test" {
     action                      = %q
     managed_password            = %q
     managed_password_wo_version = %d
-    managed_password_length     = %d
   }
 }
-`, name, action, managedPassword, woVersion, length)
+`, name, action, managedPassword, woVersion)
 }
 
 // TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage
-// exercises the management_account block. Step 1 rotates the management
-// account using a literal managed_password; step 2 switches to the
-// rotate-with-length variant (no plaintext) to confirm the
-// managed_password_length attribute round-trips.
+// exercises the management_account block. Step 1 rotates the management account
+// with a literal managed_password; step 2 bumps the WriteOnly version to
+// confirm the rotation gate fires without a plaintext value in the diff.
+//
+// It used to assert managed_password_length as well. That attribute is gone:
+// Jamf Pro never returns it, does not parse it (a length of "abc" is accepted
+// as readily as 16), and offers no action for a generated-password length to
+// apply to — the enum is rotate or doNotChange.
 func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -2376,7 +2379,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 1, 0),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 1),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -2386,12 +2389,12 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 				},
 			},
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "", 1, 16),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "R0tat3dSecret!", 2),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("management_account").AtMapKey("managed_password_length"),
-						knownvalue.Int64Exact(16),
+						tfjsonpath.New("management_account").AtMapKey("managed_password_wo_version"),
+						knownvalue.Int64Exact(2),
 					),
 				},
 			},
