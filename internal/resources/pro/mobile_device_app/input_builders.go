@@ -47,6 +47,11 @@ func buildMobileAppInput(ctx context.Context, plan MobileAppResourceModel) (*pro
 	return out, diags
 }
 
+// buildMobileAppGeneral maps the general block onto the wire payload.
+//
+// DeploymentType is never sent: Jamf Pro derives it from DeployAutomatically and
+// discards a write to it, on create and on update alike. See mirrorString in
+// resource.go.
 func buildMobileAppGeneral(m *MobileAppGeneralModel) *proclassic.MobileDeviceApplicationGeneral {
 	g := &proclassic.MobileDeviceApplicationGeneral{
 		Name:                             helpers.OptionalStringPointer(m.Name),
@@ -54,7 +59,6 @@ func buildMobileAppGeneral(m *MobileAppGeneralModel) *proclassic.MobileDeviceApp
 		BundleID:                         helpers.OptionalStringPointer(m.BundleID),
 		OsType:                           helpers.OptionalStringPointer(m.OsType),
 		Free:                             helpers.OptionalBoolPointer(m.IsFree),
-		DeploymentType:                   helpers.OptionalStringPointer(m.DeploymentType),
 		ExternalURL:                      helpers.OptionalStringPointer(m.ExternalURL),
 		ItunesStoreURL:                   helpers.OptionalStringPointer(m.ItunesStoreURL),
 		ItunesCountryRegion:              helpers.OptionalStringPointer(m.ItunesCountryRegion),

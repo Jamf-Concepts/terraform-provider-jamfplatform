@@ -254,7 +254,15 @@ func TestAssignPolicyResourceModel_PackageConfigurationDistributionPoint(t *test
 	}
 }
 
-func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing.T) {
+// TestAssignPolicyResourceModel_PackageConfigurationReportsDrift pins the
+// wire-authoritative read on a managed attribute: an echoed value that differs
+// from what state holds must land in state, so `terraform plan` reports the
+// change. The classic /policies GET echoes
+// <package_configuration><distribution_point> faithfully (Jamf Pro 11.31.1,
+// wire-probed 2026-09-06). This asserts the opposite of what it did before
+// issue #387 — the sticky read it used to pin is what made a Jamf Pro UI edit
+// to a Terraform-managed attribute invisible forever.
+func TestAssignPolicyResourceModel_PackageConfigurationReportsDrift(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
@@ -272,8 +280,148 @@ func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if got := state.Packages.DistributionPoint.ValueString(); got != "Configured DP" {
-		t.Fatalf("preferCurrentStringPointer should keep configured value, got %q", got)
+	if got := state.Packages.DistributionPoint.ValueString(); got != "Server DP" {
+		t.Fatalf("the wire value must win so drift is reported, got %q", got)
+	}
+}
+
+// TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift pins the other half of
+// the #387 split: the handful of fields Jamf Pro does not echo keep the sticky
+// read, so a configured value is not nulled by a refresh. The evidence for each
+// is in the doc comment of the flattener that holds it.
+//
+// The self_service notification_* fields are echoed only while the tenant-level
+// Self Service notifications toggle is on, so with the toggle off — the empty
+// PolicySelfService below — state must be kept rather than nulled.
+// TestFlattenPolicySelfService_NotificationDriftWhenEchoed covers the other
+// side.
+//
+// This test used to also cover no_execute_start/end, the network_limitations
+// scalars and the override_default_settings scalars. All six have moved to
+// TestAssignPolicyResourceModel_ServerProjectionsReadTheWire: they are not
+// fields the server fails to echo, they are fields it echoes authoritatively
+// and refuses to let anyone write, which is the opposite treatment.
+func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{
+		General: &PolicyGeneralModel{
+			Name: types.StringValue("tf-acc"),
+		},
+		SelfService: &PolicySelfServiceModel{
+			DisplayNotifications: types.BoolValue(true),
+			NotificationSubject:  types.StringValue("configured subject"),
+		},
+	}
+	src := &proclassic.Policy{
+		General:     &proclassic.PolicyGeneral{Name: new("tf-acc")},
+		SelfService: &proclassic.PolicySelfService{},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	for _, tc := range []struct {
+		name, want, got string
+	}{
+		{"self_service.notification_subject", "configured subject", state.SelfService.NotificationSubject.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if !state.SelfService.DisplayNotifications.ValueBool() {
+		t.Error("self_service.display_notifications: sticky read must keep true")
+	}
+}
+
+// TestAssignPolicyResourceModel_ServerProjectionsReadTheWire pins the six
+// `general` attributes Jamf Pro derives from somewhere else and refuses to let
+// anyone write. All six are Computed-only in the schema, and all six are read
+// straight from the wire: the server is the only thing that can be right about
+// them, so a value in prior state must lose.
+//
+// It is the inverse of the sticky test above and the reason the two are
+// separate. A sticky read is for a field the wire cannot speak about; these are
+// fields the wire is the sole authority on. Reading them stickily hid two real
+// bugs — a config change to minimum_network_connection that never applied, and
+// an override target_drive that stopped tracking general.target_drive.
+//
+// The wire values below are the ones the server actually produces for this
+// state: see flattenPolicyNetworkLimitations and flattenPolicyDateTimeLimitations
+// for the probe record.
+func TestAssignPolicyResourceModel_ServerProjectionsReadTheWire(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{
+		General: &PolicyGeneralModel{
+			Name: types.StringValue("tf-acc"),
+			DateTimeLimitations: &PolicyGeneralDateTimeLimitationsModel{
+				NoExecuteStart: types.StringValue("1:00 AM"),
+				NoExecuteEnd:   types.StringValue("2:00 AM"),
+			},
+			NetworkLimitations: &PolicyGeneralNetworkLimitationsModel{
+				AnyIPAddress:             types.BoolValue(false),
+				MinimumNetworkConnection: types.StringValue("No Minimum"),
+			},
+			OverrideDefaultSettings: &PolicyGeneralOverrideDefaultsModel{
+				TargetDrive:       types.StringValue("/Volumes/od"),
+				DistributionPoint: types.StringValue("Stale DP"),
+				ForceAfpSmb:       types.BoolValue(true),
+				Sus:               types.StringValue("stale-sus"),
+			},
+		},
+	}
+	src := &proclassic.Policy{
+		General: &proclassic.PolicyGeneral{
+			Name: new("tf-acc"),
+			DateTimeLimitations: &proclassic.PolicyGeneralDateTimeLimitations{
+				// The empty elements a policy with no window echoes. State
+				// claimed a window; the wire says there is none, and the wire
+				// wins — a sticky read here is what let an apply erase somebody
+				// else's window while reporting success.
+				NoExecuteStart: new(""),
+				NoExecuteEnd:   new(""),
+			},
+			NetworkLimitations: &proclassic.PolicyGeneralNetworkLimitations{
+				AnyIPAddress:             new(true),
+				MinimumNetworkConnection: new("Ethernet"),
+			},
+			OverrideDefaultSettings: &proclassic.PolicyGeneralOverrideDefaultSettings{
+				TargetDrive:       new("/Volumes/mirrored"),
+				DistributionPoint: new("AFP Test"),
+				ForceAfpSmb:       new(false),
+				Sus:               new("default"),
+			},
+		},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	for _, tc := range []struct {
+		name, want, got string
+	}{
+		{"general.date_time_limitations.no_execute_start", "", state.General.DateTimeLimitations.NoExecuteStart.ValueString()},
+		{"general.date_time_limitations.no_execute_end", "", state.General.DateTimeLimitations.NoExecuteEnd.ValueString()},
+		{"general.network_limitations.minimum_network_connection", "Ethernet", state.General.NetworkLimitations.MinimumNetworkConnection.ValueString()},
+		{"general.override_default_settings.target_drive", "/Volumes/mirrored", state.General.OverrideDefaultSettings.TargetDrive.ValueString()},
+		{"general.override_default_settings.distribution_point", "AFP Test", state.General.OverrideDefaultSettings.DistributionPoint.ValueString()},
+		{"general.override_default_settings.sus", "default", state.General.OverrideDefaultSettings.Sus.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: the wire value must win, want %q got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if !state.General.NetworkLimitations.AnyIPAddress.ValueBool() {
+		t.Error("general.network_limitations.any_ip_address: the wire value must win, want true")
+	}
+	if state.General.OverrideDefaultSettings.ForceAfpSmb.ValueBool() {
+		t.Error("general.override_default_settings.force_afp_smb: the wire value must win, want false")
+	}
+	// An empty no_execute_start element must read as null rather than "", so a
+	// Computed attribute the server has no value for is absent from state
+	// instead of holding a sentinel the practitioner cannot have written.
+	if !state.General.DateTimeLimitations.NoExecuteStart.IsNull() {
+		t.Errorf("general.date_time_limitations.no_execute_start: an empty echo must be null, got %#v", state.General.DateTimeLimitations.NoExecuteStart)
 	}
 }
 
@@ -330,5 +478,39 @@ func TestAssignPolicyResourceModel_IncludeUnmanagedHydratesFromScratch(t *testin
 	}
 	if state.SelfService == nil || !state.SelfService.UseForSelfService.ValueBool() {
 		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
+	}
+}
+
+// TestFlattenPolicySelfService_NotificationDriftWhenEchoed pins the other side
+// of the conditional echo: while the tenant-level Self Service notifications
+// toggle is on the classic GET does return the <notification> family, and a
+// value that differs from state must then win so drift is reported.
+// TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift covers the toggle-off
+// side, where state is kept rather than nulled.
+func TestFlattenPolicySelfService_NotificationDriftWhenEchoed(t *testing.T) {
+	t.Parallel()
+	state := &PolicySelfServiceModel{
+		DisplayNotifications: types.BoolValue(true),
+		NotificationLocation: types.StringValue("Self Service"),
+		NotificationSubject:  types.StringValue("state subject"),
+		NotificationMessage:  types.StringValue("state message"),
+	}
+	flattenPolicySelfService(&proclassic.PolicySelfService{
+		Notification:        &proclassic.NotificationValue{Enabled: new(false)},
+		NotificationType:    new("Self Service and Notification Center"),
+		NotificationSubject: new("wire subject"),
+		NotificationMessage: new("wire message"),
+	}, state, false)
+	for _, tc := range []struct{ name, want, got string }{
+		{"notification_location", "Self Service and Notification Center", state.NotificationLocation.ValueString()},
+		{"notification_subject", "wire subject", state.NotificationSubject.ValueString()},
+		{"notification_message", "wire message", state.NotificationMessage.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: wire value must win, want %q got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if state.DisplayNotifications.ValueBool() {
+		t.Error("display_notifications: wire false must win over state true")
 	}
 }

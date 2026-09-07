@@ -7,7 +7,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -30,10 +34,14 @@ var activationExpirationDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{
 // noExecuteTimePattern matches the classic /policies wire form for
 // <no_execute_start> and <no_execute_end>: 12-hour `h:MM AM` / `h:MM PM`
 // with the hour 1-12 (no leading zero) and a literal space before the
-// meridiem (e.g. "1:00 AM", "12:30 PM"). Wire-probed 2026-05-27: 24-hour
-// HH:MM returns HTTP 409; AM/PM with no day set silently drops; AM/PM with
-// no_execute_on day set persists exactly as sent. Anything outside the
-// 12-hour AM/PM shape is unsafe.
+// meridiem (e.g. "1:00 AM", "12:30 PM"). It is what the wire *reads back*,
+// and it is a subset of what the write path parses — 24-hour HH:MM, a
+// non-breaking or doubled space, and every punctuated meridiem answer HTTP
+// 409, while `1:00 am` and `01:00 AM` are accepted.
+//
+// This is the shape a practitioner writes and the shape the GET returns. It is
+// NOT the shape sent on the wire — see no_execute.go, which offsets the value
+// 48 hours forward because that is the only form Jamf Pro stores.
 var noExecuteTimePattern = regexp.MustCompile(`^(1[0-2]|[1-9]):[0-5]\d (AM|PM)$`)
 
 // deferralTypeCompanionsValidator enforces the cross-field shape of the
@@ -171,4 +179,107 @@ func (deferralTypeCompanionsValidator) ValidateString(ctx context.Context, req v
 			)
 		}
 	}
+}
+
+// frequencyOncePerComputer is the one general.frequency under which Jamf Pro
+// keeps a policy's retry configuration. Taken from the SDK's own enum rather
+// than restated, so a spec ingest that renames it fails the build.
+const frequencyOncePerComputer = proclassic.PolicyPostGeneralFrequencyOncePerComputer
+
+// retryRequiresOncePerComputerValidator refuses a retry configuration on a
+// policy whose frequency cannot carry one.
+//
+// Jamf Pro persists general.retry_event, general.retry_attempts and
+// general.notify_on_each_failed_retry only while general.frequency is
+// "Once per computer". Under any other frequency it accepts the write with
+// HTTP 201 and silently resets the three to `none`, `-1` and `false` —
+// wire-probed against 11.31.1 on 2026-09-07, and independent of the triggers
+// (a policy with trigger_checkin = false kept its retry configuration).
+//
+// Without this check the failure lands mid-apply as "Provider produced
+// inconsistent result after apply", and it lands on a config that never
+// mentioned the offending attribute: retry_* and notify_* are
+// Optional+Computed, so a value set under an earlier "Once per computer" is
+// carried into the plan by UseNonNullStateForUnknown when the practitioner
+// changes nothing but the frequency.
+type retryRequiresOncePerComputerValidator struct{}
+
+// Description returns a plain-text description of the validator.
+func (retryRequiresOncePerComputerValidator) Description(context.Context) string {
+	return `general.retry_event, general.retry_attempts and general.notify_on_each_failed_retry require general.frequency = "` + frequencyOncePerComputer + `"`
+}
+
+// MarkdownDescription returns the markdown description.
+func (v retryRequiresOncePerComputerValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateResource implements the plan-time cross-field check.
+//
+// It reads one attribute at a time rather than decoding the whole model. A
+// policy configuration routinely carries unknown nested values (an interpolated
+// scope id, a package reference), and Config.Get on the whole model fails
+// outright on those, which would disable every validator on the resource.
+func (retryRequiresOncePerComputerValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var frequency types.String
+	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("frequency"), &frequency); diags.HasError() {
+		return
+	}
+	if frequency.IsNull() || frequency.IsUnknown() || frequency.ValueString() == frequencyOncePerComputer {
+		return
+	}
+
+	var retryEvent types.String
+	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("retry_event"), &retryEvent); !diags.HasError() {
+		if isStringSet(retryEvent) && retryEvent.ValueString() != retryEventNone {
+			addRetryFrequencyError(resp, "retry_event", frequency.ValueString(), `"`+retryEvent.ValueString()+`"`, `"`+retryEventNone+`"`)
+		}
+	}
+
+	var retryAttempts types.Int64
+	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("retry_attempts"), &retryAttempts); !diags.HasError() {
+		if !retryAttempts.IsNull() && !retryAttempts.IsUnknown() && retryAttempts.ValueInt64() != retryAttemptsNone {
+			addRetryFrequencyError(resp, "retry_attempts", frequency.ValueString(), strconv.FormatInt(retryAttempts.ValueInt64(), 10), "-1")
+		}
+	}
+
+	var notify types.Bool
+	if diags := req.Config.GetAttribute(ctx, path.Root("general").AtName("notify_on_each_failed_retry"), &notify); !diags.HasError() {
+		if !notify.IsNull() && !notify.IsUnknown() && notify.ValueBool() {
+			addRetryFrequencyError(resp, "notify_on_each_failed_retry", frequency.ValueString(), "true", "false")
+		}
+	}
+}
+
+// retryEventNone and retryAttemptsNone are the values Jamf Pro resets a retry
+// configuration to when the frequency cannot carry one — which makes them the
+// only values the three attributes may hold under such a frequency.
+const (
+	retryEventNone    = proclassic.PolicyPostGeneralRetryEventNone
+	retryAttemptsNone = -1
+)
+
+// addRetryFrequencyError reports one retry attribute set against an
+// incompatible frequency, naming the value Jamf Pro would silently store.
+func addRetryFrequencyError(resp *resource.ValidateConfigResponse, attr, frequency, got, allowed string) {
+	resp.Diagnostics.AddAttributeError(
+		path.Root("general").AtName(attr),
+		fmt.Sprintf("general.%s requires frequency %q", attr, frequencyOncePerComputer),
+		fmt.Sprintf(
+			"general.frequency is %q, and Jamf Pro keeps a policy's retry configuration only under %q. It accepts the change and then resets general.%s to %s without reporting an error, "+
+				"which Terraform reports as \"Provider produced inconsistent result after apply\".\n\n"+
+				"Set general.frequency = %q, or set general.%s = %s.\n\n"+
+				"general.%s is Optional+Computed, so a value an earlier apply set under %q carries into this plan even when the configuration no longer mentions it. "+
+				"You may need to set %s here to clear it.",
+			frequency, frequencyOncePerComputer, attr, allowed,
+			frequencyOncePerComputer, attr, allowed,
+			attr, frequencyOncePerComputer, allowed,
+		),
+	)
+}
+
+// isStringSet reports whether a string attribute carries a usable (known,
+// non-null, non-empty) value at config time.
+func isStringSet(s types.String) bool {
+	return !s.IsNull() && !s.IsUnknown() && s.ValueString() != ""
 }

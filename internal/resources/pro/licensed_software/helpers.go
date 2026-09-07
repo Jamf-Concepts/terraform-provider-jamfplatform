@@ -47,19 +47,6 @@ func emptyToNil(p *string) *string {
 	return p
 }
 
-// preferCurrentStringPointer returns the caller's configured value when set,
-// otherwise adopts the API value with "" collapsed to null. Protects
-// user-authored strings in positionally-reconciled nested lists against the
-// classic-API empty-string echo: a null config and a "" echo both resolve to
-// null, while an explicitly configured "" is preserved. The standard ProClassic
-// tradeoff is no server-drift detection on these fields (see restricted_software).
-func preferCurrentStringPointer(api *string, current types.String) types.String {
-	if helpers.IsConfiguredValue(current) {
-		return current
-	}
-	return helpers.StringPointerValueOrNull(emptyToNil(api))
-}
-
 // int64ValueOrZero renders an *int as a known Int64, defaulting nil to 0. Used
 // for license_count, where 0 is a meaningful value (unlimited) and the schema
 // default is 0 — never null.

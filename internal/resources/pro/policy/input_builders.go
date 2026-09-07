@@ -113,6 +113,16 @@ func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *po
 	return out, diags
 }
 
+// buildPolicyGeneral maps the general section onto the wire payload.
+//
+// network_limitations and override_default_settings are never sent. Every child
+// of both is a value Jamf Pro derives from somewhere else and refuses a write
+// for, so emitting them would be dead weight on every request, and for the two
+// that no route can write at all (override_default_settings.force_afp_smb and
+// .sus) it would invite a reader to believe the provider had tried. Wire-probed
+// against 11.31.1 on two tenants, on create and update, including on a policy
+// that already held non-default values, and identically through raw XML and the
+// SDK. See the schema descriptions in resource.go and issue #387.
 func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic.PolicyPostGeneral, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	g := &proclassic.PolicyPostGeneral{
@@ -148,31 +158,25 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 		g.DateTimeLimitations = dtl
 	}
 
-	if m.NetworkLimitations != nil {
-		nl, d := buildPolicyNetworkLimitations(ctx, m.NetworkLimitations)
-		diags.Append(d...)
-		g.NetworkLimitations = nl
-	}
-
-	if m.OverrideDefaultSettings != nil {
-		g.OverrideDefaultSettings = &proclassic.PolicyGeneralOverrideDefaultSettings{
-			TargetDrive:       helpers.OptionalStringPointer(m.OverrideDefaultSettings.TargetDrive),
-			DistributionPoint: helpers.OptionalStringPointer(m.OverrideDefaultSettings.DistributionPoint),
-			ForceAfpSmb:       helpers.OptionalBoolPointer(m.OverrideDefaultSettings.ForceAfpSmb),
-			Sus:               helpers.OptionalStringPointer(m.OverrideDefaultSettings.Sus),
-		}
-	}
-
 	return g, diags
 }
 
+// buildPolicyDateTimeLimitations maps the date_time_limitations sub-block onto
+// the wire payload.
+//
+// NoExecuteStart and NoExecuteEnd go through noExecuteTimePointer rather than
+// helpers.OptionalStringPointer, which offsets the time 48 hours forward
+// because that is the only form Jamf Pro stores, and omits the element
+// entirely when the attribute is unset — an emitted element clears a window
+// configured in the admin UI, while an omitted one preserves it. See
+// no_execute.go.
 func buildPolicyDateTimeLimitations(ctx context.Context, m *PolicyGeneralDateTimeLimitationsModel) (*proclassic.PolicyGeneralDateTimeLimitations, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	dtl := &proclassic.PolicyGeneralDateTimeLimitations{
 		ActivationDate: helpers.OptionalStringPointer(m.ActivationDate),
 		ExpirationDate: helpers.OptionalStringPointer(m.ExpirationDate),
-		NoExecuteStart: helpers.OptionalStringPointer(m.NoExecuteStart),
-		NoExecuteEnd:   helpers.OptionalStringPointer(m.NoExecuteEnd),
+		NoExecuteStart: noExecuteTimePointer(m.NoExecuteStart),
+		NoExecuteEnd:   noExecuteTimePointer(m.NoExecuteEnd),
 	}
 
 	if helpers.IsConfiguredValue(m.NoExecuteOn) {
@@ -186,26 +190,6 @@ func buildPolicyDateTimeLimitations(ctx context.Context, m *PolicyGeneralDateTim
 	}
 
 	return dtl, diags
-}
-
-func buildPolicyNetworkLimitations(ctx context.Context, m *PolicyGeneralNetworkLimitationsModel) (*proclassic.PolicyGeneralNetworkLimitations, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	nl := &proclassic.PolicyGeneralNetworkLimitations{
-		MinimumNetworkConnection: helpers.OptionalStringPointer(m.MinimumNetworkConnection),
-		AnyIPAddress:             helpers.OptionalBoolPointer(m.AnyIPAddress),
-	}
-
-	segs, d := scope.BuildIDSlice(ctx, m.NetworkSegmentIDs, func(id int) proclassic.IDName {
-		return proclassic.IDName{ID: &id}
-	})
-	diags.Append(d...)
-	if segs != nil {
-		nl.NetworkSegments = &proclassic.PolicyGeneralNetworkLimitationsNetworkSegments{
-			NetworkSegment: segs,
-		}
-	}
-
-	return nl, diags
 }
 
 func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.PolicyPostScope, diag.Diagnostics) {
@@ -514,10 +498,26 @@ func buildPolicyScripts(m *PolicyScriptsModel) *proclassic.PolicyPostScripts {
 	return &proclassic.PolicyPostScripts{Script: &items}
 }
 
+// buildPolicyPrinters maps the printers block onto the wire payload.
+//
+// buildPolicyPrinters maps the printers block onto the wire payload.
+//
+// A <printers> element is emitted only when the block actually names printers,
+// because the element is full-replace: a PUT carrying <printers> with no
+// <printer> children clears the policy's printer list outright (wire-probed
+// against 11.31.1 on 2026-09-07, one entry to none).
+//
+// The wire's <leave_existing_default> is deliberately not sent and no longer
+// modelled. It is a dead element: the GET answers <leave_existing_default/>
+// however it was written, and it answers the same on a policy whose printers
+// were configured through the admin UI with the default-printer choice toggled
+// both ways. The choice the admin UI actually persists is per printer, as
+// printers[].make_default.
 func buildPolicyPrinters(m *PolicyPrintersModel) *proclassic.PolicyPostPrinters {
-	p := &proclassic.PolicyPostPrinters{
-		LeaveExistingDefault: helpers.OptionalBoolPointer(m.LeaveExistingDefault),
+	if len(m.Printers) == 0 {
+		return nil
 	}
+	p := &proclassic.PolicyPostPrinters{}
 	if len(m.Printers) > 0 {
 		items := make([]proclassic.PolicyPrintersPrinterItem, 0, len(m.Printers))
 		for _, pr := range m.Printers {
@@ -529,9 +529,6 @@ func buildPolicyPrinters(m *PolicyPrintersModel) *proclassic.PolicyPostPrinters 
 			})
 		}
 		p.Printer = &items
-	}
-	if p.LeaveExistingDefault == nil && p.Printer == nil {
-		return nil
 	}
 	return p
 }
@@ -623,9 +620,8 @@ func buildPolicyAccountMaintenance(plan PolicyResourceModel, secrets *policyAcco
 
 	if plan.ManagementAccount != nil {
 		am.ManagementAccount = &proclassic.PolicyAccountMaintenanceManagementAccount{
-			Action:                helpers.OptionalStringPointer(plan.ManagementAccount.Action),
-			ManagedPassword:       secrets.managedPassword,
-			ManagedPasswordLength: optionalInt64ToInt(plan.ManagementAccount.ManagedPasswordLength),
+			Action:          helpers.OptionalStringPointer(plan.ManagementAccount.Action),
+			ManagedPassword: secrets.managedPassword,
 		}
 	}
 

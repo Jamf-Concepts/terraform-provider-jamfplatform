@@ -110,7 +110,6 @@ resource "jamfplatform_pro_policy" "options" {
   # Options ▸ Management Accounts.
   management_account = {
     action                      = "rotate"
-    managed_password_length     = 16
     managed_password_wo_version = 1
   }
 

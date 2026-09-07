@@ -66,18 +66,22 @@ func testAccCheckMobileAppDestroy(t *testing.T) resource.TestCheckFunc {
 // mobileAppGeneralOnlyConfig is the import-stable shape: only the required
 // general fields. The importer populates general post-Read but leaves optional
 // blocks null, so ImportStateVerify must run against a general-only config.
-func mobileAppGeneralOnlyConfig(name, version, deploymentType string) string {
+// deployAutomatically is what actually selects the distribution method:
+// general.deployment_type is a read-only mirror of it (false -> "Make Available
+// in Self Service", true -> "Install Automatically/Prompt Users to Install"),
+// and a write to deployment_type is discarded on create and on update alike.
+func mobileAppGeneralOnlyConfig(name, version string, deployAutomatically bool) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {
 			general = {
-				name            = %q
-				version         = %q
-				bundle_id       = "com.example.tfacc.mobileapp"
-				os_type         = "iOS"
-				deployment_type = %q
+				name                = %q
+				version             = %q
+				bundle_id           = "com.example.tfacc.mobileapp"
+				os_type             = "iOS"
+				deploy_automatically = %t
 			}
 		}
-	`, name, version, deploymentType)
+	`, name, version, deployAutomatically)
 }
 
 // mobileAppFullConfig adds self_service and an all_mobile_devices scope on top of general.
@@ -89,7 +93,7 @@ func mobileAppFullConfig(name, version, buttonText string) string {
 				version         = %q
 				bundle_id       = "com.example.tfacc.mobileapp"
 				os_type         = "iOS"
-				deployment_type = "Make Available in Self Service"
+				deploy_automatically = false
 			}
 			scope = {
 				targets = {
@@ -108,9 +112,16 @@ func mobileAppFullConfig(name, version, buttonText string) string {
 }
 
 // TestAccResource_ProMobileApp_Basic exercises create, in-place update, and
-// import for the general-only shape. The version/deployment_type change verifies
-// the GET-after-Update path (classic UpdateMobileDeviceApplicationByID returns
-// 201 empty). Update also re-sends os_type — without it the server 409s on the PUT.
+// import for the general-only shape. The version/deploy_automatically change
+// verifies the GET-after-Update path (classic UpdateMobileDeviceApplicationByID
+// returns 201 empty). Update also re-sends os_type — without it the server 409s
+// on the PUT.
+//
+// The distribution method is driven through general.deploy_automatically and
+// only asserted on general.deployment_type. This step used to set
+// deployment_type directly and passed only because the read was sticky: the
+// write has never worked, on create or update, so the state was reporting a
+// value the server had thrown away.
 func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -121,12 +132,13 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 		CheckDestroy:             testAccCheckMobileAppDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: mobileAppGeneralOnlyConfig(name, "1.0", "Make Available in Self Service"),
+				Config: mobileAppGeneralOnlyConfig(name, "1.0", false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(mobileAppResourceAddr, "id"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.name", name),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.version", "1.0"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.os_type", "iOS"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deploy_automatically", "false"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deployment_type", "Make Available in Self Service"),
 				),
 			},
@@ -145,9 +157,11 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 				ImportStateVerifyIgnore: []string{"timeouts", "scope", "self_service", "vpp", "app_configuration"},
 			},
 			{
-				Config: mobileAppGeneralOnlyConfig(name, "2.0", "Install Automatically/Prompt Users to Install"),
+				Config: mobileAppGeneralOnlyConfig(name, "2.0", true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.version", "2.0"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deploy_automatically", "true"),
+					// The mirror moved with its source, which is the whole point.
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deployment_type", "Install Automatically/Prompt Users to Install"),
 				),
 			},
@@ -156,7 +170,7 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 				// server-derived echo fields (description / category_name /
 				// site_name) do not change on a rename, so their UseStateForUnknown
 				// plan values stay consistent through apply.
-				Config: mobileAppGeneralOnlyConfig(name+"-renamed", "2.0", "Install Automatically/Prompt Users to Install"),
+				Config: mobileAppGeneralOnlyConfig(name+"-renamed", "2.0", true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.name", name+"-renamed"),
 				),
@@ -244,9 +258,16 @@ func TestAccResource_ProMobileApp_AppConfiguration(t *testing.T) {
 	})
 }
 
-// TestAccResource_ProMobileApp_InvalidDeploymentType asserts the deployment_type
-// OneOf validator rejects an out-of-set value at plan time.
-func TestAccResource_ProMobileApp_InvalidDeploymentType(t *testing.T) {
+// TestAccResource_ProMobileApp_DeploymentTypeIsUnconfigurable asserts that
+// general.deployment_type cannot be set at all.
+//
+// It replaces a test that asserted a OneOf validator on the attribute. The
+// validator was not wrong about the vocabulary, but it implied the attribute
+// was writable, and it never was: Jamf Pro derives deployment_type from
+// general.deploy_automatically and discards a write to it on create and on
+// update alike. Even the in-set value the old test's sibling steps sent was
+// being thrown away — the sticky read is what made that look like success.
+func TestAccResource_ProMobileApp_DeploymentTypeIsUnconfigurable(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-pro-mobileapp-bad-dt-" + suffix
@@ -255,9 +276,19 @@ func TestAccResource_ProMobileApp_InvalidDeploymentType(t *testing.T) {
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      mobileAppGeneralOnlyConfig(name, "1.0", "Force Install Right Now"),
+				Config: fmt.Sprintf(`
+		resource "jamfplatform_pro_mobile_device_app" "test" {
+			general = {
+				name            = %q
+				version         = "1.0"
+				bundle_id       = "com.example.tfacc.mobileapp"
+				os_type         = "iOS"
+				deployment_type = "Install Automatically/Prompt Users to Install"
+			}
+		}
+	`, name),
 				PlanOnly:    true,
-				ExpectError: regexp.MustCompile("value must be one of"),
+				ExpectError: regexp.MustCompile(`Invalid Configuration for Read-Only Attribute`),
 			},
 		},
 	})

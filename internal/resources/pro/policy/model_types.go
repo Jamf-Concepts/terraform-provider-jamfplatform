@@ -188,8 +188,7 @@ type PolicyScriptItemModel struct {
 
 // PolicyPrintersModel models <policy><printers>.
 type PolicyPrintersModel struct {
-	LeaveExistingDefault types.Bool               `tfsdk:"leave_existing_default"`
-	Printers             []PolicyPrinterItemModel `tfsdk:"printers"`
+	Printers []PolicyPrinterItemModel `tfsdk:"printers"`
 }
 
 // PolicyPrinterItemModel models a single <printer>. The Action field carries
@@ -245,7 +244,6 @@ type PolicyManagementAccountModel struct {
 	Action                   types.String `tfsdk:"action"`
 	ManagedPassword          types.String `tfsdk:"managed_password"`
 	ManagedPasswordWoVersion types.Int64  `tfsdk:"managed_password_wo_version"`
-	ManagedPasswordLength    types.Int64  `tfsdk:"managed_password_length"`
 }
 
 // PolicyOpenFirmwareEfiPasswordModel models <open_firmware_efi_password>.
