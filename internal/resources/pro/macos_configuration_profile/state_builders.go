@@ -239,7 +239,7 @@ func idNameSliceFromJssUserGroups(u *proclassic.OsXConfigurationProfileScopeJssU
 	if u == nil {
 		return nil
 	}
-	return u.JssUserGroup
+	return u.UserGroup
 }
 
 func idNameSliceFromLimIbeacons(i *proclassic.OsXConfigurationProfileScopeLimitationsIbeacons) *[]proclassic.IDName {

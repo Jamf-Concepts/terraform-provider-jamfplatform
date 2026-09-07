@@ -81,6 +81,13 @@ func (r *Resource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRe
 }
 
 // Schema returns the Terraform schema.
+// ConfigValidators returns the resource's plan-time cross-field checks.
+func (r *Resource) ConfigValidators(context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		notificationCenterUnwritableValidator{},
+	}
+}
+
 func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a macOS configuration profile in Jamf Pro. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML for the configuration the profile delivers to enrolled Macs.\n\n### Payload diff handling\n\nJamf Pro normalises every uploaded payload: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those normalisations from `terraform plan`, so applies stay quiet when nothing meaningful has changed. Real drift still surfaces in two cases:\n\n  - You edited the payload in Terraform. `plan` shows the change and `apply` pushes it.\n  - Someone edited the profile in the Jamf Pro admin UI. `plan` shows the drift on the next refresh, so you can either bring the change back into your Terraform config or `apply` to reassert the Terraform-managed value.\n\nA small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, `PayloadUUID`, `PayloadOrganization`, `PayloadDescription`, `PayloadEnabled`) is managed entirely by Jamf Pro. Any value you supply for them inside `payloads` is replaced, so the provider ignores them in the diff. Use `general.name`, `general.description` and the other top-level attributes to control the equivalent fields.\n\n### Scope\n\nScope blocks mirror `jamfplatform_pro_policy`. Targets, limitations and exclusions all carry flat sets of Jamf Pro IDs, or directory-service names where appropriate. `all_computers` and `all_jss_users` conflict with their per-ID siblings.\n\n### Profile identity on update\n\nOn update the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro, so the profile's identity stays stable across applies. Without that, every update would look like a brand-new profile to enrolled Macs and macOS would treat it as a fresh installation.\n\n### Characters Jamf Pro cannot store\n\nIn most payload types `&` and `<` come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. Write line breaks as `&#13;`. An \"Application & Custom Settings\" payload stores all of these faithfully. Rather than alter a payload silently, the provider refuses it on create, on edit and on import, naming the offending value." + resourcePrivileges,
@@ -185,9 +192,9 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 					"self_service_description":      optComputedString("Description shown in Self Service. Markdown supported."),
 					"ensure_users_view_description": optComputedBool("Force users to view the description before installing."),
 					"feature_on_main_page":          optComputedBool("Feature the profile on the Self Service main page."),
-					"display_notifications":         optComputedBool("Whether Self Service surfaces a notification when the profile becomes available. Pair with `notification_location` to set the delivery target."),
+					"display_notifications":         optComputedBool("Whether Self Service surfaces a notification when the profile becomes available. See `notification_location` for the one pairing Jamf Pro cannot store."),
 					"notification_location": schema.StringAttribute{
-						MarkdownDescription: "Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.",
+						MarkdownDescription: "Where Self Service surfaces the notification. `Self Service` or `Self Service and Notification Center`.\n\nJamf Pro stores this and `display_notifications` in one field, and setting either resets the other, so `Self Service and Notification Center` cannot be combined with `display_notifications = true` and is refused at plan time. To have both, set them under Self Service ▸ Notification in the Jamf Pro admin UI and leave both attributes out of the configuration; Terraform reads the pairing back and preserves it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
