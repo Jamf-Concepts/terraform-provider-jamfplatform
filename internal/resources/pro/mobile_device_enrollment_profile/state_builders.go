@@ -5,6 +5,7 @@ package mobile_device_enrollment_profile
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -12,9 +13,13 @@ import (
 // assignEnrollmentProfileResourceModel refreshes a resource model from a GET.
 // Optional nested blocks (location / purchasing) are refreshed only when already
 // authored (the model pointer is non-nil) so the always-returned server defaults
-// don't fabricate blocks the user never declared. On import the blocks start nil
-// and are not populated — ImportStateVerifyIgnore covers them.
-func assignEnrollmentProfileResourceModel(state *EnrollmentProfileResourceModel, api *proclassic.MobileDeviceEnrollmentProfile) {
+// don't fabricate blocks the user never declared.
+//
+// hydrating releases that ownership gate on first-time import, where the model
+// arrives with every block nil and would otherwise keep them nil — leaving a
+// declared block planning as an addition on the first plan after import. See
+// importHydration for the signal.
+func assignEnrollmentProfileResourceModel(state *EnrollmentProfileResourceModel, api *proclassic.MobileDeviceEnrollmentProfile, hydrating bool) {
 	if api == nil || api.General == nil {
 		return
 	}
@@ -31,13 +36,29 @@ func assignEnrollmentProfileResourceModel(state *EnrollmentProfileResourceModel,
 		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	}
 
-	if state.Location != nil {
+	if hydrating || state.Location != nil {
 		state.Location = flattenLocationModel(api.Location)
 	}
-	if state.Purchasing != nil {
+	if hydrating || state.Purchasing != nil {
 		state.Purchasing = flattenPurchasingModel(api.Purchasing)
 	}
 	state.Attachments = flattenAttachments(api.Attachments)
+}
+
+// importHydration reports whether this Read is the first one to write state for
+// the resource, which is the only time the optional-block ownership gate may be
+// released.
+//
+// stateAbsent covers the identity-only import path (Terraform 1.12+), where the
+// framework hands Read no prior state at all. The name check covers
+// `terraform import <addr> <id>`, where ImportStatePassthroughID leaves a
+// sparse-but-non-null state carrying only the id — so req.State.Raw.IsNull() is
+// false and cannot be used on its own. name is schema-Required, so Create and
+// Update always populate it before any Read; it can only be null here on a
+// first-time hydration. Sample it before assignEnrollmentProfileResourceModel
+// runs, which overwrites it from the wire.
+func importHydration(stateAbsent bool, name types.String) bool {
+	return stateAbsent || name.IsNull()
 }
 
 // assignEnrollmentProfileDataSourceModel populates a DS model from a GET. The DS

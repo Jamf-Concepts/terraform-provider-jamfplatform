@@ -39,9 +39,16 @@ import (
 // resource whose own discriminator then refuses it, because
 // `provider_name = "ENTRA_ID"` requires the block — so the directory id is what
 // proves the per-item read happened rather than the summary being passed
-// through. And mappings must stay ABSENT: Jamf Pro returns generated mappings
-// for every connection, and writing them into a generated configuration would
-// plan an add against the null that importing the same provider produces.
+// through. And mappings must stay ABSENT here, but for a different reason than
+// the one this assertion used to carry: hydration now adopts them on both the
+// generated-config and import paths (#391), and skips a wire object with
+// nothing in it. This fixture declares no mappings block, and `mappings` is a
+// non-pointer field on the create request, so eleven empty strings are sent and
+// echoed back. Wire-probed on the EU test tenant 2026-09-07, where a create
+// sending populated mappings read them back verbatim on an equally unconsented
+// connection — so the echo tracks what was written, Jamf Pro generates no
+// defaults, and an absent block here is the guard working rather than hydration
+// failing.
 // entraDirectoryID is the Microsoft Entra directory (tenant) id the backing
 // fixtures declare. Jamf Pro stores it without contacting Microsoft, so any
 // well-formed GUID serves, and naming it once lets the include_resource assertions

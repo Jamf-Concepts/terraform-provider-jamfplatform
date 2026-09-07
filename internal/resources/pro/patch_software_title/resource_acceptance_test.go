@@ -242,12 +242,13 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// timeouts: framework-only, never round-trips.
-				// version_packages: managed-subset map keyed off prior state; on
-				// import there is no prior state, so it cannot be reconstructed.
-				// available_versions: server-derived, and at this step the state
-				// already matches. source_id is resolved from the patch source
-				// name on import, so it round-trips.
-				ImportStateVerifyIgnore: []string{"timeouts", "version_packages"},
+				// version_packages is verified rather than ignored: an import
+				// now adopts the whole assigned set (#391), and the preceding
+				// unassign step left the title with none, so both sides are
+				// null. available_versions: server-derived, and at this step the
+				// state already matches. source_id is resolved from the patch
+				// source name on import, so it round-trips.
+				ImportStateVerifyIgnore: []string{"timeouts"},
 			},
 		},
 	})

@@ -30,7 +30,7 @@ func TestAssignUserGroupResourceModel_Static_PopulatesMembers(t *testing.T) {
 		t.Fatalf("initial members: %v", mDiags)
 	}
 	state := &UserGroupResourceModel{Members: initialMembers}
-	diags := assignUserGroupResourceModel(context.Background(), state, ug, true)
+	diags := assignUserGroupResourceModel(context.Background(), state, ug, true, false)
 	if diags.HasError() {
 		t.Fatalf("diagnostics: %v", diags)
 	}
@@ -72,7 +72,7 @@ func TestAssignUserGroupResourceModel_Smart_MembersAlwaysNull(t *testing.T) {
 	}
 
 	state := &UserGroupResourceModel{}
-	diags := assignUserGroupResourceModel(context.Background(), state, ug, true) // manageMembers irrelevant for smart
+	diags := assignUserGroupResourceModel(context.Background(), state, ug, true, false) // manageMembers irrelevant for smart
 	if diags.HasError() {
 		t.Fatalf("diagnostics: %v", diags)
 	}
@@ -108,7 +108,7 @@ func TestAssignUserGroupResourceModel_EmptyCriterionValueIsEmptyNotNull(t *testi
 	}
 
 	state := &UserGroupResourceModel{}
-	if diags := assignUserGroupResourceModel(context.Background(), state, ug, false); diags.HasError() {
+	if diags := assignUserGroupResourceModel(context.Background(), state, ug, false, false); diags.HasError() {
 		t.Fatalf("diagnostics: %v", diags)
 	}
 	if len(state.Criteria) != 2 {
@@ -175,5 +175,93 @@ func TestFlattenSite(t *testing.T) {
 	id, name = scope.FlattenSiteObject(nil)
 	if id != nil || name != nil {
 		t.Errorf("nil site must yield (nil, nil)")
+	}
+}
+
+// TestAssignUserGroupResourceModel_HydratesMembersOnImport covers the
+// first-time import path: members arrives null (never declared, because there
+// is no config yet) and must be adopted from the wire so a declared members
+// list does not plan as an addition on the first plan after import.
+func TestAssignUserGroupResourceModel_HydratesMembersOnImport(t *testing.T) {
+	id := 4
+	ug := &proclassic.UserGroup{
+		ID:      &id,
+		Name:    new("Imported Static"),
+		IsSmart: new(false),
+		Users: &proclassic.UserGroupUsers{User: &[]proclassic.UserGroupUsersUserItem{
+			{ID: new(9), Username: new("david@example.com")},
+			{ID: new(11), Username: new("erin@example.com")},
+		}},
+	}
+
+	state := &UserGroupResourceModel{Members: types.SetNull(types.StringType)}
+	diags := assignUserGroupResourceModel(context.Background(), state, ug, false, importHydration(false, state.Name))
+	if diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+	if state.Members.IsNull() {
+		t.Fatal("members must be hydrated from the wire on import")
+	}
+	if got := len(state.Members.Elements()); got != 2 {
+		t.Errorf("members expected 2 elements, got %d", got)
+	}
+}
+
+// TestAssignUserGroupResourceModel_ImportLeavesEmptyMembersNull asserts the
+// non-empty rule: adopting an empty member list would store [] where a create
+// that never declared the attribute stores null, which breaks
+// ImportStateVerify on a memberless static group.
+func TestAssignUserGroupResourceModel_ImportLeavesEmptyMembersNull(t *testing.T) {
+	id := 5
+	ug := &proclassic.UserGroup{
+		ID:      &id,
+		Name:    new("Imported Empty Static"),
+		IsSmart: new(false),
+		Users:   &proclassic.UserGroupUsers{User: &[]proclassic.UserGroupUsersUserItem{}},
+	}
+
+	state := &UserGroupResourceModel{Members: types.SetNull(types.StringType)}
+	diags := assignUserGroupResourceModel(context.Background(), state, ug, false, importHydration(false, state.Name))
+	if diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+	if !state.Members.IsNull() {
+		t.Errorf("members must stay null when the server returns none, got %v", state.Members)
+	}
+}
+
+// TestAssignUserGroupResourceModel_ImportKeepsSmartMembersNull asserts the
+// smart-group rule survives hydration: server-resolved membership is
+// informational and would drift forever if stored.
+func TestAssignUserGroupResourceModel_ImportKeepsSmartMembersNull(t *testing.T) {
+	id := 6
+	ug := &proclassic.UserGroup{
+		ID:      &id,
+		Name:    new("Imported Smart"),
+		IsSmart: new(true),
+		Users: &proclassic.UserGroupUsers{User: &[]proclassic.UserGroupUsersUserItem{
+			{ID: new(9), Username: new("david@example.com")},
+		}},
+	}
+
+	state := &UserGroupResourceModel{Members: types.SetNull(types.StringType)}
+	diags := assignUserGroupResourceModel(context.Background(), state, ug, false, importHydration(false, state.Name))
+	if diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+	if !state.Members.IsNull() {
+		t.Errorf("smart-group members must stay null on import, got %v", state.Members)
+	}
+}
+
+func TestImportHydration(t *testing.T) {
+	if !importHydration(true, types.StringValue("managed")) {
+		t.Error("identity-only import (no prior state) must hydrate")
+	}
+	if !importHydration(false, types.StringNull()) {
+		t.Error("passthrough import (sparse id-only state) must hydrate")
+	}
+	if importHydration(false, types.StringValue("managed")) {
+		t.Error("a genuine refresh must not hydrate")
 	}
 }

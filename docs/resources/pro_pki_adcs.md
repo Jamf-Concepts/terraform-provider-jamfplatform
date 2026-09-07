@@ -197,7 +197,19 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # SPDX-License-Identifier: MPL-2.0
 
 # Import an existing AD CS integration by its Jamf Pro AD CS Settings ID.
-# WriteOnly certificate fields (data_wo / password_wo) and wo_version are not
-# populated by import; re-declare them in config to manage rotation.
+#
+# Import restores what Jamf Pro returns: `filename` on each certificate block,
+# plus the subject, issuer, serial number and expiry under `*_details`. It
+# cannot restore the WriteOnly `data_wo` and `password_wo`, or the `wo_version`
+# rotation trigger, because Jamf Pro stores no readable copy of any of them.
+# Re-declare those three in your configuration.
+#
+# The first plan after you import will show `+ wo_version`, and the first apply
+# will re-send both certificates. You cannot avoid that. An INBOUND integration
+# has to declare both blocks, `data_wo` obliges you to set `wo_version` next to
+# it, and Jamf Pro never reports which version it last received, so the version
+# you configure always differs from the empty one in state. Re-sending costs
+# you nothing: Jamf Pro replaces the stored certificate with an identical copy
+# and the serial number stays the same.
 terraform import jamfplatform_pro_pki_adcs.inbound "25"
 ```

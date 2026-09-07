@@ -277,8 +277,82 @@ func TestFlattenMobileAppSelfService_Notification(t *testing.T) {
 	ss := &proclassic.MobileDeviceApplicationSelfService{
 		Notification: &proclassic.NotificationValue{Enabled: new(true)},
 	}
-	flattenMobileAppSelfService(ss, state)
+	flattenMobileAppSelfService(ss, state, false)
 	if !state.NotificationEnabled.ValueBool() {
 		t.Errorf("notification_enabled not flattened")
+	}
+}
+
+// TestFlattenMobileAppSelfService_HydratesIconAndCategoriesOnImport covers
+// first-time import, where the caller allocates an empty self_service block:
+// the zero-value struct carries a nil icon pointer and a nil category slice, so
+// without the release neither ever populated.
+func TestFlattenMobileAppSelfService_HydratesIconAndCategoriesOnImport(t *testing.T) {
+	ss := &proclassic.MobileDeviceApplicationSelfService{
+		SelfServiceIcon: &proclassic.MobileDeviceApplicationSelfServiceSelfServiceIcon{
+			ID:  new(12),
+			URI: new("https://example.invalid/icon.png"),
+		},
+		SelfServiceCategories: &proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategories{
+			Category: &[]proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategoriesCategoryItem{
+				{ID: new(4), Name: new("Productivity"), DisplayIn: new(true)},
+			},
+		},
+	}
+
+	state := &MobileAppSelfServiceModel{}
+	flattenMobileAppSelfService(ss, state, true)
+
+	if state.SelfServiceIcon == nil {
+		t.Fatal("self_service_icon must hydrate on import")
+	}
+	if state.SelfServiceIcon.ID.ValueString() != "12" {
+		t.Errorf("self_service_icon.id = %q, want 12", state.SelfServiceIcon.ID.ValueString())
+	}
+	if len(state.SelfServiceCategories) != 1 {
+		t.Fatalf("self_service_categories expected 1 entry, got %d", len(state.SelfServiceCategories))
+	}
+	if state.SelfServiceCategories[0].Name.ValueString() != "Productivity" {
+		t.Errorf("categories[0].name = %q, want Productivity", state.SelfServiceCategories[0].Name.ValueString())
+	}
+}
+
+// TestFlattenMobileAppSelfService_ImportWithNoCategoriesStaysNil asserts the
+// non-empty rule: storing an empty set where a create that never declared the
+// attribute stores null would break ImportStateVerify.
+func TestFlattenMobileAppSelfService_ImportWithNoCategoriesStaysNil(t *testing.T) {
+	ss := &proclassic.MobileDeviceApplicationSelfService{
+		SelfServiceCategories: &proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategories{
+			Category: &[]proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategoriesCategoryItem{},
+		},
+	}
+	state := &MobileAppSelfServiceModel{}
+	flattenMobileAppSelfService(ss, state, true)
+	if state.SelfServiceCategories != nil {
+		t.Errorf("categories must stay nil when the server carries none, got %+v", state.SelfServiceCategories)
+	}
+	if state.SelfServiceIcon != nil {
+		t.Errorf("icon must stay nil when the server omits it, got %+v", state.SelfServiceIcon)
+	}
+}
+
+// TestFlattenMobileAppSelfService_RefreshDoesNotFabricate asserts an ordinary
+// refresh still leaves an unauthored icon and category set alone.
+func TestFlattenMobileAppSelfService_RefreshDoesNotFabricate(t *testing.T) {
+	ss := &proclassic.MobileDeviceApplicationSelfService{
+		SelfServiceIcon: &proclassic.MobileDeviceApplicationSelfServiceSelfServiceIcon{ID: new(12)},
+		SelfServiceCategories: &proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategories{
+			Category: &[]proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategoriesCategoryItem{
+				{ID: new(4), Name: new("Productivity")},
+			},
+		},
+	}
+	state := &MobileAppSelfServiceModel{}
+	flattenMobileAppSelfService(ss, state, false)
+	if state.SelfServiceIcon != nil {
+		t.Errorf("unauthored icon must stay nil on a refresh, got %+v", state.SelfServiceIcon)
+	}
+	if state.SelfServiceCategories != nil {
+		t.Errorf("unauthored categories must stay nil on a refresh, got %+v", state.SelfServiceCategories)
 	}
 }

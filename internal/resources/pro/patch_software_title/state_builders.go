@@ -26,7 +26,7 @@ import (
 // cannot change once minted, so whatever is already in state stays correct.
 // Import is the one case with nothing in state to keep, and Read resolves the
 // number from the name there — see resolveSourceID.
-func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions, declaredKeys []string) diag.Diagnostics {
+func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions, declaredKeys []string, hydrating bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
@@ -51,7 +51,7 @@ func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoft
 	}
 	state.AvailableVersions = availList
 
-	vp, d := managedVersionPackages(ctx, declaredKeys, assignedPackagesByVersion(s.Packages))
+	vp, d := managedVersionPackages(ctx, declaredKeys, assignedPackagesByVersion(s.Packages), hydrating)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -171,10 +171,23 @@ func assignedPackagesByVersion(pkgs []pro.PatchSoftwareTitlePackages) map[string
 // keys: each is looked up in the server's assigned set and included if still
 // present. A declared key with no server-side package is dropped (surfaces
 // drift). When no keys are declared the map is null (matches an unset config).
-func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned map[string]string) (types.Map, diag.Diagnostics) {
+//
+// hydrating releases that gate on first hydration, where there are no prior
+// keys to reconstruct the managed subset from and the map used to come back
+// null however many packages the title had assigned — so a declared
+// version_packages planned as an addition on the first plan after import
+// (issue #391). The whole assigned set is adopted, and only when the server
+// reports one: storing an empty map where a create that never declared the
+// attribute stores null would break ImportStateVerify.
+func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned map[string]string, hydrating bool) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if len(declaredKeys) == 0 {
-		return types.MapNull(types.StringType), diags
+		if !hydrating || len(assigned) == 0 {
+			return types.MapNull(types.StringType), diags
+		}
+		m, d := types.MapValueFrom(ctx, types.StringType, assigned)
+		diags.Append(d...)
+		return m, diags
 	}
 	managed := map[string]string{}
 	for _, k := range declaredKeys {

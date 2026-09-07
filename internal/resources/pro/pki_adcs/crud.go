@@ -86,7 +86,7 @@ func (r *AdcsResource) Create(ctx context.Context, req resource.CreateRequest, r
 		resp.Diagnostics.AddError("Error reading created Jamf Pro AD CS integration", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got)...)
+	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -148,6 +148,8 @@ func (r *AdcsResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
+	hydrating := importHydration(isImport, state.ConnectorMode)
+
 	got, err := r.client.GetAdcsSettingsV1(readCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
@@ -163,7 +165,7 @@ func (r *AdcsResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &state, got)...)
+	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &state, got, hydrating)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -213,7 +215,7 @@ func (r *AdcsResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro AD CS integration", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got)...)
+	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

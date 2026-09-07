@@ -40,7 +40,7 @@ func TestAssignGoogleState_MapsServerFields(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Value(1))
+	assignGoogleState(&state, resp, types.Int64Value(1), false)
 
 	if state.ID.ValueString() != "ldap-001" {
 		t.Errorf("ID mismatch: got %q, want %q", state.ID.ValueString(), "ldap-001")
@@ -93,7 +93,7 @@ func TestAssignGoogleState_KeystoreEchoesPopulated(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Null())
+	assignGoogleState(&state, resp, types.Int64Null(), false)
 
 	ks := state.Google.Server.Keystore
 	if ks == nil {
@@ -125,7 +125,7 @@ func TestAssignGoogleState_KeystoreFileAndPasswordStayNull(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Value(2))
+	assignGoogleState(&state, resp, types.Int64Value(2), false)
 
 	ks := state.Google.Server.Keystore
 	if ks == nil {
@@ -150,7 +150,7 @@ func TestAssignGoogleState_WoVersionPreserved(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Value(3))
+	assignGoogleState(&state, resp, types.Int64Value(3), false)
 
 	ks := state.Google.Server.Keystore
 	if ks.WoVersion.ValueInt64() != 3 {
@@ -169,7 +169,7 @@ func TestAssignGoogleState_WoVersionPreservedNull(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Null())
+	assignGoogleState(&state, resp, types.Int64Null(), false)
 
 	ks := state.Google.Server.Keystore
 	if !ks.WoVersion.IsNull() {
@@ -192,7 +192,7 @@ func TestAssignGoogleState_ExpirationDateNilMapsToNull(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Null())
+	assignGoogleState(&state, resp, types.Int64Null(), false)
 
 	ks := state.Google.Server.Keystore
 	if !ks.ExpirationDate.IsNull() {
@@ -204,7 +204,7 @@ func TestAssignGoogleState_ExpirationDateNilMapsToNull(t *testing.T) {
 // leaves state untouched.
 func TestAssignGoogleState_NilSafe(t *testing.T) {
 	state := CloudIdentityProviderResourceModel{ID: types.StringValue("existing")}
-	assignGoogleState(&state, nil, types.Int64Null())
+	assignGoogleState(&state, nil, types.Int64Null(), false)
 	if state.ID.ValueString() != "existing" {
 		t.Errorf("nil response must leave state untouched; got %q", state.ID.ValueString())
 	}
@@ -246,7 +246,7 @@ func TestAssignGoogleState_MappingsPopulated(t *testing.T) {
 		},
 	}
 
-	assignGoogleState(&state, resp, types.Int64Null())
+	assignGoogleState(&state, resp, types.Int64Null(), false)
 
 	if state.Google.Mappings == nil {
 		t.Fatalf("Mappings must not be nil")
@@ -275,13 +275,13 @@ func TestAssignGoogleState_MappingsPopulated(t *testing.T) {
 // when the server returns no mappings block, and when the user did not author
 // mappings (prior nil) even if the server returned a block.
 func TestAssignGoogleState_MappingsNilSafe(t *testing.T) {
-	if got := assignMappingsState(nil, nil); got != nil {
-		t.Errorf("assignMappingsState(nil, nil) must return nil; got %+v", got)
+	if got := assignMappingsState(nil, nil, false); got != nil {
+		t.Errorf("assignMappingsState(nil, nil, false) must return nil; got %+v", got)
 	}
 	// Server returned mappings, but the user never authored the block (prior
 	// nil) — must stay nil to avoid a "planned null, got object" error.
 	serverMappings := &pro.CloudLdapMappingsResponse{UserMappings: &pro.UserMappings{UserID: "uid"}}
-	if got := assignMappingsState(serverMappings, nil); got != nil {
+	if got := assignMappingsState(serverMappings, nil, false); got != nil {
 		t.Errorf("assignMappingsState with nil prior must return nil; got %+v", got)
 	}
 }
@@ -314,7 +314,7 @@ func TestAssignAzureState_MapsFields(t *testing.T) {
 		},
 	}
 
-	assignAzureState(&state, resp)
+	assignAzureState(&state, resp, false)
 
 	if state.ID.ValueString() != "azure-001" {
 		t.Errorf("ID mismatch: got %q", state.ID.ValueString())
@@ -357,7 +357,7 @@ func TestAssignAzureState_EchoesPopulated(t *testing.T) {
 		},
 	}
 
-	assignAzureState(&state, resp)
+	assignAzureState(&state, resp, false)
 
 	az := state.Azure
 	if az.Type.ValueString() != "PUBLIC" {
@@ -383,7 +383,7 @@ func TestAssignAzureState_MappingsNilSafe(t *testing.T) {
 		},
 	}
 
-	assignAzureState(&state, resp)
+	assignAzureState(&state, resp, false)
 
 	if state.Azure == nil {
 		t.Fatal("Azure must not be nil")
@@ -421,7 +421,7 @@ func TestAssignAzureState_MappingsPopulated(t *testing.T) {
 		},
 	}
 
-	assignAzureState(&state, resp)
+	assignAzureState(&state, resp, false)
 
 	maps := state.Azure.Mappings
 	if maps == nil {
@@ -448,7 +448,7 @@ func TestAssignAzureState_MappingsPopulated(t *testing.T) {
 // leaves state untouched.
 func TestAssignAzureState_NilSafe(t *testing.T) {
 	state := CloudIdentityProviderResourceModel{ID: types.StringValue("kept")}
-	assignAzureState(&state, nil)
+	assignAzureState(&state, nil, false)
 	if state.ID.ValueString() != "kept" {
 		t.Errorf("nil response must leave state untouched; got %q", state.ID.ValueString())
 	}
@@ -470,5 +470,102 @@ func TestStringPtrValueOrNull_ValueRoundTrips(t *testing.T) {
 	got := stringPtrValueOrNull(&s)
 	if got.IsNull() || got.ValueString() != "hello" {
 		t.Errorf("*string 'hello' must map to StringValue('hello'); got %q", got.ValueString())
+	}
+}
+
+// TestAssignMappingsState_HydratesOnImport covers first-time import, where the
+// prior model is always nil: every sub-block the server returns must be adopted
+// so Jamf Pro's generated mappings do not plan as an addition.
+func TestAssignMappingsState_HydratesOnImport(t *testing.T) {
+	full := &pro.CloudLdapMappingsResponse{
+		UserMappings:       &pro.UserMappings{UserID: "uid", Username: "uname"},
+		GroupMappings:      &pro.GroupMappings{GroupID: "gid", GroupName: "gname"},
+		MembershipMappings: &pro.MembershipMappings{GroupMembershipMapping: "memberOf"},
+	}
+	got := assignMappingsState(full, nil, true)
+	if got == nil {
+		t.Fatal("mappings must hydrate when the server returns them")
+	}
+	if got.UserMappings == nil {
+		t.Error("user_mappings must hydrate")
+	}
+	if got.GroupMappings == nil {
+		t.Error("group_mappings must hydrate")
+	}
+	if got.MembershipMappings == nil {
+		t.Error("membership_mappings must hydrate")
+	}
+}
+
+// TestAssignMappingsState_NoWireMappingsStaysNil asserts hydration never
+// fabricates a block the server did not return.
+func TestAssignMappingsState_NoWireMappingsStaysNil(t *testing.T) {
+	if got := assignMappingsState(nil, nil, true); got != nil {
+		t.Errorf("no wire mappings must stay nil even when hydrating; got %+v", got)
+	}
+}
+
+// TestAssignAzureMappingsState_HydratesOnImport is the Entra ID counterpart.
+func TestAssignAzureMappingsState_HydratesOnImport(t *testing.T) {
+	full := fullAzureConfiguration()
+	got := assignAzureMappingsState(full.Server.Mappings, nil, true)
+	if got == nil {
+		t.Fatal("mappings must hydrate when the server returns them")
+	}
+	if got.UserName.ValueString() != "userPrincipalName" {
+		t.Errorf("user_name = %q, want userPrincipalName", got.UserName.ValueString())
+	}
+	if assignAzureMappingsState(nil, nil, true) != nil {
+		t.Error("no wire mappings must stay nil even when hydrating")
+	}
+}
+
+// TestAssignAzureMappingsState_EmptyWireObjectStaysNil pins the emptiness
+// guard. A connection created without a mappings block echoes one with every
+// field empty, because `mappings` is a non-pointer field on the create request
+// — wire-probed on the EU test tenant 2026-09-07, alongside a create sending
+// populated mappings that read them back verbatim. Hydrating the empty echo
+// would write a block of empty strings the practitioner never authored.
+func TestAssignAzureMappingsState_EmptyWireObjectStaysNil(t *testing.T) {
+	if got := assignAzureMappingsState(&pro.AzureMappings{}, nil, true); got != nil {
+		t.Errorf("an all-empty wire object must stay nil when hydrating; got %+v", got)
+	}
+	// A managed block still tracks the wire, empty included.
+	prior := &cloudAzureMappingsModel{UserName: types.StringValue("old")}
+	got := assignAzureMappingsState(&pro.AzureMappings{}, prior, false)
+	if got == nil {
+		t.Fatal("a managed block must still refresh from an empty wire object")
+	}
+	if got.UserName.ValueString() != "" {
+		t.Errorf("user_name = %q, want the empty wire value", got.UserName.ValueString())
+	}
+}
+
+// TestAssignMappingsState_EmptyWireSubBlocksStayNil is the Google counterpart:
+// an all-empty sub-block is skipped on hydration, and a mappings object left
+// with no sub-blocks at all collapses to nil rather than an empty shell.
+func TestAssignMappingsState_EmptyWireSubBlocksStayNil(t *testing.T) {
+	empty := &pro.CloudLdapMappingsResponse{
+		UserMappings:       &pro.UserMappings{},
+		GroupMappings:      &pro.GroupMappings{},
+		MembershipMappings: &pro.MembershipMappings{},
+	}
+	if got := assignMappingsState(empty, nil, true); got != nil {
+		t.Errorf("all-empty sub-blocks must collapse to nil when hydrating; got %+v", got)
+	}
+
+	partial := &pro.CloudLdapMappingsResponse{
+		UserMappings:  &pro.UserMappings{UserID: "uid"},
+		GroupMappings: &pro.GroupMappings{},
+	}
+	got := assignMappingsState(partial, nil, true)
+	if got == nil {
+		t.Fatal("a populated sub-block must still hydrate")
+	}
+	if got.UserMappings == nil {
+		t.Error("user_mappings must hydrate")
+	}
+	if got.GroupMappings != nil {
+		t.Errorf("an all-empty group_mappings must stay nil; got %+v", got.GroupMappings)
 	}
 }

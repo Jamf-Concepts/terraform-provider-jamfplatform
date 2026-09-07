@@ -50,7 +50,7 @@ func (r *CloudIdentityProviderResource) createGoogle(ctx context.Context, plan, 
 		return
 	}
 	// Preserve the user's rotation trigger across the read-back.
-	assignGoogleState(&plan, got, keystoreWoVersion(plan))
+	assignGoogleState(&plan, got, keystoreWoVersion(plan), false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -61,7 +61,7 @@ func (r *CloudIdentityProviderResource) createGoogle(ctx context.Context, plan, 
 }
 
 // readGoogle refreshes state from GET /v2/cloud-ldaps/{id}.
-func (r *CloudIdentityProviderResource) readGoogle(ctx context.Context, state *CloudIdentityProviderResourceModel, resp *resource.ReadResponse) {
+func (r *CloudIdentityProviderResource) readGoogle(ctx context.Context, state *CloudIdentityProviderResourceModel, resp *resource.ReadResponse, hydrating bool) {
 	priorWoVersion := keystoreWoVersion(*state)
 
 	got, err := r.client.GetCloudLdapV2(ctx, state.ID.ValueString())
@@ -75,7 +75,7 @@ func (r *CloudIdentityProviderResource) readGoogle(ctx context.Context, state *C
 		return
 	}
 
-	assignGoogleState(state, got, priorWoVersion)
+	assignGoogleState(state, got, priorWoVersion, hydrating)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -108,7 +108,7 @@ func (r *CloudIdentityProviderResource) updateGoogle(ctx context.Context, plan, 
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Google)", err.Error())
 		return
 	}
-	assignGoogleState(&plan, got, keystoreWoVersion(plan))
+	assignGoogleState(&plan, got, keystoreWoVersion(plan), false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

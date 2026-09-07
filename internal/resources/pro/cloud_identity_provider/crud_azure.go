@@ -46,7 +46,7 @@ func (r *CloudIdentityProviderResource) createAzure(ctx context.Context, plan, _
 		resp.Diagnostics.AddError("Error reading created Jamf Pro Cloud Identity Provider (Azure)", err.Error())
 		return
 	}
-	assignAzureState(&plan, got)
+	assignAzureState(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -57,7 +57,7 @@ func (r *CloudIdentityProviderResource) createAzure(ctx context.Context, plan, _
 }
 
 // readAzure refreshes state from GET /v1/cloud-azure/{id}.
-func (r *CloudIdentityProviderResource) readAzure(ctx context.Context, state *CloudIdentityProviderResourceModel, resp *resource.ReadResponse) {
+func (r *CloudIdentityProviderResource) readAzure(ctx context.Context, state *CloudIdentityProviderResourceModel, resp *resource.ReadResponse, hydrating bool) {
 	got, err := r.client.GetCloudAzureV1(ctx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
@@ -69,7 +69,7 @@ func (r *CloudIdentityProviderResource) readAzure(ctx context.Context, state *Cl
 		return
 	}
 
-	assignAzureState(state, got)
+	assignAzureState(state, got, hydrating)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -97,7 +97,7 @@ func (r *CloudIdentityProviderResource) updateAzure(ctx context.Context, plan, _
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Azure)", err.Error())
 		return
 	}
-	assignAzureState(&plan, got)
+	assignAzureState(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, cloudIdentityProviderIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

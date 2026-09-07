@@ -21,7 +21,39 @@ import (
 // values so the rotation gate keeps working. The two *_details blocks are
 // rebuilt as types.Object from the server metadata; connector_mode is derived
 // from the wire `outbound` flag.
-func assignAdcsResourceModel(ctx context.Context, state *AdcsResourceModel, s *pro.AdcsSettingsResponse) diag.Diagnostics {
+//
+// hydrating allocates an absent input block on a first-time hydration, from the
+// one attribute the server does echo — `filename`, which is Required inside the
+// block. That one value is the whole point: it is what makes the block non-nil
+// in state, and serverCertRotated / clientCertRotated read a nil prior block as
+// "rotate". Without it, the apply that follows an import re-uploaded both
+// certificates whether or not the practitioner had touched a rotation trigger,
+// and when the trigger was left undeclared no plan diff said so — reproduced
+// live on 2026-09-07, where that apply's request body carried the full .pem and
+// .p12 bytes (issue #399). With the block hydrated the predicates fall through
+// to comparing `wo_version`, which re-sends only on a declared bump and shows
+// the diff that means it.
+//
+// The block is allocated only when the server actually holds a certificate, so
+// a hydration never fabricates one. An INBOUND integration always has both (a
+// config validator requires the blocks), and an OUTBOUND one has neither.
+// importHydration reports whether this Read is the first one to write state for
+// the integration, which is the only time an absent certificate block may be
+// allocated.
+//
+// stateAbsent covers the identity-only import path (Terraform 1.12+), where the
+// framework hands Read no prior state. The connector_mode check covers
+// `terraform import <addr> <id>`, where ImportStatePassthroughID leaves a
+// sparse-but-non-null state carrying only the id, so req.State.Raw.IsNull() is
+// false and cannot be used alone. connector_mode is schema-Required, so Create
+// and Update always populate it before any Read; it can only be null here on a
+// first-time hydration. Sample it before assignAdcsResourceModel runs, which
+// overwrites it from the wire.
+func importHydration(stateAbsent bool, connectorMode types.String) bool {
+	return stateAbsent || connectorMode.IsNull()
+}
+
+func assignAdcsResourceModel(ctx context.Context, state *AdcsResourceModel, s *pro.AdcsSettingsResponse, hydrating bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	state.ConnectorMode = types.StringValue(outboundToConnectorMode(s.Outbound))
@@ -33,8 +65,12 @@ func assignAdcsResourceModel(ctx context.Context, state *AdcsResourceModel, s *p
 	state.APIClientID = optionalString(s.ApiClientID)
 	state.ConnectorLastCheckIn = adcsTimestamp(s.ConnectorLastCheckInTimestamp)
 
-	// Refresh the input blocks' server-echoed filename in place (never rebuild —
-	// that would drop data_wo / wo_version and break the rotation gate).
+	if hydrating && state.ServerCertificate == nil && s.ServerCert != nil {
+		state.ServerCertificate = &adcsCertInputModel{}
+	}
+	if hydrating && state.ClientCertificate == nil && s.ClientCert != nil {
+		state.ClientCertificate = &adcsClientCertInput{}
+	}
 	if state.ServerCertificate != nil && s.ServerCert != nil {
 		state.ServerCertificate.Filename = types.StringValue(s.ServerCert.Filename)
 	}

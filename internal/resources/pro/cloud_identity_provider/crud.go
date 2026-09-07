@@ -100,6 +100,15 @@ func (r *CloudIdentityProviderResource) Read(ctx context.Context, req resource.R
 		}
 	}
 
+	// display_name is schema-Required, so Create and Update always populate it
+	// before any Read and it can only be null here on a first-time hydration —
+	// the identity-only import path above, or `terraform import`, which seeds
+	// only `id` into a sparse-but-non-null state. provider_name cannot serve as
+	// the signal: the discovery below force-populates it. Sampled before the
+	// dispatch, because assignGoogleState / assignAzureState overwrite it from
+	// the wire.
+	hydrating := state.DisplayName.IsNull()
+
 	// provider_name drives CRUD dispatch but is not always present yet: on
 	// import (both the identity path above and ImportStatePassthroughID, which
 	// seeds only `id` into a non-null partial state) the discriminator is
@@ -127,9 +136,9 @@ func (r *CloudIdentityProviderResource) Read(ctx context.Context, req resource.R
 
 	switch state.ProviderName.ValueString() {
 	case providerGoogle:
-		r.readGoogle(readCtx, &state, resp)
+		r.readGoogle(readCtx, &state, resp, hydrating)
 	case providerEntraID:
-		r.readAzure(readCtx, &state, resp)
+		r.readAzure(readCtx, &state, resp, hydrating)
 	default:
 		resp.Diagnostics.AddError("Unsupported provider_name", "provider_name must be GOOGLE or ENTRA_ID.")
 	}
