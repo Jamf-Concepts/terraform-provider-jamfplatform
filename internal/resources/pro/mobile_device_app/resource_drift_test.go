@@ -33,6 +33,11 @@ import (
 // Service notifications toggle for the rest) — an acceptance test must not
 // depend on a tenant setting it does not manage, so that half is covered by the
 // unit tests in drift_test.go instead.
+//
+// The distribution method travels as general.deploy_automatically, not
+// general.deployment_type: the latter is a read-only mirror of the former and a
+// write to it is discarded. The mutation below still moves deployment_type,
+// because moving deploy_automatically is how you move it.
 func mobileAppDriftConfig(name, buttonText string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {
@@ -41,7 +46,7 @@ func mobileAppDriftConfig(name, buttonText string) string {
 				version                                = "1.0"
 				bundle_id                              = "com.example.tfacc.mobileapp.drift"
 				os_type                                = "iOS"
-				deployment_type                        = "Make Available in Self Service"
+				deploy_automatically                   = false
 				keep_app_updated_on_devices            = true
 				remove_app_when_mdm_profile_is_removed = true
 				prevent_backup_of_app_data             = true
@@ -64,11 +69,14 @@ func mutateMobileAppOutOfBand(t *testing.T, id string) {
 	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
 	mutatedButton := "Mutated Button"
 	mutatedDesc := "Mutated outside Terraform."
-	mutatedDeployment := "Install Automatically/Prompt Users to Install"
 	no := false
+	yes := true
 	if err := c.UpdateMobileDeviceApplicationByID(context.Background(), id, &proclassic.MobileDeviceApplication{
 		General: &proclassic.MobileDeviceApplicationGeneral{
-			DeploymentType:                   &mutatedDeployment,
+			// deploy_automatically, not deployment_type: a write to
+			// deployment_type is discarded, so mutating it would not stand in
+			// for an administrator's edit at all.
+			DeployAutomatically:              &yes,
 			KeepAppUpdatedOnDevices:          &no,
 			RemoveAppWhenMDMProfileIsRemoved: &no,
 			PreventBackupOfAppData:           &no,
@@ -129,6 +137,7 @@ func TestAccResource_ProMobileDeviceApp_DriftIsReported(t *testing.T) {
 					},
 				},
 				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deploy_automatically", "false"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deployment_type", "Make Available in Self Service"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.keep_app_updated_on_devices", "true"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.remove_app_when_mdm_profile_is_removed", "true"),

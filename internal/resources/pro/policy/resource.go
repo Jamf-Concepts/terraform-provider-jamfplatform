@@ -9,6 +9,7 @@ package policy
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -52,6 +53,7 @@ var _ resource.Resource = &PolicyResource{}
 var _ resource.ResourceWithImportState = &PolicyResource{}
 var _ resource.ResourceWithIdentity = &PolicyResource{}
 var _ resource.ResourceWithModifyPlan = &PolicyResource{}
+var _ resource.ResourceWithConfigValidators = &PolicyResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -90,7 +92,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 // element names are noted in attribute descriptions where they differ.
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version:             1,
+		Version:             2,
 		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled**. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -114,23 +116,39 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"enabled":                         optComputedBool("Whether the policy is enabled."),
-					"trigger":                         optComputedString("Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.)."),
-					"trigger_checkin":                 optComputedBool("Fire on managed check-in."),
-					"trigger_enrollment_complete":     optComputedBool("Fire when device enrollment completes."),
-					"trigger_login":                   optComputedBool("Fire on user login."),
-					"trigger_network_state_changed":   optComputedBool("Fire when the device's network state changes."),
-					"trigger_startup":                 optComputedBool("Fire on device startup."),
-					"trigger_other":                   optComputedString("Custom event name to trigger the policy."),
-					"frequency":                       optComputedString("How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`."),
-					"retry_event":                     optComputedString("Retry trigger: `none`, `trigger`, or `check-in`."),
-					"retry_attempts":                  optComputedInt("Maximum number of retry attempts (-1 means no retries)."),
-					"notify_on_each_failed_retry":     optComputedBool("Notify the admin on each failed retry."),
+					"enabled":                       optComputedBool("Whether the policy is enabled."),
+					"trigger":                       optComputedString("Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.)."),
+					"trigger_checkin":               optComputedBool("Fire on managed check-in."),
+					"trigger_enrollment_complete":   optComputedBool("Fire when device enrollment completes."),
+					"trigger_login":                 optComputedBool("Fire on user login."),
+					"trigger_network_state_changed": optComputedBool("Fire when the device's network state changes."),
+					"trigger_startup":               optComputedBool("Fire on device startup."),
+					"trigger_other":                 optComputedString("Custom event name to trigger the policy."),
+					"frequency":                     optComputedString("How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`."),
+					"retry_event": schema.StringAttribute{
+						MarkdownDescription: "When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = \"Once per computer\"` — Jamf Pro clears a retry configuration under any other frequency.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						Validators: []validator.String{
+							stringvalidator.OneOf(proclassic.PolicyPostGeneralRetryEventValues()...),
+						},
+					},
+					"retry_attempts":                  optComputedInt("Maximum number of retry attempts; `-1` means no retries. Requires `frequency = \"Once per computer\"` — Jamf Pro clears a retry configuration under any other frequency."),
+					"notify_on_each_failed_retry":     optComputedBool("Notify the administrator on each failed retry. Requires `frequency = \"Once per computer\"` — Jamf Pro clears a retry configuration under any other frequency."),
 					"limit_to_jamf_pro_assigned_user": optComputedBool("Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user."),
 					"target_drive":                    optComputedString("Drive target (e.g. `/`)."),
 					"offline":                         optComputedBool("Allow execution while the device is offline."),
-					"network_requirements":            optComputedString("Network requirements label (`Any`, `Network Limitations`, etc.)."),
-					"category_id":                     optComputedString("Jamf Pro category ID. Use `-1` to clear."),
+					"network_requirements": schema.StringAttribute{
+						MarkdownDescription: "Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts it to a wired connection. Mirrors the admin UI's Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements, and is the attribute that drives the read-only `network_limitations.minimum_network_connection`.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						Validators: []validator.String{
+							stringvalidator.OneOf(proclassic.PolicyPostGeneralNetworkRequirementsValues()...),
+						},
+					},
+					"category_id": optComputedString("Jamf Pro category ID. Use `-1` to clear."),
 					"category_name": schema.StringAttribute{
 						// No UseStateForUnknown: derived from the mutable category_id, so it
 						// must go Unknown when category_id changes. See STYLE_GUIDE §886.
@@ -183,54 +201,31 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 									),
 								},
 							},
-							"no_execute_start": schema.StringAttribute{
-								MarkdownDescription: "Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).",
-								Optional:            true,
-								Computed:            true,
-								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										noExecuteTimePattern,
-										"Value must be 12-hour h:MM AM / h:MM PM (e.g. 5:00 PM)",
-									),
-								},
-							},
-							"no_execute_end": schema.StringAttribute{
-								MarkdownDescription: "Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).",
-								Optional:            true,
-								Computed:            true,
-								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-								Validators: []validator.String{
-									stringvalidator.RegexMatches(
-										noExecuteTimePattern,
-										"Value must be 12-hour h:MM AM / h:MM PM (e.g. 7:00 AM)",
-									),
-								},
-							},
+							"no_execute_start": noExecuteTimeAttribute("start", "5:00 PM"),
+							"no_execute_end":   noExecuteTimeAttribute("end", "7:00 AM"),
 						},
 					},
 					"network_limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Optional network limitations for when the policy may run. This `network_limitations.network_segment_ids` list applies independently of `scope.limitations.network_segment_ids`. Both can carry network-segment IDs, but they apply to different policy stages.",
+						MarkdownDescription: "Read-only view of the network conditions under which the policy may run. Every attribute here is derived by Jamf Pro from somewhere else and cannot be written: set `general.network_requirements` and `scope.limitations.network_segment_ids` instead. Declare the block (as `{}`) to have Terraform read the derived values into state.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
-							"minimum_network_connection": optComputedString("Minimum network connection label (`Ethernet`, `Wireless`, `No Minimum`)."),
-							"any_ip_address":             optComputedBool("Whether the policy applies on any IP address."),
+							"minimum_network_connection": serverProjectedString("Minimum network connection, derived from `general.network_requirements`: `No Minimum` when that is `Any`, `Ethernet` when it is `Ethernet`. Set `general.network_requirements` to change it."),
+							"any_ip_address":             serverProjectedBool("Whether the policy runs on any IP address. Derived: `true` while `scope.limitations.network_segment_ids` is empty, `false` once it names a segment."),
 							"network_segment_ids": schema.SetAttribute{
-								MarkdownDescription: "Network segment IDs the policy may run on. Jamf Pro IDs as strings.",
+								MarkdownDescription: "Network segment IDs the policy may run on, as Jamf Pro IDs. This is a read-only view of `scope.limitations.network_segment_ids` — the same list, not a second one. Set it there.",
 								ElementType:         types.StringType,
-								Optional:            true,
 								Computed:            true,
 							},
 						},
 					},
 					"override_default_settings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Optional per-policy overrides for tenant-wide defaults.",
+						MarkdownDescription: "Read-only view of the per-policy overrides of tenant-wide defaults, as the admin UI's long-retired \"Override Default Settings\" panel reported them. Every attribute here is derived from a setting that lives elsewhere and cannot be written. Declare the block (as `{}`) to have Terraform read the derived values into state.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
-							"target_drive":       optComputedString("Override the target drive."),
-							"distribution_point": optComputedString("Override the distribution point."),
-							"force_afp_smb":      optComputedBool("Force AFP/SMB protocol."),
-							"sus":                optComputedString("Software update server URL."),
+							"target_drive":       serverProjectedString("Target drive, mirroring `general.target_drive`. Set it there."),
+							"distribution_point": serverProjectedString("Distribution point the packages download from, mirroring `packages.distribution_point`. Set it there."),
+							"force_afp_smb":      serverProjectedBool("Whether file sharing is forced over AFP/SMB instead of HTTP, the admin UI's Options ▸ Packages checkbox of the same name. Jamf Pro exposes no API write path for it at all, so it can only be changed in the admin UI."),
+							"sus":                serverProjectedString("Software update server the policy installs updates from, the admin UI's Options ▸ Software Update setting. That section is intentionally not modelled by this provider, and Jamf Pro exposes no API write path for the value, so it can only be changed in the admin UI."),
 						},
 					},
 				},
@@ -350,7 +345,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				MarkdownDescription: "Printers to install or remove.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"leave_existing_default": optComputedBool("Leave the device's existing default printer in place."),
 					"printers": schema.SetNestedAttribute{
 						MarkdownDescription: "Set of printer assignments.",
 						Optional:            true,
@@ -465,7 +459,15 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				MarkdownDescription: "Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
+					"of_mode": schema.StringAttribute{
+						MarkdownDescription: "Open Firmware / EFI password mode. `command` sets a password required to boot from anything but the startup disk; `none` clears the policy's EFI password payload. Jamf Pro accepts no other value — sending one resets the whole block to `none` **and clears the stored password**, silently, so the value is checked at plan time.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						Validators: []validator.String{
+							stringvalidator.OneOf(proclassic.PolicyAccountMaintenanceOpenFirmwareEfiPasswordOfModeValues()...),
+						},
+					},
 					"of_password": schema.StringAttribute{
 						MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
 						Optional:            true,
@@ -620,6 +622,13 @@ func (r *PolicyResource) ImportState(ctx context.Context, req resource.ImportSta
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// ConfigValidators returns the resource's plan-time cross-field checks.
+func (r *PolicyResource) ConfigValidators(context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		retryRequiresOncePerComputerValidator{},
+	}
+}
+
 // ModifyPlan runs the plan-time directory-service user-group preflight on the
 // policy scope limitations/exclusions — surfacing an unknown group as a clear
 // plan error instead of the apply-time 409 ("Problem matching limitation user
@@ -682,6 +691,57 @@ func (r *PolicyResource) reportScopeImpact(ctx context.Context, req resource.Mod
 // prior StateValue is Null, so the framework accepts whatever the
 // server returns. Behavior is identical to UseStateForUnknown for the
 // non-Null prior-state case (singletons, already-set values).
+// noExecuteTimeAttribute builds the schema for one end of the daily no-execute
+// window.
+//
+// Deliberately plain: from a configuration's point of view this is an ordinary
+// 12-hour time, which is what it accepts and what it reads back. The
+// contortion needed to make Jamf Pro actually store it lives in no_execute.go
+// and is not a practitioner's problem.
+func noExecuteTimeAttribute(edge, example string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: fmt.Sprintf(
+			"Daily %s of the no-execute window, in 12-hour `h:MM AM` / `h:MM PM` form with the hour 1–12 and no leading zero (e.g. `%s`). "+
+				"Mirrors the admin UI's Options ▸ General ▸ Server-Side Limitations fields, and applies on the days named by `no_execute_on`.",
+			edge, example,
+		),
+		Optional:      true,
+		Computed:      true,
+		PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+		Validators: []validator.String{
+			stringvalidator.RegexMatches(
+				noExecuteTimePattern,
+				fmt.Sprintf("Value must be 12-hour h:MM AM / h:MM PM (e.g. %s)", example),
+			),
+		},
+	}
+}
+
+// serverProjectedString is the read for a `general` attribute Jamf Pro derives
+// from somewhere else and refuses to accept a write for. Computed-only: the
+// value is always echoed, so it is read straight from the wire and reports
+// drift, but Terraform will not let a practitioner set it. Each call site's
+// description names the attribute that actually writes it.
+//
+// The write really is refused rather than merely normalised — wire-probed
+// against Jamf Pro 11.31.1 on two tenants, on create and on update, including
+// on a policy that already held a non-default value, and identically through
+// raw XML and the SDK. See issue #387.
+func serverProjectedString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+	}
+}
+
+// serverProjectedBool is the bool sibling of serverProjectedString.
+func serverProjectedBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+	}
+}
+
 func optComputedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,

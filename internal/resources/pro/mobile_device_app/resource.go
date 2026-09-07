@@ -31,6 +31,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/planmodifiers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -140,17 +141,18 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 							stringvalidator.OneOf(osTypeIOS, osTypeTVOS),
 						},
 					},
-					"description": computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
-					"is_free":     optComputedBool("Whether the app is free."),
-					"deployment_type": schema.StringAttribute{
-						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Defaults to `Make Available in Self Service`.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-						Validators: []validator.String{
-							stringvalidator.OneOf(deploymentTypeSelfService, deploymentTypeAutomatic),
-						},
-					},
+					"description": mirrorString(
+						"App description. Mirrors `self_service.self_service_description`, and is App-Store-synced when `keep_description_and_icon_up_to_date = true`. Not user-settable: a write to it is discarded — set `self_service.self_service_description` instead.",
+						// The whole block, not the description within it:
+						// self_service is Optional, and a path into a null block
+						// resolves only as far as the block. See ObjectSource.
+						planmodifiers.ObjectSource(path.MatchRoot("self_service")),
+					),
+					"is_free": optComputedBool("Whether the app is free."),
+					"deployment_type": mirrorString(
+						"Install method, as the admin UI's \"Distribution Method\" reports it: `Make Available in Self Service` while `deploy_automatically` is false, `Install Automatically/Prompt Users to Install` once it is true. Not user-settable — a write to this attribute is discarded on create and on update. Set `deploy_automatically` instead.",
+						planmodifiers.BoolSource(path.MatchRoot("general").AtName("deploy_automatically")),
+					),
 					"external_url":                           optComputedString("External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side."),
 					"itunes_store_url":                       optComputedString("Canonical App Store (iTunes) URL. Setting it also populates the deprecated `url` mirror server-side."),
 					"itunes_country_region":                  optComputedString("Two-letter App Store country/region code used to resolve store metadata."),
@@ -397,5 +399,28 @@ func computedString(desc string) schema.StringAttribute {
 		MarkdownDescription: desc,
 		Computed:            true,
 		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+	}
+}
+
+// mirrorString is computedString for an attribute Jamf Pro derives from a
+// SIBLING this resource manages, rather than assigns independently.
+//
+// UseStateForUnknown is wrong for a mirror: it promises the value cannot change
+// unless the practitioner changes this attribute, but it changes when the
+// sibling changes, so the plan carries the stale one into an apply that returns
+// the new one — "Provider produced inconsistent result after apply". Dropping
+// the modifier is also wrong: the attribute then goes Unknown on every plan and
+// `terraform plan -refresh=false` is permanently dirty for a value nobody
+// touched. planmodifiers.MirrorOfString does the only correct thing, which is
+// to watch the source.
+//
+// general.description mirrors self_service.self_service_description and
+// general.deployment_type mirrors general.deploy_automatically, both wire-proven
+// against Jamf Pro 11.31.1 on 2026-09-07 — see flattenMobileAppGeneral.
+func mirrorString(desc string, sources ...planmodifiers.SourceComparer) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.String{planmodifiers.MirrorOfString(sources...)},
 	}
 }

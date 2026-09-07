@@ -52,6 +52,7 @@ func licensedSoftwareDriftConfig(name string) string {
 					license_type      = "Standard"
 					notes             = "declared by terraform"
 					purchasing = {
+						license_term       = "perpetual"
 						po_number          = "TF-387-PO"
 						vendor             = "Acme Reseller"
 						purchasing_account = "TF Acc Account"

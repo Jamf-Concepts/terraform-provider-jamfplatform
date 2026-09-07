@@ -196,28 +196,36 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 	if state.NetworkLimitations != nil && g.NetworkLimitations != nil {
 		flattenPolicyNetworkLimitations(ctx, g.NetworkLimitations, state.NetworkLimitations)
 	}
+	// override_default_settings is read wire-first with no stickiness: every
+	// child is Computed-only and a pure projection of a setting that lives
+	// elsewhere, so the wire is the only thing that can be right and drift on
+	// it is real. target_drive follows general.target_drive, distribution_point
+	// follows packages.distribution_point, and force_afp_smb / sus follow admin
+	// UI settings with no API write path at all. See the schema descriptions.
 	if state.OverrideDefaultSettings != nil && g.OverrideDefaultSettings != nil {
-		state.OverrideDefaultSettings.TargetDrive = helpers.StickyIgnoringDriftString(g.OverrideDefaultSettings.TargetDrive, state.OverrideDefaultSettings.TargetDrive)
-		state.OverrideDefaultSettings.DistributionPoint = helpers.ReconcileOptionalStringPointer(g.OverrideDefaultSettings.DistributionPoint, state.OverrideDefaultSettings.DistributionPoint)
-		state.OverrideDefaultSettings.ForceAfpSmb = helpers.StickyIgnoringDriftBool(g.OverrideDefaultSettings.ForceAfpSmb, state.OverrideDefaultSettings.ForceAfpSmb)
-		state.OverrideDefaultSettings.Sus = helpers.ReconcileOptionalStringPointer(g.OverrideDefaultSettings.Sus, state.OverrideDefaultSettings.Sus)
+		state.OverrideDefaultSettings.TargetDrive = helpers.StringPointerValueOrNull(g.OverrideDefaultSettings.TargetDrive)
+		state.OverrideDefaultSettings.DistributionPoint = helpers.StringPointerValueOrNull(g.OverrideDefaultSettings.DistributionPoint)
+		state.OverrideDefaultSettings.ForceAfpSmb = helpers.BoolPointerValueOrNull(g.OverrideDefaultSettings.ForceAfpSmb)
+		state.OverrideDefaultSettings.Sus = helpers.StringPointerValueOrNull(g.OverrideDefaultSettings.Sus)
 	}
 }
 
 // flattenPolicyDateTimeLimitations maps the wire <date_time_limitations>
 // sub-block onto the model.
 //
-// no_execute_start and no_execute_end keep a sticky read: Jamf Pro stores them
-// but echoes <no_execute_start/> and <no_execute_end/> empty on every GET, on
-// both the POST and the PUT path, so the wire can neither confirm nor
-// contradict state. Everything else here is wire-authoritative — the two
-// activation/expiration timestamps round-trip verbatim. Wire-probed against
-// Jamf Pro 11.31.1 on 2026-09-06; see issue #387.
+// Everything here is wire-authoritative, no_execute_start and no_execute_end
+// included — which is a reversal. An earlier reading had those two sticky on
+// the theory that "Jamf Pro stores them but echoes empty". They do round-trip;
+// what they do not do is round-trip the value that was sent. The write side
+// offsets the time 48 hours forward, because that is the only form Jamf Pro
+// stores, and the server wraps it back to the intended time of day — so the
+// GET returns exactly what the practitioner asked for and this read can simply
+// take it. See no_execute.go for the arithmetic and issue #387.
 func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.PolicyGeneralDateTimeLimitations, state *PolicyGeneralDateTimeLimitationsModel) {
 	state.ActivationDate = helpers.ReconcileOptionalStringPointer(dtl.ActivationDate, state.ActivationDate)
 	state.ExpirationDate = helpers.ReconcileOptionalStringPointer(dtl.ExpirationDate, state.ExpirationDate)
-	state.NoExecuteStart = helpers.StickyIgnoringDriftString(dtl.NoExecuteStart, state.NoExecuteStart)
-	state.NoExecuteEnd = helpers.StickyIgnoringDriftString(dtl.NoExecuteEnd, state.NoExecuteEnd)
+	state.NoExecuteStart = helpers.StringPointerValueOrNull(dtl.NoExecuteStart)
+	state.NoExecuteEnd = helpers.StringPointerValueOrNull(dtl.NoExecuteEnd)
 
 	if dtl.NoExecuteOn != nil && dtl.NoExecuteOn.Day != nil && len(*dtl.NoExecuteOn.Day) > 0 {
 		set, diagsLocal := types.SetValueFrom(ctx, types.StringType, *dtl.NoExecuteOn.Day)
@@ -230,19 +238,30 @@ func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.Polic
 }
 
 // flattenPolicyNetworkLimitations maps the wire <network_limitations>
-// sub-block onto the model.
+// sub-block onto the model. Wire-first with no stickiness: all three children
+// are Computed-only, and none of them is writable.
 //
-// Both scalars keep a sticky read, for different reasons. any_ip_address is
-// server-derived: Jamf Pro forces it true while <network_segments> is empty, so
-// a write of false is ignored. minimum_network_connection is create-only: the
-// value a POST stores is echoed faithfully, but a PUT changing it is ignored —
-// sending `No Minimum` over a created `Ethernet` left the GET reading
-// `Ethernet`, so reading the wire would turn an unappliable config change into
-// a plan that never converges. Wire-probed against Jamf Pro 11.31.1 on
-// 2026-09-06; see issue #387.
+// The block is a read-only projection of three other places, wire-proven in
+// both directions against Jamf Pro 11.31.1 on 2026-09-07:
+//
+//   - minimum_network_connection follows general.network_requirements —
+//     writing `Ethernet` there made this echo `Ethernet`, writing `Any` made it
+//     echo `No Minimum`. The two enums are the same two states under different
+//     labels ({Any, Ethernet} against {No Minimum, Ethernet}).
+//   - network_segments is scope.limitations.network_segments, not a second
+//     list — writing one segment there made this echo that segment.
+//   - any_ip_address is derived from whether that list is empty: true while it
+//     is, false once it names a segment.
+//
+// A direct write to any of the three is either ignored (HTTP 201, value
+// unchanged) or refused with a bare 409 "Problem with general", including on a
+// policy that already held non-default values, and identically through raw XML
+// and the SDK. An earlier reading of this block had minimum_network_connection
+// down as create-only and any_ip_address as forced-true; both were artefacts of
+// probing without the writable counterpart in hand. See issue #387.
 func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyGeneralNetworkLimitations, state *PolicyGeneralNetworkLimitationsModel) {
-	state.MinimumNetworkConnection = helpers.StickyIgnoringDriftString(nl.MinimumNetworkConnection, state.MinimumNetworkConnection)
-	state.AnyIPAddress = helpers.StickyIgnoringDriftBool(nl.AnyIPAddress, state.AnyIPAddress)
+	state.MinimumNetworkConnection = helpers.StringPointerValueOrNull(nl.MinimumNetworkConnection)
+	state.AnyIPAddress = helpers.BoolPointerValueOrNull(nl.AnyIPAddress)
 	if nl.NetworkSegments != nil {
 		set, _ := scope.FlattenIDSlice(ctx, nl.NetworkSegments.NetworkSegment, func(i proclassic.IDName) *int { return i.ID })
 		state.NetworkSegmentIDs = set
@@ -587,13 +606,15 @@ func flattenPolicyScripts(sc *proclassic.PolicyScripts, state *PolicyScriptsMode
 
 // flattenPolicyPrinters maps the wire <printers> block onto the model.
 //
-// leave_existing_default keeps a sticky read: a POST and a PUT both sending
-// true read back as <leave_existing_default/>, so the write does not persist
-// and the wire says nothing. Wire-probed against Jamf Pro 11.31.1 on
-// 2026-09-06; see issue #387.
+// The wire's <leave_existing_default> is not modelled. It is a dead element:
+// the GET answers <leave_existing_default/> however it was written, and it
+// answers the same on a policy whose printers were configured through the admin
+// UI with the default-printer choice toggled both ways — so the emptiness is
+// the element's nature, not a write that failed. The choice the admin UI
+// persists is per printer, as printers[].make_default, which does round-trip.
+// The attribute was removed in schema v2; see UpgradeState. Wire-probed against
+// 11.31.1 on 2026-09-07; see issue #387.
 func flattenPolicyPrinters(pr *proclassic.PolicyPrinters, state *PolicyPrintersModel) {
-	state.LeaveExistingDefault = helpers.StickyIgnoringDriftBool(pr.LeaveExistingDefault, state.LeaveExistingDefault)
-
 	if pr.Printer == nil {
 		state.Printers = nil
 		return

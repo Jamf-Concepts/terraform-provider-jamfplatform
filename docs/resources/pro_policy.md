@@ -213,13 +213,13 @@ Optional:
 - `enabled` (Boolean) Whether the policy is enabled.
 - `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`.
 - `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user.
-- `network_limitations` (Attributes) Optional network limitations for when the policy may run. This `network_limitations.network_segment_ids` list applies independently of `scope.limitations.network_segment_ids`. Both can carry network-segment IDs, but they apply to different policy stages. (see [below for nested schema](#nestedatt--general--network_limitations))
-- `network_requirements` (String) Network requirements label (`Any`, `Network Limitations`, etc.).
-- `notify_on_each_failed_retry` (Boolean) Notify the admin on each failed retry.
+- `network_limitations` (Attributes) Read-only view of the network conditions under which the policy may run. Every attribute here is derived by Jamf Pro from somewhere else and cannot be written: set `general.network_requirements` and `scope.limitations.network_segment_ids` instead. Declare the block (as `{}`) to have Terraform read the derived values into state. (see [below for nested schema](#nestedatt--general--network_limitations))
+- `network_requirements` (String) Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts it to a wired connection. Mirrors the admin UI's Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements, and is the attribute that drives the read-only `network_limitations.minimum_network_connection`.
+- `notify_on_each_failed_retry` (Boolean) Notify the administrator on each failed retry. Requires `frequency = "Once per computer"` — Jamf Pro clears a retry configuration under any other frequency.
 - `offline` (Boolean) Allow execution while the device is offline.
-- `override_default_settings` (Attributes) Optional per-policy overrides for tenant-wide defaults. (see [below for nested schema](#nestedatt--general--override_default_settings))
-- `retry_attempts` (Number) Maximum number of retry attempts (-1 means no retries).
-- `retry_event` (String) Retry trigger: `none`, `trigger`, or `check-in`.
+- `override_default_settings` (Attributes) Read-only view of the per-policy overrides of tenant-wide defaults, as the admin UI's long-retired "Override Default Settings" panel reported them. Every attribute here is derived from a setting that lives elsewhere and cannot be written. Declare the block (as `{}`) to have Terraform read the derived values into state. (see [below for nested schema](#nestedatt--general--override_default_settings))
+- `retry_attempts` (Number) Maximum number of retry attempts; `-1` means no retries. Requires `frequency = "Once per computer"` — Jamf Pro clears a retry configuration under any other frequency.
+- `retry_event` (String) When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = "Once per computer"` — Jamf Pro clears a retry configuration under any other frequency.
 - `site_id` (String) Jamf Pro site ID scoping the policy. Use `-1` for "no site".
 - `target_drive` (String) Drive target (e.g. `/`).
 - `trigger` (String) Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.).
@@ -243,30 +243,30 @@ Optional:
 
 - `activation_date` (String) Activation date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-06-01 14:30:00`).
 - `expiration_date` (String) Expiration date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-12-31 23:59:59`).
-- `no_execute_end` (String) Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).
+- `no_execute_end` (String) Daily end of the no-execute window, in 12-hour `h:MM AM` / `h:MM PM` form with the hour 1–12 and no leading zero (e.g. `7:00 AM`). Mirrors the admin UI's Options ▸ General ▸ Server-Side Limitations fields, and applies on the days named by `no_execute_on`.
 - `no_execute_on` (Set of String) Day-of-week labels on which the policy must not execute. Three-letter abbreviations: `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`.
-- `no_execute_start` (String) Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1–12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).
+- `no_execute_start` (String) Daily start of the no-execute window, in 12-hour `h:MM AM` / `h:MM PM` form with the hour 1–12 and no leading zero (e.g. `5:00 PM`). Mirrors the admin UI's Options ▸ General ▸ Server-Side Limitations fields, and applies on the days named by `no_execute_on`.
 
 
 <a id="nestedatt--general--network_limitations"></a>
 ### Nested Schema for `general.network_limitations`
 
-Optional:
+Read-Only:
 
-- `any_ip_address` (Boolean) Whether the policy applies on any IP address.
-- `minimum_network_connection` (String) Minimum network connection label (`Ethernet`, `Wireless`, `No Minimum`).
-- `network_segment_ids` (Set of String) Network segment IDs the policy may run on. Jamf Pro IDs as strings.
+- `any_ip_address` (Boolean) Whether the policy runs on any IP address. Derived: `true` while `scope.limitations.network_segment_ids` is empty, `false` once it names a segment.
+- `minimum_network_connection` (String) Minimum network connection, derived from `general.network_requirements`: `No Minimum` when that is `Any`, `Ethernet` when it is `Ethernet`. Set `general.network_requirements` to change it.
+- `network_segment_ids` (Set of String) Network segment IDs the policy may run on, as Jamf Pro IDs. This is a read-only view of `scope.limitations.network_segment_ids` — the same list, not a second one. Set it there.
 
 
 <a id="nestedatt--general--override_default_settings"></a>
 ### Nested Schema for `general.override_default_settings`
 
-Optional:
+Read-Only:
 
-- `distribution_point` (String) Override the distribution point.
-- `force_afp_smb` (Boolean) Force AFP/SMB protocol.
-- `sus` (String) Software update server URL.
-- `target_drive` (String) Override the target drive.
+- `distribution_point` (String) Distribution point the packages download from, mirroring `packages.distribution_point`. Set it there.
+- `force_afp_smb` (Boolean) Whether file sharing is forced over AFP/SMB instead of HTTP, the admin UI's Options ▸ Packages checkbox of the same name. Jamf Pro exposes no API write path for it at all, so it can only be changed in the admin UI.
+- `sus` (String) Software update server the policy installs updates from, the admin UI's Options ▸ Software Update setting. That section is intentionally not modelled by this provider, and Jamf Pro exposes no API write path for the value, so it can only be changed in the admin UI.
+- `target_drive` (String) Target drive, mirroring `general.target_drive`. Set it there.
 
 
 
@@ -320,7 +320,7 @@ Optional:
 
 Optional:
 
-- `of_mode` (String) Open Firmware mode (`command` or `full`).
+- `of_mode` (String) Open Firmware / EFI password mode. `command` sets a password required to boot from anything but the startup disk; `none` clears the policy's EFI password payload. Jamf Pro accepts no other value — sending one resets the whole block to `none` **and clears the stored password**, silently, so the value is checked at plan time.
 - `of_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext Open Firmware / EFI password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.
 - `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Set `of_password_wo_version = 1` on create. Leaving it unset or unchanged signals "leave the stored password alone": the provider omits the password from the next update, so Jamf Pro retains the existing value.
 
@@ -416,7 +416,6 @@ Optional:
 
 Optional:
 
-- `leave_existing_default` (Boolean) Leave the device's existing default printer in place.
 - `printers` (Attributes Set) Set of printer assignments. (see [below for nested schema](#nestedatt--printers--printers))
 
 <a id="nestedatt--printers--printers"></a>

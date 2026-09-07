@@ -165,16 +165,41 @@ func TestAccResource_ProRestrictedSoftware_Basic(t *testing.T) {
 				// In-place update: flip every mutable general bool, change the
 				// process name, set a display message, and assign a site (every
 				// non-RequiresReplace general attribute is mutated here).
-				Config: generalFullWithSiteConfig(name, "Chess2.app", "This application is restricted.", false, true, true, true),
+				//
+				// restrict_exact_process_name stays true because
+				// delete_application depends on it: Jamf Pro can only identify
+				// the application to delete from an exact process name, and
+				// silently clears the flag otherwise. This step used to pass
+				// false alongside delete_application = true, which the sticky
+				// read hid; it is now a plan-time error, and the pairing has its
+				// own step below.
+				Config: generalFullWithSiteConfig(name, "Chess2.app", "This application is restricted.", true, true, true, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.process_name", "Chess2.app"),
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.restrict_exact_process_name", "false"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.restrict_exact_process_name", "true"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.send_email_notification_on_violation", "true"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.kill_process", "true"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.delete_application", "true"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.display_message", "This application is restricted."),
 					resource.TestCheckResourceAttrPair(restrictedSoftwareResourceAddr, "general.site_id", "jamfplatform_pro_site.test", "id"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.site_name", name+"-site"),
+				),
+			},
+			{
+				// The cross-field gate: exact match off with delete_application
+				// on is refused at plan time rather than silently discarded.
+				Config:      generalFullWithSiteConfig(name, "Chess2.app", "This application is restricted.", false, true, true, true),
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`requires general.restrict_exact_process_name`),
+			},
+			{
+				// Turning the exact match off is fine once delete_application
+				// goes with it — which is also what Jamf Pro does on its own.
+				Config: generalFullWithSiteConfig(name, "Chess2.app", "This application is restricted.", false, true, true, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.restrict_exact_process_name", "false"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.delete_application", "false"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.kill_process", "true"),
 				),
 			},
 		},

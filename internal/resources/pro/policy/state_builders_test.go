@@ -286,24 +286,70 @@ func TestAssignPolicyResourceModel_PackageConfigurationReportsDrift(t *testing.T
 }
 
 // TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift pins the other half of
-// the #387 split: the handful of fields Jamf Pro does not echo, does not
-// persist, or normalises keep the sticky read, so a configured value is not
-// nulled or rewritten by a refresh. The evidence for each is in the doc comment
-// of the flattener that holds it.
+// the #387 split: the handful of fields Jamf Pro does not echo keep the sticky
+// read, so a configured value is not nulled by a refresh. The evidence for each
+// is in the doc comment of the flattener that holds it.
 //
-// The self_service notification_* fields are asserted here too, but for a
-// different rule: they are echoed only while the tenant-level Self Service
-// notifications toggle is on, so with the toggle off — the empty
+// The self_service notification_* fields are echoed only while the tenant-level
+// Self Service notifications toggle is on, so with the toggle off — the empty
 // PolicySelfService below — state must be kept rather than nulled.
 // TestFlattenPolicySelfService_NotificationDriftWhenEchoed covers the other
 // side.
 //
-// The Policy passed in is the shape a real GET returns against the state
-// declared here: empty no_execute_*, a server-forced any_ip_address, an
-// override target_drive mirroring general.target_drive, a dropped
-// force_afp_smb, an absent <notification> family and an empty
-// leave_existing_default.
+// This test used to also cover no_execute_start/end, the network_limitations
+// scalars and the override_default_settings scalars. All six have moved to
+// TestAssignPolicyResourceModel_ServerProjectionsReadTheWire: they are not
+// fields the server fails to echo, they are fields it echoes authoritatively
+// and refuses to let anyone write, which is the opposite treatment.
 func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{
+		General: &PolicyGeneralModel{
+			Name: types.StringValue("tf-acc"),
+		},
+		SelfService: &PolicySelfServiceModel{
+			DisplayNotifications: types.BoolValue(true),
+			NotificationSubject:  types.StringValue("configured subject"),
+		},
+	}
+	src := &proclassic.Policy{
+		General:     &proclassic.PolicyGeneral{Name: new("tf-acc")},
+		SelfService: &proclassic.PolicySelfService{},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	for _, tc := range []struct {
+		name, want, got string
+	}{
+		{"self_service.notification_subject", "configured subject", state.SelfService.NotificationSubject.ValueString()},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+		}
+	}
+	if !state.SelfService.DisplayNotifications.ValueBool() {
+		t.Error("self_service.display_notifications: sticky read must keep true")
+	}
+}
+
+// TestAssignPolicyResourceModel_ServerProjectionsReadTheWire pins the six
+// `general` attributes Jamf Pro derives from somewhere else and refuses to let
+// anyone write. All six are Computed-only in the schema, and all six are read
+// straight from the wire: the server is the only thing that can be right about
+// them, so a value in prior state must lose.
+//
+// It is the inverse of the sticky test above and the reason the two are
+// separate. A sticky read is for a field the wire cannot speak about; these are
+// fields the wire is the sole authority on. Reading them stickily hid two real
+// bugs — a config change to minimum_network_connection that never applied, and
+// an override target_drive that stopped tracking general.target_drive.
+//
+// The wire values below are the ones the server actually produces for this
+// state: see flattenPolicyNetworkLimitations and flattenPolicyDateTimeLimitations
+// for the probe record.
+func TestAssignPolicyResourceModel_ServerProjectionsReadTheWire(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{
@@ -317,20 +363,21 @@ func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
 				MinimumNetworkConnection: types.StringValue("No Minimum"),
 			},
 			OverrideDefaultSettings: &PolicyGeneralOverrideDefaultsModel{
-				TargetDrive: types.StringValue("/Volumes/od"),
-				ForceAfpSmb: types.BoolValue(true),
+				TargetDrive:       types.StringValue("/Volumes/od"),
+				DistributionPoint: types.StringValue("Stale DP"),
+				ForceAfpSmb:       types.BoolValue(true),
+				Sus:               types.StringValue("stale-sus"),
 			},
 		},
-		SelfService: &PolicySelfServiceModel{
-			DisplayNotifications: types.BoolValue(true),
-			NotificationSubject:  types.StringValue("configured subject"),
-		},
-		Printers: &PolicyPrintersModel{LeaveExistingDefault: types.BoolValue(true)},
 	}
 	src := &proclassic.Policy{
 		General: &proclassic.PolicyGeneral{
 			Name: new("tf-acc"),
 			DateTimeLimitations: &proclassic.PolicyGeneralDateTimeLimitations{
+				// The empty elements a policy with no window echoes. State
+				// claimed a window; the wire says there is none, and the wire
+				// wins — a sticky read here is what let an apply erase somebody
+				// else's window while reporting success.
 				NoExecuteStart: new(""),
 				NoExecuteEnd:   new(""),
 			},
@@ -339,12 +386,12 @@ func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
 				MinimumNetworkConnection: new("Ethernet"),
 			},
 			OverrideDefaultSettings: &proclassic.PolicyGeneralOverrideDefaultSettings{
-				TargetDrive: new("/Volumes/mirrored"),
-				ForceAfpSmb: new(false),
+				TargetDrive:       new("/Volumes/mirrored"),
+				DistributionPoint: new("AFP Test"),
+				ForceAfpSmb:       new(false),
+				Sus:               new("default"),
 			},
 		},
-		SelfService: &proclassic.PolicySelfService{},
-		Printers:    &proclassic.PolicyPrinters{},
 	}
 	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
@@ -353,27 +400,28 @@ func TestAssignPolicyResourceModel_StickyFieldsIgnoreDrift(t *testing.T) {
 	for _, tc := range []struct {
 		name, want, got string
 	}{
-		{"general.date_time_limitations.no_execute_start", "1:00 AM", state.General.DateTimeLimitations.NoExecuteStart.ValueString()},
-		{"general.date_time_limitations.no_execute_end", "2:00 AM", state.General.DateTimeLimitations.NoExecuteEnd.ValueString()},
-		{"general.network_limitations.minimum_network_connection", "No Minimum", state.General.NetworkLimitations.MinimumNetworkConnection.ValueString()},
-		{"general.override_default_settings.target_drive", "/Volumes/od", state.General.OverrideDefaultSettings.TargetDrive.ValueString()},
-		{"self_service.notification_subject", "configured subject", state.SelfService.NotificationSubject.ValueString()},
+		{"general.date_time_limitations.no_execute_start", "", state.General.DateTimeLimitations.NoExecuteStart.ValueString()},
+		{"general.date_time_limitations.no_execute_end", "", state.General.DateTimeLimitations.NoExecuteEnd.ValueString()},
+		{"general.network_limitations.minimum_network_connection", "Ethernet", state.General.NetworkLimitations.MinimumNetworkConnection.ValueString()},
+		{"general.override_default_settings.target_drive", "/Volumes/mirrored", state.General.OverrideDefaultSettings.TargetDrive.ValueString()},
+		{"general.override_default_settings.distribution_point", "AFP Test", state.General.OverrideDefaultSettings.DistributionPoint.ValueString()},
+		{"general.override_default_settings.sus", "default", state.General.OverrideDefaultSettings.Sus.ValueString()},
 	} {
 		if tc.got != tc.want {
-			t.Errorf("%s: sticky read must keep %q, got %q", tc.name, tc.want, tc.got)
+			t.Errorf("%s: the wire value must win, want %q got %q", tc.name, tc.want, tc.got)
 		}
 	}
-	if state.General.NetworkLimitations.AnyIPAddress.ValueBool() {
-		t.Error("general.network_limitations.any_ip_address: sticky read must keep false")
+	if !state.General.NetworkLimitations.AnyIPAddress.ValueBool() {
+		t.Error("general.network_limitations.any_ip_address: the wire value must win, want true")
 	}
-	if !state.General.OverrideDefaultSettings.ForceAfpSmb.ValueBool() {
-		t.Error("general.override_default_settings.force_afp_smb: sticky read must keep true")
+	if state.General.OverrideDefaultSettings.ForceAfpSmb.ValueBool() {
+		t.Error("general.override_default_settings.force_afp_smb: the wire value must win, want false")
 	}
-	if !state.SelfService.DisplayNotifications.ValueBool() {
-		t.Error("self_service.display_notifications: sticky read must keep true")
-	}
-	if !state.Printers.LeaveExistingDefault.ValueBool() {
-		t.Error("printers.leave_existing_default: sticky read must keep true")
+	// An empty no_execute_start element must read as null rather than "", so a
+	// Computed attribute the server has no value for is absent from state
+	// instead of holding a sentinel the practitioner cannot have written.
+	if !state.General.DateTimeLimitations.NoExecuteStart.IsNull() {
+		t.Errorf("general.date_time_limitations.no_execute_start: an empty echo must be null, got %#v", state.General.DateTimeLimitations.NoExecuteStart)
 	}
 }
 

@@ -113,9 +113,7 @@ func assignLdapServerDataSourceModel(state *LdapServerDataSourceModel, s *procla
 // existing.ReferralResponse can itself be Unknown — on Create with the
 // attribute omitted there is no prior state for the UseNonNullStateForUnknown
 // plan modifier to fall back to, so the plan carries Unknown into this
-// function. PreserveStringWhenWireEmpty has no Unknown handling of its own
-// (it just returns whatever "current" it is given), so treat Unknown as "no
-// existing value" here rather than risk leaking Unknown into the final state.
+// function. PreserveStringWhenWireEmpty resolves that to Null itself.
 func assignConnectionModel(c *proclassic.LdapServerConnection, existing *ldapConnectionModel) *ldapConnectionModel {
 	if c == nil {
 		return nil
@@ -124,9 +122,7 @@ func assignConnectionModel(c *proclassic.LdapServerConnection, existing *ldapCon
 	existingReferralResponse := types.StringNull()
 	if existing != nil {
 		existingAccount = existing.Account
-		if !existing.ReferralResponse.IsUnknown() {
-			existingReferralResponse = existing.ReferralResponse
-		}
+		existingReferralResponse = existing.ReferralResponse
 	}
 	return &ldapConnectionModel{
 		DisplayName:        helpers.StringPointerValueOrNull(c.Name),

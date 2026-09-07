@@ -100,13 +100,28 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	// follow-up PUT precisely so the server persists it and this echo is present.
 	state.OsType = helpers.WireWhenPresentString(g.OsType, state.OsType)
 
-	// Server-managed read-only field. (display_name and internal_app are not
-	// modeled — see MobileAppGeneralModel.)
+	// Two server-derived read-only fields, both mirrors of a sibling this
+	// resource manages, both read straight from the wire. (display_name and
+	// internal_app are not modeled — see MobileAppGeneralModel.)
+	//
+	//   - description mirrors self_service.self_service_description. Wire-proven
+	//     on 2026-09-07: a create sending only the Self Service description made
+	//     BOTH echo it, a write to general.description alone was accepted with
+	//     HTTP 201 and discarded, and a later write to the Self Service
+	//     description moved both.
+	//   - deployment_type mirrors general.deploy_automatically: false echoes
+	//     "Make Available in Self Service", true echoes "Install
+	//     Automatically/Prompt Users to Install". A write to deployment_type
+	//     itself is discarded on create and on update, so it never worked —
+	//     the previous sticky read simply hid that.
+	//
+	// Neither carries UseStateForUnknown, for the reason in serverDerivedString:
+	// pinning a mirror's prior value makes the plan disagree with the apply.
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
+	state.DeploymentType = helpers.StringPointerValueOrNull(g.DeploymentType)
 
 	// Optional+Computed echoes.
 	state.IsFree = helpers.BoolPointerValueOrNull(g.Free)
-	state.DeploymentType = helpers.ReconcileOptionalStringPointer(g.DeploymentType, state.DeploymentType)
 	state.ExternalURL = helpers.ReconcileOptionalStringPointer(g.ExternalURL, state.ExternalURL)
 	state.ItunesStoreURL = helpers.ReconcileOptionalStringPointer(g.ItunesStoreURL, state.ItunesStoreURL)
 	state.ItunesCountryRegion = helpers.ReconcileOptionalStringPointer(g.ItunesCountryRegion, state.ItunesCountryRegion)

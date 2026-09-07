@@ -414,9 +414,20 @@ func ReconcileOptionalString(apiValue string, current types.String) types.String
 // which makes the root cause hard to spot — prefer this helper for any
 // user-authored string under a block that also carries a Sensitive attribute.
 // Observed at: macos / mobile_device configuration profile self-service blocks.
+//
+// An Unknown current value resolves to Null rather than propagating, for the
+// same reason WireWhenPresentString does it: an Optional+Computed attribute
+// left unset on create plans Unknown, and returning that Unknown would leave
+// it in state after apply — "provider still indicated an unknown value". Every
+// caller of this helper reads a field the classic GET echoes as an empty
+// element, so the Unknown arm is reached on the first apply of any config that
+// declares the block without setting the attribute.
 func PreserveStringWhenWireEmpty(wire *string, current types.String) types.String {
 	if wire != nil && *wire != "" {
 		return types.StringValue(*wire)
+	}
+	if current.IsUnknown() {
+		return types.StringNull()
 	}
 	return current
 }

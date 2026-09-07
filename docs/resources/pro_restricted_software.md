@@ -108,7 +108,7 @@ Required:
 
 Optional:
 
-- `delete_application` (Boolean) **"Delete application"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`.
+- `delete_application` (Boolean) **"Delete application"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true` — Jamf Pro can only identify the application to delete from an exact process name, and silently clears this flag otherwise, so the pairing is checked at plan time.
 - `display_message` (String) **"Message"** in the Jamf Pro admin UI. Message to display to users when the process is found. Defaults to an empty string.
 - `kill_process` (Boolean) **"Kill process"** in the Jamf Pro admin UI. Terminate the restricted process when found. Defaults to `false`.
 - `restrict_exact_process_name` (Boolean) **"Restrict exact process name"** in the Jamf Pro admin UI. Only restrict processes that match the exact process name. Defaults to `true`.

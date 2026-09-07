@@ -49,12 +49,14 @@ func buildMobileAppInput(ctx context.Context, plan MobileAppResourceModel) (*pro
 
 func buildMobileAppGeneral(m *MobileAppGeneralModel) *proclassic.MobileDeviceApplicationGeneral {
 	g := &proclassic.MobileDeviceApplicationGeneral{
-		Name:                             helpers.OptionalStringPointer(m.Name),
-		Version:                          helpers.OptionalStringPointer(m.Version),
-		BundleID:                         helpers.OptionalStringPointer(m.BundleID),
-		OsType:                           helpers.OptionalStringPointer(m.OsType),
-		Free:                             helpers.OptionalBoolPointer(m.IsFree),
-		DeploymentType:                   helpers.OptionalStringPointer(m.DeploymentType),
+		Name:     helpers.OptionalStringPointer(m.Name),
+		Version:  helpers.OptionalStringPointer(m.Version),
+		BundleID: helpers.OptionalStringPointer(m.BundleID),
+		OsType:   helpers.OptionalStringPointer(m.OsType),
+		Free:     helpers.OptionalBoolPointer(m.IsFree),
+		// DeploymentType is never sent: Jamf Pro derives it from
+		// DeployAutomatically and discards a write to it, on create and on
+		// update alike. See serverDerivedString in resource.go.
 		ExternalURL:                      helpers.OptionalStringPointer(m.ExternalURL),
 		ItunesStoreURL:                   helpers.OptionalStringPointer(m.ItunesStoreURL),
 		ItunesCountryRegion:              helpers.OptionalStringPointer(m.ItunesCountryRegion),

@@ -188,8 +188,7 @@ type PolicyScriptItemModel struct {
 
 // PolicyPrintersModel models <policy><printers>.
 type PolicyPrintersModel struct {
-	LeaveExistingDefault types.Bool               `tfsdk:"leave_existing_default"`
-	Printers             []PolicyPrinterItemModel `tfsdk:"printers"`
+	Printers []PolicyPrinterItemModel `tfsdk:"printers"`
 }
 
 // PolicyPrinterItemModel models a single <printer>. The Action field carries
