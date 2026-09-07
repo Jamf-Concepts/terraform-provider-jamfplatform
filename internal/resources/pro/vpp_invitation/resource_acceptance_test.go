@@ -449,6 +449,8 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
       jss_user_group_ids = [jamfplatform_pro_user_group.b.id]
     }
   }
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
@@ -468,6 +470,8 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
       jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
     }
   }
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
@@ -481,12 +485,24 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   vpp_account_id              = jamfplatform_pro_volume_purchasing_location.vpp.id
   distribution_method         = "Prompt users to accept/make available in Self Service"
   auto_register_managed_users = true
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
 
 // vppiOmitRetainsFixtures is the location + two static user groups every
 // omit-retains step shares.
+//
+// Every omit-retains step's invitation carries an explicit depends_on over both
+// groups. The interpolations that would imply the ordering are exactly what the
+// later steps drop, and the retention this test exists to prove is what makes
+// that fatal: the server keeps scoping the invitation to a group the
+// configuration no longer mentions, so Terraform sees no edge, destroys the
+// group first, and Jamf Pro refuses it with "The following items are dependent
+// on this Static User Group" (USERS_VPP_INVITATIONS). The run then fails in
+// CheckDestroy having leaked the group. depends_on is ordering metadata only
+// and reaches no payload, so it cannot weaken what the steps assert.
 func vppiOmitRetainsFixtures(token, suffix, name string) string {
 	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_user_group" "a" {
