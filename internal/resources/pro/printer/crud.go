@@ -9,7 +9,12 @@
 //   proclassic.ListPrinters       (data source / list resource)
 //   proclassic.GetPrinterByName   (data source name lookup)
 //
-// Status: current. Last reviewed 2026-05-23.
+// Write semantics: the PUT merges field by field; an omitted element keeps
+// the stored value and an empty element clears it (wire-probed 2026-09-06 for
+// every plain string, incl. <ppd> beside a populated <ppd_path>, which does
+// not flip use_generic). See buildPrinterInput.
+//
+// Status: current. Last reviewed 2026-09-06.
 
 package printer
 

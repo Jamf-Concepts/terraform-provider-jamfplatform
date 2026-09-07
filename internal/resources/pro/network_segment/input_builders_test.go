@@ -48,7 +48,11 @@ func TestBuildNetworkSegmentInput_FullPlan(t *testing.T) {
 	}
 }
 
-func TestBuildNetworkSegmentInput_NullBuildingDepartmentOmit(t *testing.T) {
+// TestBuildNetworkSegmentInput_NullBuildingDepartmentEmitEmpty pins the
+// always-emit contract for the two name references: null must reach the wire
+// as an empty element (which clears) and unknown must stay off the wire
+// (server-owned).
+func TestBuildNetworkSegmentInput_NullBuildingDepartmentEmitEmpty(t *testing.T) {
 	plan := NetworkSegmentResourceModel{
 		Name:            types.StringValue("Bare"),
 		StartingAddress: types.StringValue("10.0.0.0"),
@@ -58,15 +62,18 @@ func TestBuildNetworkSegmentInput_NullBuildingDepartmentOmit(t *testing.T) {
 	}
 	got := buildNetworkSegmentInput(plan)
 
-	if got.Building != nil {
-		t.Errorf("null Building must serialise to nil, got %q", *got.Building)
+	if got.Building == nil || *got.Building != "" {
+		t.Errorf("null Building must serialise to an empty element, got %v", got.Building)
 	}
 	if got.Department != nil {
 		t.Errorf("unknown Department must serialise to nil, got %q", *got.Department)
 	}
 }
 
-func TestBuildNetworkSegmentInput_NullsOmitOptionalBools(t *testing.T) {
+// TestBuildNetworkSegmentInput_NullOverridesEmitFalse pins the always-emit
+// contract for the two override flags: a null flag must reach the wire as an
+// explicit false so a flag the user removed is turned off, not retained.
+func TestBuildNetworkSegmentInput_NullOverridesEmitFalse(t *testing.T) {
 	plan := NetworkSegmentResourceModel{
 		Name:                types.StringValue("Branch"),
 		StartingAddress:     types.StringValue("192.168.1.0"),
@@ -76,8 +83,8 @@ func TestBuildNetworkSegmentInput_NullsOmitOptionalBools(t *testing.T) {
 	}
 	got := buildNetworkSegmentInput(plan)
 
-	if got.OverrideBuildings != nil {
-		t.Errorf("null OverrideBuildings must serialise to nil, got %v", *got.OverrideBuildings)
+	if got.OverrideBuildings == nil || *got.OverrideBuildings {
+		t.Errorf("null OverrideBuildings must serialise to an explicit false, got %v", got.OverrideBuildings)
 	}
 	if got.OverrideDepartments != nil {
 		t.Errorf("unknown OverrideDepartments must serialise to nil, got %v", *got.OverrideDepartments)

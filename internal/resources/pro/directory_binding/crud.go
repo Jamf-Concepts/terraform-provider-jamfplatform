@@ -9,7 +9,12 @@
 //   proclassic.ListDirectoryBindings        (data source / list resource)
 //   proclassic.GetDirectoryBindingByName    (data source name lookup)
 //
-// Status: current. Last reviewed 2026-05-23.
+// Write semantics: the PUT merges field by field; an omitted element keeps
+// the stored value and an empty <domain>/<username>/<computer_ou> clears it
+// (wire-probed 2026-09-06 on an Active Directory binding). See
+// buildDirectoryBindingInput.
+//
+// Status: current. Last reviewed 2026-09-06.
 
 package directory_binding
 

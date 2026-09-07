@@ -17,11 +17,9 @@ import (
 // would otherwise drift against a null plan. We collapse both nil and 0 to null:
 // 0 is never a valid definitions-server port, so it is safe to treat as unset.
 //
-// NOTE (untested transition): clearing a previously-set port (config 8443 →
-// removed) relies on the classic PUT clearing the field server-side rather than
-// merge-retaining it. We cannot probe that without a tenant; the required acc
-// test changes the port rather than clearing it, so this path is unverified.
-// Watch it on `make testacc`.
+// Clearing a previously-set port (config 8443 → removed) sends <port>0</port>,
+// which the server stores and echoes as 0 (wire-probed 2026-09-06; see
+// portForWrite), so the same collapse makes the cleared port read back as null.
 func portValueOrNull(p *int) types.Int64 {
 	if p != nil && *p != 0 {
 		return types.Int64Value(int64(*p))

@@ -77,6 +77,53 @@ func TestCheckHeaderRequiresHeaderAuth(t *testing.T) {
 	}
 }
 
+func TestCheckBasicRequiresUsername(t *testing.T) {
+	tests := []struct {
+		name     string
+		username types.String
+		auth     types.String
+		wantErr  bool
+	}{
+		{"basic with username ok", types.StringValue("bob"), types.StringValue(authTypeBasic), false},
+		{"basic with unknown username ok", types.StringUnknown(), types.StringValue(authTypeBasic), false},
+		{"basic without username rejected", types.StringNull(), types.StringValue(authTypeBasic), true},
+		{"none without username ok", types.StringNull(), types.StringValue(authTypeNone), false},
+		{"auth null skips", types.StringNull(), types.StringNull(), false},
+		{"auth unknown skips", types.StringNull(), types.StringUnknown(), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rv := checkBasicRequiresUsername(WebhookResourceModel{Username: tt.username, AuthenticationType: tt.auth})
+			if (rv != nil) != tt.wantErr {
+				t.Errorf("got violation=%v, want=%v", rv != nil, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCheckHeaderAuthRequiresHeader(t *testing.T) {
+	tests := []struct {
+		name    string
+		header  types.String
+		auth    types.String
+		wantErr bool
+	}{
+		{"header-auth with header ok", types.StringValue("{}"), types.StringValue(authTypeHeader), false},
+		{"header-auth with unknown header ok", types.StringUnknown(), types.StringValue(authTypeHeader), false},
+		{"header-auth without header rejected", types.StringNull(), types.StringValue(authTypeHeader), true},
+		{"none without header ok", types.StringNull(), types.StringValue(authTypeNone), false},
+		{"auth unknown skips", types.StringNull(), types.StringUnknown(), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rv := checkHeaderAuthRequiresHeader(WebhookResourceModel{Header: tt.header, AuthenticationType: tt.auth})
+			if (rv != nil) != tt.wantErr {
+				t.Errorf("got violation=%v, want=%v", rv != nil, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestCheckSmartGroupIDRequiresSmartEvent(t *testing.T) {
 	tests := []struct {
 		name    string

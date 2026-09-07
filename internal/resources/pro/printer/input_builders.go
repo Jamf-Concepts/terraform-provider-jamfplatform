@@ -13,36 +13,44 @@ import (
 // payload used for both Create and Update. ID is omitted on write — Create
 // uses path id="0" and Update derives it from state.
 //
-// Two fields use non-default emission semantics confirmed by the §13.2 audit:
+// The classic /printers PUT merges field by field: an omitted element keeps
+// the stored value and an empty element clears it (wire-probed 2026-09-06 on
+// Jamf Pro 11.31.1 for every string below, issue #384). Two emission rules
+// follow:
 //
-//   - `category` is emitted on every write (stringPtrEmitAlways). The
-//     classic endpoint treats an omitted `<category>` tag as "preserve
-//     current" and an empty `<category></category>` as "clear to the
-//     sentinel." TF state semantics require a null `category` to mean
-//     "unassigned", so we always emit and let the server map empty to
-//     `categoryUnassignedSentinel`.
+//   - Every plain Optional string — `category`, `uri`, `cups_name`,
+//     `location`, `model`, `info`, `notes`, `os_requirements` and `ppd` — is
+//     emitted on every write through helpers.AlwaysEmitStringPointer, empty
+//     when null, so a value the user removes from config is cleared rather
+//     than retained and echoed back as an inconsistent result. `category`
+//     clears to the server sentinel categoryUnassignedSentinel; the state
+//     builder folds both the sentinel and an echoed "" back to null. `ppd` is
+//     safe to send empty in either mode: under `use_generic = false` the
+//     gate is `ppd_path`, and an empty `<ppd>` beside a populated
+//     `<ppd_path>` leaves `use_generic` false (probed); under
+//     `use_generic = true` the server discards the trio anyway.
 //
-//   - `ppd_path`, `ppd`, and `ppd_contents` are emitted only when set. When
-//     `use_generic = true` the server clears `ppd`/`ppd_contents` and forces
-//     `ppd_path` to the system Generic.ppd path regardless of input — the
-//     ConfigValidator blocks the user from setting these in that combination,
-//     so a null model value means "do not touch" and must omit the tag.
+//   - `ppd_path` and `ppd_contents` are emitted only when set. `ppd_path` is
+//     Optional+Computed: when `use_generic = true` the server forces it to the
+//     bundled Generic.ppd path regardless of input, and the ConfigValidator
+//     blocks the user from setting the trio in that combination, so a null
+//     model value means "server-owned" and must omit the tag.
 func buildPrinterInput(plan PrinterResourceModel) *proclassic.Printer {
 	return &proclassic.Printer{
 		Name:           helpers.OptionalStringPointer(plan.Name),
-		Category:       stringPtrEmitAlways(plan.Category),
-		URI:            helpers.OptionalStringPointer(plan.URI),
-		CUPSName:       helpers.OptionalStringPointer(plan.CUPSName),
-		Location:       helpers.OptionalStringPointer(plan.Location),
-		Model:          helpers.OptionalStringPointer(plan.Model),
-		Info:           helpers.OptionalStringPointer(plan.Info),
-		Notes:          helpers.OptionalStringPointer(plan.Notes),
+		Category:       helpers.AlwaysEmitStringPointer(plan.Category),
+		URI:            helpers.AlwaysEmitStringPointer(plan.URI),
+		CUPSName:       helpers.AlwaysEmitStringPointer(plan.CUPSName),
+		Location:       helpers.AlwaysEmitStringPointer(plan.Location),
+		Model:          helpers.AlwaysEmitStringPointer(plan.Model),
+		Info:           helpers.AlwaysEmitStringPointer(plan.Info),
+		Notes:          helpers.AlwaysEmitStringPointer(plan.Notes),
 		MakeDefault:    helpers.OptionalBoolPointer(plan.MakeDefault),
 		UseGeneric:     helpers.OptionalBoolPointer(plan.UseGeneric),
-		Ppd:            helpers.OptionalStringPointer(plan.PPD),
+		Ppd:            helpers.AlwaysEmitStringPointer(plan.PPD),
 		PpdPath:        helpers.OptionalStringPointer(plan.PPDPath),
 		PpdContents:    helpers.OptionalStringPointer(plan.PPDContents.StringValue),
 		Shared:         helpers.OptionalBoolPointer(plan.Shared),
-		OsRequirements: helpers.OptionalStringPointer(plan.OSRequirements),
+		OsRequirements: helpers.AlwaysEmitStringPointer(plan.OSRequirements),
 	}
 }

@@ -5,6 +5,7 @@ package webhook
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -13,7 +14,7 @@ import (
 // Create / Update. The classic PUT is a partial-merge, but the provider always
 // sends the full plan so in-place edits converge.
 //
-// Two deliberate behaviours:
+// Three deliberate behaviours:
 //
 //   - `password` is sourced separately (it is a WriteOnly attribute, so the
 //     plan exposes it as null). The caller threads a non-nil plaintext only
@@ -29,6 +30,11 @@ import (
 //     non-smart event here is -1, which the server accepts and treats as
 //     "none" (wire-probed — WEBHOOK_SPIKE.md §5.5). `display_fields` is never
 //     written (Computed-only; the server 409s).
+//   - `username` and `header` are emitted empty when null under every
+//     authentication type except the one that requires them (see
+//     authScopedField). Classic's merge retains an omitted element, so a
+//     dropped attribute would otherwise survive on the server and Read would
+//     echo it back as an inconsistent result (issue #384).
 func buildWebhookInput(plan WebhookResourceModel, password *string) *proclassic.Webhook {
 	in := &proclassic.Webhook{
 		Name:                              helpers.OptionalStringPointer(plan.Name),
@@ -39,9 +45,9 @@ func buildWebhookInput(plan WebhookResourceModel, password *string) *proclassic.
 		AuthenticationType:                helpers.OptionalStringPointer(plan.AuthenticationType),
 		ConnectionTimeout:                 helpers.OptionalInt64Pointer(plan.ConnectionTimeout),
 		ReadTimeout:                       helpers.OptionalInt64Pointer(plan.ReadTimeout),
-		Username:                          helpers.OptionalStringPointer(plan.Username),
+		Username:                          authScopedField(plan.Username, plan.AuthenticationType, authTypeBasic),
 		Password:                          password,
-		Header:                            helpers.OptionalStringPointer(plan.Header),
+		Header:                            authScopedField(plan.Header, plan.AuthenticationType, authTypeHeader),
 		HashAlgorithm:                     helpers.OptionalStringPointer(plan.HashAlgorithm),
 		EnableDisplayFieldsForGroupObject: helpers.OptionalBoolPointer(plan.EnableDisplayFieldsForGroupObject),
 	}
@@ -54,4 +60,27 @@ func buildWebhookInput(plan WebhookResourceModel, password *string) *proclassic.
 	}
 
 	return in
+}
+
+// authScopedField encodes `username` or `header` for the wire. The server
+// requires the field under exactly one authentication type (username under
+// BASIC, header under HEADER) and refuses an empty element there — wire-probed
+// 2026-09-06 on Jamf Pro 11.31.1: PUT with an empty <header> under HEADER
+// answers `409 INVALID_REQUIRED`, PUT with an empty <username> under BASIC
+// answers `409 Username is required`. Under every other type an empty element
+// is accepted and clears the stored value (probed on the BASIC→HASH_SIGNATURE
+// and →NONE transitions), which is what a config that dropped the attribute
+// needs, because Classic's merge would retain an omitted element.
+//
+// So: when authType is the requiring type, the field is sent as configured
+// (helpers.OptionalStringPointer — a null there is a plan-time error from the
+// paired validator, never a silent omission); under any other known type it is
+// always emitted (helpers.AlwaysEmitStringPointer); and when authType is
+// unknown at build time the field is sent only if configured, since the server
+// will resolve the type and clear inactive fields itself.
+func authScopedField(field, authType types.String, requiringType string) *string {
+	if !helpers.IsConfiguredValue(authType) || authType.ValueString() == requiringType {
+		return helpers.OptionalStringPointer(field)
+	}
+	return helpers.AlwaysEmitStringPointer(field)
 }

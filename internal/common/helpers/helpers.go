@@ -62,6 +62,39 @@ func OptionalStringPointer(value types.String) *string {
 	return &s
 }
 
+// AlwaysEmitStringPointer converts a Terraform string into a *string for a
+// classic XML payload whose PUT merges field by field and clears a field only
+// when the element is present and empty (STYLE_GUIDE.md §Classic XML PUT merge
+// where empty clears). Null yields a pointer to "" — encoded as
+// `<element></element>`, which clears the stored value — where
+// OptionalStringPointer would yield nil and omit the element, leaving the
+// server's value in place and the plan's `-> null` unhonoured (issue #384).
+// Unknown still yields nil: an attribute that is unknown at apply time is
+// Computed, and the server owns it. Pair every use with
+// ReconcileOptionalStringPointer in the state builder so the echoed "" folds
+// back to null for an unconfigured attribute.
+func AlwaysEmitStringPointer(value types.String) *string {
+	if value.IsUnknown() {
+		return nil
+	}
+	s := value.ValueString()
+	return &s
+}
+
+// AlwaysEmitBoolPointer is the boolean form of AlwaysEmitStringPointer: null
+// yields a pointer to false so the classic merge PUT carries
+// `<element>false</element>` and a flag the user removed from config is turned
+// off rather than retained (wire-probed on /networksegments
+// override_buildings, 2026-09-06). Unknown yields nil for the same reason as
+// the string form. Pair with ReconcileOptionalBoolPointer in the state builder.
+func AlwaysEmitBoolPointer(value types.Bool) *bool {
+	if value.IsUnknown() {
+		return nil
+	}
+	b := value.ValueBool()
+	return &b
+}
+
 // BoolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
 func BoolPointerValueOrNull(value *bool) types.Bool {
 	if value == nil {

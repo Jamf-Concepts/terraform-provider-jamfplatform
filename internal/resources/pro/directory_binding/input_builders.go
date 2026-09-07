@@ -24,7 +24,8 @@ func mapTypeToWire(v types.String) *string {
 // buildDirectoryBindingInput converts the Terraform plan model into the SDK
 // DirectoryBinding payload used for both Create and Update.
 //
-// Two non-default behaviours, both confirmed by the §13.2 audit:
+// Three non-default behaviours, the first two confirmed by the §13.2 audit
+// and the third wire-probed 2026-09-06 on Jamf Pro 11.31.1 (issue #384):
 //
 //   - Plaintext `Password` is sourced from req.Config (it's a WriteOnly
 //     attribute, so req.Plan exposes it as null). The caller of this builder
@@ -42,16 +43,24 @@ func mapTypeToWire(v types.String) *string {
 //     per-type fields so the TF schema exposes no nested block — the input
 //     builder synthesises the SDK struct based purely on `type`.
 //
+//   - `domain`, `username` and `computer_ou` are emitted on every write,
+//     empty when null (helpers.AlwaysEmitStringPointer). The classic
+//     /directorybindings PUT merges field by field: an omitted element keeps
+//     the stored value, an empty one clears it — accepted for all three on an
+//     Active Directory binding. Omitting them would leave a value the user
+//     removed from config on the server, and Read would echo it back as an
+//     inconsistent result. The state builder reconciles the echoed "" to null.
+//
 // `ID` is omitted on write — Create uses path id="0" and Update derives ID
 // from state.
 func buildDirectoryBindingInput(plan DirectoryBindingResourceModel, password *string) *proclassic.DirectoryBinding {
 	in := &proclassic.DirectoryBinding{
 		Name:       helpers.OptionalStringPointer(plan.Name),
 		Type:       mapTypeToWire(plan.Type),
-		Domain:     helpers.OptionalStringPointer(plan.Domain),
-		Username:   helpers.OptionalStringPointer(plan.Username),
+		Domain:     helpers.AlwaysEmitStringPointer(plan.Domain),
+		Username:   helpers.AlwaysEmitStringPointer(plan.Username),
 		Password:   password,
-		ComputerOu: helpers.OptionalStringPointer(plan.ComputerOU),
+		ComputerOu: helpers.AlwaysEmitStringPointer(plan.ComputerOU),
 		Priority:   helpers.OptionalInt64Pointer(plan.Priority),
 	}
 

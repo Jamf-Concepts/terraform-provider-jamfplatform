@@ -48,13 +48,25 @@ func testAccCheckPrinterDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
+const printerResourceAddr = "jamfplatform_pro_printer.test"
+
+// printerLive fetches the server's copy of the printer under test and hands it
+// to assert, so a step that drops an optional string can prove the value was
+// cleared on the wire — a null in state cannot tell a cleared value from one
+// the classic merge retained and the state builder reconciled away (#384).
+func printerLive(t *testing.T, assert func(*proclassic.Printer) error) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(printerResourceAddr, c.GetPrinterByID, assert)
+}
+
 // TestAccResource_ProPrinter_Generic covers the simplest configuration —
 // use_generic is left unset (defaults to true). The server echoes the bundled
 // Generic.ppd path even in generic mode, but the cross-field validator forbids
 // the PPD trio there, so the state builder collapses ppd/ppd_path/ppd_contents
 // to null — the asserts below verify that round-trip. The update step exercises
 // PUT partial-merge: rename + populate optional fields without touching the
-// PPD trio.
+// PPD trio; the step after it drops those fields again and proves, on the wire,
+// that the always-emitted empty element cleared them (#384).
 func TestAccResource_ProPrinter_Generic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -100,6 +112,24 @@ func TestAccResource_ProPrinter_Generic(t *testing.T) {
 				),
 			},
 			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_printer" "test" {
+						name = %q
+						uri  = "ipp://10.1.20.120/"
+					}
+				`, renamed),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "location"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "notes"),
+					printerLive(t, func(p *proclassic.Printer) error {
+						if err := testhelpers.RequireEqual("location", "", testhelpers.Deref(p.Location)); err != nil {
+							return err
+						}
+						return testhelpers.RequireEqual("notes", "", testhelpers.Deref(p.Notes))
+					}),
+				),
+			},
+			{
 				ResourceName:            "jamfplatform_pro_printer.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
@@ -112,7 +142,10 @@ func TestAccResource_ProPrinter_Generic(t *testing.T) {
 // TestAccResource_ProPrinter_CustomPPD exercises use_generic=false with the
 // full PPD trio populated. ppd_path is the gate field; without it the
 // ConfigValidator would block at plan time and the server would silently
-// flip use_generic back to true.
+// flip use_generic back to true. The second step drops every plain optional
+// string, `ppd` included, while keeping use_generic=false and ppd_path: it
+// proves on the wire that each was cleared and that an empty <ppd> beside a
+// populated <ppd_path> leaves use_generic alone (#384).
 func TestAccResource_ProPrinter_CustomPPD(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -152,6 +185,49 @@ func TestAccResource_ProPrinter_CustomPPD(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "ppd", "HP DeskJet 2600 series.ppd"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "ppd_path", "/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "os_requirements", "13.5, 16.0"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_printer" "test" {
+						name         = %q
+						uri          = "ipp://printer.example.com/queue1"
+						make_default = true
+						shared       = true
+						use_generic  = false
+						ppd_path     = "/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd"
+						ppd_contents = "*PPD-Adobe: \"4.3\"\n*FormatVersion: \"4.3\"\n*FileVersion: \"1.0\"\n"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "use_generic", "false"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "ppd_path", "/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "cups_name"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "location"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "model"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "info"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "notes"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "ppd"),
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "os_requirements"),
+					printerLive(t, func(p *proclassic.Printer) error {
+						for field, got := range map[string]*string{
+							"cups_name":       p.CUPSName,
+							"location":        p.Location,
+							"model":           p.Model,
+							"info":            p.Info,
+							"notes":           p.Notes,
+							"ppd":             p.Ppd,
+							"os_requirements": p.OsRequirements,
+						} {
+							if err := testhelpers.RequireEqual(field, "", testhelpers.Deref(got)); err != nil {
+								return err
+							}
+						}
+						if err := testhelpers.RequireEqual("use_generic", false, testhelpers.Deref(p.UseGeneric)); err != nil {
+							return err
+						}
+						return testhelpers.RequireEqual("ppd_path", "/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd", testhelpers.Deref(p.PpdPath))
+					}),
 				),
 			},
 			{

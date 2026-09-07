@@ -52,10 +52,23 @@ func testAccCheckPatchExternalSourceDestroy(t *testing.T) resource.TestCheckFunc
 	}
 }
 
+const patchExternalSourceResourceAddr = "jamfplatform_pro_patch_external_source.test"
+
+// patchExternalSourceLive fetches the server's copy of the source under test
+// and hands it to assert, so the drop step can prove on the wire that the port
+// was cleared to 0 rather than retained — a null in state cannot tell the two
+// apart, because the state builder folds both an empty and a zero port to
+// null (#384).
+func patchExternalSourceLive(t *testing.T, assert func(*proclassic.PatchExternalSource) error) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(patchExternalSourceResourceAddr, c.GetPatchExternalSourceByID, assert)
+}
+
 // TestAccResource_ProPatchExternalSource_Basic exercises create, a multi-attribute
 // in-place update (toggling all three Optional+Computed bools and changing
-// host_name + port), and import for the classic /patchexternalsources endpoint.
-// The update step also implicitly verifies the GET-after-Update path (classic
+// host_name + port), a step that drops port and proves the clear on the wire,
+// and import for the classic /patchexternalsources endpoint. The update step
+// also implicitly verifies the GET-after-Update path (classic
 // UpdatePatchExternalSourceByID returns 201 with empty body).
 func TestAccResource_ProPatchExternalSource_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -106,6 +119,24 @@ func TestAccResource_ProPatchExternalSource_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_patch_external_source.test", "port", "9000"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_patch_external_source.test", "ssl_enabled", "false"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_patch_external_source.test", "certificate_validation_enabled", "true"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_patch_external_source" "test" {
+						name                           = %q
+						enabled                        = false
+						host_name                      = "definitions.updated.com/v3/"
+						ssl_enabled                    = false
+						certificate_validation_enabled = true
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_patch_external_source.test", "port"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_patch_external_source.test", "host_name", "definitions.updated.com/v3/"),
+					patchExternalSourceLive(t, func(s *proclassic.PatchExternalSource) error {
+						return testhelpers.RequireEqual("port", 0, testhelpers.Deref(s.Port))
+					}),
 				),
 			},
 			{

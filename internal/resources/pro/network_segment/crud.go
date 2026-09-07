@@ -10,7 +10,12 @@
 //   proclassic.GetNetworkSegmentByName        (data source name lookup)
 //   proclassic.ResolveNetworkSegmentIDByName  (data source name → ID)
 //
-// Status: current. Last reviewed 2026-05-21.
+// Write semantics: the PUT merges field by field; an omitted element keeps
+// the stored value, an empty <building>/<department> clears it and an explicit
+// false clears an override flag (wire-probed 2026-09-06). See
+// buildNetworkSegmentInput.
+//
+// Status: current. Last reviewed 2026-09-06.
 
 package network_segment
 

@@ -10,7 +10,11 @@
 //   proclassic.GetPatchExternalSourceByName          (data source name lookup)
 //   proclassic.ResolvePatchExternalSourceIDByName    (data source name → ID)
 //
-// Status: current. Last reviewed 2026-06-01.
+// Write semantics: the PUT merges field by field; an omitted <port> keeps the
+// stored value and <port>0</port> clears it (wire-probed 2026-09-06; -1 is
+// refused). See portForWrite.
+//
+// Status: current. Last reviewed 2026-09-06.
 
 package patch_external_source
 
@@ -19,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -41,7 +46,7 @@ func (r *PatchExternalSourceResource) Create(ctx context.Context, req resource.C
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	created, err := r.client.CreatePatchExternalSourceByID(createCtx, "0", buildPatchExternalSourceInput(plan))
+	created, err := r.client.CreatePatchExternalSourceByID(createCtx, "0", buildPatchExternalSourceInput(plan, types.Int64Null()))
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro patch external source", err.Error())
 		return
@@ -147,10 +152,12 @@ func (r *PatchExternalSourceResource) Read(ctx context.Context, req resource.Rea
 
 // Update updates a Jamf Pro patch external source. Classic
 // UpdatePatchExternalSourceByID returns 201 with an empty body — we must GET to
-// refresh state.
+// refresh state. The prior state's port is read alongside the plan so a port
+// the config dropped is cleared on the wire (see portForWrite).
 func (r *PatchExternalSourceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan PatchExternalSourceResourceModel
+	var plan, prior PatchExternalSourceResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -163,7 +170,7 @@ func (r *PatchExternalSourceResource) Update(ctx context.Context, req resource.U
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if err := r.client.UpdatePatchExternalSourceByID(updateCtx, plan.ID.ValueString(), buildPatchExternalSourceInput(plan)); err != nil {
+	if err := r.client.UpdatePatchExternalSourceByID(updateCtx, plan.ID.ValueString(), buildPatchExternalSourceInput(plan, prior.Port)); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro patch external source", err.Error())
 		return
 	}

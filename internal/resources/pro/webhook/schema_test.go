@@ -133,8 +133,8 @@ func TestWebhookResource_AuthEnumIncludesMTLS(t *testing.T) {
 
 func TestWebhookResource_ConfigValidators(t *testing.T) {
 	r := NewWebhookResource().(*WebhookResource)
-	if got := r.ConfigValidators(context.Background()); len(got) != 4 {
-		t.Fatalf("expected 4 config validators, got %d", len(got))
+	if got := r.ConfigValidators(context.Background()); len(got) != 6 {
+		t.Fatalf("expected 6 config validators, got %d", len(got))
 	}
 }
 

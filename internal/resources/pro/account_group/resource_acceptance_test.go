@@ -217,6 +217,91 @@ func TestAccResource_ProAccountGroup_Members(t *testing.T) {
 	})
 }
 
+const accountGroupLdapAddr = "jamfplatform_pro_account_group.ldap"
+
+// accountGroupLdapConfig declares an anonymous Open Directory server fixture
+// (Jamf Pro stores it without contacting the host) and a group that either
+// references it through ldap_server_id or, when withServer is false, drops
+// the attribute while keeping the fixture alive for the wire assertion.
+func accountGroupLdapConfig(name, suffix string, withServer bool) string {
+	ldap := ""
+	if withServer {
+		ldap = "ldap_server_id = jamfplatform_pro_ldap_server.fixture.id"
+	}
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_ldap_server" "fixture" {
+  connection_settings = {
+    display_name        = "tf-acc-ag-ldap-%[2]s"
+    directory_service   = "Open Directory"
+    hostname            = "ldap.acc-ag-%[2]s.example.com"
+    port                = 389
+    use_ssl             = false
+    authentication_type = "none"
+  }
+}
+
+resource "jamfplatform_pro_account_group" "ldap" {
+  depends_on    = [jamfplatform_pro_ldap_server.fixture]
+  display_name  = %[1]q
+  access_level  = "Full Access"
+  privilege_set = "Auditor"
+  %[3]s
+}
+`, name, suffix, ldap)
+}
+
+// accountGroupLive fetches the server's copy of the LDAP-backed group under
+// test and hands it to assert, so the drop step can prove on the wire that the
+// -1 clear token removed the directory server — a null in state cannot tell a
+// cleared association from one the classic merge retained and the state
+// builder read as absent (#384).
+func accountGroupLive(t *testing.T, assert func(*proclassic.Group) error) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(accountGroupLdapAddr, c.GetAccountGroupByID, assert)
+}
+
+// TestAccResource_ProAccountGroup_LdapServer binds a group to a directory
+// server, then drops ldap_server_id and asserts the association is gone in
+// state and on the wire.
+func TestAccResource_ProAccountGroup_LdapServer(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-account-group-ldap-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAccountGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: accountGroupLdapConfig(name, suffix, true),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(accountGroupLdapAddr, "ldap_server_id", "jamfplatform_pro_ldap_server.fixture", "id"),
+					resource.TestCheckResourceAttr(accountGroupLdapAddr, "ldap_server_name", "tf-acc-ag-ldap-"+suffix),
+					accountGroupLive(t, func(g *proclassic.Group) error {
+						if g.LdapServer == nil || g.LdapServer.ID == nil {
+							return fmt.Errorf("ldap_server: absent, want the fixture")
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				Config: accountGroupLdapConfig(name, suffix, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(accountGroupLdapAddr, "ldap_server_id"),
+					resource.TestCheckNoResourceAttr(accountGroupLdapAddr, "ldap_server_name"),
+					accountGroupLive(t, func(g *proclassic.Group) error {
+						if g.LdapServer != nil && g.LdapServer.ID != nil && *g.LdapServer.ID > 0 {
+							return fmt.Errorf("ldap_server: want none, got id %d", *g.LdapServer.ID)
+						}
+						return nil
+					}),
+				),
+			},
+		},
+	})
+}
+
 const accountGroupOmitRetainsAddr = "jamfplatform_pro_account_group.omit"
 
 // accountGroupOmitRetainsFixture is the jamfplatform_pro_account member every

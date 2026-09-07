@@ -20,6 +20,14 @@ import (
 // `categoryUnassignedSentinel`. The server emits the sentinel for every
 // record that has no category assigned; we decode it back to null in state so
 // the Jamf-internal magic string never surfaces in plans or state files.
+//
+// The plain Optional strings are reconciled rather than copied: the input
+// builder always emits them, so a config that omits one sends an empty element
+// and the server echoes "" back. helpers.ReconcileOptionalStringPointer folds
+// that "" to null when the incoming model (plan on write, prior state on
+// refresh) does not carry the attribute, and keeps an explicit "" the user
+// configured, so an omitted attribute round-trips instead of tripping the
+// framework's inconsistent-result check.
 func assignPrinterResourceModel(state *PrinterResourceModel, p *proclassic.Printer) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
@@ -32,17 +40,17 @@ func assignPrinterResourceModel(state *PrinterResourceModel, p *proclassic.Print
 		state.Name = helpers.StringPointerValueOrNull(p.Name)
 	}
 	state.Category = decodeCategory(p.Category)
-	state.URI = helpers.StringPointerValueOrNull(p.URI)
-	state.CUPSName = helpers.StringPointerValueOrNull(p.CUPSName)
-	state.Location = helpers.StringPointerValueOrNull(p.Location)
-	state.Model = helpers.StringPointerValueOrNull(p.Model)
-	state.Info = helpers.StringPointerValueOrNull(p.Info)
-	state.Notes = helpers.StringPointerValueOrNull(p.Notes)
+	state.URI = helpers.ReconcileOptionalStringPointer(p.URI, state.URI)
+	state.CUPSName = helpers.ReconcileOptionalStringPointer(p.CUPSName, state.CUPSName)
+	state.Location = helpers.ReconcileOptionalStringPointer(p.Location, state.Location)
+	state.Model = helpers.ReconcileOptionalStringPointer(p.Model, state.Model)
+	state.Info = helpers.ReconcileOptionalStringPointer(p.Info, state.Info)
+	state.Notes = helpers.ReconcileOptionalStringPointer(p.Notes, state.Notes)
 	state.MakeDefault = helpers.BoolPointerValueOrNull(p.MakeDefault)
 	state.UseGeneric = helpers.BoolPointerValueOrNull(p.UseGeneric)
-	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p)
+	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p, state.PPD)
 	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
-	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
+	state.OSRequirements = helpers.ReconcileOptionalStringPointer(p.OsRequirements, state.OSRequirements)
 	return diags
 }
 
@@ -51,11 +59,14 @@ func assignPrinterResourceModel(state *PrinterResourceModel, p *proclassic.Print
 // (use_generic true or omitted). The Jamf Pro server echoes the bundled
 // Generic.ppd path even for a generic printer, but the cross-field validator
 // forbids the trio in that mode — so a faithful read must null it to round-trip.
-func ppdTrioValues(p *proclassic.Printer) (ppd, ppdPath types.String, ppdContents trimmedStringValue) {
+// In custom mode `ppd` is reconciled against currentPPD rather than copied,
+// because the input builder always emits it and an omitted `ppd` comes back
+// as "" beside a populated `ppd_path`.
+func ppdTrioValues(p *proclassic.Printer, currentPPD types.String) (ppd, ppdPath types.String, ppdContents trimmedStringValue) {
 	if p.UseGeneric == nil || *p.UseGeneric {
 		return types.StringNull(), types.StringNull(), trimmedStringValueFromPtr(nil)
 	}
-	return helpers.StringPointerValueOrNull(p.Ppd),
+	return helpers.ReconcileOptionalStringPointer(p.Ppd, currentPPD),
 		helpers.StringPointerValueOrNull(p.PpdPath),
 		trimmedStringValueFromPtr(p.PpdContents)
 }
@@ -82,7 +93,7 @@ func assignPrinterDataSourceModel(state *PrinterDataSourceModel, p *proclassic.P
 	state.Notes = helpers.StringPointerValueOrNull(p.Notes)
 	state.MakeDefault = helpers.BoolPointerValueOrNull(p.MakeDefault)
 	state.UseGeneric = helpers.BoolPointerValueOrNull(p.UseGeneric)
-	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p)
+	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p, types.StringNull())
 	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
 	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
 	return diags
