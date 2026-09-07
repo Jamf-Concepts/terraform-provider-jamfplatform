@@ -2709,21 +2709,18 @@ const policyOmitRetainsGeneralScalars = `
 // both need an out-of-band upload (JCDS, icon bytes) this test cannot supply.
 // Four general leaves are left undeclared because wire probes on 2026-09-06
 // showed the server ignores them on both POST and PUT and echoes its own
-// value, which would fail step 1 on content rather than on retention:
-// date_time_limitations.no_execute_start / no_execute_end always echo
-// empty, network_limitations.minimum_network_connection always echoes
-// "No Minimum", and override_default_settings.force_afp_smb always echoes
-// false. network_limitations.network_segment_ids and any_ip_address are
-// server-derived mirrors of scope.limitations.network_segment_ids, and a
-// <network_limitations> element naming only one of any_ip_address /
-// minimum_network_connection is refused 409 "Problem with general", so the
-// block declares both with the values the server will echo. The four
-// self_service notification leaves are declared but not asserted: the
-// classic GET on this tenant echoes no <notification>, <notification_type>,
-// <notification_subject> or <notification_message> element at all, so the
-// wire cannot witness them either way. printers.leave_existing_default is
-// declared false because the server echoes false whatever is sent while a
-// printer in the same block carries make_default = true.
+// value, which would fail step 1 on content rather than on retention.
+//
+// network_limitations and override_default_settings are declared EMPTY. Every
+// child of both is Computed-only — Jamf Pro derives each from a setting that
+// lives elsewhere and refuses a write — so declaring the block is the whole
+// gesture, and the wire assertions below check the projections rather than
+// anything this configuration set. printers.leave_existing_default is gone
+// altogether, having modelled a dead wire element. Both changes landed in #387.
+//
+// The four self_service notification leaves are declared but not asserted: the
+// classic GET echoes them only while the tenant-level Self Service
+// notifications toggle is on, so an acceptance test must not depend on them.
 func policyOmitRetainsConfig(n policyOmitRetainsNames) string {
 	return policyOmitRetainsFixtures(n) + fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
@@ -2735,16 +2732,8 @@ resource "jamfplatform_pro_policy" "test" {
       expiration_date = "2027-02-03 04:05:06"
       no_execute_on   = ["Tue", "Thu"]
     }
-    network_limitations = {
-      minimum_network_connection = "No Minimum"
-      any_ip_address             = false
-    }
-    override_default_settings = {
-      target_drive       = "/"
-      distribution_point = "default"
-      force_afp_smb      = false
-      sus                = "default"
-    }
+    network_limitations       = {}
+    override_default_settings = {}
   }
   scope = {
     targets = {
@@ -2792,7 +2781,6 @@ resource "jamfplatform_pro_policy" "test" {
     ]
   }
   printers = {
-    leave_existing_default = false
     printers = [
       {
         id           = jamfplatform_pro_printer.fixture.id
@@ -3120,9 +3108,6 @@ func policyLinkedObjectsRetained(p *proclassic.Policy, n policyOmitRetainsNames)
 	}
 	if p.Printers == nil {
 		return fmt.Errorf("printers: absent")
-	}
-	if err := testhelpers.RequireEqual("printers.leave_existing_default", false, testhelpers.Deref(p.Printers.LeaveExistingDefault)); err != nil {
-		return err
 	}
 	if err := requireSingleNamed("printers", p.Printers.Printer, func(pr proclassic.PolicyPrintersPrinterItem) *string { return pr.Name }, n.Printer); err != nil {
 		return err
