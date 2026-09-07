@@ -756,7 +756,6 @@ func mobileAppOmitRetainsConfig(suffix, name string) string {
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.mobileapp.omit"
 				os_type         = "iOS"
-				deployment_type = "Make Available in Self Service"
 			}
 			scope = {
 				targets = {
@@ -808,7 +807,6 @@ func mobileAppOmitRetainsParentsOnlyConfig(suffix, name string) string {
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.mobileapp.omit"
 				os_type         = "iOS"
-				deployment_type = "Make Available in Self Service"
 			}
 			scope = {
 				targets = {
@@ -835,7 +833,6 @@ func mobileAppOmitRetainsGeneralOnlyConfig(suffix, name string) string {
 				version         = "1.0"
 				bundle_id       = "com.example.tfacc.mobileapp.omit"
 				os_type         = "iOS"
-				deployment_type = "Make Available in Self Service"
 			}
 		}
 	`, name)
