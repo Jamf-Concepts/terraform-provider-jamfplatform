@@ -221,6 +221,91 @@ func TestModelToMap_OmitsNullCategories(t *testing.T) {
 	}
 }
 
+// TestMergeGrid_DeclaredReplacesUndeclaredCarried is the write-side contract
+// behind issue #385: a declared category wins over the live value, and a
+// category the configuration does not declare is carried from the live grid,
+// server-injected dependency privileges included, so the full-replace PUT cannot
+// empty it.
+func TestMergeGrid_DeclaredReplacesUndeclaredCarried(t *testing.T) {
+	declared := &Model{JamfProServerObjects: mustSet(t, "Read Buildings", "Read Departments")}
+	server := map[string][]string{
+		"jss_objects":  {"Read Computers"},
+		"jss_settings": {"Read License Information", "Read SMTP Server"},
+		"jss_actions":  {"Send Computer Remote Lock Command"},
+	}
+	got, diags := MergeGrid(context.Background(), declared, server)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	want := map[string][]string{
+		"jss_objects":  {"Read Buildings", "Read Departments"},
+		"jss_settings": {"Read License Information", "Read SMTP Server"},
+		"jss_actions":  {"Send Computer Remote Lock Command"},
+	}
+	for k, w := range want {
+		g := got[k]
+		sort.Strings(g)
+		if !reflect.DeepEqual(g, w) {
+			t.Errorf("category %s: got %v want %v", k, g, w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("merged grid has %d categories, want %d: %v", len(got), len(want), got)
+	}
+	if !reflect.DeepEqual(server["jss_objects"], []string{"Read Computers"}) {
+		t.Errorf("server grid mutated: %v", server["jss_objects"])
+	}
+}
+
+// TestMergeGrid_DeclaredEmptyClears keeps a declared [] as a present key with an
+// empty slice, so ToGroupPrivileges emits an empty element and the category is
+// cleared rather than carried from the live grid.
+func TestMergeGrid_DeclaredEmptyClears(t *testing.T) {
+	declared := &Model{JamfProServerActions: mustSet(t)}
+	server := map[string][]string{"jss_actions": {"Send Computer Remote Lock Command"}}
+	got, diags := MergeGrid(context.Background(), declared, server)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	v, ok := got["jss_actions"]
+	if !ok {
+		t.Fatalf("declared empty category dropped from merged grid: %v", got)
+	}
+	if v == nil || len(v) != 0 {
+		t.Errorf("declared empty category should be a non-nil empty slice, got %#v", v)
+	}
+	if grid := ToGroupPrivileges(got); grid == nil || grid.JssActions == nil {
+		t.Errorf("empty category should still be emitted as an element: %+v", grid)
+	}
+}
+
+// TestMergeGrid_NilServer covers Create, where nothing exists yet: the merged
+// grid is exactly the declared categories.
+func TestMergeGrid_NilServer(t *testing.T) {
+	declared := &Model{Recon: mustSet(t, "Use Recon")}
+	got, diags := MergeGrid(context.Background(), declared, nil)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if !reflect.DeepEqual(got, map[string][]string{"recon": {"Use Recon"}}) {
+		t.Errorf("got %v", got)
+	}
+}
+
+// TestMergeGrid_NilDeclared returns a copy of the live grid when nothing is
+// declared, so a caller that does reach it with no configuration re-sends the
+// server's own grid rather than an empty one.
+func TestMergeGrid_NilDeclared(t *testing.T) {
+	server := map[string][]string{"casper_admin": {"Use Casper Admin"}}
+	got, diags := MergeGrid(context.Background(), nil, server)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if !reflect.DeepEqual(got, server) {
+		t.Errorf("got %v want %v", got, server)
+	}
+}
+
 // fakeDiscoverer serves a fixed account/group topology for Discover tests.
 type fakeDiscoverer struct {
 	groups map[int]*proclassic.Group

@@ -2483,3 +2483,790 @@ resource "jamfplatform_pro_policy" "test" {
 		},
 	})
 }
+
+// policyOmitRetainsResourceAddr is the policy under test in the omit-retains
+// contract test; the disk-encryption fixture's address is needed too because
+// the wire echoes only its numeric id.
+const (
+	policyOmitRetainsResourceAddr = "jamfplatform_pro_policy.test"
+	policyOmitRetainsDecAddr      = "jamfplatform_pro_disk_encryption_configuration.fixture"
+)
+
+// policyOmitRetainsNames derives every fixture name from the run-unique base
+// name, so the wire assertion can match referenced objects by the name Jamf
+// echoes rather than by server-assigned ids the config helper cannot know.
+type policyOmitRetainsNames struct {
+	Policy, Category, Building, Department, DeviceGroup, SegmentLimitation, SegmentExclusion, Ibeacon, Script, Printer, DockItem, Dec, DirectoryBinding string
+}
+
+func newPolicyOmitRetainsNames(base string) policyOmitRetainsNames {
+	return policyOmitRetainsNames{
+		Policy:            base,
+		Category:          base + "-cat",
+		Building:          base + "-bld",
+		Department:        base + "-dept",
+		DeviceGroup:       base + "-grp",
+		SegmentLimitation: base + "-seg-lim",
+		SegmentExclusion:  base + "-seg-excl",
+		Ibeacon:           base + "-ibeacon",
+		Script:            base + "-script",
+		Printer:           base + "-printer",
+		DockItem:          base + "-dock",
+		Dec:               base + "-dec",
+		DirectoryBinding:  base + "-db",
+	}
+}
+
+// policyOmitRetainsFixtures declares every sibling object the fully declared
+// policy references. It is shared by all three steps so a fixture is never
+// destroyed while the policy still points at it; only the policy body shrinks.
+func policyOmitRetainsFixtures(n policyOmitRetainsNames) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_category" "fixture" {
+  name     = %q
+  priority = 9
+}
+
+resource "jamfplatform_pro_building" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_pro_department" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_device_group" "fixture" {
+  name        = %q
+  description = "tf-acc omit-retains fixture"
+  group_type  = "static"
+  device_type = "computer"
+}
+
+resource "jamfplatform_pro_network_segment" "limitation" {
+  name             = %q
+  starting_address = "10.77.0.0"
+  ending_address   = "10.77.0.255"
+}
+
+resource "jamfplatform_pro_network_segment" "exclusion" {
+  name             = %q
+  starting_address = "10.76.0.0"
+  ending_address   = "10.76.0.255"
+}
+
+resource "jamfplatform_pro_ibeacon" "fixture" {
+  name                    = %q
+  uuid                    = "759b0599-64e0-416a-8d31-d8e93482a4d7"
+  include_any_major_value = true
+  include_any_minor_value = true
+}
+
+resource "jamfplatform_pro_script" "fixture" {
+  name            = %q
+  priority        = "AFTER"
+  info            = "tf-acc omit-retains script fixture"
+  script_contents = <<-EOT
+    #!/bin/sh
+    echo "tf-acc-omit-retains"
+  EOT
+}
+
+resource "jamfplatform_pro_printer" "fixture" {
+  name = %q
+  uri  = "ipp://10.1.20.121/"
+}
+
+resource "jamfplatform_pro_dock_item" "fixture" {
+  name = %q
+  type = "App"
+  path = "/Applications/Calculator.app"
+}
+
+resource "jamfplatform_pro_disk_encryption_configuration" "fixture" {
+  name                     = %q
+  key_type                 = "Individual"
+  file_vault_enabled_users = "Current or Next User"
+}
+
+resource "jamfplatform_pro_directory_binding" "fixture" {
+  name     = %q
+  priority = 1
+  type     = "Open Directory"
+  domain   = "ldap.tf-acc.example.com"
+  username = "cn=joiner,dc=tf-acc,dc=example,dc=com"
+  password = "Sup3rS3cret!"
+
+  open_directory = {
+    encrypt_using_ssl      = false
+    perform_secure_bind    = false
+    use_for_authentication = true
+    use_for_contacts       = false
+  }
+}
+`, n.Category, n.Building, n.Department, n.DeviceGroup, n.SegmentLimitation, n.SegmentExclusion, n.Ibeacon, n.Script, n.Printer, n.DockItem, n.Dec, n.DirectoryBinding)
+}
+
+// policyOmitRetainsDependsOn pins the policy after every fixture in all three
+// steps. Once a step stops declaring a reference the server still holds it,
+// which is the very contract under test, so without this edge Terraform's
+// destroy would try to remove the device group and disk encryption
+// configuration while the live policy still points at them and both deletes
+// are refused as HAS_DEPENDENCIES.
+const policyOmitRetainsDependsOn = `
+  depends_on = [
+    jamfplatform_pro_category.fixture,
+    jamfplatform_pro_building.fixture,
+    jamfplatform_pro_department.fixture,
+    jamfplatform_device_group.fixture,
+    jamfplatform_pro_network_segment.limitation,
+    jamfplatform_pro_network_segment.exclusion,
+    jamfplatform_pro_ibeacon.fixture,
+    jamfplatform_pro_script.fixture,
+    jamfplatform_pro_printer.fixture,
+    jamfplatform_pro_dock_item.fixture,
+    jamfplatform_pro_disk_encryption_configuration.fixture,
+    jamfplatform_pro_directory_binding.fixture,
+  ]
+`
+
+// policyOmitRetainsGeneralScalars is the general block every step keeps.
+// frequency=Ongoing forbids retry configuration, so the retry pair is pinned
+// to its cleared form and category/site to NONE, making the block independent
+// of tenant inventory and stable across the three steps.
+const policyOmitRetainsGeneralScalars = `
+    enabled        = true
+    frequency      = "Ongoing"
+    retry_event    = "none"
+    retry_attempts = -1
+    category_id    = "-1"
+    site_id        = "-1"
+`
+
+// policyOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: every state-gated block, sub-block and collection carries a
+// distinctive non-default value so a server that stopped retaining an
+// omitted element is caught on content, not on presence. packages and
+// self_service.self_service_icon are the two gated sections left out —
+// both need an out-of-band upload (JCDS, icon bytes) this test cannot supply.
+// Four general leaves are left undeclared because wire probes on 2026-09-06
+// showed the server ignores them on both POST and PUT and echoes its own
+// value, which would fail step 1 on content rather than on retention:
+// date_time_limitations.no_execute_start / no_execute_end always echo
+// empty, network_limitations.minimum_network_connection always echoes
+// "No Minimum", and override_default_settings.force_afp_smb always echoes
+// false. network_limitations.network_segment_ids and any_ip_address are
+// server-derived mirrors of scope.limitations.network_segment_ids, and a
+// <network_limitations> element naming only one of any_ip_address /
+// minimum_network_connection is refused 409 "Problem with general", so the
+// block declares both with the values the server will echo. The four
+// self_service notification leaves are declared but not asserted: the
+// classic GET on this tenant echoes no <notification>, <notification_type>,
+// <notification_subject> or <notification_message> element at all, so the
+// wire cannot witness them either way. printers.leave_existing_default is
+// declared false because the server echoes false whatever is sent while a
+// printer in the same block carries make_default = true.
+func policyOmitRetainsConfig(n policyOmitRetainsNames) string {
+	return policyOmitRetainsFixtures(n) + fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+%s
+    date_time_limitations = {
+      activation_date = "2026-02-03 04:05:06"
+      expiration_date = "2027-02-03 04:05:06"
+      no_execute_on   = ["Tue", "Thu"]
+    }
+    network_limitations = {
+      minimum_network_connection = "No Minimum"
+      any_ip_address             = false
+    }
+    override_default_settings = {
+      target_drive       = "/"
+      distribution_point = "default"
+      force_afp_smb      = false
+      sus                = "default"
+    }
+  }
+  scope = {
+    targets = {
+      computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
+      building_ids       = [jamfplatform_pro_building.fixture.id]
+    }
+    limitations = {
+      network_segment_ids = [jamfplatform_pro_network_segment.limitation.id]
+      ibeacon_ids         = [jamfplatform_pro_ibeacon.fixture.id]
+    }
+    exclusions = {
+      department_ids      = [jamfplatform_pro_department.fixture.id]
+      network_segment_ids = [jamfplatform_pro_network_segment.exclusion.id]
+    }
+  }
+  self_service = {
+    use_for_self_service          = true
+    self_service_display_name     = "Omit-retains display name"
+    install_button_text           = "Retain me"
+    reinstall_button_text         = "Retain me again"
+    self_service_description      = "Omit-retains contract description."
+    ensure_users_view_description = true
+    include_in_featured_category  = true
+    display_notifications         = true
+    notification_location         = "Self Service and Notification Center"
+    notification_subject          = "Omit-retains subject"
+    notification_message          = "Omit-retains message"
+    categories = [
+      {
+        id         = jamfplatform_pro_category.fixture.id
+        display_in = true
+        feature_in = true
+      },
+    ]
+  }
+  scripts = {
+    scripts = [
+      {
+        id           = jamfplatform_pro_script.fixture.id
+        priority     = "Before"
+        parameter_4  = "omit-retains-p4"
+        parameter_5  = "omit-retains-p5"
+        parameter_11 = "omit-retains-p11"
+      },
+    ]
+  }
+  printers = {
+    leave_existing_default = false
+    printers = [
+      {
+        id           = jamfplatform_pro_printer.fixture.id
+        action       = "Map"
+        make_default = true
+      },
+    ]
+  }
+  dock_items = {
+    dock_items = [
+      {
+        id     = jamfplatform_pro_dock_item.fixture.id
+        action = "Add To Beginning"
+      },
+    ]
+  }
+  local_accounts = [
+    {
+      action               = "Create"
+      username             = "tf-acc-omit"
+      realname             = "Omit Retains"
+      password             = "Sup3rS3cret!"
+      password_wo_version  = 1
+      home                 = "/Users/tf-acc-omit"
+      hint                 = "omit-retains hint"
+      admin                = true
+      filevault_enabled    = false
+      secure_token_allowed = true
+    },
+  ]
+  directory_bindings = [
+    {
+      id = jamfplatform_pro_directory_binding.fixture.id
+    },
+  ]
+  management_account = {
+    action                      = "rotate"
+    managed_password            = "Sup3rS3cret!"
+    managed_password_wo_version = 1
+  }
+  efi_password = {
+    of_mode                = "command"
+    of_password            = "OF-omit-retains-1!"
+    of_password_wo_version = 1
+  }
+  restart_options = {
+    message                        = "Omit-retains reboot message"
+    startup_disk                   = "Current Startup Disk"
+    specify_startup                = "Standard Restart"
+    no_user_logged_in              = "Restart immediately"
+    user_logged_in                 = "Restart if a package or update requires it"
+    delay_minutes                  = 7
+    start_reboot_timer_immediately = true
+    file_vault_2_reboot            = true
+  }
+  maintenance = {
+    update_inventory        = false
+    reset_computer_names    = true
+    install_cached_packages = true
+    fix_disk_permissions    = false
+    fix_byhost_files        = true
+    flush_system_caches     = false
+    flush_user_caches       = true
+    verify_startup_disk     = true
+  }
+  files_and_processes = {
+    search_by_path         = "/tmp/omit-retains"
+    delete_file_if_found   = true
+    search_by_filename     = "omit-retains.txt"
+    update_locate_database = true
+    search_by_spotlight    = "omit-retains-spotlight"
+    search_for_process     = "omitretainsd"
+    kill_process_if_found  = true
+    execute_command        = "echo omit-retains"
+  }
+  user_interaction = {
+    start_message    = "Omit-retains start message"
+    deferral_type    = "duration"
+    deferral_days    = 3
+    complete_message = "Omit-retains complete message"
+  }
+  disk_encryption = {
+    action                           = "apply"
+    disk_encryption_configuration_id = tonumber(jamfplatform_pro_disk_encryption_configuration.fixture.id)
+    auth_restart                     = true
+  }
+%s}
+`, n.Policy, policyOmitRetainsGeneralScalars, policyOmitRetainsDependsOn)
+}
+
+// policyOmitRetainsParentsOnlyConfig keeps every parent that has a state-gated
+// child and drops the child: general without its three sub-blocks, scope with
+// targets but no limitations or exclusions, self_service without categories,
+// and management_account as the sole survivor of the four account-maintenance
+// peers so the PUT carries an <account_maintenance> element that names only
+// <management_account>. It also drops the Optional+Computed leaf
+// self_service.install_button_text. Every other optional block is omitted.
+func policyOmitRetainsParentsOnlyConfig(n policyOmitRetainsNames) string {
+	return policyOmitRetainsFixtures(n) + fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+%s
+  }
+  scope = {
+    targets = {
+      computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
+      building_ids       = [jamfplatform_pro_building.fixture.id]
+    }
+  }
+  self_service = {
+    use_for_self_service          = true
+    self_service_display_name     = "Omit-retains display name"
+    reinstall_button_text         = "Retain me again"
+    self_service_description      = "Omit-retains contract description."
+    ensure_users_view_description = true
+    include_in_featured_category  = true
+    display_notifications         = true
+    notification_location         = "Self Service and Notification Center"
+    notification_subject          = "Omit-retains subject"
+    notification_message          = "Omit-retains message"
+  }
+  management_account = {
+    action                      = "rotate"
+    managed_password_wo_version = 1
+  }
+%s}
+`, n.Policy, policyOmitRetainsGeneralScalars, policyOmitRetainsDependsOn)
+}
+
+// policyOmitRetainsGeneralOnlyConfig drops every optional block, so the PUT
+// carries <general> alone.
+func policyOmitRetainsGeneralOnlyConfig(n policyOmitRetainsNames) string {
+	return policyOmitRetainsFixtures(n) + fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+%s
+  }
+%s}
+`, n.Policy, policyOmitRetainsGeneralScalars, policyOmitRetainsDependsOn)
+}
+
+// requireSingleNamed asserts a wire collection holds exactly one element and
+// that its name is the fixture the step-1 config referenced. Names are used
+// because Jamf echoes them for every referenced object and the config helper
+// cannot know server-assigned ids.
+func requireSingleNamed[T any](field string, items *[]T, name func(T) *string, want string) error {
+	if items == nil || len(*items) != 1 {
+		return fmt.Errorf("%s: want exactly one element named %q, got %+v", field, want, items)
+	}
+	return testhelpers.RequireEqual(field+"[0].name", want, testhelpers.Deref(name((*items)[0])))
+}
+
+func idNameName(i proclassic.IDName) *string { return i.Name }
+
+// policyRetainedOnServer asserts the server's copy still carries every value
+// the omit-retains config declared in its first step. The disk-encryption
+// configuration id is read from the fixture's Terraform state because that is
+// the one reference the wire echoes as a bare id.
+func policyRetainedOnServer(t *testing.T, n policyOmitRetainsNames) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return func(s *terraform.State) error {
+		dec, ok := s.RootModule().Resources[policyOmitRetainsDecAddr]
+		if !ok {
+			return fmt.Errorf("resource %s not found in state", policyOmitRetainsDecAddr)
+		}
+		wantDecID := dec.Primary.ID
+		return testhelpers.CheckLiveObject(policyOmitRetainsResourceAddr,
+			func(ctx context.Context, id string) (*proclassic.Policy, error) {
+				return c.GetPolicyByID(ctx, id)
+			},
+			func(p *proclassic.Policy) error {
+				if err := policyGeneralRetained(p.General); err != nil {
+					return err
+				}
+				if err := policyScopeRetained(p.Scope, n); err != nil {
+					return err
+				}
+				if err := policySelfServiceRetained(p.SelfService, n); err != nil {
+					return err
+				}
+				if err := policyLinkedObjectsRetained(p, n); err != nil {
+					return err
+				}
+				if err := policyAccountMaintenanceRetained(p.AccountMaintenance, n); err != nil {
+					return err
+				}
+				return policyOptionsRetained(p, wantDecID)
+			})(s)
+	}
+}
+
+func policyGeneralRetained(g *proclassic.PolicyGeneral) error {
+	if g == nil {
+		return fmt.Errorf("general: absent")
+	}
+	dtl := g.DateTimeLimitations
+	if dtl == nil {
+		return fmt.Errorf("general.date_time_limitations: absent")
+	}
+	if err := testhelpers.RequireEqual("general.date_time_limitations.activation_date", "2026-02-03 04:05:06", testhelpers.Deref(dtl.ActivationDate)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("general.date_time_limitations.expiration_date", "2027-02-03 04:05:06", testhelpers.Deref(dtl.ExpirationDate)); err != nil {
+		return err
+	}
+	if dtl.NoExecuteOn == nil || dtl.NoExecuteOn.Day == nil || len(*dtl.NoExecuteOn.Day) != 2 {
+		return fmt.Errorf("general.date_time_limitations.no_execute_on: want [Tue Thu], got %+v", dtl.NoExecuteOn)
+	}
+	days := strings.Join(*dtl.NoExecuteOn.Day, ",")
+	if days != "Tue,Thu" && days != "Thu,Tue" {
+		return fmt.Errorf("general.date_time_limitations.no_execute_on: want [Tue Thu], got %q", days)
+	}
+	nl := g.NetworkLimitations
+	if nl == nil {
+		return fmt.Errorf("general.network_limitations: absent")
+	}
+	if err := testhelpers.RequireEqual("general.network_limitations.minimum_network_connection", "No Minimum", testhelpers.Deref(nl.MinimumNetworkConnection)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("general.network_limitations.any_ip_address", false, testhelpers.Deref(nl.AnyIPAddress)); err != nil {
+		return err
+	}
+	ods := g.OverrideDefaultSettings
+	if ods == nil {
+		return fmt.Errorf("general.override_default_settings: absent")
+	}
+	checks := []error{
+		testhelpers.RequireEqual("general.override_default_settings.target_drive", "/", testhelpers.Deref(ods.TargetDrive)),
+		testhelpers.RequireEqual("general.override_default_settings.distribution_point", "default", testhelpers.Deref(ods.DistributionPoint)),
+		testhelpers.RequireEqual("general.override_default_settings.force_afp_smb", false, testhelpers.Deref(ods.ForceAfpSmb)),
+		testhelpers.RequireEqual("general.override_default_settings.sus", "default", testhelpers.Deref(ods.Sus)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func policyScopeRetained(s *proclassic.PolicyScope, n policyOmitRetainsNames) error {
+	if s == nil {
+		return fmt.Errorf("scope: absent")
+	}
+	if s.ComputerGroups == nil || s.Buildings == nil {
+		return fmt.Errorf("scope.targets: computer_groups or buildings absent")
+	}
+	if err := requireSingleNamed("scope.computer_groups", s.ComputerGroups.ComputerGroup, idNameName, n.DeviceGroup); err != nil {
+		return err
+	}
+	if err := requireSingleNamed("scope.buildings", s.Buildings.Building, idNameName, n.Building); err != nil {
+		return err
+	}
+	if s.Limitations == nil || s.Limitations.NetworkSegments == nil || s.Limitations.Ibeacons == nil {
+		return fmt.Errorf("scope.limitations: want network_segments and ibeacons, got %+v", s.Limitations)
+	}
+	if err := requireSingleNamed("scope.limitations.network_segments", s.Limitations.NetworkSegments.NetworkSegment, idNameName, n.SegmentLimitation); err != nil {
+		return err
+	}
+	if err := requireSingleNamed("scope.limitations.ibeacons", s.Limitations.Ibeacons.Ibeacon, idNameName, n.Ibeacon); err != nil {
+		return err
+	}
+	if s.Exclusions == nil || s.Exclusions.Departments == nil || s.Exclusions.NetworkSegments == nil {
+		return fmt.Errorf("scope.exclusions: want departments and network_segments, got %+v", s.Exclusions)
+	}
+	if err := requireSingleNamed("scope.exclusions.departments", s.Exclusions.Departments.Department, idNameName, n.Department); err != nil {
+		return err
+	}
+	return requireSingleNamed("scope.exclusions.network_segments", s.Exclusions.NetworkSegments.NetworkSegment,
+		func(i proclassic.PolicyScopeExclusionsNetworkSegmentsNetworkSegmentItem) *string { return i.Name }, n.SegmentExclusion)
+}
+
+func policySelfServiceRetained(ss *proclassic.PolicySelfService, n policyOmitRetainsNames) error {
+	if ss == nil {
+		return fmt.Errorf("self_service: absent")
+	}
+	checks := []error{
+		testhelpers.RequireEqual("self_service.use_for_self_service", true, testhelpers.Deref(ss.UseForSelfService)),
+		testhelpers.RequireEqual("self_service.self_service_display_name", "Omit-retains display name", testhelpers.Deref(ss.SelfServiceDisplayName)),
+		testhelpers.RequireEqual("self_service.install_button_text", "Retain me", testhelpers.Deref(ss.InstallButtonText)),
+		testhelpers.RequireEqual("self_service.reinstall_button_text", "Retain me again", testhelpers.Deref(ss.ReinstallButtonText)),
+		testhelpers.RequireEqual("self_service.self_service_description", "Omit-retains contract description.", testhelpers.Deref(ss.SelfServiceDescription)),
+		testhelpers.RequireEqual("self_service.force_users_to_view_description", true, testhelpers.Deref(ss.ForceUsersToViewDescription)),
+		testhelpers.RequireEqual("self_service.feature_on_main_page", true, testhelpers.Deref(ss.FeatureOnMainPage)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	if ss.SelfServiceCategories == nil {
+		return fmt.Errorf("self_service.self_service_categories: absent")
+	}
+	if err := requireSingleNamed("self_service.self_service_categories", ss.SelfServiceCategories.Category,
+		func(c proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem) *string { return c.Name }, n.Category); err != nil {
+		return err
+	}
+	cat := (*ss.SelfServiceCategories.Category)[0]
+	if err := testhelpers.RequireEqual("self_service.self_service_categories[0].display_in", true, testhelpers.Deref(cat.DisplayIn)); err != nil {
+		return err
+	}
+	return testhelpers.RequireEqual("self_service.self_service_categories[0].feature_in", true, testhelpers.Deref(cat.FeatureIn))
+}
+
+func policyLinkedObjectsRetained(p *proclassic.Policy, n policyOmitRetainsNames) error {
+	if p.Scripts == nil {
+		return fmt.Errorf("scripts: absent")
+	}
+	if err := requireSingleNamed("scripts", p.Scripts.Script, func(s proclassic.PolicyScriptsScriptItem) *string { return s.Name }, n.Script); err != nil {
+		return err
+	}
+	sc := (*p.Scripts.Script)[0]
+	checks := []error{
+		testhelpers.RequireEqual("scripts[0].priority", "Before", testhelpers.Deref(sc.Priority)),
+		testhelpers.RequireEqual("scripts[0].parameter4", "omit-retains-p4", testhelpers.Deref(sc.Parameter4)),
+		testhelpers.RequireEqual("scripts[0].parameter5", "omit-retains-p5", testhelpers.Deref(sc.Parameter5)),
+		testhelpers.RequireEqual("scripts[0].parameter11", "omit-retains-p11", testhelpers.Deref(sc.Parameter11)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	if p.Printers == nil {
+		return fmt.Errorf("printers: absent")
+	}
+	if err := testhelpers.RequireEqual("printers.leave_existing_default", false, testhelpers.Deref(p.Printers.LeaveExistingDefault)); err != nil {
+		return err
+	}
+	if err := requireSingleNamed("printers", p.Printers.Printer, func(pr proclassic.PolicyPrintersPrinterItem) *string { return pr.Name }, n.Printer); err != nil {
+		return err
+	}
+	pr := (*p.Printers.Printer)[0]
+	if err := testhelpers.RequireEqual("printers[0].action", proclassic.PolicyPrintersPrinterItemActionInstall, testhelpers.Deref(pr.Action)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("printers[0].make_default", true, testhelpers.Deref(pr.MakeDefault)); err != nil {
+		return err
+	}
+	if p.DockItems == nil {
+		return fmt.Errorf("dock_items: absent")
+	}
+	if err := requireSingleNamed("dock_items", p.DockItems.DockItem, func(d proclassic.PolicyDockItemsDockItemItem) *string { return d.Name }, n.DockItem); err != nil {
+		return err
+	}
+	return testhelpers.RequireEqual("dock_items[0].action", "Add To Beginning", testhelpers.Deref((*p.DockItems.DockItem)[0].Action))
+}
+
+func policyAccountMaintenanceRetained(am *proclassic.PolicyAccountMaintenance, n policyOmitRetainsNames) error {
+	if am == nil {
+		return fmt.Errorf("account_maintenance: absent")
+	}
+	if am.Accounts == nil {
+		return fmt.Errorf("account_maintenance.accounts: absent")
+	}
+	if err := requireSingleNamed("account_maintenance.accounts", am.Accounts.Account,
+		func(a proclassic.PolicyAccountMaintenanceAccountsAccountItem) *string { return a.Username }, "tf-acc-omit"); err != nil {
+		return err
+	}
+	acct := (*am.Accounts.Account)[0]
+	checks := []error{
+		testhelpers.RequireEqual("account_maintenance.accounts[0].action", "Create", testhelpers.Deref(acct.Action)),
+		testhelpers.RequireEqual("account_maintenance.accounts[0].realname", "Omit Retains", testhelpers.Deref(acct.Realname)),
+		testhelpers.RequireEqual("account_maintenance.accounts[0].home", "/Users/tf-acc-omit", testhelpers.Deref(acct.Home)),
+		testhelpers.RequireEqual("account_maintenance.accounts[0].hint", "omit-retains hint", testhelpers.Deref(acct.Hint)),
+		testhelpers.RequireEqual("account_maintenance.accounts[0].admin", true, testhelpers.Deref(acct.Admin)),
+		testhelpers.RequireEqual("account_maintenance.accounts[0].secure_token_allowed", true, testhelpers.Deref(acct.SecureTokenAllowed)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	if am.DirectoryBindings == nil {
+		return fmt.Errorf("account_maintenance.directory_bindings: absent")
+	}
+	if err := requireSingleNamed("account_maintenance.directory_bindings", am.DirectoryBindings.Binding, idNameName, n.DirectoryBinding); err != nil {
+		return err
+	}
+	if am.ManagementAccount == nil {
+		return fmt.Errorf("account_maintenance.management_account: absent")
+	}
+	if err := testhelpers.RequireEqual("account_maintenance.management_account.action", proclassic.PolicyAccountMaintenanceManagementAccountActionRotate, testhelpers.Deref(am.ManagementAccount.Action)); err != nil {
+		return err
+	}
+	if am.OpenFirmwareEfiPassword == nil {
+		return fmt.Errorf("account_maintenance.open_firmware_efi_password: absent")
+	}
+	return testhelpers.RequireEqual("account_maintenance.open_firmware_efi_password.of_mode", proclassic.PolicyAccountMaintenanceOpenFirmwareEfiPasswordOfModeCommand, testhelpers.Deref(am.OpenFirmwareEfiPassword.OfMode))
+}
+
+func policyOptionsRetained(p *proclassic.Policy, wantDecID string) error {
+	r := p.Reboot
+	if r == nil {
+		return fmt.Errorf("reboot: absent")
+	}
+	checks := []error{
+		testhelpers.RequireEqual("reboot.message", "Omit-retains reboot message", testhelpers.Deref(r.Message)),
+		testhelpers.RequireEqual("reboot.startup_disk", "Current Startup Disk", testhelpers.Deref(r.StartupDisk)),
+		testhelpers.RequireEqual("reboot.specify_startup", "Standard Restart", testhelpers.Deref(r.SpecifyStartup)),
+		testhelpers.RequireEqual("reboot.no_user_logged_in", "Restart immediately", testhelpers.Deref(r.NoUserLoggedIn)),
+		testhelpers.RequireEqual("reboot.user_logged_in", "Restart if a package or update requires it", testhelpers.Deref(r.UserLoggedIn)),
+		testhelpers.RequireEqual("reboot.minutes_until_reboot", 7, testhelpers.Deref(r.MinutesUntilReboot)),
+		testhelpers.RequireEqual("reboot.start_reboot_timer_immediately", true, testhelpers.Deref(r.StartRebootTimerImmediately)),
+		testhelpers.RequireEqual("reboot.file_vault_2_reboot", true, testhelpers.Deref(r.FileVault2Reboot)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	m := p.Maintenance
+	if m == nil {
+		return fmt.Errorf("maintenance: absent")
+	}
+	checks = []error{
+		testhelpers.RequireEqual("maintenance.recon", false, testhelpers.Deref(m.Recon)),
+		testhelpers.RequireEqual("maintenance.reset_name", true, testhelpers.Deref(m.ResetName)),
+		testhelpers.RequireEqual("maintenance.install_all_cached_packages", true, testhelpers.Deref(m.InstallAllCachedPackages)),
+		testhelpers.RequireEqual("maintenance.permissions", false, testhelpers.Deref(m.Permissions)),
+		testhelpers.RequireEqual("maintenance.byhost", true, testhelpers.Deref(m.Byhost)),
+		testhelpers.RequireEqual("maintenance.system_cache", false, testhelpers.Deref(m.SystemCache)),
+		testhelpers.RequireEqual("maintenance.user_cache", true, testhelpers.Deref(m.UserCache)),
+		testhelpers.RequireEqual("maintenance.verify", true, testhelpers.Deref(m.Verify)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	fp := p.FilesProcesses
+	if fp == nil {
+		return fmt.Errorf("files_processes: absent")
+	}
+	checks = []error{
+		testhelpers.RequireEqual("files_processes.search_by_path", "/tmp/omit-retains", testhelpers.Deref(fp.SearchByPath)),
+		testhelpers.RequireEqual("files_processes.delete_file", true, testhelpers.Deref(fp.DeleteFile)),
+		testhelpers.RequireEqual("files_processes.locate_file", "omit-retains.txt", testhelpers.Deref(fp.LocateFile)),
+		testhelpers.RequireEqual("files_processes.update_locate_database", true, testhelpers.Deref(fp.UpdateLocateDatabase)),
+		testhelpers.RequireEqual("files_processes.spotlight_search", "omit-retains-spotlight", testhelpers.Deref(fp.SpotlightSearch)),
+		testhelpers.RequireEqual("files_processes.search_for_process", "omitretainsd", testhelpers.Deref(fp.SearchForProcess)),
+		testhelpers.RequireEqual("files_processes.kill_process", true, testhelpers.Deref(fp.KillProcess)),
+		testhelpers.RequireEqual("files_processes.run_command", "echo omit-retains", testhelpers.Deref(fp.RunCommand)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	ui := p.UserInteraction
+	if ui == nil {
+		return fmt.Errorf("user_interaction: absent")
+	}
+	checks = []error{
+		testhelpers.RequireEqual("user_interaction.message_start", "Omit-retains start message", testhelpers.Deref(ui.MessageStart)),
+		testhelpers.RequireEqual("user_interaction.message_finish", "Omit-retains complete message", testhelpers.Deref(ui.MessageFinish)),
+		testhelpers.RequireEqual("user_interaction.allow_users_to_defer", true, testhelpers.Deref(ui.AllowUsersToDefer)),
+		testhelpers.RequireEqual("user_interaction.allow_deferral_minutes", 3*1440, testhelpers.Deref(ui.AllowDeferralMinutes)),
+	}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	de := p.DiskEncryption
+	if de == nil {
+		return fmt.Errorf("disk_encryption: absent")
+	}
+	if err := testhelpers.RequireEqual("disk_encryption.action", "apply", testhelpers.Deref(de.Action)); err != nil {
+		return err
+	}
+	if err := testhelpers.RequireEqual("disk_encryption.disk_encryption_configuration_id", wantDecID, fmt.Sprintf("%d", testhelpers.Deref(de.DiskEncryptionConfigurationID))); err != nil {
+		return err
+	}
+	return testhelpers.RequireEqual("disk_encryption.auth_restart", true, testhelpers.Deref(de.AuthRestart))
+}
+
+// TestAccResource_ProPolicy_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show. Dropping any state-gated block from
+// config plans it as removed, the classic PUT omits the element, and the
+// server is expected to keep every value; Terraform state cannot witness
+// that, so the assertion is made against the wire object after every step.
+// Step 1 declares every gated section this test can build without an upload
+// (packages needs JCDS, self_service_icon needs icon bytes). Step 2 keeps
+// the parents that have gated children and drops the children — so the scope
+// travels through the granular merge, self_service goes out without
+// categories, and <account_maintenance> names only <management_account>.
+// Step 3 drops every optional block so the PUT carries <general> alone. Each
+// step's implicit post-apply plan must be empty. If this test fails on
+// content, the endpoint no longer merges for that element and nothing that
+// suppresses the removal plan may ship for this resource.
+func TestAccResource_ProPolicy_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	n := newPolicyOmitRetainsNames("tf-acc-policy-omit-" + suffix)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyOmitRetainsConfig(n),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(policyOmitRetainsResourceAddr, "self_service.install_button_text", "Retain me"),
+					resource.TestCheckResourceAttr(policyOmitRetainsResourceAddr, "self_service.categories.#", "1"),
+					resource.TestCheckResourceAttr(policyOmitRetainsResourceAddr, "scope.exclusions.department_ids.#", "1"),
+					policyRetainedOnServer(t, n),
+				),
+			},
+			{
+				Config: policyOmitRetainsParentsOnlyConfig(n),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(policyOmitRetainsResourceAddr, "self_service.install_button_text", "Retain me"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "self_service.categories.#"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "scope.exclusions.department_ids.#"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "scope.limitations.ibeacon_ids.#"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "general.date_time_limitations.activation_date"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "local_accounts.#"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "scripts.scripts.#"),
+					policyRetainedOnServer(t, n),
+				),
+			},
+			{
+				Config: policyOmitRetainsGeneralOnlyConfig(n),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "scope.targets.building_ids.#"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "self_service.use_for_self_service"),
+					resource.TestCheckNoResourceAttr(policyOmitRetainsResourceAddr, "management_account.action"),
+					policyRetainedOnServer(t, n),
+				),
+			},
+		},
+	})
+}

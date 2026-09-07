@@ -39,6 +39,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
+	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -406,6 +409,326 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
 }
 `, name),
 				Check: resource.TestCheckResourceAttrSet(resAddr, "id"),
+			},
+		},
+	})
+}
+
+// vppaOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: every state-gated collection carries a distinctive value so that a
+// server which stopped retaining an omitted element is caught on content, not
+// on presence. The three content sets are the first owned iOS app (required —
+// the fixture token owns at least one), and the first owned Mac app and book
+// if the account has any (a `slice` of at most one, so an account owning none
+// declares `[]` and the contract is still exercised on the cleared shape).
+// The scope carries a target group and an exclusion group; the
+// directory-service limitation category is not declared because it needs a
+// real LDAP group and leaving one scoped through destroy orphans the
+// scope->LDAP association (see TestAccResource_ProVPPAssignment_DSGroupScope).
+// The group fixtures are carried by every step so the server never sees a
+// scoped group disappear underneath the assignment.
+func vppaOmitRetainsConfig(token, suffix, name string) string {
+	return vppaOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_assignment" "test" {
+  name                 = %[1]q
+  vpp_admin_account_id = jamfplatform_pro_volume_purchasing_location.vpp.id
+
+  ios_app_adam_ids = [
+    [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "IOS_APP"
+    ][0],
+  ]
+  mac_app_adam_ids = slice(
+    [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "MAC_APP"
+    ], 0, min(1, length([for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "MAC_APP"
+    ])))
+  ebook_adam_ids = slice(
+    [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "BOOK"
+    ], 0, min(1, length([for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "BOOK"
+    ])))
+
+  scope = {
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
+    exclusions = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.b.id]
+    }
+  }
+}
+`, name)
+}
+
+// vppaOmitRetainsChildrenDroppedConfig keeps the scope block but drops its
+// exclusions (re-emitted from the granular merge), keeps the iOS content set
+// and drops the Mac and book sets (omitted, so retained by the merge).
+func vppaOmitRetainsChildrenDroppedConfig(token, suffix, name string) string {
+	return vppaOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_assignment" "test" {
+  name                 = %[1]q
+  vpp_admin_account_id = jamfplatform_pro_volume_purchasing_location.vpp.id
+
+  ios_app_adam_ids = [
+    [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id if c.content_type == "IOS_APP"
+    ][0],
+  ]
+
+  scope = {
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
+  }
+}
+`, name)
+}
+
+// vppaOmitRetainsGeneralOnlyConfig drops every optional collection and the
+// scope, so the PUT carries <general> alone.
+func vppaOmitRetainsGeneralOnlyConfig(token, suffix, name string) string {
+	return vppaOmitRetainsFixtures(token, suffix, name) + fmt.Sprintf(`
+resource "jamfplatform_pro_vpp_assignment" "test" {
+  name                 = %[1]q
+  vpp_admin_account_id = jamfplatform_pro_volume_purchasing_location.vpp.id
+}
+`, name)
+}
+
+// vppaOmitRetainsFixtures is the location + two static user groups every
+// omit-retains step shares.
+func vppaOmitRetainsFixtures(token, suffix, name string) string {
+	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_user_group" "a" {
+  name       = "%[1]s-grp-a"
+  group_type = "static"
+}
+
+resource "jamfplatform_pro_user_group" "b" {
+  name       = "%[1]s-grp-b"
+  group_type = "static"
+}
+`, name)
+}
+
+// vppaOmitRetainsWant is what step 1 wrote, captured from Terraform state
+// rather than hand-set: the adam_ids come from whatever the fixture account
+// owns, and the group ids are minted by the tenant.
+type vppaOmitRetainsWant struct {
+	ios, mac, ebook   []int
+	targetGroup, excl int
+}
+
+// vppaOmitRetainsCapture records the step-1 values the later steps must find
+// on the wire. Runs before vppaRetainedOnServer in the same composed check.
+func vppaOmitRetainsCapture(want *vppaOmitRetainsWant) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		var err error
+		if want.ios, err = vppaStateIntSet(s, resAddr, "ios_app_adam_ids"); err != nil {
+			return err
+		}
+		if want.mac, err = vppaStateIntSet(s, resAddr, "mac_app_adam_ids"); err != nil {
+			return err
+		}
+		if want.ebook, err = vppaStateIntSet(s, resAddr, "ebook_adam_ids"); err != nil {
+			return err
+		}
+		if want.targetGroup, err = vppaStateInt(s, "jamfplatform_pro_user_group.a", "id"); err != nil {
+			return err
+		}
+		if want.excl, err = vppaStateInt(s, "jamfplatform_pro_user_group.b", "id"); err != nil {
+			return err
+		}
+		if len(want.ios) != 1 {
+			return fmt.Errorf("ios_app_adam_ids: want exactly one assigned app, got %v", want.ios)
+		}
+		return nil
+	}
+}
+
+func vppaStateInt(s *terraform.State, addr, key string) (int, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return 0, fmt.Errorf("resource %s not found in state", addr)
+	}
+	raw, ok := rs.Primary.Attributes[key]
+	if !ok {
+		return 0, fmt.Errorf("%s: attribute %s not in state", addr, key)
+	}
+	return strconv.Atoi(raw)
+}
+
+func vppaStateIntSet(s *terraform.State, addr, key string) ([]int, error) {
+	n, err := vppaStateInt(s, addr, key+".#")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int, 0, n)
+	for i := range n {
+		v, err := vppaStateInt(s, addr, fmt.Sprintf("%s.%d", key, i))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
+// vppaRequireIDs compares a wire id list against the ids step 1 wrote,
+// order-insensitively. A nil wire wrapper is an empty list.
+func vppaRequireIDs(field string, want []int, got []*int) error {
+	ids := make([]int, 0, len(got))
+	for _, p := range got {
+		if p != nil {
+			ids = append(ids, *p)
+		}
+	}
+	sort.Ints(ids)
+	if !slices.Equal(want, ids) {
+		return fmt.Errorf("%s: want %v, got %v", field, want, ids)
+	}
+	return nil
+}
+
+func vppaIDNameIDs(items *[]proclassic.IDName) []*int {
+	if items == nil {
+		return nil
+	}
+	out := make([]*int, 0, len(*items))
+	for _, it := range *items {
+		out = append(out, it.ID)
+	}
+	return out
+}
+
+// vppaRetainedOnServer asserts the server's copy still carries every value the
+// omit-retains config declared in its first step.
+func vppaRetainedOnServer(t *testing.T, want *vppaOmitRetainsWant) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(resAddr,
+		func(ctx context.Context, id string) (*proclassic.VppAssignment, error) {
+			return c.GetVPPAssignmentByID(ctx, id)
+		},
+		func(a *proclassic.VppAssignment) error {
+			if err := vppaRequireIDs("ios_apps", want.ios, iosAdamIDs(a.IosApps)); err != nil {
+				return err
+			}
+			if err := vppaRequireIDs("mac_apps", want.mac, macAdamIDs(a.MacApps)); err != nil {
+				return err
+			}
+			if err := vppaRequireIDs("ebooks", want.ebook, ebookAdamIDs(a.Ebooks)); err != nil {
+				return err
+			}
+			if a.Scope == nil {
+				return fmt.Errorf("scope: absent")
+			}
+			if err := testhelpers.RequireEqual("scope.all_jss_users", false, testhelpers.Deref(a.Scope.AllJssUsers)); err != nil {
+				return err
+			}
+			var targetGroups *[]proclassic.IDName
+			if a.Scope.JssUserGroups != nil {
+				targetGroups = a.Scope.JssUserGroups.UserGroup
+			}
+			if err := vppaRequireIDs("scope.jss_user_groups", []int{want.targetGroup}, vppaIDNameIDs(targetGroups)); err != nil {
+				return err
+			}
+			if a.Scope.Exclusions == nil {
+				return fmt.Errorf("scope.exclusions: absent")
+			}
+			var exclGroups *[]proclassic.IDName
+			if a.Scope.Exclusions.JssUserGroups != nil {
+				exclGroups = a.Scope.Exclusions.JssUserGroups.UserGroup
+			}
+			return vppaRequireIDs("scope.exclusions.jss_user_groups", []int{want.excl}, vppaIDNameIDs(exclGroups))
+		})
+}
+
+func iosAdamIDs(a *proclassic.VppAssignmentIosApps) []*int {
+	if a == nil || a.IosApp == nil {
+		return nil
+	}
+	out := make([]*int, 0, len(*a.IosApp))
+	for _, it := range *a.IosApp {
+		out = append(out, it.AdamID)
+	}
+	return out
+}
+
+func macAdamIDs(a *proclassic.VppAssignmentMacApps) []*int {
+	if a == nil || a.MacApp == nil {
+		return nil
+	}
+	out := make([]*int, 0, len(*a.MacApp))
+	for _, it := range *a.MacApp {
+		out = append(out, it.AdamID)
+	}
+	return out
+}
+
+func ebookAdamIDs(a *proclassic.VppAssignmentEbooks) []*int {
+	if a == nil || a.Ebook == nil {
+		return nil
+	}
+	out := make([]*int, 0, len(*a.Ebook))
+	for _, it := range *a.Ebook {
+		out = append(out, it.AdamID)
+	}
+	return out
+}
+
+// TestAccResource_ProVPPAssignment_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping a gated collection or scope
+// block from config plans it as removed, but the classic PUT omits the element
+// and the server keeps every value. Step 2 keeps the scope and the iOS set
+// and drops the scope exclusions (through the granular merge) plus the Mac and
+// book sets; step 3 drops every optional element so the PUT carries <general>
+// alone. Each step's implicit post-apply plan must be empty, which is what
+// makes the contract usable. If this test fails on content, the endpoint no
+// longer merges and nothing that suppresses the removal plan may ship for this
+// resource. Gated on JAMFPLATFORM_ACC_PRO_VPP_TOKEN like every apply test here.
+func TestAccResource_ProVPPAssignment_OmittedBlocksRetained(t *testing.T) {
+	token := vppToken(t)
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-vppa-omit-" + suffix
+	var want vppaOmitRetainsWant
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckVPPAssignmentDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: vppaOmitRetainsConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resAddr, "ios_app_adam_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.exclusions.jss_user_group_ids.#", "1"),
+					vppaOmitRetainsCapture(&want),
+					vppaRetainedOnServer(t, &want),
+				),
+			},
+			{
+				Config: vppaOmitRetainsChildrenDroppedConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resAddr, "ios_app_adam_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(resAddr, "mac_app_adam_ids.#"),
+					resource.TestCheckNoResourceAttr(resAddr, "ebook_adam_ids.#"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(resAddr, "scope.exclusions.jss_user_group_ids.#"),
+					vppaRetainedOnServer(t, &want),
+				),
+			},
+			{
+				Config: vppaOmitRetainsGeneralOnlyConfig(token, suffix, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(resAddr, "ios_app_adam_ids.#"),
+					resource.TestCheckNoResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#"),
+					vppaRetainedOnServer(t, &want),
+				),
 			},
 		},
 	})

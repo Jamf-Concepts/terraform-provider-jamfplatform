@@ -14,8 +14,10 @@ import (
 
 // Model is the Terraform model for the privileges single-nested block. Each
 // field is a Set of privilege strings for one category. A nil/null Set means
-// the category is unmanaged by the configuration (omit-on-write, stays null on
-// read).
+// the category is unmanaged by the configuration: it stays null on read
+// (IntersectIntoState) and on write it is carried from the live server grid
+// rather than omitted (MergeGrid), because the classic endpoints replace the
+// whole grid on any sent <privileges> element.
 type Model struct {
 	JamfProServerObjects  types.Set `tfsdk:"jamf_pro_server_objects"`
 	JamfProServerSettings types.Set `tfsdk:"jamf_pro_server_settings"`
@@ -72,9 +74,11 @@ func declaredStrings(ctx context.Context, s types.Set) ([]string, diag.Diagnosti
 }
 
 // ToMap converts the declared (non-null) categories of a Model into a map keyed
-// by wire key. Null/unknown categories are omitted entirely so the caller can
-// honour omit-on-write semantics (the classic PUT merges, retaining categories
-// that are not sent).
+// by wire key. Null/unknown categories are omitted from the map. The result is
+// NOT a wire-ready grid: the classic /accounts endpoints replace the whole
+// privilege grid on any sent <privileges> element, so a partial map sent as-is
+// empties every category it does not name. Callers building a write go through
+// MergeGrid, which fills the undeclared categories from the live server grid.
 func (m *Model) ToMap(ctx context.Context) (map[string][]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := make(map[string][]string)
@@ -89,6 +93,48 @@ func (m *Model) ToMap(ctx context.Context) (map[string][]string, diag.Diagnostic
 			return nil, diags
 		}
 		out[c.WireKey] = vals
+	}
+	return out, diags
+}
+
+// MergeGrid builds the wire-ready privilege grid for a write: the live server
+// grid with every category the configuration declares replaced by the declared
+// value. It emulates, client-side, the per-category retention the classic API
+// does not provide. Wire-probed 2026-09-06 on Jamf Pro 11.31.1, through the SDK,
+// on both PUT /accounts/groupid/{id} and PUT /accounts/userid/{id}: a sent
+// <privileges> element replaces the entire grid, so every category absent from
+// the body is emptied on the server (jss_settings kept only the server-injected
+// "Read License Information"; jss_actions was cleared) while omitting the
+// element altogether leaves the grid untouched (issue #385). Read hides that
+// loss, because IntersectIntoState treats a null category as unmanaged and never
+// refreshes it, which made the wipe invisible to a plan.
+//
+// The merge is category-granular, the same shape as the shared scope helper's
+// per-category ownership (STYLE_GUIDE §Scope helper): a declared category,
+// including a declared empty set, wins over the server value and an empty set
+// is kept as a present key so it marshals as an empty element and clears the
+// category; an undeclared category is carried from server verbatim, including
+// any dependency privileges the server injected, which the server would
+// re-inject anyway and which Read's intersect already keeps out of state. A nil
+// server grid (Create, before anything exists) yields just the declared
+// categories. server is never mutated.
+func MergeGrid(ctx context.Context, declared *Model, server map[string][]string) (map[string][]string, diag.Diagnostics) {
+	out := make(map[string][]string, len(Categories))
+	for k, v := range server {
+		out[k] = append([]string(nil), v...)
+	}
+	if declared == nil {
+		return out, nil
+	}
+	declaredMap, diags := declared.ToMap(ctx)
+	if diags.HasError() {
+		return nil, diags
+	}
+	for k, v := range declaredMap {
+		if v == nil {
+			v = []string{}
+		}
+		out[k] = v
 	}
 	return out, diags
 }

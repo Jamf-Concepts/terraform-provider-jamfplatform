@@ -13,6 +13,7 @@ package user_group_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -547,6 +548,150 @@ func TestAccResource_ProUserGroup_Static_MembersNullVsEmpty(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_user_group.test", "members.#", "1"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_user_group.test", "member_count", "1"),
 					resource.TestCheckTypeSetElemAttr("jamfplatform_pro_user_group.test", "members.*", u1ID),
+				),
+			},
+		},
+	})
+}
+
+const userGroupResourceAddr = "jamfplatform_pro_user_group.test"
+
+// userGroupOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract on a static group: members is the one Read-gated attribute this
+// resource has (refreshed only when prior state holds it), and it carries a
+// real user id rather than an empty set so a server that stopped retaining an
+// omitted <users> element is caught on content, not on presence. The
+// notify flag is a non-default Optional+Computed leaf kept alongside it.
+func userGroupOmitRetainsConfig(name, memberID string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_user_group" "test" {
+			name                        = %q
+			group_type                  = "static"
+			notify_on_membership_change = true
+			members                     = [%q]
+		}
+	`, name, memberID)
+}
+
+// userGroupOmitRetainsMembersDroppedConfig drops members from config, so the
+// plan removes it from state and buildUsersWrapper omits <users> from the PUT.
+func userGroupOmitRetainsMembersDroppedConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_user_group" "test" {
+			name                        = %q
+			group_type                  = "static"
+			notify_on_membership_change = true
+		}
+	`, name)
+}
+
+// userGroupOmitRetainsMembersClearedConfig is the documented clear path: an
+// explicit empty set sends an empty <users/> wrapper, which the server
+// applies. members is Optional-only, so `[]` is the only way to clear it.
+func userGroupOmitRetainsMembersClearedConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_user_group" "test" {
+			name                        = %q
+			group_type                  = "static"
+			notify_on_membership_change = true
+			members                     = []
+		}
+	`, name)
+}
+
+// userGroupMembersOnServer asserts the server's copy of the group lists
+// exactly wantIDs as members and still carries the step-1 notify flag.
+func userGroupMembersOnServer(t *testing.T, wantIDs ...int) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(userGroupResourceAddr,
+		func(ctx context.Context, id string) (*proclassic.UserGroup, error) {
+			return c.GetUserGroupByID(ctx, id)
+		},
+		func(ug *proclassic.UserGroup) error {
+			if err := testhelpers.RequireEqual("is_notify_on_change", true, testhelpers.Deref(ug.IsNotifyOnChange)); err != nil {
+				return err
+			}
+			var gotIDs []int
+			if ug.Users != nil && ug.Users.User != nil {
+				for _, u := range *ug.Users.User {
+					gotIDs = append(gotIDs, testhelpers.Deref(u.ID))
+				}
+			}
+			if err := testhelpers.RequireEqual("users.size", len(wantIDs), len(gotIDs)); err != nil {
+				return err
+			}
+			for _, want := range wantIDs {
+				if !slices.Contains(gotIDs, want) {
+					return fmt.Errorf("users: want member %d, got %v", want, gotIDs)
+				}
+			}
+			return nil
+		})
+}
+
+// TestAccResource_ProUserGroup_OmittedBlocksRetained pins the omit-retains
+// contract on the one Read-gated attribute a static user group has: dropping
+// members from config plans it as removed, the classic PUT omits <users>, and
+// the server keeps the membership. Terraform state cannot witness that, so the
+// assertion runs against the wire object after every step. Step 3 then
+// asserts the documented clear path — an explicit `members = []` — really does
+// empty the group, so the two shapes are pinned side by side. Each step's
+// implicit post-apply plan must be empty. If step 2 fails on content, the
+// endpoint no longer merges and nothing that suppresses the removal plan may
+// ship for this resource.
+//
+// The member fixture is a classic user created through the SDK, as
+// TestAccResource_ProUserGroup_Static_MembersNullVsEmpty does: there is no
+// jamfplatform_pro_user resource. t.Cleanup runs after the framework's destroy,
+// so the group is gone before the user is deleted.
+func TestAccResource_ProUserGroup_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	groupName := "tf-acc-pro-ug-omit-" + suffix
+	userName := "tf-acc-pro-ug-omit-member-" + suffix
+
+	ctx := context.Background()
+	client := proclassic.New(testhelpers.NewAcceptanceClient(t))
+
+	member, err := client.CreateUserByID(ctx, "0", &proclassic.UserPost{Name: new(userName)})
+	if err != nil {
+		t.Fatalf("create fixture user: %v", err)
+	}
+	if member == nil || member.ID == nil {
+		t.Fatal("create fixture user: response carried no id")
+	}
+	t.Cleanup(func() {
+		_ = client.DeleteUserByID(context.Background(), fmt.Sprintf("%d", *member.ID))
+	})
+	memberID := fmt.Sprintf("%d", *member.ID)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckUserGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: userGroupOmitRetainsConfig(groupName, memberID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(userGroupResourceAddr, "members.#", "1"),
+					resource.TestCheckTypeSetElemAttr(userGroupResourceAddr, "members.*", memberID),
+					resource.TestCheckResourceAttr(userGroupResourceAddr, "member_count", "1"),
+					userGroupMembersOnServer(t, *member.ID),
+				),
+			},
+			{
+				Config: userGroupOmitRetainsMembersDroppedConfig(groupName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(userGroupResourceAddr, "members"),
+					resource.TestCheckResourceAttr(userGroupResourceAddr, "member_count", "1"),
+					userGroupMembersOnServer(t, *member.ID),
+				),
+			},
+			{
+				Config: userGroupOmitRetainsMembersClearedConfig(groupName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(userGroupResourceAddr, "members.#", "0"),
+					resource.TestCheckResourceAttr(userGroupResourceAddr, "member_count", "0"),
+					userGroupMembersOnServer(t),
 				),
 			},
 		},

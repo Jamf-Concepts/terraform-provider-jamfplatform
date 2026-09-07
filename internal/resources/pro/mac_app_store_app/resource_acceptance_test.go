@@ -1041,3 +1041,203 @@ func TestAccResource_ProMacApp_ScopeSplitOwnership(t *testing.T) {
 		},
 	})
 }
+
+// macAppOmitRetainsConfig is the fully declared shape for the omit-retains
+// contract: every state-gated block carries a distinctive value so that a
+// server which stopped retaining an omitted element is caught on content, not
+// on presence.
+func macAppOmitRetainsConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_mac_app_store_app" "test" {
+			general = {
+				name            = %[1]q
+				version         = "1.0"
+				bundle_id       = "com.example.tfacc.macapp.omit"
+				url             = "https://apps.apple.com/app/id000000001"
+				deployment_type = "Install Automatically/Prompt Users to Install"
+			}
+			scope = {
+				targets = {
+					all_computers = true
+				}
+				exclusions = {
+					directory_service_or_local_user_names = ["tf-acc-omit-retains-user"]
+				}
+			}
+			self_service = {
+				install_button_text             = "Retain me"
+				self_service_description        = "Omit-retains contract description."
+				force_users_to_view_description = true
+				feature_on_main_page            = true
+				self_service_categories = [
+					{
+						id         = jamfplatform_pro_category.omit.id
+						display_in = true
+						feature_in = true
+					},
+				]
+			}
+			vpp = {
+				assign_vpp_device_based_licenses = false
+				vpp_admin_account_id             = "-1"
+			}
+		}
+	`, name)
+}
+
+// macAppOmitRetainsChildrenDroppedConfig keeps every parent block but drops
+// their gated children and one Optional+Computed leaf: scope loses
+// exclusions (re-emitted from the granular merge), self_service loses its
+// categories collection and feature_on_main_page, and vpp goes entirely.
+func macAppOmitRetainsChildrenDroppedConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_mac_app_store_app" "test" {
+			general = {
+				name            = %[1]q
+				version         = "1.0"
+				bundle_id       = "com.example.tfacc.macapp.omit"
+				url             = "https://apps.apple.com/app/id000000001"
+				deployment_type = "Install Automatically/Prompt Users to Install"
+			}
+			scope = {
+				targets = {
+					all_computers = true
+				}
+			}
+			self_service = {
+				install_button_text             = "Retain me"
+				self_service_description        = "Omit-retains contract description."
+				force_users_to_view_description = true
+			}
+		}
+	`, name)
+}
+
+// macAppOmitRetainsGeneralOnlyConfig drops every optional block, so the PUT
+// carries <general> alone.
+func macAppOmitRetainsGeneralOnlyConfig(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "omit" {
+			name     = "%[1]s-cat"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_mac_app_store_app" "test" {
+			general = {
+				name            = %[1]q
+				version         = "1.0"
+				bundle_id       = "com.example.tfacc.macapp.omit"
+				url             = "https://apps.apple.com/app/id000000001"
+				deployment_type = "Install Automatically/Prompt Users to Install"
+			}
+		}
+	`, name)
+}
+
+// macAppRetainedOnServer asserts the server's copy still carries every value
+// the omit-retains config declared in its first step.
+func macAppRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return testhelpers.CheckLiveObject(macAppResourceAddr,
+		func(ctx context.Context, id string) (*proclassic.MacApplication, error) {
+			return c.GetMacApplicationByID(ctx, id)
+		},
+		func(a *proclassic.MacApplication) error {
+			if a.Scope == nil {
+				return fmt.Errorf("scope: absent")
+			}
+			if err := testhelpers.RequireEqual("scope.all_computers", true, testhelpers.Deref(a.Scope.AllComputers)); err != nil {
+				return err
+			}
+			if a.Scope.Exclusions == nil || a.Scope.Exclusions.Users == nil || a.Scope.Exclusions.Users.User == nil || len(*a.Scope.Exclusions.Users.User) != 1 {
+				return fmt.Errorf("scope.exclusions.users: want exactly one user, got %+v", a.Scope.Exclusions)
+			}
+			if err := testhelpers.RequireEqual("scope.exclusions.users[0].name", "tf-acc-omit-retains-user", testhelpers.Deref((*a.Scope.Exclusions.Users.User)[0].Name)); err != nil {
+				return err
+			}
+			if a.SelfService == nil {
+				return fmt.Errorf("self_service: absent")
+			}
+			if err := testhelpers.RequireEqual("self_service.install_button_text", "Retain me", testhelpers.Deref(a.SelfService.InstallButtonText)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("self_service.self_service_description", "Omit-retains contract description.", testhelpers.Deref(a.SelfService.SelfServiceDescription)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("self_service.force_users_to_view_description", true, testhelpers.Deref(a.SelfService.ForceUsersToViewDescription)); err != nil {
+				return err
+			}
+			if err := testhelpers.RequireEqual("self_service.feature_on_main_page", true, testhelpers.Deref(a.SelfService.FeatureOnMainPage)); err != nil {
+				return err
+			}
+			if a.SelfService.SelfServiceCategories == nil || a.SelfService.SelfServiceCategories.Category == nil || len(*a.SelfService.SelfServiceCategories.Category) != 1 {
+				return fmt.Errorf("self_service.self_service_categories: want exactly one category, got %+v", a.SelfService.SelfServiceCategories)
+			}
+			cat := (*a.SelfService.SelfServiceCategories.Category)[0]
+			if err := testhelpers.RequireEqual("self_service.self_service_categories[0].feature_in", true, testhelpers.Deref(cat.FeatureIn)); err != nil {
+				return err
+			}
+			if a.Vpp == nil {
+				return fmt.Errorf("vpp: absent")
+			}
+			return testhelpers.RequireEqual("vpp.vpp_admin_account_id", -1, testhelpers.Deref(a.Vpp.VppAdminAccountID))
+		})
+}
+
+// TestAccResource_ProMacApp_OmittedBlocksRetained pins the omit-retains
+// contract the plan output cannot show: dropping a gated block or
+// sub-collection from config plans it as removed, but the classic PUT omits
+// the element and the server keeps every value. Step 2 keeps every parent
+// block and drops its gated children (scope exclusions through the granular
+// merge, self_service categories, one Optional+Computed leaf) plus the vpp
+// block; step 3 drops every optional block so the PUT carries <general>
+// alone. Each step's implicit
+// post-apply plan must be empty, which is what makes the contract usable.
+// If this test fails on content, the endpoint no longer merges and nothing
+// that suppresses the removal plan may ship for this resource.
+func TestAccResource_ProMacApp_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-macapp-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMacAppDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: macAppOmitRetainsConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Retain me"),
+					macAppRetainedOnServer(t),
+				),
+			},
+			{
+				Config: macAppOmitRetainsChildrenDroppedConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Retain me"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "self_service.self_service_categories.#"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "vpp.vpp_admin_account_id"),
+					macAppRetainedOnServer(t),
+				),
+			},
+			{
+				Config: macAppOmitRetainsGeneralOnlyConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "scope.targets.all_computers"),
+					macAppRetainedOnServer(t),
+				),
+			},
+		},
+	})
+}

@@ -1580,3 +1580,531 @@ func injectPlistTailKey(plist string) string {
 	}
 	return plist
 }
+
+// omitRetainsFixtures carries the out-of-band (SDK-created) fixture IDs the
+// omit-retains configs reference, plus the run suffix that names the inline
+// HCL fixtures. The inline fixture IDs are only known after apply, so the
+// wire assertion resolves them from Terraform state rather than from here.
+type omitRetainsFixtures struct {
+	suffix          string
+	targetComputer  string
+	excludeComputer string
+	targetUser      string
+	excludeUser     string
+}
+
+// omitRetainsFixtureHCL declares one inline fixture per scope category and one
+// Self Service category. Targets and exclusions each get their own fixture so
+// the wire assertion can tell a retained exclusion from a leaked target.
+func omitRetainsFixtureHCL(suffix string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_category" "omit" {
+  name     = "tf-acc-mcp-omit-cat-%[1]s"
+  priority = 7
+}
+
+resource "jamfplatform_pro_building" "target" {
+  name = "tf-acc-mcp-omit-bld-t-%[1]s"
+}
+
+resource "jamfplatform_pro_building" "exclude" {
+  name = "tf-acc-mcp-omit-bld-x-%[1]s"
+}
+
+resource "jamfplatform_pro_department" "target" {
+  name = "tf-acc-mcp-omit-dep-t-%[1]s"
+}
+
+resource "jamfplatform_pro_department" "exclude" {
+  name = "tf-acc-mcp-omit-dep-x-%[1]s"
+}
+
+resource "jamfplatform_device_group" "target" {
+  name        = "tf-acc-mcp-omit-grp-t-%[1]s"
+  description = "tf-acc omit-retains scope fixture"
+  group_type  = "static"
+  device_type = "computer"
+}
+
+resource "jamfplatform_device_group" "exclude" {
+  name        = "tf-acc-mcp-omit-grp-x-%[1]s"
+  description = "tf-acc omit-retains scope fixture"
+  group_type  = "static"
+  device_type = "computer"
+}
+
+resource "jamfplatform_pro_user_group" "exclude" {
+  name       = "tf-acc-mcp-omit-ug-x-%[1]s"
+  group_type = "static"
+}
+
+resource "jamfplatform_pro_network_segment" "limit" {
+  name             = "tf-acc-mcp-omit-seg-l-%[1]s"
+  starting_address = "10.94.0.0"
+  ending_address   = "10.94.0.255"
+}
+
+resource "jamfplatform_pro_network_segment" "exclude" {
+  name             = "tf-acc-mcp-omit-seg-x-%[1]s"
+  starting_address = "10.94.1.0"
+  ending_address   = "10.94.1.255"
+}
+
+resource "jamfplatform_pro_ibeacon" "limit" {
+  name                    = "tf-acc-mcp-omit-ib-l-%[1]s"
+  uuid                    = "759b0599-64e0-416a-8d31-d8e93482a4d7"
+  include_any_major_value = true
+  include_any_minor_value = true
+}
+
+resource "jamfplatform_pro_ibeacon" "exclude" {
+  name                    = "tf-acc-mcp-omit-ib-x-%[1]s"
+  uuid                    = "759b0599-64e0-416a-8d31-d8e93482a4d7"
+  major                   = 42
+  include_any_minor_value = true
+}
+`, suffix)
+}
+
+// omitRetainsConfig is the fully declared shape for the omit-retains contract:
+// every state-gated block and every scope category the resource has carries a
+// distinctive value so that a server which stopped retaining an omitted
+// element is caught on content, not on presence. Left out: the two
+// directory-service user-group categories, because the server refuses a group
+// name that does not resolve against the tenant's directory integration; and
+// scope.targets.user_group_ids, because the SDK's
+// OsXConfigurationProfileScopeJssUserGroups decodes the child as
+// <jss_user_group> while the server answers <user_group> (wire-probed
+// 2026-09-06: both spellings are accepted on write, only <user_group> is ever
+// read back), so on this resource that category never round-trips and would
+// fail the create, not the contract under test. The exclusions counterpart is
+// tagged correctly and stays covered.
+func omitRetainsConfig(name, payload string, f omitRetainsFixtures) string {
+	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_macos_configuration_profile" "test" {
+  general = {
+    name                = %q
+    distribution_method = "Make Available in Self Service"
+    payloads = <<EOF
+%sEOF
+  }
+  scope = {
+    targets = {
+      computer_ids       = [%q]
+      computer_group_ids = [jamfplatform_device_group.target.jamf_pro_id]
+      building_ids       = [jamfplatform_pro_building.target.id]
+      department_ids     = [jamfplatform_pro_department.target.id]
+      user_ids           = [%q]
+    }
+    limitations = {
+      network_segment_ids                   = [jamfplatform_pro_network_segment.limit.id]
+      ibeacon_ids                           = [jamfplatform_pro_ibeacon.limit.id]
+      directory_service_or_local_user_names = ["tf-acc-omit-retains-limit-user"]
+    }
+    exclusions = {
+      computer_ids                          = [%q]
+      computer_group_ids                    = [jamfplatform_device_group.exclude.jamf_pro_id]
+      building_ids                          = [jamfplatform_pro_building.exclude.id]
+      department_ids                        = [jamfplatform_pro_department.exclude.id]
+      user_ids                              = [%q]
+      user_group_ids                        = [jamfplatform_pro_user_group.exclude.id]
+      network_segment_ids                   = [jamfplatform_pro_network_segment.exclude.id]
+      ibeacon_ids                           = [jamfplatform_pro_ibeacon.exclude.id]
+      directory_service_or_local_user_names = ["tf-acc-omit-retains-exclude-user"]
+    }
+  }
+  self_service = {
+    self_service_display_name     = "Omit retains display name"
+    install_button_text           = "Retain me"
+    self_service_description      = "Omit-retains contract description."
+    ensure_users_view_description = true
+    feature_on_main_page          = true
+    display_notifications         = true
+    notification_location         = "Self Service and Notification Center"
+    notification_subject          = "Omit retains subject"
+    notification_message          = "Omit retains message"
+    removal_disallowed            = "Never"
+    categories = [
+      {
+        id         = jamfplatform_pro_category.omit.id
+        display_in = true
+        feature_in = true
+      },
+    ]
+  }
+  depends_on = [
+    jamfplatform_pro_category.omit,
+    jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
+    jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
+    jamfplatform_device_group.target, jamfplatform_device_group.exclude,
+    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
+    jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
+  ]
+}
+`, name, payload, f.targetComputer, f.targetUser, f.excludeComputer, f.excludeUser)
+}
+
+// omitRetainsParentsOnlyConfig keeps the scope and self_service parents but
+// drops their gated children: scope loses limitations, exclusions and the
+// user_ids target category, so the PUT re-emits the scope from the granular
+// merge; self_service loses the Optional+Computed ensure_users_view_description
+// leaf. self_service.categories stays declared, not by choice: wire-probed
+// 2026-09-06, a <self_service> sent without <self_service_categories> leaves
+// the categories in place on the server, and flattenSelfService then hydrates
+// them into a list the plan had as null, which Terraform rejects as an
+// inconsistent result. Until that read is gated on prior state, dropping the
+// categories here fails the apply rather than testing the contract.
+func omitRetainsParentsOnlyConfig(name, payload string, f omitRetainsFixtures) string {
+	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_macos_configuration_profile" "test" {
+  general = {
+    name                = %q
+    distribution_method = "Make Available in Self Service"
+    payloads = <<EOF
+%sEOF
+  }
+  scope = {
+    targets = {
+      computer_ids       = [%q]
+      computer_group_ids = [jamfplatform_device_group.target.jamf_pro_id]
+      building_ids       = [jamfplatform_pro_building.target.id]
+      department_ids     = [jamfplatform_pro_department.target.id]
+    }
+  }
+  self_service = {
+    self_service_display_name = "Omit retains display name"
+    install_button_text       = "Retain me"
+    self_service_description  = "Omit-retains contract description."
+    feature_on_main_page      = true
+    display_notifications     = true
+    notification_location     = "Self Service and Notification Center"
+    notification_subject      = "Omit retains subject"
+    notification_message      = "Omit retains message"
+    removal_disallowed        = "Never"
+    categories = [
+      {
+        id         = jamfplatform_pro_category.omit.id
+        display_in = true
+        feature_in = true
+      },
+    ]
+  }
+  depends_on = [
+    jamfplatform_pro_category.omit,
+    jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
+    jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
+    jamfplatform_device_group.target, jamfplatform_device_group.exclude,
+    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
+    jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
+  ]
+}
+`, name, payload, f.targetComputer)
+}
+
+// omitRetainsGeneralOnlyConfig drops every optional block, so the PUT carries
+// <general> alone. The fixtures stay declared so nothing the server still
+// references is destroyed underneath it, and every config lists them in
+// depends_on: once a step stops referencing a fixture from the profile, the
+// dependency edge is gone and Terraform would otherwise destroy the fixture in
+// parallel with the profile, which the server refuses while the retained scope
+// still names it.
+func omitRetainsGeneralOnlyConfig(name, payload string, f omitRetainsFixtures) string {
+	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
+resource "jamfplatform_pro_macos_configuration_profile" "test" {
+  general = {
+    name                = %q
+    distribution_method = "Make Available in Self Service"
+    payloads = <<EOF
+%sEOF
+  }
+  depends_on = [
+    jamfplatform_pro_category.omit,
+    jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
+    jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
+    jamfplatform_device_group.target, jamfplatform_device_group.exclude,
+    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
+    jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
+  ]
+}
+`, name, payload)
+}
+
+// requireOnlyID asserts a classic member list holds exactly one entry whose
+// id is want. Membership is checked on count as well as content so a server
+// that appended rather than retained is caught too.
+func requireOnlyID[T any](field string, items *[]T, id func(T) *int, want string) error {
+	if items == nil || len(*items) != 1 {
+		n := 0
+		if items != nil {
+			n = len(*items)
+		}
+		return fmt.Errorf("%s: want exactly one member (%s), got %d", field, want, n)
+	}
+	return testhelpers.RequireEqual(field, want, fmt.Sprint(testhelpers.Deref(id((*items)[0]))))
+}
+
+// requireOnlyIDName is requireOnlyID for the SDK's shared IDName element.
+func requireOnlyIDName(field string, items *[]proclassic.IDName, want string) error {
+	return requireOnlyID(field, items, func(i proclassic.IDName) *int { return i.ID }, want)
+}
+
+// stateID returns the primary id of a fixture resource from Terraform state,
+// which is how the wire assertion learns the ids Jamf allocated to the inline
+// fixtures.
+func stateID(s *terraform.State, addr, attr string) (string, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return "", fmt.Errorf("fixture %s not found in state", addr)
+	}
+	v, ok := rs.Primary.Attributes[attr]
+	if !ok || v == "" {
+		return "", fmt.Errorf("fixture %s has no %s in state", addr, attr)
+	}
+	return v, nil
+}
+
+// omitRetainedOnServer asserts the server's copy still carries every value the
+// omit-retains config declared in its first step. Inline fixture ids are read
+// from state because Jamf allocates them at apply. The four notification
+// attributes (display_notifications, notification_location,
+// notification_subject, notification_message) are declared but not asserted:
+// the classic GET never echoes <notification>, <notification_subject> or
+// <notification_message> for a macOS profile (wire-probed 2026-09-06 on a
+// profile created with all three set), so no read can witness whether the
+// server kept them.
+func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestCheckFunc {
+	c := testhelpers.NewProClassicClient(t)
+	const addr = "jamfplatform_pro_macos_configuration_profile.test"
+	return func(s *terraform.State) error {
+		want := map[string]string{}
+		for _, fx := range []struct{ key, addr, attr string }{
+			{"category", "jamfplatform_pro_category.omit", "id"},
+			{"bldT", "jamfplatform_pro_building.target", "id"},
+			{"bldX", "jamfplatform_pro_building.exclude", "id"},
+			{"depT", "jamfplatform_pro_department.target", "id"},
+			{"depX", "jamfplatform_pro_department.exclude", "id"},
+			{"grpT", "jamfplatform_device_group.target", "jamf_pro_id"},
+			{"grpX", "jamfplatform_device_group.exclude", "jamf_pro_id"},
+			{"ugX", "jamfplatform_pro_user_group.exclude", "id"},
+			{"segL", "jamfplatform_pro_network_segment.limit", "id"},
+			{"segX", "jamfplatform_pro_network_segment.exclude", "id"},
+			{"ibL", "jamfplatform_pro_ibeacon.limit", "id"},
+			{"ibX", "jamfplatform_pro_ibeacon.exclude", "id"},
+		} {
+			v, err := stateID(s, fx.addr, fx.attr)
+			if err != nil {
+				return err
+			}
+			want[fx.key] = v
+		}
+		return testhelpers.CheckLiveObject(addr,
+			func(ctx context.Context, id string) (*proclassic.OsXConfigurationProfile, error) {
+				return c.GetOSXConfigurationProfileByID(ctx, id)
+			},
+			func(p *proclassic.OsXConfigurationProfile) error {
+				sc := p.Scope
+				if sc == nil {
+					return fmt.Errorf("scope: absent")
+				}
+				computerID := func(i proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int { return i.ID }
+				checks := []error{
+					requireOnlyID("scope.targets.computer_ids", derefComputers(sc.Computers), computerID, f.targetComputer),
+					requireOnlyIDName("scope.targets.computer_group_ids", derefField(sc.ComputerGroups, func(g *proclassic.OsXConfigurationProfileScopeComputerGroups) *[]proclassic.IDName {
+						return g.ComputerGroup
+					}), want["grpT"]),
+					requireOnlyIDName("scope.targets.building_ids", derefField(sc.Buildings, func(b *proclassic.OsXConfigurationProfileScopeBuildings) *[]proclassic.IDName { return b.Building }), want["bldT"]),
+					requireOnlyIDName("scope.targets.department_ids", derefField(sc.Departments, func(d *proclassic.OsXConfigurationProfileScopeDepartments) *[]proclassic.IDName { return d.Department }), want["depT"]),
+					requireOnlyIDName("scope.targets.user_ids", derefField(sc.JssUsers, func(u *proclassic.OsXConfigurationProfileScopeJssUsers) *[]proclassic.IDName { return u.User }), f.targetUser),
+				}
+				for _, err := range checks {
+					if err != nil {
+						return err
+					}
+				}
+				l := sc.Limitations
+				if l == nil {
+					return fmt.Errorf("scope.limitations: absent")
+				}
+				checks = []error{
+					requireOnlyID("scope.limitations.network_segment_ids", derefField(l.NetworkSegments, func(n *proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegments) *[]proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem {
+						return n.NetworkSegment
+					}), func(i proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem) *int {
+						return i.ID
+					}, want["segL"]),
+					requireOnlyIDName("scope.limitations.ibeacon_ids", derefField(l.Ibeacons, func(i *proclassic.OsXConfigurationProfileScopeLimitationsIbeacons) *[]proclassic.IDName {
+						return i.Ibeacon
+					}), want["ibL"]),
+					requireOnlyName("scope.limitations.directory_service_or_local_user_names", derefField(l.Users, func(u *proclassic.OsXConfigurationProfileScopeLimitationsUsers) *[]proclassic.IDName { return u.User }), func(i proclassic.IDName) *string { return i.Name }, "tf-acc-omit-retains-limit-user"),
+				}
+				for _, err := range checks {
+					if err != nil {
+						return err
+					}
+				}
+				e := sc.Exclusions
+				if e == nil {
+					return fmt.Errorf("scope.exclusions: absent")
+				}
+				checks = []error{
+					requireOnlyID("scope.exclusions.computer_ids", derefField(e.Computers, func(c *proclassic.OsXConfigurationProfileScopeExclusionsComputers) *[]proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem {
+						return c.Computer
+					}), func(i proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem) *int { return i.ID }, f.excludeComputer),
+					requireOnlyIDName("scope.exclusions.computer_group_ids", derefField(e.ComputerGroups, func(g *proclassic.OsXConfigurationProfileScopeExclusionsComputerGroups) *[]proclassic.IDName {
+						return g.ComputerGroup
+					}), want["grpX"]),
+					requireOnlyIDName("scope.exclusions.building_ids", derefField(e.Buildings, func(b *proclassic.OsXConfigurationProfileScopeExclusionsBuildings) *[]proclassic.IDName {
+						return b.Building
+					}), want["bldX"]),
+					requireOnlyIDName("scope.exclusions.department_ids", derefField(e.Departments, func(d *proclassic.OsXConfigurationProfileScopeExclusionsDepartments) *[]proclassic.IDName {
+						return d.Department
+					}), want["depX"]),
+					requireOnlyIDName("scope.exclusions.user_ids", derefField(e.JssUsers, func(u *proclassic.OsXConfigurationProfileScopeExclusionsJssUsers) *[]proclassic.IDName { return u.User }), f.excludeUser),
+					requireOnlyIDName("scope.exclusions.user_group_ids", derefField(e.JssUserGroups, func(u *proclassic.OsXConfigurationProfileScopeExclusionsJssUserGroups) *[]proclassic.IDName {
+						return u.UserGroup
+					}), want["ugX"]),
+					requireOnlyID("scope.exclusions.network_segment_ids", derefField(e.NetworkSegments, func(n *proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegments) *[]proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem {
+						return n.NetworkSegment
+					}), func(i proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
+						return i.ID
+					}, want["segX"]),
+					requireOnlyIDName("scope.exclusions.ibeacon_ids", derefField(e.Ibeacons, func(i *proclassic.OsXConfigurationProfileScopeExclusionsIbeacons) *[]proclassic.IDName {
+						return i.Ibeacon
+					}), want["ibX"]),
+					requireOnlyName("scope.exclusions.directory_service_or_local_user_names", derefField(e.Users, func(u *proclassic.OsXConfigurationProfileScopeExclusionsUsers) *[]proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem {
+						return u.User
+					}), func(i proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem) *string { return i.Name }, "tf-acc-omit-retains-exclude-user"),
+				}
+				for _, err := range checks {
+					if err != nil {
+						return err
+					}
+				}
+				ss := p.SelfService
+				if ss == nil {
+					return fmt.Errorf("self_service: absent")
+				}
+				checks = []error{
+					testhelpers.RequireEqual("self_service.self_service_display_name", "Omit retains display name", testhelpers.Deref(ss.SelfServiceDisplayName)),
+					testhelpers.RequireEqual("self_service.install_button_text", "Retain me", testhelpers.Deref(ss.InstallButtonText)),
+					testhelpers.RequireEqual("self_service.self_service_description", "Omit-retains contract description.", testhelpers.Deref(ss.SelfServiceDescription)),
+					testhelpers.RequireEqual("self_service.ensure_users_view_description", true, testhelpers.Deref(ss.ForceUsersToViewDescription)),
+					testhelpers.RequireEqual("self_service.feature_on_main_page", true, testhelpers.Deref(ss.FeatureOnMainPage)),
+				}
+				for _, err := range checks {
+					if err != nil {
+						return err
+					}
+				}
+				if ss.Security == nil {
+					return fmt.Errorf("self_service.security: absent")
+				}
+				if err := testhelpers.RequireEqual("self_service.removal_disallowed", "Never", testhelpers.Deref(ss.Security.RemovalDisallowed)); err != nil {
+					return err
+				}
+				cats := derefField(ss.SelfServiceCategories, func(c *proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategories) *[]proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem {
+					return c.Category
+				})
+				if err := requireOnlyID("self_service.categories", cats, func(i proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem) *int {
+					return i.ID
+				}, want["category"]); err != nil {
+					return err
+				}
+				cat := (*cats)[0]
+				if err := testhelpers.RequireEqual("self_service.categories[0].display_in", true, testhelpers.Deref(cat.DisplayIn)); err != nil {
+					return err
+				}
+				return testhelpers.RequireEqual("self_service.categories[0].feature_in", true, testhelpers.Deref(cat.FeatureIn))
+			})(s)
+	}
+}
+
+// requireOnlyName is requireOnlyID for name-keyed classic members.
+func requireOnlyName[T any](field string, items *[]T, name func(T) *string, want string) error {
+	if items == nil || len(*items) != 1 {
+		n := 0
+		if items != nil {
+			n = len(*items)
+		}
+		return fmt.Errorf("%s: want exactly one member (%s), got %d", field, want, n)
+	}
+	return testhelpers.RequireEqual(field, want, testhelpers.Deref(name((*items)[0])))
+}
+
+// derefField reads a member slice out of an optional classic wrapper element,
+// yielding nil when the wrapper itself is absent.
+func derefField[W any, T any](w *W, get func(*W) *[]T) *[]T {
+	if w == nil {
+		return nil
+	}
+	return get(w)
+}
+
+func derefComputers(c *proclassic.OsXConfigurationProfileScopeComputers) *[]proclassic.OsXConfigurationProfileScopeComputersComputerItem {
+	return derefField(c, func(c *proclassic.OsXConfigurationProfileScopeComputers) *[]proclassic.OsXConfigurationProfileScopeComputersComputerItem {
+		return c.Computer
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_OmittedBlocksRetained pins the
+// omit-retains contract the plan output cannot show: dropping scope
+// limitations, exclusions, target categories, self_service and its categories
+// from config plans them as removed, but the classic PUT either omits the
+// element or re-emits it from the granular scope merge, and the server keeps
+// every value. Step 2 keeps the scope and self_service parents while dropping
+// their gated children; step 3 drops every optional block so the PUT carries
+// <general> alone. Each step's implicit post-apply plan must be empty. If this
+// test fails on content, the endpoint no longer merges and nothing that
+// suppresses the removal plan may ship for this resource. The payload is never
+// touched between steps so a payload diff here is a finding of its own.
+func TestAccResource_MacOSConfigurationProfile_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-omit-" + suffix
+	payload := readFixture(t, "1Password__notifications_profile.mobileconfig")
+	f := omitRetainsFixtures{
+		suffix:          suffix,
+		targetComputer:  createDummyComputer(t, "tf-acc-mcp-omit-comp-t-"+suffix),
+		excludeComputer: createDummyComputer(t, "tf-acc-mcp-omit-comp-x-"+suffix),
+		targetUser:      createDummyUser(t, "tf-acc-mcp-omit-user-t-"+suffix),
+		excludeUser:     createDummyUser(t, "tf-acc-mcp-omit-user-x-"+suffix),
+	}
+	const addr = "jamfplatform_pro_macos_configuration_profile.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: omitRetainsConfig(name, payload, f),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "self_service.install_button_text", "Retain me"),
+					resource.TestCheckResourceAttr(addr, "self_service.categories.#", "1"),
+					resource.TestCheckResourceAttr(addr, "scope.exclusions.ibeacon_ids.#", "1"),
+					omitRetainedOnServer(t, f),
+				),
+			},
+			{
+				Config: omitRetainsParentsOnlyConfig(name, payload, f),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "self_service.categories.#", "1"),
+					resource.TestCheckResourceAttr(addr, "self_service.ensure_users_view_description", "true"),
+					resource.TestCheckNoResourceAttr(addr, "scope.limitations.network_segment_ids.#"),
+					resource.TestCheckNoResourceAttr(addr, "scope.exclusions.computer_ids.#"),
+					resource.TestCheckNoResourceAttr(addr, "scope.targets.user_ids.#"),
+					omitRetainedOnServer(t, f),
+				),
+			},
+			{
+				Config: omitRetainsGeneralOnlyConfig(name, payload, f),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(addr, "scope.targets.computer_ids.#"),
+					resource.TestCheckNoResourceAttr(addr, "self_service.install_button_text"),
+					omitRetainedOnServer(t, f),
+				),
+			},
+		},
+	})
+}

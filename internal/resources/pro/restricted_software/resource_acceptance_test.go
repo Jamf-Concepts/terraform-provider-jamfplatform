@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -333,6 +334,266 @@ resource "jamfplatform_pro_restricted_software" "test" {
 				// ownership). Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "0"),
+			},
+		},
+	})
+}
+
+// restrictedSoftwareOmitRetainsFixtures declares the tenant objects the
+// omit-retains configs scope against: one department, building and static
+// computer group for the targets tab and a second of each for the exclusions
+// tab, so every ID-keyed category on both tabs carries a real, distinct member.
+// The Platform device groups bridge to the classic scope through jamf_pro_id.
+func restrictedSoftwareOmitRetainsFixtures(suffix string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_department" "target" {
+			name = "tf-acc-rs-omit-dept-target-%[1]s"
+		}
+
+		resource "jamfplatform_pro_department" "excluded" {
+			name = "tf-acc-rs-omit-dept-excluded-%[1]s"
+		}
+
+		resource "jamfplatform_pro_building" "target" {
+			name = "tf-acc-rs-omit-bldg-target-%[1]s"
+		}
+
+		resource "jamfplatform_pro_building" "excluded" {
+			name = "tf-acc-rs-omit-bldg-excluded-%[1]s"
+		}
+
+		resource "jamfplatform_device_group" "target" {
+			name        = "tf-acc-rs-omit-group-target-%[1]s"
+			description = "tf-acc omit-retains scope target fixture"
+			group_type  = "static"
+			device_type = "computer"
+		}
+
+		resource "jamfplatform_device_group" "excluded" {
+			name        = "tf-acc-rs-omit-group-excluded-%[1]s"
+			description = "tf-acc omit-retains scope exclusion fixture"
+			group_type  = "static"
+			device_type = "computer"
+		}
+	`, suffix)
+}
+
+// restrictedSoftwareOmitRetainsConfig is the fully declared shape for the
+// omit-retains contract: both scope tabs carry a member in every ID-keyed
+// category plus a free-text excluded user, and general carries non-default
+// values, so a server that stopped retaining an omitted element is caught on
+// content, not on presence. Restricted software has no limitations tab.
+func restrictedSoftwareOmitRetainsConfig(name, suffix string) string {
+	return restrictedSoftwareOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_restricted_software" "test" {
+			general = {
+				name            = %q
+				process_name    = "Chess.app"
+				kill_process    = true
+				display_message = "Omit-retains contract message."
+			}
+			scope = {
+				targets = {
+					department_ids     = [jamfplatform_pro_department.target.id]
+					building_ids       = [jamfplatform_pro_building.target.id]
+					computer_group_ids = [jamfplatform_device_group.target.jamf_pro_id]
+				}
+				exclusions = {
+					department_ids                        = [jamfplatform_pro_department.excluded.id]
+					building_ids                          = [jamfplatform_pro_building.excluded.id]
+					computer_group_ids                    = [jamfplatform_device_group.excluded.jamf_pro_id]
+					directory_service_or_local_user_names = ["tf-acc-omit-retains-user"]
+				}
+			}
+		}
+	`, name)
+}
+
+// restrictedSoftwareOmitRetainsTargetsOnlyConfig keeps scope.targets but drops
+// scope.exclusions and the Optional+Computed general.display_message, so the
+// PUT re-emits the scope from the granular merge with the exclusions folded in
+// from the live object rather than from config.
+func restrictedSoftwareOmitRetainsTargetsOnlyConfig(name, suffix string) string {
+	return restrictedSoftwareOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_restricted_software" "test" {
+			general = {
+				name         = %q
+				process_name = "Chess.app"
+				kill_process = true
+			}
+			scope = {
+				targets = {
+					department_ids     = [jamfplatform_pro_department.target.id]
+					building_ids       = [jamfplatform_pro_building.target.id]
+					computer_group_ids = [jamfplatform_device_group.target.jamf_pro_id]
+				}
+			}
+		}
+	`, name)
+}
+
+// restrictedSoftwareOmitRetainsGeneralOnlyConfig drops the scope block, so the
+// PUT carries <general> alone. The fixtures stay declared so the server's
+// retained scope keeps pointing at live objects, and depends_on keeps the
+// destroy order the dropped references no longer imply: the Platform
+// device-groups API refuses to delete a group the retained scope still names
+// (422 HAS_DEPENDENCIES), so the record must go before its groups.
+func restrictedSoftwareOmitRetainsGeneralOnlyConfig(name, suffix string) string {
+	return restrictedSoftwareOmitRetainsFixtures(suffix) + fmt.Sprintf(`
+		resource "jamfplatform_pro_restricted_software" "test" {
+			depends_on = [jamfplatform_device_group.target, jamfplatform_device_group.excluded]
+
+			general = {
+				name         = %q
+				process_name = "Chess.app"
+				kill_process = true
+			}
+		}
+	`, name)
+}
+
+// stateAttr returns one attribute of a resource in the Terraform state, so a
+// wire assertion can compare against the id a fixture was actually allocated.
+func stateAttr(s *terraform.State, addr, key string) (string, error) {
+	rs, ok := s.RootModule().Resources[addr]
+	if !ok {
+		return "", fmt.Errorf("fixture %s not found in state", addr)
+	}
+	v, ok := rs.Primary.Attributes[key]
+	if !ok || v == "" {
+		return "", fmt.Errorf("fixture %s has no %s in state", addr, key)
+	}
+	return v, nil
+}
+
+// requireSingleID asserts a classic id/name collection holds exactly one member
+// carrying the wanted id.
+func requireSingleID(field, want string, items *[]proclassic.IDName) error {
+	if items == nil || len(*items) != 1 {
+		return fmt.Errorf("%s: want exactly one member, got %+v", field, items)
+	}
+	return testhelpers.RequireEqual(field+"[0].id", want, strconv.Itoa(testhelpers.Deref((*items)[0].ID)))
+}
+
+// restrictedSoftwareRetainedOnServer asserts the server's copy still carries
+// every value the omit-retains config declared in its first step. The fixture
+// ids are read from the Terraform state rather than assumed, so the check
+// compares against what the tenant allocated.
+func restrictedSoftwareRetainedOnServer(t *testing.T) resource.TestCheckFunc {
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	return func(s *terraform.State) error {
+		ids := map[string]string{}
+		for _, f := range []struct{ key, addr, attr string }{
+			{"department.target", "jamfplatform_pro_department.target", "id"},
+			{"department.excluded", "jamfplatform_pro_department.excluded", "id"},
+			{"building.target", "jamfplatform_pro_building.target", "id"},
+			{"building.excluded", "jamfplatform_pro_building.excluded", "id"},
+			{"group.target", "jamfplatform_device_group.target", "jamf_pro_id"},
+			{"group.excluded", "jamfplatform_device_group.excluded", "jamf_pro_id"},
+		} {
+			v, err := stateAttr(s, f.addr, f.attr)
+			if err != nil {
+				return err
+			}
+			ids[f.key] = v
+		}
+		return testhelpers.CheckLiveObject(restrictedSoftwareResourceAddr,
+			func(ctx context.Context, id string) (*proclassic.RestrictedSoftware, error) {
+				return c.GetRestrictedSoftwareByID(ctx, id)
+			},
+			func(rs *proclassic.RestrictedSoftware) error {
+				if rs.General == nil {
+					return fmt.Errorf("general: absent")
+				}
+				if err := testhelpers.RequireEqual("general.kill_process", true, testhelpers.Deref(rs.General.KillProcess)); err != nil {
+					return err
+				}
+				if err := testhelpers.RequireEqual("general.display_message", "Omit-retains contract message.", testhelpers.Deref(rs.General.DisplayMessage)); err != nil {
+					return err
+				}
+				if rs.Scope == nil {
+					return fmt.Errorf("scope: absent")
+				}
+				sc := rs.Scope
+				if err := testhelpers.RequireEqual("scope.all_computers", false, testhelpers.Deref(sc.AllComputers)); err != nil {
+					return err
+				}
+				if sc.Departments == nil || sc.Buildings == nil || sc.ComputerGroups == nil {
+					return fmt.Errorf("scope.targets: a category is absent: %+v", sc)
+				}
+				if err := requireSingleID("scope.targets.departments", ids["department.target"], sc.Departments.Department); err != nil {
+					return err
+				}
+				if err := requireSingleID("scope.targets.buildings", ids["building.target"], sc.Buildings.Building); err != nil {
+					return err
+				}
+				if err := requireSingleID("scope.targets.computer_groups", ids["group.target"], sc.ComputerGroups.ComputerGroup); err != nil {
+					return err
+				}
+				x := sc.Exclusions
+				if x == nil || x.Departments == nil || x.Buildings == nil || x.ComputerGroups == nil || x.Users == nil {
+					return fmt.Errorf("scope.exclusions: a category is absent: %+v", x)
+				}
+				if err := requireSingleID("scope.exclusions.departments", ids["department.excluded"], x.Departments.Department); err != nil {
+					return err
+				}
+				if err := requireSingleID("scope.exclusions.buildings", ids["building.excluded"], x.Buildings.Building); err != nil {
+					return err
+				}
+				if err := requireSingleID("scope.exclusions.computer_groups", ids["group.excluded"], x.ComputerGroups.ComputerGroup); err != nil {
+					return err
+				}
+				if x.Users.User == nil || len(*x.Users.User) != 1 {
+					return fmt.Errorf("scope.exclusions.users: want exactly one user, got %+v", x.Users)
+				}
+				return testhelpers.RequireEqual("scope.exclusions.users[0].name", "tf-acc-omit-retains-user", testhelpers.Deref((*x.Users.User)[0].Name))
+			})(s)
+	}
+}
+
+// TestAccResource_ProRestrictedSoftware_OmittedBlocksRetained pins the
+// omit-retains contract the plan output cannot show: dropping scope.exclusions,
+// then the whole scope, from config plans them as removed, but the classic PUT
+// omits the elements and the server keeps every value. Step 2 keeps
+// scope.targets so the scope goes through the granular read-merge-write, which
+// must fold the live exclusions back in rather than emitting them empty; it
+// also drops the Optional+Computed general.display_message. Step 3 drops scope
+// too so the PUT carries <general> alone. Each step's implicit post-apply plan
+// must be empty, which is what makes the contract usable. If this test fails
+// on content, the endpoint no longer merges and nothing that suppresses the
+// removal plan may ship for this resource.
+func TestAccResource_ProRestrictedSoftware_OmittedBlocksRetained(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-rs-omit-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckRestrictedSoftwareDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: restrictedSoftwareOmitRetainsConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "1"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.display_message", "Omit-retains contract message."),
+					restrictedSoftwareRetainedOnServer(t),
+				),
+			},
+			{
+				Config: restrictedSoftwareOmitRetainsTargetsOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.department_ids.#", "1"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.display_message", "Omit-retains contract message."),
+					restrictedSoftwareRetainedOnServer(t),
+				),
+			},
+			{
+				Config: restrictedSoftwareOmitRetainsGeneralOnlyConfig(name, suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.department_ids.#"),
+					restrictedSoftwareRetainedOnServer(t),
+				),
 			},
 		},
 	})
