@@ -198,18 +198,18 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 # Import an existing AD CS integration by its Jamf Pro AD CS Settings ID.
 #
-# The certificate blocks are restored as far as Jamf Pro allows: `filename` is
-# read back, and the `*_details` blocks carry the stored certificate's subject,
-# issuer, serial number and expiry. The WriteOnly inputs (`data_wo`,
-# `password_wo`) and the `wo_version` rotation trigger have no server-side
-# equivalent, so they come back unset and must be re-declared.
+# Import restores what Jamf Pro returns: `filename` on each certificate block,
+# plus the subject, issuer, serial number and expiry under `*_details`. It
+# cannot restore the WriteOnly `data_wo` and `password_wo`, or the `wo_version`
+# rotation trigger, because Jamf Pro stores no readable copy of any of them.
+# Re-declare those three in your configuration.
 #
-# Expect the first plan after importing to show `+ wo_version` and the first
-# apply to re-send the certificates. That is unavoidable: an INBOUND
-# integration must declare both blocks, `data_wo` requires `wo_version`
-# alongside it, and Jamf Pro never returns the version that was last sent — so
-# the configured version always differs from the empty one in state. Re-sending
-# the same certificate is harmless; it replaces the stored copy with an
-# identical one and the serial number does not change.
+# The first plan after you import will show `+ wo_version`, and the first apply
+# will re-send both certificates. You cannot avoid that. An INBOUND integration
+# has to declare both blocks, `data_wo` obliges you to set `wo_version` next to
+# it, and Jamf Pro never reports which version it last received, so the version
+# you configure always differs from the empty one in state. Re-sending costs
+# you nothing: Jamf Pro replaces the stored certificate with an identical copy
+# and the serial number stays the same.
 terraform import jamfplatform_pro_pki_adcs.inbound "25"
 ```

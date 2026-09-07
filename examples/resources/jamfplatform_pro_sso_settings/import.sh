@@ -4,17 +4,16 @@
 # SSO settings is a tenant-wide singleton. Import with the fixed identifier
 # "singleton".
 #
-# The `signing_certificate` block is deliberately NOT restored by import, even
-# when the tenant holds a certificate. That block is how Terraform is told to
-# manage the certificate, and adopting one it was never asked to manage would
-# make dropping the block from the configuration delete the tenant's
-# certificate. Import therefore leaves it unset, and a configuration that omits
-# it leaves the stored certificate alone.
+# Import leaves `signing_certificate` unset even when your tenant holds a
+# certificate, and does so on purpose. Declaring that block is how you hand the
+# certificate to Terraform to manage; if import handed it over for you, later
+# dropping the block would delete your tenant's certificate. So omit the block
+# and Terraform leaves the stored certificate alone.
 #
-# Declaring `setup_type = "GENERATED"` after importing a tenant that already has
-# a generated certificate is a no-op — Jamf Pro is not asked to mint a new one,
-# so the serial number is stable. Declaring `setup_type = "UPLOADED"` re-sends
-# the keystore, because the `_wo_version` rotation triggers have no server-side
-# equivalent and the configured values always differ from the empty ones in
-# state.
+# Declare `setup_type = "GENERATED"` against a tenant that already holds a
+# generated certificate and nothing happens. Jamf Pro mints no replacement and
+# the serial number holds steady. Declare `setup_type = "UPLOADED"` and
+# Terraform re-sends your keystore, because Jamf Pro reports no readable copy of
+# the `_wo_version` rotation triggers and the values you configure always differ
+# from the empty ones in state.
 terraform import jamfplatform_pro_sso_settings.this singleton
