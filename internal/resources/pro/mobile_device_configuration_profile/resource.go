@@ -105,9 +105,19 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
+					// There is no self_service_description attribute, and adding one
+					// back would reintroduce issue #393. Jamf Pro's read/write API
+					// carries a single description for this object: a Self Service
+					// description sent to it is stored as this field, an empty one
+					// erases this field, and a read never returns it. Probed across
+					// eighteen create and update combinations on Jamf Pro 11.31.1,
+					// 2026-09-07; deployment_method made no difference and update
+					// matched create. The admin UI does offer the two separately, and
+					// the macOS profile equivalent keeps them independent, so this is
+					// a Jamf Pro defect. If it is fixed, restore the attribute rather
+					// than reviving the payload field on its own.
 					"description": optComputedString(
-						"Free-text description of the profile. Jamf Pro shows it on the General tab and reuses it as the profile's Self Service description.\n\n" +
-							"The admin UI offers those as two separate fields. The classic API keeps one: whatever you write to the Self Service description lands here, and Jamf Pro never returns the other field, so this provider exposes only this attribute. Put the Self Service wording here. To make the two read differently, set them in the admin UI and leave this attribute unset, so Terraform asserts neither. Probed against Jamf Pro 11.31.1 on 2026-09-07; the macOS profile endpoint keeps its two fields independent, which makes this a Jamf Pro defect.",
+						"Free-text description of the profile, shown on its General tab in Jamf Pro. Jamf Pro keeps one description for both places it appears, so whatever you set here is also the profile's Self Service description. To give the two different text, set them on the profile's Options and Self Service tabs in Jamf Pro and leave this attribute unset.",
 					),
 					"level": schema.StringAttribute{
 						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
