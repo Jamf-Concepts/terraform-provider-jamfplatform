@@ -379,25 +379,17 @@ func accountGroupRetainedOnServer(t *testing.T) resource.TestCheckFunc {
 // the header alone. Each step's implicit post-apply plan must be empty, which
 // is what makes the contract usable.
 //
-// Step 2 fails today, and the failure is the resource's, not the server's:
-// wire-probed 2026-09-06 on Jamf Pro 11.31.1, a sent <privileges> replaces the
-// whole grid, so the two undeclared categories are emptied while Read's
-// null-means-unmanaged gate hides the loss (issue #385). The whole-block
-// omission in step 3 and the members omission both retain correctly. The test
-// stays written as the contract the resource claims, and skips until #385 is
-// fixed, so that the fix is proven by deleting the skip rather than by
-// rewriting the assertion.
-// skipUntilPrivilegeCategoryMergeIsFixed gates the omit-retains test on issue
-// #385. Delete this function, and the call to it, when the resource either
-// emulates the category-level retention it promises or stops promising it.
-func skipUntilPrivilegeCategoryMergeIsFixed(t *testing.T) {
-	t.Helper()
-	t.Skip("jamfplatform_pro_account_group sends a partial <privileges> that the server treats as a full replace, wiping undeclared categories; see issue #385")
-}
-
+// Step 2 is the step the wire cannot satisfy on its own: probed 2026-09-06 on
+// Jamf Pro 11.31.1, a sent <privileges> replaces the whole grid, so a partial
+// body empties the two undeclared categories while Read's null-means-unmanaged
+// gate hides the loss (issue #385). The resource now emulates the retention it
+// documents — Update reads the live grid and re-emits the undeclared categories
+// through accountprivileges.MergeGrid — and this step is the proof: the
+// server-side check after step 2 must still find "Read SMTP Server" and the
+// remote-lock action that only the carry-over could have sent. The whole-block
+// omission in step 3 and the members omission retain on the wire itself.
 func TestAccResource_ProAccountGroup_OmittedBlocksRetained(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	skipUntilPrivilegeCategoryMergeIsFixed(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-account-group-omit-" + suffix
 

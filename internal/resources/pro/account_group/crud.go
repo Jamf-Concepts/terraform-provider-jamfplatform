@@ -4,13 +4,13 @@
 // SDK endpoints used (Pro v1 /account-groups is read-only AND gateway-blocked,
 // so every surface — resource, data source, list — goes through ProClassic):
 //   proclassic.CreateAccountGroupByID   (POST id="0")
-//   proclassic.GetAccountGroupByID      (read; data source id lookup; list expand)
+//   proclassic.GetAccountGroupByID      (read; data source id lookup; list expand; live grid before an Update that sends <privileges>)
 //   proclassic.GetAccountGroupByName    (data source name lookup)
-//   proclassic.UpdateAccountGroupByID   (PUT, 201 empty body)
+//   proclassic.UpdateAccountGroupByID   (PUT, 201 empty body; a sent <privileges> replaces the whole grid — merged client-side)
 //   proclassic.DeleteAccountGroupByID
 //   proclassic.ListAccounts             (list-resource enumeration; privilege-catalog discovery in ModifyPlan)
 //
-// Status: current. Last reviewed 2026-06-24.
+// Status: current. Last reviewed 2026-09-06.
 
 package account_group
 
@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -42,7 +43,7 @@ func (r *AccountGroupResource) Create(ctx context.Context, req resource.CreateRe
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	input, diags := buildAccountGroupInput(createCtx, plan)
+	input, diags := buildAccountGroupInput(createCtx, plan, nil)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -161,9 +162,14 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update updates a Jamf Pro account group. UpdateAccountGroupByID returns 201
-// with an empty body — GET to refresh server-derived base fields; privileges
-// and members are trusted from the plan.
+// Update updates a Jamf Pro account group. When the plan declares privileges
+// the live group is read first and the PUT carries the full grid merged by
+// accountprivileges.MergeGrid — the classic endpoint replaces the whole grid on
+// any sent <privileges>, so undeclared categories must be re-emitted from the
+// server to survive (issue #385). The merged grid is wire-only; state is set
+// from the plan, which keeps only the declared categories. UpdateAccountGroupByID
+// returns 201 with an empty body — GET to refresh server-derived base fields;
+// privileges and members are trusted from the plan.
 func (r *AccountGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan AccountGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -179,7 +185,17 @@ func (r *AccountGroupResource) Update(ctx context.Context, req resource.UpdateRe
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	input, diags := buildAccountGroupInput(updateCtx, plan)
+	var live *proclassic.Group
+	if managesPrivileges(plan) {
+		current, err := r.client.GetAccountGroupByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro account group before update", err.Error())
+			return
+		}
+		live = current
+	}
+
+	input, diags := buildAccountGroupInput(updateCtx, plan, live)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

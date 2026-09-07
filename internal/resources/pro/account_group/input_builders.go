@@ -14,12 +14,17 @@ import (
 )
 
 // buildAccountGroupInput converts the Terraform plan into an SDK Group payload.
-// The classic /accounts/groupid PUT is a category-level merge: fields and
-// privilege categories that are not sent are retained, so null members /
-// null privilege categories are omitted (retained) and an explicitly empty
-// members set clears membership. Privileges are only emitted when the privilege
-// set is Custom (Jamf Pro ignores them otherwise).
-func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel) (*proclassic.Group, diag.Diagnostics) {
+// The classic /accounts/groupid PUT merges at the top level only: an element
+// that is not sent is retained, so null members are omitted (retained) and an
+// explicitly empty members set clears membership. Inside <privileges> there is
+// no merge — a sent element replaces the whole grid (wire-probed 2026-09-06,
+// Jamf Pro 11.31.1, issue #385) — so when the plan declares privileges the grid
+// is built by accountprivileges.MergeGrid from the live group's grid, replacing
+// only the declared categories and carrying the rest verbatim. live is the
+// group as the server currently holds it and may be nil on Create, where nothing
+// exists to carry. Privileges are only emitted when the privilege set is Custom
+// (Jamf Pro ignores them otherwise).
+func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel, live *proclassic.Group) (*proclassic.Group, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	group := &proclassic.Group{
@@ -51,15 +56,26 @@ func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel)
 		group.Members = &proclassic.GroupMembers{User: &users}
 	}
 
-	// Privileges: only when Custom and the block is present with content.
-	if plan.PrivilegeSet.ValueString() == proclassic.GroupPrivilegeSetCustom && plan.Privileges != nil && !plan.Privileges.IsEmpty() {
-		privMap, d := plan.Privileges.ToMap(ctx)
+	if managesPrivileges(plan) {
+		var serverGrid map[string][]string
+		if live != nil {
+			serverGrid = accountprivileges.FromGroupPrivileges(live.Privileges)
+		}
+		merged, d := accountprivileges.MergeGrid(ctx, plan.Privileges, serverGrid)
 		diags.Append(d...)
 		if diags.HasError() {
 			return nil, diags
 		}
-		group.Privileges = accountprivileges.ToGroupPrivileges(privMap)
+		group.Privileges = accountprivileges.ToGroupPrivileges(merged)
 	}
 
 	return group, diags
+}
+
+// managesPrivileges reports whether the plan will send a <privileges> element:
+// the group is Custom and the block is present with at least one declared
+// category. When false the element is omitted and the server keeps its grid,
+// which is the one retention the wire does provide.
+func managesPrivileges(plan AccountGroupResourceModel) bool {
+	return plan.PrivilegeSet.ValueString() == proclassic.GroupPrivilegeSetCustom && plan.Privileges != nil && !plan.Privileges.IsEmpty()
 }
