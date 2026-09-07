@@ -159,7 +159,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 	})
 	diags.Append(d...)
 	if jssUserGroups != nil {
-		s.JssUserGroups = &proclassic.OsXConfigurationProfileScopeJssUserGroups{JssUserGroup: jssUserGroups}
+		s.JssUserGroups = &proclassic.OsXConfigurationProfileScopeJssUserGroups{UserGroup: jssUserGroups}
 	}
 
 	if m.Limitations != nil {
@@ -330,21 +330,7 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
 	}
 
-	// Notification (dual <notification> wire element via NotificationValue custom marshaller).
-	hasNotificationBool := !m.DisplayNotifications.IsNull() && !m.DisplayNotifications.IsUnknown()
-	hasNotificationLoc := !m.NotificationLocation.IsNull() && !m.NotificationLocation.IsUnknown() && m.NotificationLocation.ValueString() != ""
-	if hasNotificationBool || hasNotificationLoc {
-		nv := &proclassic.NotificationValue{}
-		if hasNotificationBool {
-			b := m.DisplayNotifications.ValueBool()
-			nv.Enabled = &b
-		}
-		if hasNotificationLoc {
-			s := m.NotificationLocation.ValueString()
-			nv.Method = &s
-		}
-		ss.Notification = nv
-	}
+	ss.Notification = buildSelfServiceNotification(m)
 
 	// Security (removal_disallowed only — Password companion not surfaced).
 	if v := m.RemovalDisallowed.ValueString(); !m.RemovalDisallowed.IsNull() && !m.RemovalDisallowed.IsUnknown() && v != "" {
@@ -371,4 +357,67 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 	}
 
 	return ss, diags
+}
+
+// buildSelfServiceNotification projects display_notifications and
+// notification_location onto the single <notification> wire element, and
+// returns nil to omit it.
+//
+// The two attributes are one field on the wire. <notification> takes either a
+// bool or a location string, the LAST occurrence in a request wins, and
+// applying either one RESETS the other to its default — the bool to false, the
+// location to "Self Service". Wire-probed on two tenants against Jamf Pro
+// 11.31.1 on 2026-09-07:
+//
+//	write                        -> stored (enabled | location)
+//	true                         -> true  | Self Service      (location reset)
+//	"…Notification Center"       -> false | …Notification Center (bool reset)
+//	location, then true          -> true  | Self Service
+//	true, then location          -> false | …Notification Center
+//	true, location, true         -> true  | Self Service
+//
+// So (true, "…Notification Center") cannot be written at all. Nothing rescues
+// it: no ordering, no third occurrence, no nested <enabled>/<location> shape,
+// no method=/enabled= attributes, no <notification_location> /
+// <notification_enabled> / <display_notifications> / <notification_center>
+// sibling element, and not the notification_subject the admin UI insists on.
+// Every one of those is ignored outright. The admin UI stores the pairing
+// happily, because it posts to a legacy servlet rather than this API, so the
+// state is reachable and the classic write path simply cannot express it —
+// Jamf PI-1662, and the same shape as the policy no-execute window in PI-1661.
+//
+// Two consequences, and the second is why this function exists rather than the
+// original inline block. A configured pairing is refused at plan time by
+// notificationCenterUnwritableValidator, so it never reaches here. But an
+// IMPORTED profile that the admin UI had set to the pairing puts it in state,
+// notification_location being Optional+Computed carries it into the next plan,
+// and emitting it would silently downgrade somebody's setting to
+// "Self Service" while reporting success. Omitting the element preserves
+// whatever the server holds (wire-verified: a PUT with no <notification> left
+// the UI-set pairing intact), so that is what this returns for the
+// unwritable combination.
+func buildSelfServiceNotification(m *SelfServiceModel) *proclassic.NotificationValue {
+	hasBool := !m.DisplayNotifications.IsNull() && !m.DisplayNotifications.IsUnknown()
+	hasLoc := !m.NotificationLocation.IsNull() && !m.NotificationLocation.IsUnknown() && m.NotificationLocation.ValueString() != ""
+
+	if hasBool && hasLoc &&
+		m.DisplayNotifications.ValueBool() &&
+		m.NotificationLocation.ValueString() == notificationLocationSelfServiceAndCenter {
+		return nil
+	}
+
+	if !hasBool && !hasLoc {
+		return nil
+	}
+
+	nv := &proclassic.NotificationValue{}
+	if hasBool {
+		b := m.DisplayNotifications.ValueBool()
+		nv.Enabled = &b
+	}
+	if hasLoc {
+		s := m.NotificationLocation.ValueString()
+		nv.Method = &s
+	}
+	return nv
 }

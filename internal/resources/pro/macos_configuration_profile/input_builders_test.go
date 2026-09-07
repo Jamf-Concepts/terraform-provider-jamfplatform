@@ -197,11 +197,21 @@ func TestBuildScope_ExclusionsPopulated(t *testing.T) {
 	}
 }
 
+// TestBuildSelfService_NotificationSplit pins that the two Terraform attributes
+// still split into the one dual-valued wire element for a pairing Jamf Pro can
+// store.
+//
+// It used to assert the pairing with notificationLocationSelfServiceAndCenter,
+// which Jamf Pro cannot store at all: the flag and the location share one
+// element and setting either resets the other, so that request stores
+// "Self Service" and reports success. The unwritable pairing is refused at plan
+// time now and omitted from the payload — see buildSelfServiceNotification and
+// TestBuildSelfServiceNotification.
 func TestBuildSelfService_NotificationSplit(t *testing.T) {
 	t.Parallel()
 	ss, _ := buildSelfService(&SelfServiceModel{
 		DisplayNotifications: types.BoolValue(true),
-		NotificationLocation: types.StringValue(notificationLocationSelfServiceAndCenter),
+		NotificationLocation: types.StringValue(notificationLocationSelfService),
 		NotificationSubject:  types.StringValue("Subj"),
 		NotificationMessage:  types.StringValue("Body"),
 	})
@@ -211,8 +221,11 @@ func TestBuildSelfService_NotificationSplit(t *testing.T) {
 	if ss.Notification.Enabled == nil || !*ss.Notification.Enabled {
 		t.Fatal("expected Enabled=true")
 	}
-	if ss.Notification.Method == nil || *ss.Notification.Method != notificationLocationSelfServiceAndCenter {
-		t.Fatalf("expected Method = %q, got %v", notificationLocationSelfServiceAndCenter, ss.Notification.Method)
+	if ss.Notification.Method == nil || *ss.Notification.Method != notificationLocationSelfService {
+		t.Fatalf("expected Method = %q, got %v", notificationLocationSelfService, ss.Notification.Method)
+	}
+	if ss.NotificationSubject == nil || *ss.NotificationSubject != "Subj" {
+		t.Fatalf("expected NotificationSubject Subj, got %v", ss.NotificationSubject)
 	}
 }
 
@@ -314,4 +327,97 @@ func TestBuildScopeExclusions_NetworkSegmentsCarryDedicatedItemType(t *testing.T
 	// Type assert to the resource's network segment item type to confirm the
 	// builder uses the dedicated item struct (not bare IDName).
 	_ = proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem(items[0])
+}
+
+// TestBuildSelfServiceNotification pins the projection of the two Terraform
+// attributes onto the single <notification> wire element, including the pairing
+// Jamf Pro cannot store. The wire evidence is on buildSelfServiceNotification.
+func TestBuildSelfServiceNotification(t *testing.T) {
+	t.Parallel()
+
+	const center = "Self Service and Notification Center"
+
+	for _, tc := range []struct {
+		name       string
+		display    types.Bool
+		location   types.String
+		wantNil    bool
+		wantBool   *bool
+		wantMethod *string
+	}{
+		{
+			name: "neither set omits the element", display: types.BoolNull(), location: types.StringNull(),
+			wantNil: true,
+		},
+		{
+			name: "flag alone", display: types.BoolValue(true), location: types.StringNull(),
+			wantBool: new(true),
+		},
+		{
+			name: "flag false alone", display: types.BoolValue(false), location: types.StringNull(),
+			wantBool: new(false),
+		},
+		{
+			name: "location alone", display: types.BoolNull(), location: types.StringValue(center),
+			wantMethod: new(center),
+		},
+		{
+			name: "the reachable pairing is sent whole", display: types.BoolValue(true), location: types.StringValue("Self Service"),
+			wantBool: new(true), wantMethod: new("Self Service"),
+		},
+		{
+			// The whole point: emitting this would silently downgrade an
+			// admin-UI-set profile to "Self Service" while reporting success,
+			// so the element is withheld and the server keeps what it has.
+			name:    "the unwritable pairing omits the element entirely",
+			display: types.BoolValue(true), location: types.StringValue(center),
+			wantNil: true,
+		},
+		{
+			name:    "flag false with Notification Center is reachable, so it is sent",
+			display: types.BoolValue(false), location: types.StringValue(center),
+			wantBool: new(false), wantMethod: new(center),
+		},
+		{
+			name: "unknown values are treated as unset", display: types.BoolUnknown(), location: types.StringUnknown(),
+			wantNil: true,
+		},
+		{
+			name: "an empty location string is treated as unset", display: types.BoolNull(), location: types.StringValue(""),
+			wantNil: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := buildSelfServiceNotification(&SelfServiceModel{
+				DisplayNotifications: tc.display,
+				NotificationLocation: tc.location,
+			})
+			if tc.wantNil {
+				if got != nil {
+					t.Fatalf("want nil, got %+v", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatal("want a value, got nil")
+			}
+			switch {
+			case tc.wantBool == nil && got.Enabled != nil:
+				t.Errorf("Enabled: want nil, got %v", *got.Enabled)
+			case tc.wantBool != nil && got.Enabled == nil:
+				t.Errorf("Enabled: want %v, got nil", *tc.wantBool)
+			case tc.wantBool != nil && *got.Enabled != *tc.wantBool:
+				t.Errorf("Enabled: want %v, got %v", *tc.wantBool, *got.Enabled)
+			}
+			switch {
+			case tc.wantMethod == nil && got.Method != nil:
+				t.Errorf("Method: want nil, got %q", *got.Method)
+			case tc.wantMethod != nil && got.Method == nil:
+				t.Errorf("Method: want %q, got nil", *tc.wantMethod)
+			case tc.wantMethod != nil && *got.Method != *tc.wantMethod:
+				t.Errorf("Method: want %q, got %q", *tc.wantMethod, *got.Method)
+			}
+		})
+	}
 }

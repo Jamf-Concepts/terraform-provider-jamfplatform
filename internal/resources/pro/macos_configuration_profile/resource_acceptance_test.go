@@ -1633,6 +1633,11 @@ resource "jamfplatform_device_group" "exclude" {
   device_type = "computer"
 }
 
+resource "jamfplatform_pro_user_group" "target" {
+  name       = "tf-acc-mcp-omit-ug-t-%[1]s"
+  group_type = "static"
+}
+
 resource "jamfplatform_pro_user_group" "exclude" {
   name       = "tf-acc-mcp-omit-ug-x-%[1]s"
   group_type = "static"
@@ -1671,14 +1676,14 @@ resource "jamfplatform_pro_ibeacon" "exclude" {
 // distinctive value so that a server which stopped retaining an omitted
 // element is caught on content, not on presence. Left out: the two
 // directory-service user-group categories, because the server refuses a group
-// name that does not resolve against the tenant's directory integration; and
-// scope.targets.user_group_ids, because the SDK's
-// OsXConfigurationProfileScopeJssUserGroups decodes the child as
-// <jss_user_group> while the server answers <user_group> (wire-probed
-// 2026-09-06: both spellings are accepted on write, only <user_group> is ever
-// read back), so on this resource that category never round-trips and would
-// fail the create, not the contract under test. The exclusions counterpart is
-// tagged correctly and stays covered.
+// name that does not resolve against the tenant's directory integration.
+//
+// scope.targets.user_group_ids used to be left out too: the SDK tagged
+// OsXConfigurationProfileScopeJssUserGroups' child as <jss_user_group> while
+// the server answers <user_group>, so the category never read back and would
+// have failed the create rather than the contract under test. SDK v0.22.1
+// corrected the tag — it was the last one of the sixteen still mis-spelled —
+// and the category is covered here now.
 func omitRetainsConfig(name, payload string, f omitRetainsFixtures) string {
 	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_macos_configuration_profile" "test" {
@@ -1695,6 +1700,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
       building_ids       = [jamfplatform_pro_building.target.id]
       department_ids     = [jamfplatform_pro_department.target.id]
       user_ids           = [%q]
+      user_group_ids     = [jamfplatform_pro_user_group.target.id]
     }
     limitations = {
       network_segment_ids                   = [jamfplatform_pro_network_segment.limit.id]
@@ -1720,7 +1726,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
     ensure_users_view_description = true
     feature_on_main_page          = true
     display_notifications         = true
-    notification_location         = "Self Service and Notification Center"
+    notification_location         = "Self Service"
     notification_subject          = "Omit retains subject"
     notification_message          = "Omit retains message"
     removal_disallowed            = "Never"
@@ -1778,7 +1784,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
     self_service_description  = "Omit-retains contract description."
     feature_on_main_page      = true
     display_notifications     = true
-    notification_location     = "Self Service and Notification Center"
+    notification_location     = "Self Service"
     notification_subject      = "Omit retains subject"
     notification_message      = "Omit retains message"
     removal_disallowed        = "Never"
@@ -1868,13 +1874,18 @@ func stateID(s *terraform.State, addr, attr string) (string, error) {
 
 // omitRetainedOnServer asserts the server's copy still carries every value the
 // omit-retains config declared in its first step. Inline fixture ids are read
-// from state because Jamf allocates them at apply. The four notification
-// attributes (display_notifications, notification_location,
-// notification_subject, notification_message) are declared but not asserted:
-// the classic GET never echoes <notification>, <notification_subject> or
-// <notification_message> for a macOS profile (wire-probed 2026-09-06 on a
-// profile created with all three set), so no read can witness whether the
-// server kept them.
+// from state because Jamf allocates them at apply.
+//
+// The four notification attributes are declared but not asserted here. An
+// earlier reading had them down as never echoed — "the classic GET never
+// echoes <notification>, <notification_subject> or <notification_message> for
+// a macOS profile" — which is not so: a re-probe on 2026-09-07 read all three
+// back on every GET. What is true is subtler, and belongs to
+// buildSelfServiceNotification rather than to this contract: the flag and the
+// location share one wire element, so a write carries only one of them and the
+// pair cannot be asserted as declared. notification_location is set to
+// "Self Service" above for that reason, the location being the half this
+// provider's write order loses.
 func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestCheckFunc {
 	c := testhelpers.NewProClassicClient(t)
 	const addr = "jamfplatform_pro_macos_configuration_profile.test"
@@ -1888,6 +1899,7 @@ func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestChec
 			{"depX", "jamfplatform_pro_department.exclude", "id"},
 			{"grpT", "jamfplatform_device_group.target", "jamf_pro_id"},
 			{"grpX", "jamfplatform_device_group.exclude", "jamf_pro_id"},
+			{"ugT", "jamfplatform_pro_user_group.target", "id"},
 			{"ugX", "jamfplatform_pro_user_group.exclude", "id"},
 			{"segL", "jamfplatform_pro_network_segment.limit", "id"},
 			{"segX", "jamfplatform_pro_network_segment.exclude", "id"},
@@ -1918,6 +1930,9 @@ func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestChec
 					requireOnlyIDName("scope.targets.building_ids", derefField(sc.Buildings, func(b *proclassic.OsXConfigurationProfileScopeBuildings) *[]proclassic.IDName { return b.Building }), want["bldT"]),
 					requireOnlyIDName("scope.targets.department_ids", derefField(sc.Departments, func(d *proclassic.OsXConfigurationProfileScopeDepartments) *[]proclassic.IDName { return d.Department }), want["depT"]),
 					requireOnlyIDName("scope.targets.user_ids", derefField(sc.JssUsers, func(u *proclassic.OsXConfigurationProfileScopeJssUsers) *[]proclassic.IDName { return u.User }), f.targetUser),
+					requireOnlyIDName("scope.targets.user_group_ids", derefField(sc.JssUserGroups, func(u *proclassic.OsXConfigurationProfileScopeJssUserGroups) *[]proclassic.IDName {
+						return u.UserGroup
+					}), want["ugT"]),
 				}
 				for _, err := range checks {
 					if err != nil {

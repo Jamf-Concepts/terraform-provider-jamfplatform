@@ -230,11 +230,13 @@ Optional:
 Optional:
 
 - `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. (see [below for nested schema](#nestedatt--self_service--categories))
-- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. Pair with `notification_location` to set the delivery target.
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. See `notification_location` for the one pairing Jamf Pro cannot store.
 - `ensure_users_view_description` (Boolean) Force users to view the description before installing.
 - `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
 - `install_button_text` (String) Install-button label. Defaults to `Install`.
-- `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.
+- `notification_location` (String) Where Self Service surfaces the notification. `Self Service` or `Self Service and Notification Center`.
+
+Jamf Pro stores this and `display_notifications` in one field, and setting either resets the other, so `Self Service and Notification Center` cannot be combined with `display_notifications = true` and is refused at plan time. To have both, set them under Self Service ▸ Notification in the Jamf Pro admin UI and leave both attributes out of the configuration; Terraform reads the pairing back and preserves it.
 - `notification_message` (String) Notification body text. Displays in Self Service only.
 - `notification_subject` (String) Notification subject line.
 - `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. `With Authorization` also needs an authorization password, which this resource does not yet expose. Open an issue if you need it.
