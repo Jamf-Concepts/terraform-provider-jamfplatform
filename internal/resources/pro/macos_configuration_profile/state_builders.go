@@ -54,7 +54,7 @@ func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassi
 		state.SelfService = &SelfServiceModel{}
 	}
 	if state.SelfService != nil && p.SelfService != nil {
-		flattenSelfService(p.SelfService, state.SelfService)
+		flattenSelfService(p.SelfService, state.SelfService, includeUnmanaged)
 	}
 	return diags
 }
@@ -364,7 +364,7 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.OsXConfiguration
 	return out
 }
 
-func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state *SelfServiceModel) {
+func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state *SelfServiceModel, includeUnmanaged bool) {
 	if ss == nil {
 		return
 	}
@@ -385,20 +385,48 @@ func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state
 		state.RemovalDisallowed = helpers.ReconcileOptionalStringPointer(ss.Security.RemovalDisallowed, state.RemovalDisallowed)
 	}
 
-	if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil && len(*ss.SelfServiceCategories.Category) > 0 {
-		cats := *ss.SelfServiceCategories.Category
-		items := make([]SelfServiceCategoryItem, 0, len(cats))
-		for _, c := range cats {
-			it := SelfServiceCategoryItem{
-				ID:        idPointerToString(c.ID),
-				Name:      helpers.StringPointerValueOrNull(c.Name),
-				DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
-				FeatureIn: helpers.BoolPointerValueOrNull(c.FeatureIn),
-			}
-			items = append(items, it)
+	// categories is ownership-gated like every sibling above it. It used not to
+	// be: the hydration tested only what the wire carried, so dropping
+	// categories from a self_service block you otherwise keep failed the apply
+	// with "Provider produced inconsistent result after apply" — the plan said
+	// null and Read handed back a populated list. The server retains them
+	// correctly; this was ours (issue #392).
+	//
+	// Optional-only, so a nil slice means the configuration does not manage the
+	// attribute and an empty non-nil one means it declares `[]`. Managed, the
+	// wire is authoritative including when it is empty, which is what lets a
+	// declared `[]` converge. Unmanaged, only the first hydration populates it
+	// — import, config generation and the Update merge base — and even then
+	// only if the server has any, so an ordinary refresh never fabricates a
+	// list the practitioner never wrote.
+	switch {
+	case state.Categories != nil:
+		state.Categories = flattenSelfServiceCategories(ss.SelfServiceCategories)
+	case includeUnmanaged:
+		if cats := flattenSelfServiceCategories(ss.SelfServiceCategories); len(cats) > 0 {
+			state.Categories = cats
 		}
-		state.Categories = items
 	}
+}
+
+// flattenSelfServiceCategories maps the wire category list onto the model,
+// returning an empty (non-nil) slice when the server carries none so a managed
+// attribute can converge on a declared `[]`.
+func flattenSelfServiceCategories(c *proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategories) []SelfServiceCategoryItem {
+	if c == nil || c.Category == nil {
+		return []SelfServiceCategoryItem{}
+	}
+	cats := *c.Category
+	items := make([]SelfServiceCategoryItem, 0, len(cats))
+	for _, cat := range cats {
+		items = append(items, SelfServiceCategoryItem{
+			ID:        idPointerToString(cat.ID),
+			Name:      helpers.StringPointerValueOrNull(cat.Name),
+			DisplayIn: helpers.BoolPointerValueOrNull(cat.DisplayIn),
+			FeatureIn: helpers.BoolPointerValueOrNull(cat.FeatureIn),
+		})
+	}
+	return items
 }
 
 func idPointerToString(id *int) types.String {

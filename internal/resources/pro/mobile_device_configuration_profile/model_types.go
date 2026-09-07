@@ -63,8 +63,11 @@ type SelfServiceModel struct {
 }
 
 // SelfServiceCategoryItem models a single <category> inside
-// <self_service_categories>. Mobile wire carries only ID and Name — no
-// display_in / feature_in (unlike macOS profiles).
+// <self_service_categories>. The mobile profile's GET echoes only <id> and
+// <name>: it carries no feature_in at all, and alone among the six classic
+// resources with this block it hides display_in from the read, so neither is
+// surfaced as an attribute. The write still has to send display_in — see
+// buildSelfService.
 type SelfServiceCategoryItem struct {
 	ID   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
