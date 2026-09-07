@@ -154,13 +154,25 @@ func assignMappingsState(m *pro.CloudLdapMappingsResponse, prior *cloudLdapMappi
 // collection rule forbids, and the field-by-field emptiness test is the shape
 // disk_encryption_configuration already uses for its recovery key.
 //
-// Unlike the Entra branch this is not wire-probed — a Google connection needs a
-// real Secure LDAP keystore, so no probe could create one — and Google differs
-// in a way that may matter: `mappings` is a pointer on its create request and is
-// omitted entirely when the block is undeclared, so server-generated defaults
-// are plausible here even though they were disproved for Entra. If they exist
-// this guard never fires and hydration adopts them, which is the wanted
-// behaviour either way.
+// Google's write path is not wire-probed — a connection needs a real Secure LDAP
+// keystore, so no probe could create one — and it differs from Entra in a way
+// that could have mattered: `mappings` is a pointer on its create request and is
+// omitted entirely when the block is undeclared, leaving room for the server to
+// substitute defaults.
+//
+// Two probes on the EU test tenant, 2026-09-07, make that unlikely. Jamf Pro does
+// serve defaults, from GetCloudLdapDefaultMappingsV2 (and the Entra equivalent),
+// but they are a static per-provider template rather than per-connection state:
+// `id` comes back "0" with an empty domain, which is what the admin UI pre-fills
+// a new connection form with. That is almost certainly where this package's
+// former claim that "the server always returns generated mappings" came from. And
+// on the Entra side, where a create can be made, the server demonstrably did not
+// substitute them: all-empty in, all-empty out.
+//
+// Either way the guard is safe. Google's template populates most fields
+// (`objectClasses`, `searchBase`, `userID` and the rest), so were the server to
+// apply it, no sub-block would read as empty and hydration would adopt it —
+// which is the wanted behaviour.
 func userMappingsAreWireEmpty(u *pro.UserMappings) bool {
 	return u.ObjectClassLimitation == "" &&
 		u.ObjectClasses == "" &&
