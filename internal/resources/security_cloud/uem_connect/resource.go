@@ -34,6 +34,29 @@
 // because no endpoint accepts credentials for an integration that already exists, so
 // re-sending a rotated secret means creating the integration again.
 //
+// uem_server_url is the one of those that uses RequiresReplaceIfConfigured rather
+// than RequiresReplace, and the difference is load-bearing rather than stylistic.
+// It is the only Optional+Computed member of the set: on the platform_tenant form
+// it is never configured, because Jamf Security Cloud resolves the address from
+// the tenant and the resource refuses the pair. The framework marks an
+// unconfigured Computed attribute unknown on every plan where anything else
+// changes, and plain RequiresReplace tests only whether the planned value equals
+// the prior one — an unknown never does. Ordered ahead of UseStateForUnknown, as
+// it was, it therefore fired on every in-place edit of a platform_tenant
+// connector: toggling enabled or editing a field mapping planned a destroy and
+// recreate, which per the schema's own warning strands the JSC Connector API
+// integration on the Jamf Pro tenant. RequiresReplaceIfConfigured asks the
+// question actually intended — did the practitioner change an address they wrote
+// — so it is inert on the form that never writes one, and independent of where it
+// sits in the slice. Confirmed by driving the framework's plan pipeline: a no-op
+// plan was always clean, an enabled-only change planned a replacement before and
+// none after, and a changed configured address still replaces.
+// TestUEMServerURL_ReplacementFollowsWhatThePractitionerConfigured holds the line.
+//
+// The form itself is guarded elsewhere and does not rely on this: both
+// platform_tenant and oauth carry objectplanmodifier.RequiresReplace, so
+// switching between them replaces regardless.
+//
 // # Wire mapping
 //
 // Attribute names follow the admin UI rather than the wire wherever the two
@@ -254,7 +277,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 					),
 				},
 				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},

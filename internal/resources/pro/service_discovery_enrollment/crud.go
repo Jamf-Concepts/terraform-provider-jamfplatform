@@ -82,7 +82,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Read(ctx context.Context, req resou
 	}
 
 	var state ServiceDiscoveryEnrollmentResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

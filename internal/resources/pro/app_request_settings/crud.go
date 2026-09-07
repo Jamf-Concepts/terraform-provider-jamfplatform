@@ -102,7 +102,7 @@ func (r *AppRequestSettingsResource) Read(ctx context.Context, req resource.Read
 	}
 
 	var state AppRequestSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

@@ -8,15 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// hostnameMappingsTimeoutAttributeTypes defines the timeout attribute types for the
-// hostname mappings resource operations.
-var hostnameMappingsTimeoutAttributeTypes = map[string]attr.Type{
-	"create": types.StringType,
-	"read":   types.StringType,
-	"update": types.StringType,
-	"delete": types.StringType,
-}
-
 // mappingAttributeTypes defines the object attribute types for one hostname mapping
 // in the resource schema.
 var mappingAttributeTypes = map[string]attr.Type{

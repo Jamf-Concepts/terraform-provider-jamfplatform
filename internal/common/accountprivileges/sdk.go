@@ -89,9 +89,12 @@ func FromGroupPrivileges(p *proclassic.GroupPrivileges) map[string][]string {
 }
 
 // ToAccountPrivileges builds an SDK account privilege grid from a wire-keyed
-// map. Only categories present in the map are emitted (omit-on-write); a
-// category present with an empty slice is emitted as an empty element, which
-// the classic endpoint treats as "clear this category".
+// map. Only categories present in the map are emitted, and a category present
+// with an empty slice is emitted as an empty element. Because the classic
+// endpoint replaces the whole grid on any sent <privileges> (see MergeGrid), an
+// absent category and an empty one both end up cleared on the server; the map
+// must therefore already be the full merged grid, not just the declared
+// categories.
 func ToAccountPrivileges(m map[string][]string) *proclassic.AccountPrivileges {
 	if len(m) == 0 {
 		return nil
@@ -121,7 +124,8 @@ func ToAccountPrivileges(m map[string][]string) *proclassic.AccountPrivileges {
 	return out
 }
 
-// ToGroupPrivileges builds an SDK group privilege grid from a wire-keyed map.
+// ToGroupPrivileges builds an SDK group privilege grid from a wire-keyed map,
+// with the same full-grid expectation as ToAccountPrivileges.
 func ToGroupPrivileges(m map[string][]string) *proclassic.GroupPrivileges {
 	if len(m) == 0 {
 		return nil

@@ -161,6 +161,41 @@ func TestAccResource_ProAppRequestSettings_Lifecycle(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProAppRequestSettings_NoApprovers covers a tenant with App
+// Requests switched off and therefore no approvers, which is an ordinary state and
+// was not declarable until issue #379: approver_emails carried a minimum-size
+// validator taken from the Jamf Pro admin UI, while Jamf Pro itself accepts an
+// empty list and round-trips it (wire-probed 2026-09-05, disabled AND enabled,
+// against a control that satisfied both prerequisites). Because this resource is a
+// per-tenant singleton that always exists, the validator made such a tenant
+// impossible to adopt at all.
+//
+// Step 2 is the generation guard: an empty set has to survive being written back
+// out as configuration, which is where the defect surfaced.
+func TestAccResource_ProAppRequestSettings_NoApprovers(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSettingsStillExist(t),
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_app_request_settings" "test" {
+						enabled         = false
+						approver_emails = []
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(settingsAddr, "enabled", "false"),
+					resource.TestCheckResourceAttr(settingsAddr, "approver_emails.#", "0"),
+				),
+			},
+			testhelpers.GenerateConfigStep(settingsAddr),
+		},
+	})
+}
+
 // TestAccResource_ProAppRequestSettings_EnabledRequiresGroup confirms the plan-time check:
 // enabling App Requests while the requester group is a known-null carried from prior state
 // fails before apply. Step 1 establishes disabled settings (requester group null in state);

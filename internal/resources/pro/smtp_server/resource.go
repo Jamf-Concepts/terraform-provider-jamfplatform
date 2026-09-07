@@ -49,6 +49,7 @@ var (
 	_ resource.ResourceWithImportState      = &SmtpServerResource{}
 	_ resource.ResourceWithIdentity         = &SmtpServerResource{}
 	_ resource.ResourceWithConfigValidators = &SmtpServerResource{}
+	_ resource.ResourceWithModifyPlan       = &SmtpServerResource{}
 )
 
 const (
@@ -104,7 +105,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the SMTP server connection is enabled (\"Use the switch to enable or disable the connection\" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it.",
+				MarkdownDescription: "Whether the SMTP server connection is enabled (\"Use the switch to enable or disable the connection\" in the Jamf Pro admin UI). Omit to preserve the current value (it is adopted on first apply and left untouched on an unrelated apply); set `true`/`false` to change it. Enabling requires `sender_settings.email_address` and `sender_settings.display_name` to both hold a value.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -124,16 +125,15 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"email_address": schema.StringAttribute{
-						MarkdownDescription: "**\"Sender email address\"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from.",
-						Required:            true,
-						Validators: []validator.String{
-							stringvalidator.LengthAtLeast(1),
-						},
+						MarkdownDescription: "**\"Sender email address\"** in the Jamf Pro admin UI. The account email address Jamf Pro sends mail from. " +
+							"Jamf Pro requires a real address whenever `enabled` is `true`, and accepts an empty string only while the connection is disabled — which is how a tenant that has never set up mail reads back, so an empty value here is expected on adoption and must be filled in before enabling.",
+						Required: true,
 					},
 					"display_name": schema.StringAttribute{
-						MarkdownDescription: "**\"Sender display name\"** in the Jamf Pro admin UI. The sender name shown in messages. Optional; omit to preserve the current value.",
-						Optional:            true,
-						Computed:            true,
+						MarkdownDescription: "**\"Sender display name\"** in the Jamf Pro admin UI. The sender name shown in messages. Omit to preserve the current value. " +
+							"Jamf Pro requires a non-empty name whenever `enabled` is `true`, so a tenant whose stored name is empty needs one supplied here before the connection can be enabled.",
+						Optional: true,
+						Computed: true,
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
@@ -146,11 +146,9 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"host": schema.StringAttribute{
-						MarkdownDescription: "**\"Server\"** in the Jamf Pro admin UI. SMTP server hostname or IP address.",
-						Required:            true,
-						Validators: []validator.String{
-							stringvalidator.LengthAtLeast(1),
-						},
+						MarkdownDescription: "**\"Server\"** in the Jamf Pro admin UI. SMTP server hostname or IP address. " +
+							"Jamf Pro stores an empty host on a tenant that has never set up mail and returns it on a read, so an empty value here is expected on adoption and must be filled in before the connection is of any use.",
+						Required: true,
 					},
 					"port": schema.Int64Attribute{
 						MarkdownDescription: "**\"Port\"** in the Jamf Pro admin UI. SMTP server port (e.g. `25`, `465`, `587`).",
@@ -292,6 +290,25 @@ func woVersion(secretName string) schema.Int64Attribute {
 	}
 }
 
+// ModifyPlan runs the enable-time preflight against the resolved plan, so an
+// enabled connection missing a sender address, a sender display name or an SMTP
+// server address fails the plan instead of the apply. It reads the plan rather than the configuration because
+// `enabled` is Optional+Computed: the value UseStateForUnknown carries forward is
+// the one the write will send. No-op on destroy.
+func (r *SmtpServerResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan SmtpServerResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(validateSenderSettingsWhenEnabled(plan.Enabled, plan.SenderSettings, plan.ConnectionSettings)...)
+}
+
 // ConfigValidators returns the cross-field validators evaluated at plan time.
 func (r *SmtpServerResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
@@ -314,17 +331,7 @@ func (r *SmtpServerResource) Configure(ctx context.Context, req resource.Configu
 //
 //	terraform import jamfplatform_pro_smtp_server.<name> singleton
 func (r *SmtpServerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid singleton import identifier",
-			fmt.Sprintf(
-				"jamfplatform_pro_smtp_server is a singleton resource and must be imported with id %q. Got %q.",
-				helpers.SingletonID, req.ID,
-			),
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_pro_smtp_server")
 }
 
 // authenticationsListType is the Terraform type of the Computed

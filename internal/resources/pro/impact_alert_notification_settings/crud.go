@@ -85,7 +85,7 @@ func (r *ImpactAlertNotificationSettingsResource) Read(ctx context.Context, req 
 	}
 
 	var state ImpactAlertNotificationSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

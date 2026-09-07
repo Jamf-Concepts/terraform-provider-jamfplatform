@@ -211,3 +211,22 @@ func orEmpty(in []string) []string {
 	}
 	return in
 }
+
+// assignedVersionPackagesValue folds every package assignment the configuration
+// reports into a version_packages value, yielding a null map when the title has
+// none. version_packages is Optional-only with a minimum of one entry, so an
+// empty map is not a legal configuration value — a title with no assignments has
+// to be represented by an unset attribute, or generated configuration would
+// carry the one shape the schema refuses. It is the whole-server-view form, for
+// callers with no declared subset to scope against; a caller holding declared
+// keys wants managedVersionPackages.
+//
+// The null is typed rather than the zero-value types.Map, which is an
+// untyped/DynamicPseudoType map and fails the schema type check.
+func assignedVersionPackagesValue(ctx context.Context, pkgs []pro.PatchSoftwareTitlePackages) (types.Map, diag.Diagnostics) {
+	assigned := assignedPackagesByVersion(pkgs)
+	if len(assigned) == 0 {
+		return types.MapNull(types.StringType), nil
+	}
+	return types.MapValueFrom(ctx, types.StringType, assigned)
+}

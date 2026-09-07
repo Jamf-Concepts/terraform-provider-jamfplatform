@@ -115,7 +115,7 @@ func (r *SelfServiceBrandingIosResource) Read(ctx context.Context, req resource.
 	}
 
 	var state SelfServiceBrandingIosResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(selfServiceBrandingIosTimeoutAttributeTypes)
