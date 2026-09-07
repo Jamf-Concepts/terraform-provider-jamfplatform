@@ -77,6 +77,11 @@ func TestResource_ScopeAttributes(t *testing.T) {
 	}
 }
 
+// TestResource_SelfServiceAttributes pins the block's shape, including what it
+// deliberately lacks. The mobile profile has no notification or display-name
+// attributes, and no self_service_description: Jamf Pro stored that one as the
+// profile's general description and never returned it, so the attribute could
+// only overwrite a value the practitioner had set (issue #393).
 func TestResource_SelfServiceAttributes(t *testing.T) {
 	t.Parallel()
 	r := NewResource()
@@ -91,10 +96,6 @@ func TestResource_SelfServiceAttributes(t *testing.T) {
 			t.Fatalf("expected self_service.%s", child)
 		}
 	}
-	// mobile does NOT have notification or display_name attrs, and
-	// self_service_description is gone: the classic API wrote it into
-	// general.description and never echoed it, so the attribute could only
-	// overwrite a sibling (issue #393).
 	for _, absent := range []string{"self_service_description", "self_service_display_name", "install_button_text", "display_notifications", "notification_location", "notification_subject", "notification_message"} {
 		if _, ok := ss.Attributes[absent]; ok {
 			t.Fatalf("self_service.%s must not exist on mobile profiles", absent)

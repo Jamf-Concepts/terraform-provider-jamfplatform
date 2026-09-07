@@ -294,6 +294,17 @@ func buildScopeExclusions(ctx context.Context, m *scope.MobileScopeExclusionsMod
 
 // buildSelfService maps the Self Service block onto the classic payload.
 //
+// It never emits <self_service_description>, and there is no attribute for one:
+// the field is a write-alias for <description>, so sending it overwrote a value
+// the practitioner had set under general, an empty one erased that value, and a
+// read returned an empty element every time. Probed across eighteen create and
+// update combinations against Jamf Pro 11.31.1 on 2026-09-07; deployment_method
+// made no difference and update matched create. Issue #393 has the tables, and
+// TestBuildSelfService_NeverSendsASelfServiceDescription pins the omission. The
+// admin UI does offer the two descriptions separately and the macOS profile
+// keeps them independent, so this is a Jamf Pro defect: if it is fixed, restore
+// the attribute rather than reviving this field on its own.
+//
 // Every <category> it emits carries display_in=true, because that is what makes
 // Jamf Pro store the category at all — see helpers.SelfServiceCategoryDisplayIn
 // for the wire law, which is identical on all six classic resources carrying

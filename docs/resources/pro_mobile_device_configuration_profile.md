@@ -141,7 +141,7 @@ Required:
 Optional:
 
 - `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category".
-- `description` (String) Free-text description of the profile, shown on its General tab in Jamf Pro. Jamf Pro keeps one description for both places it appears, so whatever you set here is also the profile's Self Service description. To give the two different text, set them on the profile's Options and Self Service tabs in Jamf Pro and leave this attribute unset.
+- `description` (String) Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.
 - `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually.
 - `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.
 - `redeploy_days_before_certificate_expires` (Number) Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment.

@@ -105,19 +105,8 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					// There is no self_service_description attribute, and adding one
-					// back would reintroduce issue #393. Jamf Pro's read/write API
-					// carries a single description for this object: a Self Service
-					// description sent to it is stored as this field, an empty one
-					// erases this field, and a read never returns it. Probed across
-					// eighteen create and update combinations on Jamf Pro 11.31.1,
-					// 2026-09-07; deployment_method made no difference and update
-					// matched create. The admin UI does offer the two separately, and
-					// the macOS profile equivalent keeps them independent, so this is
-					// a Jamf Pro defect. If it is fixed, restore the attribute rather
-					// than reviving the payload field on its own.
 					"description": optComputedString(
-						"Free-text description of the profile, shown on its General tab in Jamf Pro. Jamf Pro keeps one description for both places it appears, so whatever you set here is also the profile's Self Service description. To give the two different text, set them on the profile's Options and Self Service tabs in Jamf Pro and leave this attribute unset.",
+						"Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.",
 					),
 					"level": schema.StringAttribute{
 						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
