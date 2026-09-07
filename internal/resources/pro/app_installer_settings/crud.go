@@ -83,7 +83,7 @@ func (r *AppInstallerSettingsResource) Read(ctx context.Context, req resource.Re
 	}
 
 	var state AppInstallerSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

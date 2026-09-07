@@ -457,3 +457,84 @@ func TestAssignResourceModel_ImportPopulatesEverything(t *testing.T) {
 		t.Errorf("an import must populate group_membership_mapping and its mappings: %+v", state.GroupMembershipMapping)
 	}
 }
+
+// TestAssignResourceModel_ServerAddressFollowsTheForm pins the attribute the
+// resource refuses to be told and the response reports anyway.
+//
+// Jamf Security Cloud returns the resolved address for both forms, and on the
+// platform_tenant form `uem_server_url` conflicts with `platform_tenant`, so no
+// configuration can hold it. Committing the resolved value made
+// `terraform plan -generate-config-out` emit a file the resource's own validators
+// refuse — the pair reported as "cannot be configured together" and, with the
+// address in and no `oauth`, "must be configured together" as well (issue #379).
+// Create already drops it; this is the read side agreeing.
+//
+// Both forms are covered on a refresh and on an import, because the import path
+// lifts the block gates and a fix applied to only one of the two would leave an
+// imported integration carrying an address it cannot be configured with.
+func TestAssignResourceModel_ServerAddressFollowsTheForm(t *testing.T) {
+	for name, tc := range map[string]struct {
+		tenantID *string
+		wantURL  bool
+	}{
+		"platform tenant": {new("ff584e5b-d9f8-4c1c-8752-449d8c5e45d5"), false},
+		"oauth":           {nil, true},
+	} {
+		for form, isImport := range map[string]bool{"refresh": false, "import": true} {
+			t.Run(name+"/"+form, func(t *testing.T) {
+				config := jamfProConnector()
+				config.TenantID = tc.tenantID
+				config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: "256c303d-28dc-497a-aa1c-4548282c1666"}
+
+				var state UEMConnectResourceModel
+				if diags := assignUEMConnectResourceModel(&state, config, isImport); diags.HasError() {
+					t.Fatalf("unexpected diagnostics: %v", diags)
+				}
+
+				if !tc.wantURL {
+					if !state.UEMServerURL.IsNull() {
+						t.Errorf("uem_server_url = %q, want nothing: it conflicts with platform_tenant, so no configuration can hold it",
+							state.UEMServerURL.ValueString())
+					}
+					if state.PlatformTenant == nil {
+						t.Error("platform_tenant must still be populated")
+					}
+					if state.OAuth != nil {
+						t.Errorf("oauth was populated for a platform-tenant integration: %+v", state.OAuth)
+					}
+					return
+				}
+				if got := state.UEMServerURL.ValueString(); got != config.URL {
+					t.Errorf("uem_server_url = %q, want the configured address %q", got, config.URL)
+				}
+				if state.OAuth == nil {
+					t.Error("oauth must be populated on the form that supplies credentials")
+				}
+			})
+		}
+	}
+}
+
+// TestAssignDataSourceModel_ReportsTheServerAddressOnEitherForm is the other half
+// of the asymmetry. A data source owns no configuration to contradict, and the
+// address Jamf Security Cloud resolved from the tenant is the thing worth reading,
+// so it is reported whichever form set the integration up.
+func TestAssignDataSourceModel_ReportsTheServerAddressOnEitherForm(t *testing.T) {
+	for name, tenantID := range map[string]*string{
+		"platform tenant": new("ff584e5b-d9f8-4c1c-8752-449d8c5e45d5"),
+		"oauth":           nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := jamfProConnector()
+			config.TenantID = tenantID
+
+			var state UEMConnectDataSourceModel
+			if diags := assignUEMConnectDataSourceModel(context.Background(), &state, config); diags.HasError() {
+				t.Fatalf("unexpected diagnostics: %v", diags)
+			}
+			if got := state.UEMServerURL.ValueString(); got != config.URL {
+				t.Errorf("uem_server_url = %q, want the resolved address %q", got, config.URL)
+			}
+		})
+	}
+}

@@ -248,6 +248,48 @@ Two cautions: (1) prefer a fixture that **mutates the tenant minimally and rever
 
 A `Computed` attribute that the server populates **asynchronously** (e.g. `computer_prestage_enrollment.profile_uuid` — the "information out of date" window) can read empty on a plain `GET` even on a settled object, so it does not reliably round-trip on import. Add it to `ImportStateVerifyIgnore` (alongside `timeouts` and WriteOnly secrets). It is server-generated, not user-settable, so verifying it on import adds no coverage. **Do not** try to force it to populate inside `Read` (e.g. a readiness poll) — for a GET-sensitive value that can make refresh worse (a transient empty becomes a hard timeout error).
 
+### Guard configuration generation with `testhelpers.GenerateConfigStep`
+
+`terraform query -generate-config-out` and `terraform plan -generate-config-out` write state back
+out as configuration, so a `Read` that commits a value the resource's own schema or validators
+**refuse** produces a file that cannot be planned. [Issue
+#379](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues/379) collected seven
+of those across six resources, and none was reachable from an ordinary acceptance test: a step that
+applies a configuration and reads it back can only produce a state the configuration already
+described. The failures live in states the test never creates — a UEM connector authenticating as a
+platform tenant, an SMTP server nobody has set up, a patch title with no packages assigned — and
+generation is the one workflow whose whole purpose is meeting them.
+
+Append `testhelpers.GenerateConfigStep(resourceAddr)` to a lifecycle test after at least one
+`Config` step has applied, so there is a real object to adopt:
+
+```go
+Steps: []resource.TestStep{
+    {Config: unconfiguredShape, Check: …},
+    testhelpers.GenerateConfigStep(resourceAddr),
+},
+```
+
+It asserts three things in one pass: Terraform generates configuration from the object's state; the
+generated configuration is then **planned**, which fails on any schema or validator diagnostic; and
+the plan must be a **no-op import**. That last part is why the step is a plan and not a
+`terraform validate` — validate would accept a generated value the very next plan would want to
+change. The construct needs an `IdentitySchema`, since the step uses
+`resource.ImportBlockWithResourceIdentity`, which is how Terraform's own query-driven generation
+addresses an object.
+
+**Two limits worth knowing before relying on it.** A `Query: true` step ignores `GenerateConfig`
+entirely — `terraform-plugin-testing` honours it only on the import-block path — so a **list
+resource that hydrates on its own code path** is not covered by this step at all. `app_installer`,
+`patch_software_title` and `cloud_identity_provider` each build list state through a function the
+resource `Read` never calls, and those are guarded instead by `querycheck` assertions on the
+hydrated object (`include_resource = true`) that name the specific attribute which must not come
+back empty. And the step needs the object to **exist on the estate**, so it cannot be a generic
+sweep over every construct: it is applied per resource, to the state that actually broke.
+
+Prefer fixing the resource over passing `ExpectNonEmptyPlan` — a non-empty plan here is the defect
+the step exists to report.
+
 ### Profile-corpus regression test (opt-in build tag)
 
 `internal/resources/pro/macos_configuration_profile/helpers_corpus_test.go` is gated by `//go:build profile_corpus`. It iterates a 200-profile mobileconfig corpus under `testing/profile_roundtrip/` (gitignored, developer-machine-only) and asserts the mask-and-compare diff suppression is stable. Run with:

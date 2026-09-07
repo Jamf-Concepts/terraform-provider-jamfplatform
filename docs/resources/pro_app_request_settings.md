@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_app_request_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting enabled, app_store_locale or requester_user_group_id keeps that field at its current Jamf Pro value. approver_emails is required and always reflects exactly the addresses you declare. Import with terraform import jamfplatform_pro_app_request_settings.<name> singleton.
+  Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting enabled, app_store_locale or requester_user_group_id keeps that field at its current Jamf Pro value. approver_emails is required and always reflects exactly the addresses you declare, an empty set clearing every approver. Import with terraform import jamfplatform_pro_app_request_settings.<name> singleton.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_app_request_settings (Resource)
 
-Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting `enabled`, `app_store_locale` or `requester_user_group_id` keeps that field at its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.
+Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. One record per tenant. This resource adopts the existing settings on first apply. Omitting `enabled`, `app_store_locale` or `requester_user_group_id` keeps that field at its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare, an empty set clearing every approver. Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.
 
 **Required Jamf permissions**
 
@@ -59,7 +59,7 @@ resource "jamfplatform_pro_app_request_settings" "example" {
 
 ### Required
 
-- `approver_emails` (Set of String) Email addresses of the App Request approvers. At least one is required.
+- `approver_emails` (Set of String) Email addresses of the App Request approvers. The set is applied exactly as declared: removing an address revokes it, and an empty set clears every approver. The Jamf Pro admin UI expects at least one approver while App Requests are enabled, so declare an empty set only where they are switched off.
 
 ### Optional
 

@@ -10,14 +10,12 @@ package re_enrollment_settings
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -183,15 +181,5 @@ func (r *ReEnrollmentSettingsResource) Configure(ctx context.Context, req resour
 
 // ImportState handles import for the singleton.
 func (r *ReEnrollmentSettingsResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid singleton import identifier",
-			fmt.Sprintf(
-				"jamfplatform_pro_re_enrollment_settings is a singleton resource and must be imported with id %q. Got %q.",
-				helpers.SingletonID, req.ID,
-			),
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_pro_re_enrollment_settings")
 }

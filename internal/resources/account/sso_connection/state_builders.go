@@ -34,6 +34,13 @@ import (
 // framework's consistency contract. An import is the one case where the plan said
 // nothing at all.
 //
+// `pkce` and `auth_method` are read through pkceForConnectionType and
+// authMethodForConnectionType rather than adopted, because Jamf returns both for
+// every connection while this resource refuses each on the families the Jamf
+// Account console does not offer it for. Anything else added here that a
+// per-connection-type validator can refuse needs the same treatment —
+// TestGeneratedConfigurationPassesItsOwnValidators is what enforces that.
+//
 // Two collections are deliberately never touched here. `enabled_products` and
 // `enabled_environments` are configuration-authoritative: nothing Jamf returns
 // echoes their tenants or environments, so adopting anything would mean inventing
@@ -61,10 +68,10 @@ func assignConnectionResourceModel(
 	}
 	state.ConnectionType = renameFromWire(c.Type, connectionTypeFromWire)
 	state.HostingRegion = stringOrNull(c.Region)
-	state.AuthMethod = renameFromWire(c.TokenEndpointAuthMethod, authMethodFromWire)
+	state.AuthMethod = authMethodForConnectionType(state.ConnectionType, c.TokenEndpointAuthMethod)
 	state.ClientID = stringOrNull(c.ClientID)
 	state.Scopes = preferEquivalentScopes(state.Scopes, c.Scopes)
-	state.PKCE = renameFromWire(c.PkceAuthType, pkceFromWire)
+	state.PKCE = pkceForConnectionType(state.ConnectionType, c.PkceAuthType)
 	state.SendNonce = types.BoolValue(c.SendNonce)
 	state.SyncAttributesAtLogin = types.BoolValue(c.SyncUserProfileAttributesAtLogin)
 	state.OmitLoginHint = omitLoginHintFromWire(c.AliasLoginHintToIdp)
@@ -137,6 +144,61 @@ func configuredNameFromStored(stored string) string {
 		return base
 	}
 	return stored
+}
+
+// pkceForConnectionType reports the PKCE method to record, which is nothing at
+// all for the two families that cannot be configured with one.
+//
+// The Jamf Account console offers a PKCE setting only for a generic OpenID
+// Connect or an Okta connection, and validators.go refuses a configured value on
+// an Entra or a Google Workspace one. Jamf returns a pkceAuthType regardless, so
+// recording it made the resource contradict its own rule — and the way that
+// surfaces is `terraform plan -generate-config-out`, which writes state back out
+// as configuration: an Entra connection came back with `pkce = "disabled"`
+// written in, and the generated file could not be planned (issue #379).
+//
+// Recording nothing is stable rather than merely quieter, which is the part worth
+// stating because the attribute is Optional and Computed. A plan that changes
+// nothing leaves a null alone, so there is no perpetual difference; a plan that
+// changes something marks the attribute unknown, since UseNonNullStateForUnknown
+// has no non-null prior value to hold on to — and ModifyPlan reads an unknown
+// planned value as unchanged, so it adds no replacement of its own. Whatever
+// writes then follow commit through this same function, so the unknown resolves
+// to the null it planned for. The empty plan and the exempted unknown were both
+// observed by driving the framework's plan pipeline, not deduced from the schema.
+//
+// The connection type comes from the value already put in state a few lines
+// above, not from the wire, so this cannot disagree with the type the resource
+// reports.
+// authMethodForConnectionType reports the token endpoint authentication method to
+// record, which is nothing at all for a Google Workspace connection.
+//
+// It is pkceForConnectionType's twin and exists for the same reason. Jamf returns
+// a tokenEndpointAuthMethod for every connection — "client_secret" on all five
+// connections of the probe organization, Google Workspace included — while
+// validators.go refuses a configured value there, because the Jamf Account console
+// offers no such choice for Google Workspace: it always uses a client secret. So
+// recording Jamf's value made the resource contradict its own rule, and the way
+// that surfaced is `terraform plan -generate-config-out`, which writes state back
+// out as configuration.
+//
+// The stability argument is pkceForConnectionType's, unchanged: the attribute is
+// Optional and Computed, a plan that changes nothing leaves the null alone, and a
+// plan that changes something marks it unknown, which ModifyPlan reads as
+// unchanged and which resolves back through this same function.
+func authMethodForConnectionType(connectionType types.String, wire *string) types.String {
+	if connectionType.ValueString() == connectionTypeGoogle {
+		return types.StringNull()
+	}
+	return renameFromWire(wire, authMethodFromWire)
+}
+
+func pkceForConnectionType(connectionType types.String, wire *string) types.String {
+	switch connectionType.ValueString() {
+	case connectionTypeEntra, connectionTypeGoogle:
+		return types.StringNull()
+	}
+	return renameFromWire(wire, pkceFromWire)
 }
 
 // assignConnectionDataSourceModel populates the singular data source model.

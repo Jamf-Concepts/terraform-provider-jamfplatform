@@ -91,7 +91,7 @@ func (r *CloudDistributionPointResource) Read(ctx context.Context, req resource.
 	}
 
 	var state CloudDistributionPointResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

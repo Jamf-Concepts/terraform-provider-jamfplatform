@@ -161,7 +161,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Read(ctx context.Context, 
 	}
 
 	var state ComputerInventoryCollectionSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

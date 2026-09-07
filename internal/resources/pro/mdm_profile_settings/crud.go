@@ -73,7 +73,7 @@ func (r *MDMProfileSettingsResource) Read(ctx context.Context, req resource.Read
 	}
 
 	var state MDMProfileSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = types.StringValue(helpers.SingletonID)

@@ -76,7 +76,7 @@ func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resou
 	}
 
 	var state LocalAdminPasswordSettingsResourceModel
-	isImport := req.State.Raw.IsNull()
+	isImport := helpers.IsSingletonImport(ctx, req, resp)
 
 	if isImport {
 		state.ID = helpers.InitialSingletonID()

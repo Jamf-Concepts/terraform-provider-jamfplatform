@@ -491,3 +491,50 @@ func TestOrEmpty(t *testing.T) {
 		t.Errorf("expected [1.0], got %v", got)
 	}
 }
+
+// TestAssignedVersionPackagesValue pins the null-versus-empty choice on the
+// whole-server-view path the list resource streams from. version_packages is
+// Optional-only with a minimum of one entry, so a title with no assignments has
+// to arrive as an unset attribute: an empty map is the one shape the schema
+// refuses, and emitting it made `terraform plan -generate-config-out` produce
+// configuration this provider then rejected.
+func TestAssignedVersionPackagesValue(t *testing.T) {
+	ctx := context.Background()
+	ver, pkg := "1.0", "5"
+
+	t.Run("assignments populate the map", func(t *testing.T) {
+		got, diags := assignedVersionPackagesValue(ctx, []pro.PatchSoftwareTitlePackages{
+			{Version: &ver, PackageID: &pkg},
+		})
+		if diags.HasError() {
+			t.Fatalf("diags: %v", diags)
+		}
+		if got.IsNull() {
+			t.Fatalf("expected a populated map, got null")
+		}
+		if m := stateMap(t, got); len(m) != 1 || m["1.0"] != "5" {
+			t.Errorf("expected {1.0:5}, got %+v", m)
+		}
+	})
+
+	for _, tc := range []struct {
+		name string
+		pkgs []pro.PatchSoftwareTitlePackages
+	}{
+		{name: "no assignments reported", pkgs: nil},
+		{name: "every assignment unreadable", pkgs: []pro.PatchSoftwareTitlePackages{{Version: nil, PackageID: nil}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, diags := assignedVersionPackagesValue(ctx, tc.pkgs)
+			if diags.HasError() {
+				t.Fatalf("diags: %v", diags)
+			}
+			if !got.IsNull() {
+				t.Fatalf("expected a null map, got %v", got)
+			}
+			if elemType := got.ElementType(ctx); elemType != types.StringType {
+				t.Errorf("expected a typed null with element type %v, got %v", types.StringType, elemType)
+			}
+		})
+	}
+}

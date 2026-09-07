@@ -446,7 +446,7 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_ImportRejectsOtherIDs(t *t
 				ResourceName:  "jamfplatform_security_cloud_dns_hostname_mappings.test",
 				ImportState:   true,
 				ImportStateId: "not-the-singleton",
-				ExpectError:   regexp.MustCompile(`Invalid import ID`),
+				ExpectError:   regexp.MustCompile(`Invalid singleton import identifier`),
 			},
 		},
 	})

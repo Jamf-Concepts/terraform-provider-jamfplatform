@@ -138,14 +138,9 @@ func (r *HostnameMappingsResource) Read(ctx context.Context, req resource.ReadRe
 	}
 
 	var state HostnameMappingsResourceModel
-	if req.State.Raw.IsNull() {
-		state.ID = types.StringValue(helpers.SingletonID)
-		state.Timeouts = helpers.NewResourceTimeoutsNullValue(hostnameMappingsTimeoutAttributeTypes)
-	} else {
-		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)

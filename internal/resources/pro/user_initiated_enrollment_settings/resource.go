@@ -11,7 +11,6 @@ package user_initiated_enrollment_settings
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -509,15 +508,5 @@ func (r *UserInitiatedEnrollmentSettingsResource) Configure(ctx context.Context,
 
 // ImportState handles import for the singleton.
 func (r *UserInitiatedEnrollmentSettingsResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if req.ID != helpers.SingletonID {
-		resp.Diagnostics.AddError(
-			"Invalid singleton import identifier",
-			fmt.Sprintf(
-				"jamfplatform_pro_user_initiated_enrollment_settings is a singleton resource and must be imported with id %q. Got %q.",
-				helpers.SingletonID, req.ID,
-			),
-		)
-		return
-	}
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	helpers.ImportSingletonState(ctx, req, resp, "jamfplatform_pro_user_initiated_enrollment_settings")
 }

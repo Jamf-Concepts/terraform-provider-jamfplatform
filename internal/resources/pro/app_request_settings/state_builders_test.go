@@ -39,6 +39,19 @@ func TestAssignAppRequestSettingsResourceModel(t *testing.T) {
 		}
 	})
 
+	t.Run("no approvers reported", func(t *testing.T) {
+		var state AppRequestSettingsResourceModel
+		diags := assignAppRequestSettingsResourceModel(ctx, &state, &pro.AppRequestSettings{
+			IsEnabled: new(false),
+		})
+		if diags.HasError() {
+			t.Fatalf("diags: %v", diags)
+		}
+		if state.ApproverEmails.IsNull() || len(state.ApproverEmails.Elements()) != 0 {
+			t.Errorf("an omitted approver list must read as an empty (non-null) set, got %v", state.ApproverEmails)
+		}
+	})
+
 	t.Run("baseline unconfigured", func(t *testing.T) {
 		var state AppRequestSettingsResourceModel
 		empty := []string{}

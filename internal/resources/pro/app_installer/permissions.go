@@ -62,11 +62,15 @@ var pluralDataSourceSDKMethods = []string{
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
 
 // listResourceSDKMethods lists the SDK methods the App Installer list resource
-// calls (List for the query, Get for per-item hydration when IncludeResource is
-// requested).
+// reaches: List for the query, Get for per-item hydration when IncludeResource
+// is requested, and the catalog read titleNameForID answers from — hydration has
+// to name the title behind app_title_id, which the deployment read reports only
+// as an id. The catalog read is on the hydration path alone, so a plain query
+// issues the list request and nothing else.
 var listResourceSDKMethods = []string{
 	"ListAppInstallerDeploymentsV1",
 	"GetAppInstallerDeploymentV1",
+	"ListAppInstallerTitlesV1",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf privileges" Markdown

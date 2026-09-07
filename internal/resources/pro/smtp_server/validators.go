@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -118,3 +119,93 @@ func forbidBlock(resp *resource.ValidateConfigResponse, p path.Path, block types
 
 // Compile-time interface assertion.
 var _ resource.ConfigValidator = authBlockConfigValidator{}
+
+// validateSenderSettingsWhenEnabled enforces, at plan time, the sender-identity
+// rules Jamf Pro applies only to an enabled connection.
+//
+// Every sender-settings check on the wire is gated on `enabled` (probed
+// 2026-09-05, Jamf Pro 11.31, EU gateway). While the connection is disabled both
+// fields accept an empty string and round-trip as one, which is exactly how a
+// tenant that has never set up mail reads back — so an empty address is a real
+// state this resource has to be able to hold, and neither field carries a
+// minimum-length validator. Enabling is where the server turns strict, and it
+// attributes each refusal independently:
+//
+//	emailAddress not in address format → 400 [INVALID_EMAIL]
+//	displayName empty, or omitted      → 400 [INVALID_DISPLAY_NAME]
+//
+// Only the empty cases are checked here. Address *format* is left to the server:
+// it publishes no pattern, and a provider-side guess at one would refuse
+// addresses Jamf Pro accepts.
+//
+// enabled is Optional+Computed, so this must run against the resolved plan
+// rather than the configuration — a value carried forward by
+// UseStateForUnknown is what the apply will actually send. An unknown value
+// defers to the server on the same reasoning as
+// app_request_settings.validateEnabledRequiresRequesterGroup: a first apply that
+// leaves display_name out has no prior state to resolve from, so the check
+// cannot fire and smtpServerWriteErrorDiagnostic translates the refusal instead.
+//
+// The connection host obeys the same gating and is checked here too, from the
+// same probe (2026-09-05, Jamf Pro 11.31, EU gateway):
+//
+//	enabled:false, host ""  → 200, round-trips
+//	enabled:true,  host ""  → 400 [FIELD_REQUIRED_FOR_SMTP] connectionSettings.host
+//	                          "Field required; please ensure this field is not blank
+//	                           or empty when authentication is set to None or Basic
+//	                           Credentials"
+//
+// An unconfigured tenant reads back with an empty host alongside its empty sender
+// address — the same read returned authenticationType NONE, enabled false,
+// senderSettings.emailAddress "" and connectionSettings.host "" — so the host
+// carries no minimum-length validator either, for exactly the reason the address
+// does not: it would make that tenant undeclarable and its generated
+// configuration unplannable.
+//
+// The server's own message names the condition as "None or Basic Credentials",
+// which is the same set connection_settings is permitted for at all
+// (authBlockConfigValidator forbids the block for GRAPH_API and GOOGLE_MAIL). So
+// the block being present is the gate, and no separate authentication_type test
+// is needed here.
+func validateSenderSettingsWhenEnabled(enabled types.Bool, sender *smtpSenderSettingsModel, connection *smtpConnectionSettingsModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if enabled.IsNull() || enabled.IsUnknown() || !enabled.ValueBool() {
+		return diags
+	}
+
+	if connection != nil && !connection.Host.IsUnknown() && connection.Host.ValueString() == "" {
+		diags.AddAttributeError(
+			path.Root("connection_settings").AtName("host"),
+			"SMTP server address required to enable the connection",
+			"Jamf Pro accepts an empty connection host only while the connection is disabled, and a tenant "+
+				"that has never set up mail reads back with an empty one. Set connection_settings.host to the "+
+				"SMTP server Jamf Pro should relay through, or leave enabled false.",
+		)
+	}
+
+	if sender == nil {
+		return diags
+	}
+
+	if !sender.EmailAddress.IsUnknown() && sender.EmailAddress.ValueString() == "" {
+		diags.AddAttributeError(
+			path.Root("sender_settings").AtName("email_address"),
+			"Sender email address required to enable the SMTP server",
+			"Jamf Pro accepts an empty sender email address only while the connection is disabled, and a tenant "+
+				"that has never set up mail reads back with an empty one. Set sender_settings.email_address to the "+
+				"address Jamf Pro should send from, or leave enabled false.",
+		)
+	}
+
+	if !sender.DisplayName.IsUnknown() && sender.DisplayName.ValueString() == "" {
+		diags.AddAttributeError(
+			path.Root("sender_settings").AtName("display_name"),
+			"Sender display name required to enable the SMTP server",
+			"Jamf Pro requires a non-empty sender display name on an enabled connection, and refuses the write "+
+				"when it is empty or absent. Set sender_settings.display_name to the name recipients should see, "+
+				"or leave enabled false.",
+		)
+	}
+
+	return diags
+}

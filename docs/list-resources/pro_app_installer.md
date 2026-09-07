@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_app_installer List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists App Installer deployments. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read.
+  Lists App Installer deployments. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. A plain query returns each deployment's id and display name; when Terraform is generating configuration each deployment is read in full, including the name of the App Catalog title it deploys.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_app_installer (List Resource)
 
-Lists App Installer deployments. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read.
+Lists App Installer deployments. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. A plain query returns each deployment's id and display name; when Terraform is generating configuration each deployment is read in full, including the name of the App Catalog title it deploys.
 
 **Required Jamf permissions**
 
