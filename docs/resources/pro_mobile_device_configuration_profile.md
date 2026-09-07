@@ -104,9 +104,8 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
   }
 
   self_service = {
-    self_service_description = "Installs the corporate VPN configuration."
-    feature_on_main_page     = true
-    removal_disallowed       = "Never"
+    feature_on_main_page = true
+    removal_disallowed   = "Never"
     categories = [
       { id = "44" },
     ]
@@ -142,7 +141,7 @@ Required:
 Optional:
 
 - `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category".
-- `description` (String) Free-text description shown in the Jamf Pro admin UI.
+- `description` (String) Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.
 - `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually.
 - `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.
 - `redeploy_days_before_certificate_expires` (Number) Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment.
@@ -219,7 +218,6 @@ Optional:
 - `categories` (Attributes List) Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's "Display in" tick; Jamf Pro keeps no undisplayed state and offers no per-category "Feature in" control for mobile profiles, so neither is exposed here. (see [below for nested schema](#nestedatt--self_service--categories))
 - `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
 - `removal_disallowed` (String) Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.
-- `self_service_description` (String) Description shown in Self Service.
 
 <a id="nestedatt--self_service--categories"></a>
 ### Nested Schema for `self_service.categories`

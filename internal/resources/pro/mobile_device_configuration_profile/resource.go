@@ -105,7 +105,9 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"description": optComputedString("Free-text description shown in the Jamf Pro admin UI."),
+					"description": optComputedString(
+						"Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.",
+					),
 					"level": schema.StringAttribute{
 						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
 						Optional:            true,
@@ -181,8 +183,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 				MarkdownDescription: "Self Service integration. Only meaningful when `general.distribution_method = \"Make Available in Self Service\"`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"self_service_description": optComputedString("Description shown in Self Service."),
-					"feature_on_main_page":     optComputedBool("Feature the profile on the Self Service main page."),
+					"feature_on_main_page": optComputedBool("Feature the profile on the Self Service main page."),
 					"removal_disallowed": schema.StringAttribute{
 						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.",
 						Optional:            true,

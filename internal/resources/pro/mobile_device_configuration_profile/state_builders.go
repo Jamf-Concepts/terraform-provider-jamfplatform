@@ -361,7 +361,6 @@ func flattenSelfService(ss *proclassic.MobileDeviceConfigurationProfileSelfServi
 	if ss == nil {
 		return
 	}
-	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
 	state.FeatureOnMainPage = helpers.ReconcileOptionalBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
 
 	if ss.Security != nil {
