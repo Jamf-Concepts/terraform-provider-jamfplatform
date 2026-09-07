@@ -337,7 +337,6 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   self_service = {
-    self_service_description = "Acceptance-test mobile profile auth"
     feature_on_main_page     = true
     removal_disallowed       = "With Authorization"
     authorization_password   = %q
@@ -356,7 +355,6 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   self_service = {
-    self_service_description = "Acceptance-test mobile profile"
     feature_on_main_page     = true
     removal_disallowed       = "Never"
   }
@@ -1299,7 +1297,6 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
     }
   }
   self_service = {
-    self_service_description = "Omit-retains contract description."
     feature_on_main_page     = true
     removal_disallowed       = "Never"
     categories = [
@@ -1348,7 +1345,6 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
     }
   }
   self_service = {
-    self_service_description = "Omit-retains contract description."
     removal_disallowed       = "Never"
   }
   depends_on = [
@@ -1447,10 +1443,9 @@ func stateID(s *terraform.State, addr string) (string, error) {
 
 // omitRetainedOnServer asserts the server's copy still carries every value the
 // omit-retains config declared in its first step. Inline fixture ids are read
-// from state because Jamf allocates them at apply. self_service_description is
-// declared but not asserted: the classic GET returns
-// <self_service_description/> for a mobile profile whatever was written
-// (wire-probed 2026-09-06), so no read can witness whether the server kept it.
+// from state because Jamf allocates them at apply. There is no
+// self_service_description to assert: the attribute is gone, because the classic
+// API wrote it into general.description and never echoed it back (issue #393).
 func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestCheckFunc {
 	c := testhelpers.NewProClassicClient(t)
 	const addr = "jamfplatform_pro_mobile_device_configuration_profile.test"
@@ -1639,7 +1634,6 @@ func TestAccResource_MobileDeviceConfigurationProfile_OmittedBlocksRetained(t *t
 				Config: omitRetainsGeneralOnlyConfig(name, payload, f),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr(addr, "scope.targets.mobile_device_group_ids.#"),
-					resource.TestCheckNoResourceAttr(addr, "self_service.self_service_description"),
 					omitRetainedOnServer(t, f),
 				),
 			},

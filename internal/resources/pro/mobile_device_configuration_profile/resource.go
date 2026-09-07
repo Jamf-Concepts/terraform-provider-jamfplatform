@@ -105,7 +105,10 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"description": optComputedString("Free-text description shown in the Jamf Pro admin UI."),
+					"description": optComputedString(
+						"Free-text description of the profile. Jamf Pro shows it on the General tab and reuses it as the profile's Self Service description.\n\n" +
+							"The admin UI offers those as two separate fields. The classic API keeps one: whatever you write to the Self Service description lands here, and Jamf Pro never returns the other field, so this provider exposes only this attribute. Put the Self Service wording here. To make the two read differently, set them in the admin UI and leave this attribute unset, so Terraform asserts neither. Probed against Jamf Pro 11.31.1 on 2026-09-07; the macOS profile endpoint keeps its two fields independent, which makes this a Jamf Pro defect.",
+					),
 					"level": schema.StringAttribute{
 						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
 						Optional:            true,
@@ -181,8 +184,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 				MarkdownDescription: "Self Service integration. Only meaningful when `general.distribution_method = \"Make Available in Self Service\"`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"self_service_description": optComputedString("Description shown in Self Service."),
-					"feature_on_main_page":     optComputedBool("Feature the profile on the Self Service main page."),
+					"feature_on_main_page": optComputedBool("Feature the profile on the Self Service main page."),
 					"removal_disallowed": schema.StringAttribute{
 						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.",
 						Optional:            true,

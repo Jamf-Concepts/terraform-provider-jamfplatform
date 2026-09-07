@@ -86,13 +86,16 @@ func TestResource_SelfServiceAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected self_service to be SingleNestedAttribute")
 	}
-	for _, child := range []string{"self_service_description", "feature_on_main_page", "removal_disallowed", "authorization_password", "categories"} {
+	for _, child := range []string{"feature_on_main_page", "removal_disallowed", "authorization_password", "categories"} {
 		if _, ok := ss.Attributes[child]; !ok {
 			t.Fatalf("expected self_service.%s", child)
 		}
 	}
-	// mobile does NOT have notification or display_name attrs
-	for _, absent := range []string{"self_service_display_name", "install_button_text", "display_notifications", "notification_location", "notification_subject", "notification_message"} {
+	// mobile does NOT have notification or display_name attrs, and
+	// self_service_description is gone: the classic API wrote it into
+	// general.description and never echoed it, so the attribute could only
+	// overwrite a sibling (issue #393).
+	for _, absent := range []string{"self_service_description", "self_service_display_name", "install_button_text", "display_notifications", "notification_location", "notification_subject", "notification_message"} {
 		if _, ok := ss.Attributes[absent]; ok {
 			t.Fatalf("self_service.%s must not exist on mobile profiles", absent)
 		}

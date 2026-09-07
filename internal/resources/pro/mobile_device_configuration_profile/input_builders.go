@@ -305,8 +305,7 @@ func buildScopeExclusions(ctx context.Context, m *scope.MobileScopeExclusionsMod
 func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfigurationProfileSelfService, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	ss := &proclassic.MobileDeviceConfigurationProfileSelfService{
-		SelfServiceDescription: helpers.OptionalStringPointer(m.SelfServiceDescription),
-		FeatureOnMainPage:      helpers.OptionalBoolPointer(m.FeatureOnMainPage),
+		FeatureOnMainPage: helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 	}
 
 	hasDisallowed := !m.RemovalDisallowed.IsNull() && !m.RemovalDisallowed.IsUnknown() && m.RemovalDisallowed.ValueString() != ""

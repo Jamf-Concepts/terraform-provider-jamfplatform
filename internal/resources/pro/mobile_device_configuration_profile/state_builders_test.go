@@ -525,3 +525,31 @@ func TestAssignResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
 		t.Fatalf("expected SelfService hydrated; got nil")
 	}
 }
+
+// TestBuildSelfService_NeverSendsASelfServiceDescription pins that the input
+// builder emits no <self_service_description>, and says why, because the
+// obvious "the schema is missing a field the API has" reading is wrong.
+//
+// Wire-probed 2026-09-07 across eighteen create and update combinations: the
+// element is a write-alias for <description>. Whatever it carried replaced
+// general.description, an empty value wiped it, and the read returned an empty
+// element every time. Sending it can only overwrite a sibling the practitioner
+// set, so the attribute was removed (issue #393). The admin UI does show a
+// separate Self Service description and the macOS profile endpoint keeps the two
+// independent, so this is a Jamf Pro defect; if it is fixed, restore the
+// attribute rather than reviving the element here on its own.
+func TestBuildSelfService_NeverSendsASelfServiceDescription(t *testing.T) {
+	ss, diags := buildSelfService(&SelfServiceModel{
+		FeatureOnMainPage: types.BoolValue(true),
+		RemovalDisallowed: types.StringValue("Never"),
+	})
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if ss == nil {
+		t.Fatal("self_service payload must be built")
+	}
+	if ss.SelfServiceDescription != nil {
+		t.Errorf("self_service_description must never be sent; got %q", *ss.SelfServiceDescription)
+	}
+}

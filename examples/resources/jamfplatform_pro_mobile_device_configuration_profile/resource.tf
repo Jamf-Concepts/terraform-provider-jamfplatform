@@ -45,9 +45,8 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
   }
 
   self_service = {
-    self_service_description = "Installs the corporate VPN configuration."
-    feature_on_main_page     = true
-    removal_disallowed       = "Never"
+    feature_on_main_page = true
+    removal_disallowed   = "Never"
     categories = [
       { id = "44" },
     ]

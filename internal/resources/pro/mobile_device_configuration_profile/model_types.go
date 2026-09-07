@@ -55,11 +55,10 @@ type GeneralModel struct {
 // profiles omit the notification block, install_button_text, display_name,
 // and force_users_to_view_description that macOS profiles carry.
 type SelfServiceModel struct {
-	SelfServiceDescription types.String              `tfsdk:"self_service_description"`
-	FeatureOnMainPage      types.Bool                `tfsdk:"feature_on_main_page"`
-	RemovalDisallowed      types.String              `tfsdk:"removal_disallowed"`
-	AuthorizationPassword  types.String              `tfsdk:"authorization_password"`
-	Categories             []SelfServiceCategoryItem `tfsdk:"categories"`
+	FeatureOnMainPage     types.Bool                `tfsdk:"feature_on_main_page"`
+	RemovalDisallowed     types.String              `tfsdk:"removal_disallowed"`
+	AuthorizationPassword types.String              `tfsdk:"authorization_password"`
+	Categories            []SelfServiceCategoryItem `tfsdk:"categories"`
 }
 
 // SelfServiceCategoryItem models a single <category> inside
