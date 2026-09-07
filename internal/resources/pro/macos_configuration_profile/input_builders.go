@@ -343,7 +343,7 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 		items := make([]proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
 		for _, c := range m.Categories {
 			item := proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem{
-				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
+				DisplayIn: helpers.SelfServiceCategoryDisplayIn(c.DisplayIn),
 				FeatureIn: helpers.OptionalBoolPointer(c.FeatureIn),
 			}
 			if id := helpers.StringIDPtr(c.ID); id != nil {

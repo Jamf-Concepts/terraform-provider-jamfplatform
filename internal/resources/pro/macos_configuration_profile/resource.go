@@ -214,14 +214,14 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"categories": schema.ListNestedAttribute{
-						MarkdownDescription: "Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service \"Display in\" / \"Feature in\" columns of the admin UI.",
+						MarkdownDescription: "Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service \"Display in\" / \"Feature in\" columns of the admin UI. Omit the block entirely and the categories set outside Terraform are left alone; declare it (including `[]`, which clears it) and Terraform manages the list.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id":         schema.StringAttribute{MarkdownDescription: "Category ID.", Required: true},
 								"name":       optComputedStringInList("Category display name. Returned by Jamf Pro."),
-								"display_in": optComputedBoolInList("Display the profile in this category."),
-								"feature_in": optComputedBoolInList("Feature the profile in this category."),
+								"display_in": optComputedBoolInList("Display the profile in this category. Defaults to `true`, which is what listing the category means, matching the tick under the admin UI's \"Display in\". Setting `false` removes the category rather than storing it undisplayed, because Jamf Pro keeps no such state."),
+								"feature_in": optComputedBoolInList("Feature the profile in this category, matching the admin UI's \"Feature in\" column. Has no effect unless `display_in` is `true`."),
 							},
 						},
 					},

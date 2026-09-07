@@ -216,7 +216,7 @@ Optional:
 Optional:
 
 - `authorization_password` (String, Sensitive) Authorization password required to remove the profile. Only effective when `removal_disallowed = "With Authorization"`. Jamf Pro stores and returns the value in plaintext, so it is held in Terraform state and masked in plan/apply output.
-- `categories` (Attributes List) Categories under which the profile appears in Self Service. (see [below for nested schema](#nestedatt--self_service--categories))
+- `categories` (Attributes List) Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's "Display in" tick; Jamf Pro keeps no undisplayed state and offers no per-category "Feature in" control for mobile profiles, so neither is exposed here. (see [below for nested schema](#nestedatt--self_service--categories))
 - `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
 - `removal_disallowed` (String) Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.
 - `self_service_description` (String) Description shown in Self Service.

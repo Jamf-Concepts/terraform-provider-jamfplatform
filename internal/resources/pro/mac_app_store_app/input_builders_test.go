@@ -179,3 +179,19 @@ func TestBuildMacAppSelfService_CategoriesAndIcon(t *testing.T) {
 		t.Errorf("category id not mapped: %+v", c.ID)
 	}
 }
+
+// TestBuildMacAppSelfService_CategoryIDOnlySendsDisplayIn guards the config
+// shape that silently stored nothing. See helpers.SelfServiceCategoryDisplayIn.
+func TestBuildMacAppSelfService_CategoryIDOnlySendsDisplayIn(t *testing.T) {
+	t.Parallel()
+	ss := buildMacAppSelfService(&MacAppSelfServiceModel{
+		SelfServiceCategories: []MacAppSelfServiceCategoryModel{{ID: types.StringValue("64")}},
+	})
+	if ss == nil || ss.SelfServiceCategories == nil || ss.SelfServiceCategories.Category == nil {
+		t.Fatal("expected a category on the wire")
+	}
+	cats := *ss.SelfServiceCategories.Category
+	if len(cats) != 1 || cats[0].DisplayIn == nil || !*cats[0].DisplayIn {
+		t.Fatalf("display_in must be sent as true for an id-only category, got %+v", cats)
+	}
+}

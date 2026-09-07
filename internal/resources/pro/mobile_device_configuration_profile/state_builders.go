@@ -54,7 +54,7 @@ func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassi
 		state.SelfService = &SelfServiceModel{}
 	}
 	if state.SelfService != nil && p.SelfService != nil {
-		flattenSelfService(p.SelfService, state.SelfService)
+		flattenSelfService(p.SelfService, state.SelfService, includeUnmanaged)
 	}
 	return diags
 }
@@ -355,7 +355,9 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.MobileDeviceConf
 	return out
 }
 
-func flattenSelfService(ss *proclassic.MobileDeviceConfigurationProfileSelfService, state *SelfServiceModel) {
+// flattenSelfService refreshes the Self Service block the caller already
+// manages. includeUnmanaged carries the same meaning as in assignResourceModel.
+func flattenSelfService(ss *proclassic.MobileDeviceConfigurationProfileSelfService, state *SelfServiceModel, includeUnmanaged bool) {
 	if ss == nil {
 		return
 	}
@@ -367,18 +369,46 @@ func flattenSelfService(ss *proclassic.MobileDeviceConfigurationProfileSelfServi
 		state.AuthorizationPassword = helpers.PreserveStringWhenWireEmpty(ss.Security.Password, state.AuthorizationPassword)
 	}
 
-	if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil && len(*ss.SelfServiceCategories.Category) > 0 {
-		cats := *ss.SelfServiceCategories.Category
-		items := make([]SelfServiceCategoryItem, 0, len(cats))
-		for _, c := range cats {
-			it := SelfServiceCategoryItem{
-				ID:   idPointerToString(c.ID),
-				Name: helpers.StringPointerValueOrNull(c.Name),
-			}
-			items = append(items, it)
+	// categories is ownership-gated like every sibling above it. It used not to
+	// be: the hydration tested only what the wire carried, so dropping
+	// categories from a self_service block you otherwise keep failed the apply
+	// with "Provider produced inconsistent result after apply" — the plan said
+	// null and Read handed back a populated list. The server retains them
+	// correctly; this was ours (issue #392, which names this resource alongside
+	// the macOS profile).
+	//
+	// Optional-only, so a nil slice means the configuration does not manage the
+	// attribute and an empty non-nil one means it declares `[]`. Managed, the
+	// wire is authoritative including when it is empty. Unmanaged, only the
+	// first hydration populates it — import, config generation and the Update
+	// merge base — and even then only if the server has any, so an ordinary
+	// refresh never fabricates a list the practitioner never wrote.
+	switch {
+	case state.Categories != nil:
+		state.Categories = flattenSelfServiceCategories(ss.SelfServiceCategories)
+	case includeUnmanaged:
+		if cats := flattenSelfServiceCategories(ss.SelfServiceCategories); len(cats) > 0 {
+			state.Categories = cats
 		}
-		state.Categories = items
 	}
+}
+
+// flattenSelfServiceCategories maps the wire category list onto the model,
+// returning an empty (non-nil) slice when the server carries none so a managed
+// attribute can converge on a declared `[]`.
+func flattenSelfServiceCategories(c *proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategories) []SelfServiceCategoryItem {
+	if c == nil || c.Category == nil {
+		return []SelfServiceCategoryItem{}
+	}
+	cats := *c.Category
+	items := make([]SelfServiceCategoryItem, 0, len(cats))
+	for _, cat := range cats {
+		items = append(items, SelfServiceCategoryItem{
+			ID:   idPointerToString(cat.ID),
+			Name: helpers.StringPointerValueOrNull(cat.Name),
+		})
+	}
+	return items
 }
 
 func idPointerToString(id *int) types.String {

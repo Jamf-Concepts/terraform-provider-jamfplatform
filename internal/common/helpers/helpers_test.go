@@ -482,3 +482,34 @@ func TestNewResourceTimeoutsNullValue(t *testing.T) {
 		t.Error("expected non-unknown result")
 	}
 }
+
+// TestSelfServiceCategoryDisplayIn pins the default that makes a Self Service
+// category store at all. An unset display_in used to travel as omitted, and
+// Jamf Pro discards a <category> without it — so `categories = [{ id = "64" }]`
+// reported success and stored nothing, on all six classic resources carrying
+// the block. See SelfServiceCategoryDisplayIn for the wire record.
+func TestSelfServiceCategoryDisplayIn(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		in   types.Bool
+		want bool
+	}{
+		{"null defaults to true, because an omitted display_in is discarded", types.BoolNull(), true},
+		{"unknown defaults to true for the same reason", types.BoolUnknown(), true},
+		{"an explicit true is sent as true", types.BoolValue(true), true},
+		{"an explicit false is preserved — it is how a category is removed", types.BoolValue(false), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := SelfServiceCategoryDisplayIn(tc.in)
+			if got == nil {
+				t.Fatal("display_in must never be omitted: the server discards a category without it")
+			}
+			if *got != tc.want {
+				t.Errorf("got %v, want %v", *got, tc.want)
+			}
+		})
+	}
+}

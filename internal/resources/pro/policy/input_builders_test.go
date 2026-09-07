@@ -212,3 +212,21 @@ func TestBuildPolicyPackageConfiguration_EmptyReturnsNil(t *testing.T) {
 		t.Fatalf("expected nil for empty package_configuration, got %+v", got)
 	}
 }
+
+// TestBuildPolicySelfService_CategoryIDOnlySendsDisplayIn guards the config
+// shape that silently stored nothing: Jamf Pro discards a Self Service
+// <category> that carries no <display_in>. See
+// helpers.SelfServiceCategoryDisplayIn.
+func TestBuildPolicySelfService_CategoryIDOnlySendsDisplayIn(t *testing.T) {
+	t.Parallel()
+	ss := buildPolicySelfService(&PolicySelfServiceModel{
+		Categories: []PolicySelfServiceCategoryItemModel{{ID: types.StringValue("64")}},
+	})
+	if ss == nil || ss.SelfServiceCategories == nil || ss.SelfServiceCategories.Category == nil {
+		t.Fatal("expected a category on the wire")
+	}
+	cats := *ss.SelfServiceCategories.Category
+	if len(cats) != 1 || cats[0].DisplayIn == nil || !*cats[0].DisplayIn {
+		t.Fatalf("display_in must be sent as true for an id-only category, got %+v", cats)
+	}
+}

@@ -229,7 +229,7 @@ Optional:
 
 Optional:
 
-- `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. (see [below for nested schema](#nestedatt--self_service--categories))
+- `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. Omit the block entirely and the categories set outside Terraform are left alone; declare it (including `[]`, which clears it) and Terraform manages the list. (see [below for nested schema](#nestedatt--self_service--categories))
 - `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. See `notification_location` for the one pairing Jamf Pro cannot store.
 - `ensure_users_view_description` (Boolean) Force users to view the description before installing.
 - `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
@@ -252,8 +252,8 @@ Required:
 
 Optional:
 
-- `display_in` (Boolean) Display the profile in this category.
-- `feature_in` (Boolean) Feature the profile in this category.
+- `display_in` (Boolean) Display the profile in this category. Defaults to `true`, which is what listing the category means, matching the tick under the admin UI's "Display in". Setting `false` removes the category rather than storing it undisplayed, because Jamf Pro keeps no such state.
+- `feature_in` (Boolean) Feature the profile in this category, matching the admin UI's "Feature in" column. Has no effect unless `display_in` is `true`.
 - `name` (String) Category display name. Returned by Jamf Pro.
 
 

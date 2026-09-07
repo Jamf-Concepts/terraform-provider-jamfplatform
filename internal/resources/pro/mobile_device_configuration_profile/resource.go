@@ -198,7 +198,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Sensitive:           true,
 					},
 					"categories": schema.ListNestedAttribute{
-						MarkdownDescription: "Categories under which the profile appears in Self Service.",
+						MarkdownDescription: "Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's \"Display in\" tick; Jamf Pro keeps no undisplayed state and offers no per-category \"Feature in\" control for mobile profiles, so neither is exposed here.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{

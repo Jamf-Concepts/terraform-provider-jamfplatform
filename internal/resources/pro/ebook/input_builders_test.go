@@ -198,3 +198,19 @@ func TestBuildEbookInput_IconStampedIntoBothBlocks(t *testing.T) {
 // idSetNames is an alias for idSet used where the elements are names rather than
 // numeric IDs, for readability in the scope tests.
 func idSetNames(names ...string) types.Set { return idSet(names...) }
+
+// TestBuildEbookSelfService_CategoryIDOnlySendsDisplayIn guards the config
+// shape that silently stored nothing. See helpers.SelfServiceCategoryDisplayIn.
+func TestBuildEbookSelfService_CategoryIDOnlySendsDisplayIn(t *testing.T) {
+	t.Parallel()
+	ss := buildEbookSelfService(&EbookSelfServiceModel{
+		Categories: []EbookSelfServiceCategoryModel{{ID: types.StringValue("64")}},
+	})
+	if ss == nil || ss.SelfServiceCategories == nil || ss.SelfServiceCategories.Category == nil {
+		t.Fatal("expected a category on the wire")
+	}
+	cats := *ss.SelfServiceCategories.Category
+	if len(cats) != 1 || cats[0].DisplayIn == nil || !*cats[0].DisplayIn {
+		t.Fatalf("display_in must be sent as true for an id-only category, got %+v", cats)
+	}
+}

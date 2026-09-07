@@ -1743,7 +1743,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_device_group.target, jamfplatform_device_group.exclude,
-    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
     jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
     jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
   ]
@@ -1755,12 +1755,14 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 // drops their gated children: scope loses limitations, exclusions and the
 // user_ids target category, so the PUT re-emits the scope from the granular
 // merge; self_service loses the Optional+Computed ensure_users_view_description
-// leaf. self_service.categories stays declared, not by choice: wire-probed
-// 2026-09-06, a <self_service> sent without <self_service_categories> leaves
-// the categories in place on the server, and flattenSelfService then hydrates
-// them into a list the plan had as null, which Terraform rejects as an
-// inconsistent result. Until that read is gated on prior state, dropping the
-// categories here fails the apply rather than testing the contract.
+// leaf, and self_service.categories.
+//
+// Dropping categories is the point of the step rather than an omission: the
+// categories stay on the server (omitRetainedOnServer asserts it on the wire)
+// while state drops them, so this is the acceptance proof of the ownership gate
+// from issue #392. Before that gate flattenSelfService hydrated whatever the
+// wire carried, and this shape failed the apply with "Provider produced
+// inconsistent result after apply" instead of testing the contract.
 func omitRetainsParentsOnlyConfig(name, payload string, f omitRetainsFixtures) string {
 	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_macos_configuration_profile" "test" {
@@ -1788,20 +1790,13 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
     notification_subject      = "Omit retains subject"
     notification_message      = "Omit retains message"
     removal_disallowed        = "Never"
-    categories = [
-      {
-        id         = jamfplatform_pro_category.omit.id
-        display_in = true
-        feature_in = true
-      },
-    ]
   }
   depends_on = [
     jamfplatform_pro_category.omit,
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_device_group.target, jamfplatform_device_group.exclude,
-    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
     jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
     jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
   ]
@@ -1830,7 +1825,7 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_device_group.target, jamfplatform_device_group.exclude,
-    jamfplatform_pro_user_group.exclude,
+    jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
     jamfplatform_pro_network_segment.limit, jamfplatform_pro_network_segment.exclude,
     jamfplatform_pro_ibeacon.limit, jamfplatform_pro_ibeacon.exclude,
   ]
@@ -2104,7 +2099,7 @@ func TestAccResource_MacOSConfigurationProfile_OmittedBlocksRetained(t *testing.
 			{
 				Config: omitRetainsParentsOnlyConfig(name, payload, f),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(addr, "self_service.categories.#", "1"),
+					resource.TestCheckNoResourceAttr(addr, "self_service.categories.#"),
 					resource.TestCheckResourceAttr(addr, "self_service.ensure_users_view_description", "true"),
 					resource.TestCheckNoResourceAttr(addr, "scope.limitations.network_segment_ids.#"),
 					resource.TestCheckNoResourceAttr(addr, "scope.exclusions.computer_ids.#"),

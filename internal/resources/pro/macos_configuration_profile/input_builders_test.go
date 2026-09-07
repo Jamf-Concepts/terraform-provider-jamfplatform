@@ -421,3 +421,23 @@ func TestBuildSelfServiceNotification(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildSelfService_CategoryIDOnlyStillSendsDisplayIn is the regression
+// guard for the config shape that silently stored nothing.
+func TestBuildSelfService_CategoryIDOnlyStillSendsDisplayIn(t *testing.T) {
+	t.Parallel()
+
+	ss, _ := buildSelfService(&SelfServiceModel{
+		Categories: []SelfServiceCategoryItem{{ID: types.StringValue("64")}},
+	})
+	if ss == nil || ss.SelfServiceCategories == nil || ss.SelfServiceCategories.Category == nil {
+		t.Fatal("expected a category on the wire")
+	}
+	cats := *ss.SelfServiceCategories.Category
+	if len(cats) != 1 {
+		t.Fatalf("expected 1 category, got %d", len(cats))
+	}
+	if cats[0].DisplayIn == nil || !*cats[0].DisplayIn {
+		t.Fatalf("display_in must be sent as true for an id-only category, got %v", cats[0].DisplayIn)
+	}
+}

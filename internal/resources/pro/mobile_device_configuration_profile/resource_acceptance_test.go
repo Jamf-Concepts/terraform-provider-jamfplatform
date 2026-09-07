@@ -1186,6 +1186,11 @@ type omitRetainsFixtures struct {
 // retained exclusion from a leaked target.
 func omitRetainsFixtureHCL(suffix string) string {
 	return fmt.Sprintf(`
+resource "jamfplatform_pro_category" "omit" {
+  name     = "tf-acc-mdcp-omit-cat-%[1]s"
+  priority = 7
+}
+
 resource "jamfplatform_pro_building" "target" {
   name = "tf-acc-mdcp-omit-bld-t-%[1]s"
 }
@@ -1248,12 +1253,18 @@ resource "jamfplatform_pro_ibeacon" "exclude" {
 // that does not resolve against the tenant's directory integration), the
 // per-device categories (no enrolled mobile device fixture exists),
 // authorization_password (its removal_disallowed pairing injects a payload the
-// mask must strip, which is a separate test's concern), and
-// self_service.categories, because this endpoint never stores one: wire-probed
-// 2026-09-06, a POST or PUT carrying <self_service_categories> (id-only or
-// id+name) answers 2xx and every GET afterwards returns
-// <self_service_categories/>, so the attribute's Computed name can never
-// become known after apply on this resource.
+// mask must strip, which is a separate test's concern).
+//
+// self_service.categories used to be left out: a POST or PUT carrying
+// <self_service_categories> answered 2xx and every GET afterwards returned
+// <self_service_categories/>, so the attribute's Computed name could never
+// become known after apply. The cause was the payload rather than the
+// endpoint — the SDK type could not express <display_in>, which is what makes
+// Jamf Pro store the category at all, and an id-only <category> is discarded.
+// SDK v0.22.2 added the field, the write now sends it, and the category is
+// covered here: wire-probed 2026-09-07, a create carrying display_in stores the
+// category, and a PUT omitting <self_service_categories> retains it while a
+// control field changed in the same request lands.
 func omitRetainsConfig(name, payload string, f omitRetainsFixtures) string {
 	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
@@ -1291,8 +1302,14 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
     self_service_description = "Omit-retains contract description."
     feature_on_main_page     = true
     removal_disallowed       = "Never"
+    categories = [
+      {
+        id = jamfplatform_pro_category.omit.id
+      },
+    ]
   }
   depends_on = [
+    jamfplatform_pro_category.omit,
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
@@ -1307,6 +1324,13 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 // drops their gated children: scope loses limitations, exclusions and the two
 // user target categories, so the PUT re-emits the scope from the granular
 // merge; self_service loses the Optional+Computed feature_on_main_page leaf.
+//
+// self_service.categories is dropped here too, which is the point of the step
+// rather than an omission: the categories stay on the server (omitRetainedOnServer
+// asserts it on the wire) while state drops them, so this is the acceptance
+// proof of the ownership gate from issue #392. Before that gate the hydration
+// tested only what the wire carried, and this shape failed the apply with
+// "Provider produced inconsistent result after apply".
 func omitRetainsParentsOnlyConfig(name, payload string, f omitRetainsFixtures) string {
 	return omitRetainsFixtureHCL(f.suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
@@ -1328,6 +1352,7 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
     removal_disallowed       = "Never"
   }
   depends_on = [
+    jamfplatform_pro_category.omit,
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
@@ -1355,6 +1380,7 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   depends_on = [
+    jamfplatform_pro_category.omit,
     jamfplatform_pro_building.target, jamfplatform_pro_building.exclude,
     jamfplatform_pro_department.target, jamfplatform_pro_department.exclude,
     jamfplatform_pro_user_group.target, jamfplatform_pro_user_group.exclude,
@@ -1431,6 +1457,7 @@ func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestChec
 	return func(s *terraform.State) error {
 		want := map[string]string{}
 		for _, fx := range []struct{ key, addr string }{
+			{"catO", "jamfplatform_pro_category.omit"},
 			{"bldT", "jamfplatform_pro_building.target"},
 			{"bldX", "jamfplatform_pro_building.exclude"},
 			{"depT", "jamfplatform_pro_department.target"},
@@ -1544,7 +1571,17 @@ func omitRetainedOnServer(t *testing.T, f omitRetainsFixtures) resource.TestChec
 				if ss.Security == nil {
 					return fmt.Errorf("self_service.security: absent")
 				}
-				return testhelpers.RequireEqual("self_service.removal_disallowed", "Never", testhelpers.Deref(ss.Security.RemovalDisallowed))
+				if err := testhelpers.RequireEqual("self_service.removal_disallowed", "Never", testhelpers.Deref(ss.Security.RemovalDisallowed)); err != nil {
+					return err
+				}
+				if ss.SelfServiceCategories == nil {
+					return fmt.Errorf("self_service.categories: absent")
+				}
+				return requireOnlyID("self_service.categories", ss.SelfServiceCategories.Category,
+					func(c proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem) *int {
+						return c.ID
+					},
+					want["catO"])
 			})(s)
 	}
 }
@@ -1582,6 +1619,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_OmittedBlocksRetained(t *t
 				Config: omitRetainsConfig(name, payload, f),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(addr, "self_service.feature_on_main_page", "true"),
+					resource.TestCheckResourceAttr(addr, "self_service.categories.#", "1"),
 					resource.TestCheckResourceAttr(addr, "scope.exclusions.ibeacon_ids.#", "1"),
 					omitRetainedOnServer(t, f),
 				),
@@ -1590,6 +1628,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_OmittedBlocksRetained(t *t
 				Config: omitRetainsParentsOnlyConfig(name, payload, f),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(addr, "self_service.feature_on_main_page", "true"),
+					resource.TestCheckNoResourceAttr(addr, "self_service.categories.#"),
 					resource.TestCheckNoResourceAttr(addr, "scope.limitations.network_segment_ids.#"),
 					resource.TestCheckNoResourceAttr(addr, "scope.exclusions.mobile_device_group_ids.#"),
 					resource.TestCheckNoResourceAttr(addr, "scope.targets.user_ids.#"),

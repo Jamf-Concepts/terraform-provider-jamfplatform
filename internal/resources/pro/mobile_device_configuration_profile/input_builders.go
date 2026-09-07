@@ -8,6 +8,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
@@ -291,6 +292,16 @@ func buildScopeExclusions(ctx context.Context, m *scope.MobileScopeExclusionsMod
 	return e, diags
 }
 
+// buildSelfService maps the Self Service block onto the classic payload.
+//
+// Every <category> it emits carries display_in=true, because that is what makes
+// Jamf Pro store the category at all — see helpers.SelfServiceCategoryDisplayIn
+// for the wire law, which is identical on all six classic resources carrying
+// this block. The value is unconditional here because this resource exposes no
+// `display_in` attribute for the practitioner to set: alone among the six, the
+// mobile profile's GET echoes only <id> and <name>, so a configured value could
+// never be read back or drift-checked, and the only value other than true
+// deletes the category, which listing it cannot have meant.
 func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfigurationProfileSelfService, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	ss := &proclassic.MobileDeviceConfigurationProfileSelfService{
@@ -314,9 +325,11 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfiguratio
 	}
 
 	if len(m.Categories) > 0 {
-		items := make([]proclassic.Category, 0, len(m.Categories))
+		items := make([]proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
 		for _, c := range m.Categories {
-			item := proclassic.Category{}
+			item := proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem{
+				DisplayIn: helpers.SelfServiceCategoryDisplayIn(types.BoolNull()),
+			}
 			if id := helpers.StringIDPtr(c.ID); id != nil {
 				item.ID = id
 			}

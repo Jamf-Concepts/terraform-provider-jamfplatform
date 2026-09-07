@@ -331,7 +331,7 @@ func TestFlattenSelfService_SecurityRemovalDisallowed(t *testing.T) {
 		Security: &proclassic.MobileDeviceConfigurationProfileSelfServiceSecurity{
 			RemovalDisallowed: new(removalDisallowedNever),
 		},
-	}, state)
+	}, state, false)
 	if state.RemovalDisallowed.ValueString() != removalDisallowedNever {
 		t.Fatalf("RemovalDisallowed: got %q", state.RemovalDisallowed.ValueString())
 	}
@@ -345,29 +345,83 @@ func TestFlattenSelfService_AuthorizationPasswordReconciled(t *testing.T) {
 			RemovalDisallowed: new(removalDisallowedWithAuthorization),
 			Password:          new("s3cr3t"),
 		},
-	}, state)
+	}, state, false)
 	if state.AuthorizationPassword.ValueString() != "s3cr3t" {
 		t.Fatalf("AuthorizationPassword: got %q", state.AuthorizationPassword.ValueString())
 	}
 }
 
-func TestFlattenSelfService_CategoriesAsList(t *testing.T) {
+func TestFlattenSelfService_Categories(t *testing.T) {
 	t.Parallel()
-	state := &SelfServiceModel{}
-	flattenSelfService(&proclassic.MobileDeviceConfigurationProfileSelfService{
-		SelfServiceCategories: &proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategories{
-			Category: &[]proclassic.Category{
-				{ID: new(58), Name: new("Applications")},
-				{ID: new(44), Name: new("Auto-Update")},
+
+	wire := func() *proclassic.MobileDeviceConfigurationProfileSelfService {
+		return &proclassic.MobileDeviceConfigurationProfileSelfService{
+			SelfServiceCategories: &proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategories{
+				Category: &[]proclassic.MobileDeviceConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem{
+					{ID: new(58), Name: new("Applications")},
+					{ID: new(44), Name: new("Auto-Update")},
+				},
 			},
-		},
-	}, state)
-	if len(state.Categories) != 2 {
-		t.Fatalf("expected 2 categories, got %d", len(state.Categories))
+		}
 	}
-	if state.Categories[0].ID.ValueString() != "58" || state.Categories[1].ID.ValueString() != "44" {
-		t.Fatalf("category IDs: got %v / %v", state.Categories[0].ID, state.Categories[1].ID)
-	}
+
+	t.Run("managed: the wire is authoritative", func(t *testing.T) {
+		t.Parallel()
+		state := &SelfServiceModel{Categories: []SelfServiceCategoryItem{{ID: types.StringValue("999")}}}
+		flattenSelfService(wire(), state, false)
+		if len(state.Categories) != 2 {
+			t.Fatalf("expected 2 categories, got %d", len(state.Categories))
+		}
+		if state.Categories[0].ID.ValueString() != "58" || state.Categories[1].ID.ValueString() != "44" {
+			t.Fatalf("category IDs: got %v / %v", state.Categories[0].ID, state.Categories[1].ID)
+		}
+		if state.Categories[0].Name.ValueString() != "Applications" {
+			t.Fatalf("category[0].Name: got %q", state.Categories[0].Name.ValueString())
+		}
+	})
+
+	t.Run("managed and the wire is empty: converges on the declared empty list", func(t *testing.T) {
+		t.Parallel()
+		state := &SelfServiceModel{Categories: []SelfServiceCategoryItem{}}
+		flattenSelfService(&proclassic.MobileDeviceConfigurationProfileSelfService{}, state, false)
+		if state.Categories == nil {
+			t.Fatal("a declared empty list must stay non-nil, or `categories = []` never converges")
+		}
+		if len(state.Categories) != 0 {
+			t.Fatalf("expected 0 categories, got %d", len(state.Categories))
+		}
+	})
+
+	t.Run("unmanaged on an ordinary refresh: left alone", func(t *testing.T) {
+		t.Parallel()
+		// The #392 regression, which names this resource alongside the macOS
+		// profile. Hydrating here is what made dropping the attribute fail
+		// "inconsistent result after apply".
+		state := &SelfServiceModel{}
+		flattenSelfService(wire(), state, false)
+		if state.Categories != nil {
+			t.Fatalf("an unmanaged attribute must stay nil, got %d categories", len(state.Categories))
+		}
+	})
+
+	t.Run("unmanaged on first hydration: populated", func(t *testing.T) {
+		t.Parallel()
+		// import / config generation / the Update merge base.
+		state := &SelfServiceModel{}
+		flattenSelfService(wire(), state, true)
+		if len(state.Categories) != 2 {
+			t.Fatalf("import must hydrate, got %d categories", len(state.Categories))
+		}
+	})
+
+	t.Run("unmanaged first hydration with nothing on the server: still nil", func(t *testing.T) {
+		t.Parallel()
+		state := &SelfServiceModel{}
+		flattenSelfService(&proclassic.MobileDeviceConfigurationProfileSelfService{}, state, true)
+		if state.Categories != nil {
+			t.Fatal("import must not fabricate an empty list the practitioner never wrote")
+		}
+	})
 }
 
 func TestAssignResourceModel_TopLevelIDFromGeneral(t *testing.T) {

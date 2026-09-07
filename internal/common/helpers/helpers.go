@@ -606,3 +606,34 @@ func NormalizedFilterString(value types.String) (string, bool) {
 
 	return trimmed, true
 }
+
+// SelfServiceCategoryDisplayIn encodes a Self Service category's `display_in`
+// for a classic write, defaulting an unset value to true.
+//
+// `display_in` is what makes Jamf Pro store the category at all. A <category>
+// carrying only <id>, or <id> plus <name>, or <feature_in> without
+// <display_in>, is silently discarded with HTTP 201, and display_in=false is a
+// deletion gesture rather than a stored value. The law is identical on all six
+// classic resources that carry a self_service_categories block — policy, ebook,
+// mac_application, mobile_device_application and both configuration profiles —
+// so it is a property of the Self Service category relation rather than a quirk
+// of one endpoint. Wire-probed on Jamf Pro 11.31.1, 2026-09-07, each write
+// proven to have landed by a control field changed in the same request.
+//
+// So an unset value cannot travel as omitted, which is what OptionalBoolPointer
+// does: `categories = [{ id = "64" }]` reported success and stored nothing on
+// every one of the six. Defaulting to true is what the attribute means — a
+// category is listed because the practitioner wants the object displayed in it,
+// which is exactly the admin UI's "Display in" tick — and it leaves
+// display_in = false available as the explicit way to remove one.
+//
+// `feature_in` keeps OptionalBoolPointer. It is a genuine per-resource
+// capability rather than a gate: the four macOS and ebook resources store and
+// echo it, both mobile resources store none at all, and it has no effect
+// without display_in either way.
+func SelfServiceCategoryDisplayIn(value types.Bool) *bool {
+	if value.IsNull() || value.IsUnknown() {
+		return new(true)
+	}
+	return new(value.ValueBool())
+}
