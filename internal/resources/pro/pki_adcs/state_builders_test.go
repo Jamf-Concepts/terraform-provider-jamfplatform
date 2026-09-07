@@ -35,7 +35,7 @@ func TestAssignResourceModel_Inbound(t *testing.T) {
 		ServerCertificate: &adcsCertInputModel{DataWo: types.StringValue("kept"), WoVersion: types.Int64Value(3)},
 		ClientCertificate: &adcsClientCertInput{DataWo: types.StringValue("kept"), PasswordWo: types.StringValue("kept"), WoVersion: types.Int64Value(3)},
 	}
-	if diags := assignAdcsResourceModel(context.Background(), &state, resp); diags.HasError() {
+	if diags := assignAdcsResourceModel(context.Background(), &state, resp, false); diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
 
@@ -78,7 +78,7 @@ func TestAssignResourceModel_Outbound_NoCertDetails(t *testing.T) {
 		ClientCert:  nil,
 	}
 	state := AdcsResourceModel{}
-	if diags := assignAdcsResourceModel(context.Background(), &state, resp); diags.HasError() {
+	if diags := assignAdcsResourceModel(context.Background(), &state, resp, false); diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
 	if state.ConnectorMode.ValueString() != connectorModeOutbound {

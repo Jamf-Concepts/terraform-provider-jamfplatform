@@ -72,7 +72,7 @@ func (r *DigicertResource) Create(ctx context.Context, req resource.CreateReques
 		resp.Diagnostics.AddError("Error reading created Jamf Pro DigiCert integration", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got)...)
+	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -149,7 +149,8 @@ func (r *DigicertResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	resp.Diagnostics.Append(assignDigicertServerFields(&state, got)...)
+	hydrating := importHydration(isImport, state.DisplayName)
+	resp.Diagnostics.Append(assignDigicertServerFields(&state, got, hydrating)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -199,7 +200,7 @@ func (r *DigicertResource) Update(ctx context.Context, req resource.UpdateReques
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro DigiCert integration", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got)...)
+	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

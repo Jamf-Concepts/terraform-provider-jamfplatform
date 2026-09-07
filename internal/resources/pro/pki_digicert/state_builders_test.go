@@ -27,7 +27,7 @@ func TestAssignDigicertServerFields_WithCert(t *testing.T) {
 	}
 
 	var state DigicertResourceModel
-	if diags := assignDigicertServerFields(&state, resp); diags.HasError() {
+	if diags := assignDigicertServerFields(&state, resp, false); diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
 
@@ -62,7 +62,7 @@ func TestAssignDigicertServerFields_WithCert(t *testing.T) {
 func TestAssignDigicertServerFields_NoCert(t *testing.T) {
 	resp := &pro.DigiCertSettingResponse{ID: "5", CaName: "x", Fqdn: "y"}
 	var state DigicertResourceModel
-	if diags := assignDigicertServerFields(&state, resp); diags.HasError() {
+	if diags := assignDigicertServerFields(&state, resp, false); diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
 	if !state.ClientCertificateDetails.IsNull() {
