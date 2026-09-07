@@ -459,6 +459,8 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
       jss_user_group_ids = [jamfplatform_pro_user_group.b.id]
     }
   }
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
@@ -483,6 +485,8 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
       jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
     }
   }
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
@@ -494,12 +498,22 @@ func vppaOmitRetainsGeneralOnlyConfig(token, suffix, name string) string {
 resource "jamfplatform_pro_vpp_assignment" "test" {
   name                 = %[1]q
   vpp_admin_account_id = jamfplatform_pro_volume_purchasing_location.vpp.id
+
+  depends_on = [jamfplatform_pro_user_group.a, jamfplatform_pro_user_group.b]
 }
 `, name)
 }
 
 // vppaOmitRetainsFixtures is the location + two static user groups every
 // omit-retains step shares.
+//
+// Every omit-retains step's assignment carries an explicit depends_on over both
+// groups, for the reason in vpp_invitation's copy of this fixture: the
+// interpolations that would imply the ordering are what the later steps drop,
+// the server goes on scoping the assignment to a group the configuration no
+// longer mentions, and a group destroyed before it is refused with "The
+// following items are dependent on this Static User Group". depends_on is
+// ordering metadata only and reaches no payload.
 func vppaOmitRetainsFixtures(token, suffix, name string) string {
 	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_user_group" "a" {
