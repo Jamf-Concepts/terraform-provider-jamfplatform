@@ -38,7 +38,7 @@ func TestAssignResourceModel_FullResponse(t *testing.T) {
 			Attachment: &[]proclassic.Attachment{{ID: new(31), Filename: new("Signature.jpg"), URI: new("https://x")}},
 		},
 	}
-	assignEnrollmentProfileResourceModel(&state, api)
+	assignEnrollmentProfileResourceModel(&state, api, false)
 
 	if state.Invitation.ValueString() != "138277457037961032316766183186860280252" {
 		t.Errorf("invitation = %q", state.Invitation.ValueString())
@@ -66,12 +66,44 @@ func TestAssignResourceModel_DoesNotFabricateOmittedBlocks(t *testing.T) {
 		Location:   &proclassic.Location{},
 		Purchasing: &proclassic.Purchasing{IsPurchased: new(true), IsLeased: new(false)},
 	}
-	assignEnrollmentProfileResourceModel(&state, api)
+	assignEnrollmentProfileResourceModel(&state, api, false)
 	if state.Location != nil {
 		t.Errorf("omitted location must stay nil, got %+v", state.Location)
 	}
 	if state.Purchasing != nil {
 		t.Errorf("omitted purchasing must stay nil, got %+v", state.Purchasing)
+	}
+}
+
+// TestAssignResourceModel_HydratesOnImport covers first-time import, where
+// every block arrives nil and name is unset: both blocks must be adopted from
+// the wire so a declared block does not plan as an addition on the first plan
+// after import.
+func TestAssignResourceModel_HydratesOnImport(t *testing.T) {
+	state := EnrollmentProfileResourceModel{ID: types.StringValue("1")}
+	api := &proclassic.MobileDeviceEnrollmentProfile{
+		General:    &proclassic.MobileDeviceEnrollmentProfileGeneral{ID: new(1), Name: new("x"), Invitation: bigInt(t, "5")},
+		Location:   &proclassic.Location{Username: new("alice")},
+		Purchasing: &proclassic.Purchasing{IsPurchased: new(true), PoNumber: new("PO-1")},
+	}
+	assignEnrollmentProfileResourceModel(&state, api, importHydration(false, state.Name))
+	if state.Location == nil || state.Location.Username.ValueString() != "alice" {
+		t.Errorf("location not hydrated on import: %+v", state.Location)
+	}
+	if state.Purchasing == nil || state.Purchasing.PONumber.ValueString() != "PO-1" {
+		t.Errorf("purchasing not hydrated on import: %+v", state.Purchasing)
+	}
+}
+
+func TestImportHydration(t *testing.T) {
+	if !importHydration(true, types.StringValue("managed")) {
+		t.Error("identity-only import (no prior state) must hydrate")
+	}
+	if !importHydration(false, types.StringNull()) {
+		t.Error("passthrough import (sparse id-only state) must hydrate")
+	}
+	if importHydration(false, types.StringValue("managed")) {
+		t.Error("a genuine refresh must not hydrate")
 	}
 }
 
@@ -81,7 +113,7 @@ func TestAssignResourceModel_RealnameFallback(t *testing.T) {
 		General:  &proclassic.MobileDeviceEnrollmentProfileGeneral{ID: new(1), Name: new("x")},
 		Location: &proclassic.Location{Realname: new("Legacy Name"), Phone: new("999")}, // only legacy fields set
 	}
-	assignEnrollmentProfileResourceModel(&state, api)
+	assignEnrollmentProfileResourceModel(&state, api, false)
 	if state.Location.RealName.ValueString() != "Legacy Name" {
 		t.Errorf("real_name should fall back to legacy realname, got %q", state.Location.RealName.ValueString())
 	}

@@ -21,11 +21,20 @@ import (
 // (manageMembers=true). Smart groups always set members=null in state — the
 // server-resolved user list is informational and would cause endless drift
 // if surfaced as a managed attribute.
+//
+// hydrating releases the manageMembers ownership gate on first-time import,
+// where members arrives null and would otherwise stay null however many users
+// the group holds — leaving a declared members list planning as an addition on
+// the first plan after import. It adopts the list only when the server actually
+// returns members: adopting an empty one would store [] where a create that
+// never declared the attribute stores null, which breaks ImportStateVerify.
+// See importHydration for the signal.
 func assignUserGroupResourceModel(
 	ctx context.Context,
 	state *UserGroupResourceModel,
 	ug *proclassic.UserGroup,
 	manageMembers bool,
+	hydrating bool,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if ug == nil {
@@ -59,7 +68,7 @@ func assignUserGroupResourceModel(
 	switch {
 	case isSmart:
 		state.Members = types.SetNull(types.StringType)
-	case manageMembers:
+	case manageMembers, hydrating && len(memberIDs) > 0:
 		// Coerce nil → empty slice. types.SetValueFrom(ctx, T, nil) returns a
 		// null set, which conflicts with an explicit empty-set plan (the user
 		// transitioned members from non-empty to []) and surfaces as the
@@ -78,6 +87,21 @@ func assignUserGroupResourceModel(
 	}
 
 	return diags
+}
+
+// importHydration reports whether this Read is the first one to write state for
+// the group, which is the only time the members ownership gate may be released.
+//
+// stateAbsent covers the identity-only import path (Terraform 1.12+), where the
+// framework hands Read no prior state at all. The name check covers
+// `terraform import <addr> <id>`, where ImportStatePassthroughID leaves a
+// sparse-but-non-null state carrying only the id — so req.State.Raw.IsNull() is
+// false and cannot be used on its own. name is schema-Required, so Create and
+// Update always populate it before any Read; it can only be null here on a
+// first-time hydration. Sample it before assignUserGroupResourceModel runs,
+// which overwrites it from the wire.
+func importHydration(stateAbsent bool, name types.String) bool {
+	return stateAbsent || name.IsNull()
 }
 
 // assignUserGroupDataSourceModel populates a data source model from a UserGroup

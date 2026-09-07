@@ -56,7 +56,7 @@ func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceM
 		state.SelfService = &MobileAppSelfServiceModel{}
 	}
 	if state.SelfService != nil && a.SelfService != nil {
-		flattenMobileAppSelfService(a.SelfService, state.SelfService)
+		flattenMobileAppSelfService(a.SelfService, state.SelfService, includeUnmanaged)
 	}
 	if includeUnmanaged && state.Vpp == nil && a.Vpp != nil {
 		state.Vpp = &MobileAppVppModel{}
@@ -241,7 +241,20 @@ func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplic
 // The rest of the block, the icon included, is echoed unconditionally and reads
 // from the wire. Wire-probed against Jamf Pro 11.31.1 on 2026-09-06; see issue
 // #387.
-func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfService, state *MobileAppSelfServiceModel) {
+//
+// self_service_icon and self_service_categories are ownership-gated like the
+// blocks above them, and includeUnmanaged releases both on first hydration —
+// import, config generation and the Update merge base. Without it the caller
+// allocating an empty self_service block was not enough: the zero-value struct
+// carries a nil icon pointer and a nil category slice, so neither ever
+// populated, on that Read or any later one (issue #391). categories is
+// Optional-only, so a nil slice means the configuration does not manage the
+// attribute and an empty non-nil one means it declares `[]`; unmanaged, it is
+// adopted only when the server has any, so an ordinary refresh never fabricates
+// a list the practitioner never wrote. This mirrors
+// mobile_device_configuration_profile, which took the same fix under issue
+// #392.
+func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfService, state *MobileAppSelfServiceModel, includeUnmanaged bool) {
 	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
 	state.AfterInstallButtonText = helpers.WireWhenPresentString(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
 	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
@@ -255,13 +268,19 @@ func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfServi
 	state.NotificationSubject = helpers.WireWhenPresentString(ss.NotificationSubject, state.NotificationSubject)
 	state.NotificationMessage = helpers.WireWhenPresentString(ss.NotificationMessage, state.NotificationMessage)
 
+	if includeUnmanaged && state.SelfServiceIcon == nil && ss.SelfServiceIcon != nil {
+		state.SelfServiceIcon = &MobileAppSelfServiceIconModel{}
+	}
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
 		state.SelfServiceIcon.ID = helpers.ReconcileOptionalStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
 		state.SelfServiceIcon.URI = helpers.ReconcileOptionalStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
 	}
 
-	if state.SelfServiceCategories != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
-		flattenMobileAppSelfServiceCategories(*ss.SelfServiceCategories.Category, state)
+	if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
+		cats := *ss.SelfServiceCategories.Category
+		if state.SelfServiceCategories != nil || (includeUnmanaged && len(cats) > 0) {
+			flattenMobileAppSelfServiceCategories(cats, state)
+		}
 	}
 }
 

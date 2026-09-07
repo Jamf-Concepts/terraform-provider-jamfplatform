@@ -218,7 +218,7 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.AddError("Error reading created Jamf Pro user group", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignUserGroupResourceModel(createCtx, &plan, got, manageMembers)...)
+	resp.Diagnostics.Append(assignUserGroupResourceModel(createCtx, &plan, got, manageMembers, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -298,8 +298,9 @@ func (r *UserGroupResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	manageMembers := helpers.IsConfiguredValue(state.Members)
+	hydrating := importHydration(isImport, state.Name)
 	priorCriteria := toCriterionModels(state.Criteria)
-	resp.Diagnostics.Append(assignUserGroupResourceModel(readCtx, &state, got, manageMembers)...)
+	resp.Diagnostics.Append(assignUserGroupResourceModel(readCtx, &state, got, manageMembers, hydrating)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -370,7 +371,7 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro user group", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignUserGroupResourceModel(updateCtx, &plan, got, manageMembers)...)
+	resp.Diagnostics.Append(assignUserGroupResourceModel(updateCtx, &plan, got, manageMembers, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

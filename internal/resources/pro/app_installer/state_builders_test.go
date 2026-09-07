@@ -201,3 +201,36 @@ func TestAssignAppInstallerDataSourceModel(t *testing.T) {
 		t.Errorf("deployment_type: got %q", data.DeploymentType.ValueString())
 	}
 }
+
+// TestFlattenSelfServiceSettings_HydratesCategoriesOnImport covers first-time
+// import, where prior is nil because the parent block had not been written yet:
+// categories must come from the wire rather than staying null under a block
+// that did hydrate.
+func TestFlattenSelfServiceSettings_HydratesCategoriesOnImport(t *testing.T) {
+	cats := []pro.AppTitleDeploymentSelfServiceSettingsCategoriesItem{{ID: "7", Featured: new(true)}}
+	out := flattenSelfServiceSettings(nil, &pro.AppTitleDeploymentSelfServiceSettings{Categories: &cats}, true)
+	if out == nil {
+		t.Fatal("block must be built")
+	}
+	if len(out.Categories) != 1 {
+		t.Fatalf("categories expected 1 entry, got %d", len(out.Categories))
+	}
+	if out.Categories[0].CategoryID.ValueString() != "7" {
+		t.Errorf("categories[0].category_id = %q, want 7", out.Categories[0].CategoryID.ValueString())
+	}
+}
+
+// TestFlattenSelfServiceSettings_ImportWithNoCategoriesStaysNil asserts the
+// non-empty rule: storing an empty set where a create that never declared the
+// attribute stores null would break ImportStateVerify.
+func TestFlattenSelfServiceSettings_ImportWithNoCategoriesStaysNil(t *testing.T) {
+	empty := []pro.AppTitleDeploymentSelfServiceSettingsCategoriesItem{}
+	out := flattenSelfServiceSettings(nil, &pro.AppTitleDeploymentSelfServiceSettings{Categories: &empty}, true)
+	if out.Categories != nil {
+		t.Errorf("categories must stay nil when the server carries none, got %+v", out.Categories)
+	}
+	out = flattenSelfServiceSettings(nil, &pro.AppTitleDeploymentSelfServiceSettings{}, true)
+	if out.Categories != nil {
+		t.Errorf("categories must stay nil when the server omits the list, got %+v", out.Categories)
+	}
+}

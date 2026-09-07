@@ -11,8 +11,9 @@
 // Writes are a MERGE (omit=retain, empty=clear); the update step mutates scalars,
 // clears a field, and moves the site to exercise that path. Attachments are
 // read-only (the upload endpoint rejects bearer auth for this resource) so no
-// attachment write is exercised. location/purchasing are not populated on import
-// (they refresh only when authored) → ImportStateVerifyIgnore covers them.
+// attachment write is exercised. location/purchasing are hydrated on first-time
+// import and go through the same flattener as a refresh, so ImportStateVerify
+// covers them rather than ignoring them (#391).
 
 package mobile_device_enrollment_profile_test
 
@@ -126,7 +127,7 @@ func TestAccResource_ProMobileDeviceEnrollmentProfile(t *testing.T) {
 				ResourceName:            resAddr,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"timeouts", "location", "purchasing"},
+				ImportStateVerifyIgnore: []string{"timeouts"},
 			},
 		},
 	})

@@ -143,14 +143,14 @@ func TestHydrateListedCloudIdentityProvider_EntraIDHydrates(t *testing.T) {
 	}
 }
 
-// TestHydrateListedCloudIdentityProvider_MappingsStayNull pins the one place an
-// over-eager hydration would reintroduce a consistency bug. `mappings` is
-// Optional and not Computed, and nobody has authored it on the generation path,
-// so the block must stay absent even though the read returns Jamf Pro's own
-// generated mappings. An import of the same provider reaches the same
-// conclusion, so a generated configuration that carried them would plan as an
-// addition against the state import produces.
-func TestHydrateListedCloudIdentityProvider_MappingsStayNull(t *testing.T) {
+// TestHydrateListedCloudIdentityProvider_MappingsHydrate pins that the
+// generated-config path carries Jamf Pro's own generated mappings. It used to
+// pin the opposite: `mappings` is Optional and not Computed, and nobody has
+// authored it on the generation path, so the block was left absent — which
+// agreed with what import produced but made the mappings unrepresentable in a
+// generated configuration. Import now hydrates them too, so both paths agree on
+// the populated shape instead (issue #391).
+func TestHydrateListedCloudIdentityProvider_MappingsHydrate(t *testing.T) {
 	read := func(ctx context.Context, id string) (*pro.AzureConfiguration, error) {
 		return fullAzureConfiguration(), nil
 	}
@@ -162,8 +162,11 @@ func TestHydrateListedCloudIdentityProvider_MappingsStayNull(t *testing.T) {
 	if state.Azure == nil {
 		t.Fatal("entra_id block must be populated")
 	}
-	if state.Azure.Mappings != nil {
-		t.Errorf("mappings must stay null on the generated-config path; got %+v", state.Azure.Mappings)
+	if state.Azure.Mappings == nil {
+		t.Fatal("mappings must hydrate on the generated-config path")
+	}
+	if got := state.Azure.Mappings.UserName.ValueString(); got != "userPrincipalName" {
+		t.Errorf("mappings.user_name = %q, want userPrincipalName", got)
 	}
 }
 

@@ -57,7 +57,7 @@ func (r *EnrollmentProfileResource) Create(ctx context.Context, req resource.Cre
 		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device enrollment profile", err.Error())
 		return
 	}
-	assignEnrollmentProfileResourceModel(&plan, got)
+	assignEnrollmentProfileResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, enrollmentProfileIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -107,6 +107,8 @@ func (r *EnrollmentProfileResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
+	hydrating := importHydration(isImport, state.Name)
+
 	got, err := r.client.GetMobileDeviceEnrollmentProfileByID(readCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
@@ -121,7 +123,7 @@ func (r *EnrollmentProfileResource) Read(ctx context.Context, req resource.ReadR
 		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device enrollment profile", err.Error())
 		return
 	}
-	assignEnrollmentProfileResourceModel(&state, got)
+	assignEnrollmentProfileResourceModel(&state, got, hydrating)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, enrollmentProfileIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -156,7 +158,7 @@ func (r *EnrollmentProfileResource) Update(ctx context.Context, req resource.Upd
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device enrollment profile", err.Error())
 		return
 	}
-	assignEnrollmentProfileResourceModel(&plan, got)
+	assignEnrollmentProfileResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, enrollmentProfileIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

@@ -296,13 +296,14 @@ var errNoEntraConfiguration = errors.New("the read returned no Entra ID connecti
 // two provider types, and a third would be dropped by the read that fails on it
 // rather than by a guess made here.
 //
-// `mappings` is deliberately left null, which happens by virtue of the state
-// starting with no `entra_id` block: assignAzureState surfaces mappings only
-// when a prior model shows the operator authored them, because the attribute is
-// Optional and not Computed. Nothing is authored on this path. The Read that
-// follows an import of the same provider reaches the same conclusion from the
-// same gate, so a generated configuration carrying Jamf Pro's own generated
-// mappings would plan as an addition against the state that import produces.
+// `mappings` is hydrated from the wire (hydrating=true). There is no plan to
+// stay consistent with on a config-generation run, and the Read that follows an
+// import of the same provider now hydrates it too, so the generated
+// configuration and the state that import produces agree. Both used to leave it
+// null, which agreed with each other but made a connection's real mappings
+// unrepresentable (issue #391). A connection created without the block echoes
+// eleven empty strings rather than server defaults, and hydration skips those,
+// so most generated configurations still carry no mappings block.
 func hydrateListedCloudIdentityProvider(ctx context.Context, item pro.CloudIDPCommonResponse, read azureConfigReader) (*CloudIdentityProviderResourceModel, *skippedCloudIdentityProvider) {
 	if item.ProviderName == providerGoogle {
 		return nil, &skippedCloudIdentityProvider{
@@ -331,7 +332,7 @@ func hydrateListedCloudIdentityProvider(ctx context.Context, item pro.CloudIDPCo
 		ProviderName: types.StringValue(providerNameFromWire(item.ProviderName)),
 		Timeouts:     helpers.NewResourceTimeoutsNullValue(cloudIdentityProviderTimeoutAttributeTypes),
 	}
-	assignAzureState(state, got)
+	assignAzureState(state, got, true)
 	return state, nil
 }
 

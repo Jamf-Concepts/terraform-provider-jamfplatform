@@ -47,7 +47,7 @@ func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.Ap
 		state.NotificationSettings = flattenNotificationSettings(d.NotificationSettings)
 	}
 	if (includeUnmanaged || state.SelfServiceSettings != nil) && d.SelfServiceSettings != nil {
-		state.SelfServiceSettings = flattenSelfServiceSettings(state.SelfServiceSettings, d.SelfServiceSettings)
+		state.SelfServiceSettings = flattenSelfServiceSettings(state.SelfServiceSettings, d.SelfServiceSettings, includeUnmanaged)
 	}
 }
 
@@ -83,7 +83,16 @@ func flattenNotificationSettings(n *pro.AppTitleDeploymentNotificationSettings) 
 // Synthesising an empty slice for a nil prior would turn an omitted (null) set
 // into an empty set and trip the "produced inconsistent result after apply"
 // check. See feedback_optional_computed_nested_object.
-func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppTitleDeploymentSelfServiceSettings) *SelfServiceSettingsModel {
+//
+// includeUnmanaged releases that prior-model gate on first hydration. The
+// caller's own gate on self_service_settings already released there, but prior
+// is the pre-assignment value of state.SelfServiceSettings, which is nil on
+// import — so the block hydrated while categories underneath it did not, on
+// that Read or any later one (issue #391). Adoption is still conditional on the
+// server actually reporting categories, because storing an empty set where a
+// create that never declared the attribute stores null breaks
+// ImportStateVerify.
+func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppTitleDeploymentSelfServiceSettings, includeUnmanaged bool) *SelfServiceSettingsModel {
 	out := &SelfServiceSettingsModel{
 		Description:                 stringPtrValueOrNull(s.Description),
 		ForceViewDescription:        boolPtrValueOrFalse(s.ForceViewDescription),
@@ -91,7 +100,9 @@ func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppTitle
 		IncludeInFeaturedCategory:   boolPtrValueOrFalse(s.IncludeInFeaturedCategory),
 	}
 
-	if prior == nil || prior.Categories == nil {
+	declared := prior != nil && prior.Categories != nil
+	hydrate := includeUnmanaged && s.Categories != nil && len(*s.Categories) > 0
+	if !declared && !hydrate {
 		return out
 	}
 

@@ -220,7 +220,9 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 				Config: googleConfig(displayName, rotKs, rotPw, domain, 90, false, 2),
 				Check:  resource.ComposeAggregateTestCheckFunc(rotationCheck...),
 			},
-			// Step 4: ImportState — WriteOnly + rotation trigger are unrecoverable.
+			// Step 4: ImportState — WriteOnly + rotation trigger are unrecoverable,
+			// and mappings are hydrated in full by an import (#391) while this
+			// config declares none, so the two legitimately differ.
 			{
 				ResourceName:      rn,
 				ImportState:       true,
@@ -230,6 +232,7 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 					"google.server.keystore.file",
 					"google.server.keystore.password",
 					"google.server.keystore.wo_version",
+					"google.mappings",
 				},
 			},
 		},
@@ -356,12 +359,14 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 					resource.TestCheckResourceAttrSet(rn, "entra_id.deprecated_consent"),
 				),
 			},
-			// ImportState — no WriteOnly attrs on Entra ID.
+			// ImportState — no WriteOnly attrs on Entra ID, but mappings are
+			// hydrated in full by an import (#391) and this config declares
+			// none, so the two legitimately differ.
 			{
 				ResourceName:            rn,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"timeouts"},
+				ImportStateVerifyIgnore: []string{"timeouts", "entra_id.mappings"},
 			},
 		},
 	})
@@ -458,7 +463,8 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 				Config: cfg("uid"),
 				Check:  resource.TestCheckResourceAttr(rn, "google.mappings.user_mappings.user_id", "uid"),
 			},
-			// Import — mappings is unrecoverable without prior state (see doc above).
+			// Import — mappings hydrates in full (#391), while this config declares
+			// only user_mappings, so the sibling sub-blocks legitimately differ.
 			{
 				ResourceName:      rn,
 				ImportState:       true,

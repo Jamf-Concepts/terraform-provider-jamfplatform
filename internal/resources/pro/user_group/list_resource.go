@@ -41,12 +41,13 @@ func NewUserGroupListResource() list.ListResource {
 // is applied client-side via filters.ApplyClassicFilter after the full list
 // is fetched. List items carry only id, name, is_smart, is_notify_on_change on
 // the wire, so on `include_resource` each item is re-fetched by id to hydrate
-// site, criteria and member_count — otherwise smart groups export with null
-// criteria and fail the "smart groups require a criterion" validator. Members
-// stay null (mirroring import; membership is managed only when configured), and
-// directory-service / group-ref criteria are not value-resolved here (the
-// managed resource does that on first Read). A per-item read failure drops just
-// that item (logged).
+// site, criteria, members and member_count — otherwise smart groups export with
+// null criteria and fail the "smart groups require a criterion" validator.
+// Hydration mirrors first-time import: there is no plan to stay consistent
+// with, so a static group's members are taken from the wire rather than
+// dropped, and a memberless group keeps them null. Directory-service /
+// group-ref criteria are not value-resolved here (the managed resource does
+// that on first Read). A per-item read failure drops just that item (logged).
 type UserGroupListResource struct {
 	client *proclassic.Client
 }
@@ -161,7 +162,7 @@ func (r *UserGroupListResource) List(ctx context.Context, req list.ListRequest, 
 				Members:  types.SetNull(types.StringType),
 				Timeouts: helpers.NewResourceTimeoutsNullValue(userGroupTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignUserGroupResourceModel(ctx, &state, got, false)...)
+			result.Diagnostics.Append(assignUserGroupResourceModel(ctx, &state, got, false, true)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return

@@ -151,7 +151,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 	avail, availDiags := r.readAvailableVersionsBestEffort(createCtx, id.ValueString(), types.ListNull(types.StringType))
 	resp.Diagnostics.Append(availDiags...)
 
-	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(createCtx, &plan, got, avail, keysOf(planPackages))...)
+	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(createCtx, &plan, got, avail, keysOf(planPackages), false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -188,10 +188,11 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 }
 
 // Read refreshes state. version_packages is rebuilt from only the keys recorded
-// in prior state (the managed subset). On import there is no prior state, so the
-// map comes back null and ImportStateVerify must ignore it (no prior keys to
-// reconstruct the managed subset from) — and source_id, which the v3 payload
-// does not carry, is resolved from the reported patch source name.
+// in prior state (the managed subset), except on a first-time hydration — where
+// there are no prior keys and the whole assigned set is adopted instead, so a
+// declared version_packages does not plan as an addition on the first plan
+// after import (issue #391). source_id, which the v3 payload does not carry, is
+// resolved from the reported patch source name on that same path.
 //
 // The version catalogue read is best-effort here too: a title whose
 // configuration reads cleanly should not take a whole plan down because a
@@ -269,20 +270,22 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 	avail, availDiags := r.readAvailableVersionsBestEffort(readCtx, state.ID.ValueString(), state.AvailableVersions)
 	resp.Diagnostics.Append(availDiags...)
 
-	// source_id is carried forward by assignPatchSoftwareTitleResourceModel,
-	// which never touches it. Resolve it from the reported source name only when
-	// state has no number to carry — an import. It backs a Required,
-	// RequiresReplace attribute, so a wrong or absent value would show up as a
-	// plan that destroys the freshly imported title; a failure here is fatal
-	// rather than a warning for that reason.
-	needsSource := state.SourceID.IsNull() || state.SourceID.IsUnknown()
+	// source_id backs a Required, RequiresReplace attribute, so Create and
+	// Update always populate it before any Read and it can only be unset here on
+	// a first-time hydration. That makes it both signals this Read needs: which
+	// version_packages branch to take, and whether source_id itself has to be
+	// resolved from the reported source name, since the v3 payload never carries
+	// it and assignPatchSoftwareTitleResourceModel never touches it. A failure
+	// resolving it is fatal rather than a warning, because a wrong or absent
+	// value shows up as a plan that destroys the freshly imported title.
+	hydrating := state.SourceID.IsNull() || state.SourceID.IsUnknown()
 
-	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(readCtx, &state, got, avail, declaredKeys)...)
+	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(readCtx, &state, got, avail, declaredKeys, hydrating)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if needsSource {
+	if hydrating {
 		sourceID, err := resolveSourceID(readCtx, r.client, got.PatchSourceName)
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -376,7 +379,7 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 	avail, availDiags := r.readAvailableVersionsBestEffort(updateCtx, plan.ID.ValueString(), state.AvailableVersions)
 	resp.Diagnostics.Append(availDiags...)
 
-	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(updateCtx, &plan, got, avail, keysOf(planPackages))...)
+	resp.Diagnostics.Append(assignPatchSoftwareTitleResourceModel(updateCtx, &plan, got, avail, keysOf(planPackages), false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

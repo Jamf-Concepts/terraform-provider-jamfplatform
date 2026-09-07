@@ -114,7 +114,7 @@ func TestFlattenMobileApp_StickyFieldsIgnoreDrift(t *testing.T) {
 		NotificationSubject:    types.StringValue("state subject"),
 		NotificationMessage:    types.StringValue("state message"),
 	}
-	flattenMobileAppSelfService(&proclassic.MobileDeviceApplicationSelfService{}, ss)
+	flattenMobileAppSelfService(&proclassic.MobileDeviceApplicationSelfService{}, ss, false)
 	for _, tc := range []struct{ name, want, got string }{
 		{"after_install_button_text", "state after", ss.AfterInstallButtonText.ValueString()},
 		{"notification_subject", "state subject", ss.NotificationSubject.ValueString()},
@@ -146,7 +146,7 @@ func TestFlattenMobileAppSelfService_GatedFieldsDriftWhenEchoed(t *testing.T) {
 		Notification:                      &proclassic.NotificationValue{Enabled: new(false)},
 		NotificationSubject:               new("wire subject"),
 		NotificationMessage:               new("wire message"),
-	}, ss)
+	}, ss, false)
 	for _, tc := range []struct{ name, want, got string }{
 		{"after_install_button_text", "wire after", ss.AfterInstallButtonText.ValueString()},
 		{"notification_subject", "wire subject", ss.NotificationSubject.ValueString()},
