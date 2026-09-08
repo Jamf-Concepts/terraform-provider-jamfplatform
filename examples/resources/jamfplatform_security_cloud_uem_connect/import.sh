@@ -15,6 +15,14 @@
 #     provider = jamfplatform
 #   }
 
+# Import records the user data field mapping and the group membership mapping the
+# tenant reports, even where your configuration declares none, so the first plan
+# afterwards proposes removing them. On this integration that removal is real:
+# Jamf Security Cloud writes the sync settings whole and resets whatever you
+# leave out of your configuration. Copy the values out of the plan output into
+# your configuration before you apply. See the "Importing existing objects"
+# guide.
+
 # Or import by ID directly, which the data source reports:
 #
 #   data "jamfplatform_security_cloud_uem_connect" "existing" {}
