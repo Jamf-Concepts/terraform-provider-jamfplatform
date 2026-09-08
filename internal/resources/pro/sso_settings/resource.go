@@ -80,8 +80,8 @@ func (r *SsoSettingsResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
-			"### Manage SSO all-or-nothing\n\n" +
-			"This resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.\n\n" +
+			"### What Terraform owns\n\n" +
+			"Terraform owns every option you declare: change one in the admin console and the next plan reports drift. An option you leave out keeps whatever the tenant already holds, on the first apply as well as later ones, so you can hand SSO over without transcribing every setting you want to keep. Set an empty string to clear a field.\n\n" +
 			"### Cross-field requirements\n\n" +
 			"All of these are enforced at plan time.\n\n" +
 			"- `configuration_type = \"SAML\"` requires the `saml_settings` block.\n" +
@@ -160,8 +160,10 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"group_enrollment_access_name": schema.StringAttribute{
-				MarkdownDescription: "Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`.",
+				MarkdownDescription: "Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`. Omit to leave any existing value untouched; set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"configuration_type": schema.StringAttribute{
@@ -307,7 +309,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"group_rdn_key": schema.StringAttribute{
-						MarkdownDescription: "Optional RDN token (e.g. `CN`, `DC`, `OU`) used when parsing group claims that arrive as full distinguished names.",
+						MarkdownDescription: "RDN token (e.g. `CN`, `DC`, `OU`) applied when group claims arrive as full distinguished names. Omit to leave any existing value untouched; set to `\"\"` to clear it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},

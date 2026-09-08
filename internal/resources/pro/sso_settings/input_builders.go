@@ -11,155 +11,231 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
+// boolOrCurrent emits the plan value when known — declared, or carried in from
+// prior state by UseStateForUnknown — and otherwise the value the tenant already
+// holds. It is what makes an omitted toggle preserve rather than reset on the
+// first apply; see buildSsoSettingsInput on the merge base.
+func boolOrCurrent(v types.Bool, current bool) bool {
+	if p := helpers.OptionalBoolPointer(v); p != nil {
+		return *p
+	}
+	return current
+}
+
+// boolPtrOrCurrent is boolOrCurrent for a nullable bool, keeping nil when
+// neither the plan nor the tenant has a value so a caller can supply its own
+// default.
+func boolPtrOrCurrent(v types.Bool, current *bool) *bool {
+	if p := helpers.OptionalBoolPointer(v); p != nil {
+		return p
+	}
+	return current
+}
+
+// stringPtrOrCurrent emits the plan value when known and otherwise the tenant's
+// stored one. An explicitly configured "" is a known value, so clearing a field
+// still works.
+func stringPtrOrCurrent(v types.String, current *string) *string {
+	if p := helpers.OptionalStringPointer(v); p != nil {
+		return p
+	}
+	return current
+}
+
+// intPtrOrCurrent is stringPtrOrCurrent for a nullable int.
+func intPtrOrCurrent(v types.Int64, current *int) *int {
+	if p := helpers.OptionalInt64Pointer(v); p != nil {
+		return p
+	}
+	return current
+}
+
+// enrollmentManagementHint reads the management hint off a possibly-absent
+// enrollment SSO block, so the merge base can be consulted without a nil check
+// at the call site.
+func enrollmentManagementHint(current *pro.EnrollmentSsoConfig) *string {
+	if current == nil {
+		return nil
+	}
+	return current.ManagementHint
+}
+
+// federationMetadataFileOrCurrent decodes the base64 IdP metadata the
+// configuration supplied, falling back to the metadata the tenant already
+// stores. Both are the FILE-mode payload; URL mode clears it instead.
+func federationMetadataFileOrCurrent(v types.String, current *[]byte) (*[]byte, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if !isStringConfigured(v) {
+		return current, diags
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(v.ValueString()))
+	if err != nil {
+		diags.AddAttributeError(
+			path.Root("saml_settings").AtName("federation_metadata_file"),
+			"Invalid federation_metadata_file base64",
+			"The supplied federation_metadata_file is not valid RFC 4648 base64: "+err.Error(),
+		)
+		return nil, diags
+	}
+	return &decoded, diags
+}
+
 // buildSsoSettingsInput converts the Terraform plan model into a /v3/sso PUT
-// payload.
+// payload, merged over the settings the tenant already holds.
 //
-// Three load-bearing transforms:
+// # The merge base
+//
+// current is the live settings read, and every field the configuration does not
+// declare takes its value from there. The PUT is a genuine full replacement:
+// wire-probed 2026-09-08 on oidcSettings.usernameAttributeClaimMapping, a key
+// sent as null and a key left out of the body both reset the field to the
+// server's default, and an empty string is rejected outright. So a body built
+// from the plan alone resets every setting the configuration is silent about.
+//
+// UseStateForUnknown hides most of that on update — an omitted Optional+Computed
+// attribute plans as its prior state value and is re-sent unchanged — but there
+// is no prior state on the first apply, and this singleton always pre-exists.
+// Create is therefore adoption, not creation, and needs the live settings as its
+// base so the first apply keeps what it was not asked to change (#405).
+//
+// Update reads them too, which is where this departs from re_enrollment_settings
+// and the STYLE_GUIDE pattern it follows ("Singletons: GET-on-create to adopt,
+// not clobber"). That pattern rests on every attribute being Optional+Computed;
+// here the enrollment SSO block and the SAML metadata file are Optional-only, so
+// they plan as null when the configuration omits them and null resets. The base
+// never overrides a plan value, so reading it on update costs one request and
+// changes nothing else: a declared field still wins, and "" still clears.
+//
+// A nil current is therefore only the no-merge-base case the unit tests use, and
+// it reproduces the pre-fix body exactly.
+//
+// Three load-bearing transforms sit on top of the merge:
 //
 //  1. OidcSettings is a value type on SsoSettingsV3 and its UserMapping field
 //     has no omitempty, so the marshalled body always includes
 //     `oidcSettings.userMapping`. Jamf Pro rejects an empty userMapping. In
-//     pure SAML mode, when the user did not supply an oidc_settings block,
-//     populate a stub UserMapping="EMAIL". The value is harmless — Jamf
+//     pure SAML mode, when the user did not supply an oidc_settings block, the
+//     tenant's stored block carries it — and a stub UserMapping="EMAIL" covers
+//     a tenant that holds nothing. The value is harmless either way, since Jamf
 //     ignores oidcSettings when configurationType=SAML.
 //
 //  2. metadata_source URL/FILE mutex is enforced on the wire regardless of
-//     what the user wrote: URL mode zeroes federationMetadataFile and
-//     metadataFileName; FILE mode zeroes idpUrl. metadataFileName must be
-//     null (not empty-string) in URL mode.
+//     what the user wrote, and it runs after the merge so the mode the
+//     configuration declares always wins: URL mode zeroes
+//     federationMetadataFile and metadataFileName; FILE mode zeroes idpUrl.
+//     metadataFileName must be null (not empty-string) in URL mode.
 //
-//  3. groupRdnKey must serialise as "" rather than be omitted when SAML
-//     mode is active. The SDK *string + omitempty would drop the field on
-//     nil; populate a pointer-to-"" so the body carries the explicit
-//     empty-string value.
-func buildSsoSettingsInput(ctx context.Context, plan SsoSettingsResourceModel) (*pro.SsoSettingsV3, diag.Diagnostics) {
+//  3. groupRdnKey must serialise as "" rather than null when SAML mode is
+//     active — null is rejected (probed 2026-05-26), which is why this one
+//     field cannot fall back to "unset" the way its siblings do. The merge base
+//     is what lets an omitted group_rdn_key keep the tenant's token on the
+//     first apply; only a tenant that holds none gets the explicit "".
+func buildSsoSettingsInput(ctx context.Context, plan SsoSettingsResourceModel, current *pro.SsoSettingsV3) (*pro.SsoSettingsV3, diag.Diagnostics) {
 	var diags diag.Diagnostics
+
+	base := current
+	if base == nil {
+		base = &pro.SsoSettingsV3{}
+	}
 
 	out := &pro.SsoSettingsV3{
 		ConfigurationType:             plan.ConfigurationType.ValueString(),
-		SsoEnabled:                    plan.SsoEnabled.ValueBool(),
-		SsoBypassAllowed:              plan.SsoBypassAllowed.ValueBool(),
-		SsoForEnrollmentEnabled:       plan.SsoForEnrollmentEnabled.ValueBool(),
-		SsoForMacOsSelfServiceEnabled: plan.SsoForMacOsSelfServiceEnabled.ValueBool(),
-		EnrollmentSsoForAccountDrivenEnrollmentEnabled: plan.EnrollmentSsoForAccountDrivenEnrollmentEnabled.ValueBool(),
-		GroupEnrollmentAccessEnabled:                   plan.GroupEnrollmentAccessEnabled.ValueBool(),
-		GroupEnrollmentAccessName:                      helpers.OptionalStringPointer(plan.GroupEnrollmentAccessName),
+		SsoEnabled:                    boolOrCurrent(plan.SsoEnabled, base.SsoEnabled),
+		SsoBypassAllowed:              boolOrCurrent(plan.SsoBypassAllowed, base.SsoBypassAllowed),
+		SsoForEnrollmentEnabled:       boolOrCurrent(plan.SsoForEnrollmentEnabled, base.SsoForEnrollmentEnabled),
+		SsoForMacOsSelfServiceEnabled: boolOrCurrent(plan.SsoForMacOsSelfServiceEnabled, base.SsoForMacOsSelfServiceEnabled),
+		EnrollmentSsoForAccountDrivenEnrollmentEnabled: boolOrCurrent(plan.EnrollmentSsoForAccountDrivenEnrollmentEnabled, base.EnrollmentSsoForAccountDrivenEnrollmentEnabled),
+		GroupEnrollmentAccessEnabled:                   boolOrCurrent(plan.GroupEnrollmentAccessEnabled, base.GroupEnrollmentAccessEnabled),
+		GroupEnrollmentAccessName:                      stringPtrOrCurrent(plan.GroupEnrollmentAccessName, base.GroupEnrollmentAccessName),
 	}
 
-	// OidcSettings — see gotcha (1).
 	if plan.OidcSettings != nil {
 		out.OidcSettings = pro.OidcSettings{
 			UserMapping:                   plan.OidcSettings.UserMapping.ValueString(),
-			JamfIDAuthenticationEnabled:   helpers.OptionalBoolPointer(plan.OidcSettings.JamfIDAuthenticationEnabled),
-			UsernameAttributeClaimMapping: helpers.OptionalStringPointer(plan.OidcSettings.UsernameAttributeClaimMapping),
+			JamfIDAuthenticationEnabled:   boolPtrOrCurrent(plan.OidcSettings.JamfIDAuthenticationEnabled, base.OidcSettings.JamfIDAuthenticationEnabled),
+			UsernameAttributeClaimMapping: stringPtrOrCurrent(plan.OidcSettings.UsernameAttributeClaimMapping, base.OidcSettings.UsernameAttributeClaimMapping),
 		}
 	} else {
-		out.OidcSettings = pro.OidcSettings{UserMapping: pro.OidcSettingsUserMappingEmail}
+		out.OidcSettings = base.OidcSettings
+		if out.OidcSettings.UserMapping == "" {
+			out.OidcSettings.UserMapping = pro.OidcSettingsUserMappingEmail
+		}
 	}
 
-	// SamlSettings — value type that always serialises. Build with content
-	// when the user supplied a block, otherwise leave at zero value (Jamf
-	// Pro tolerates an empty samlSettings object).
 	if plan.SamlSettings != nil {
-		s := plan.SamlSettings
-		// Jamf Pro's SAML validator rejects JSON `null` on the bool
-		// fields when SAML is active — the API expects concrete booleans
-		// matching the Jamf Pro admin UI defaults. Populate when the
-		// user did not author the attribute.
-		tokenExpirationDisabled := helpers.OptionalBoolPointer(s.TokenExpirationDisabled)
+		sp := plan.SamlSettings
+		bs := base.SamlSettings
+
+		tokenExpirationDisabled := boolPtrOrCurrent(sp.TokenExpirationDisabled, bs.TokenExpirationDisabled)
 		if tokenExpirationDisabled == nil {
 			t := true
 			tokenExpirationDisabled = &t
 		}
-		userAttributeEnabled := helpers.OptionalBoolPointer(s.UserAttributeEnabled)
+		userAttributeEnabled := boolPtrOrCurrent(sp.UserAttributeEnabled, bs.UserAttributeEnabled)
 		if userAttributeEnabled == nil {
 			f := false
 			userAttributeEnabled = &f
 		}
 		out.SamlSettings = pro.SamlSettings{
-			IdpProviderType:         helpers.OptionalStringPointer(s.IdpProviderType),
-			OtherProviderTypeName:   helpers.OptionalStringPointer(s.OtherProviderTypeName),
-			EntityID:                helpers.OptionalStringPointer(s.EntityID),
-			MetadataSource:          helpers.OptionalStringPointer(s.MetadataSource),
-			SessionTimeout:          helpers.OptionalInt64Pointer(s.SessionTimeout),
+			IdpProviderType:         stringPtrOrCurrent(sp.IdpProviderType, bs.IdpProviderType),
+			OtherProviderTypeName:   stringPtrOrCurrent(sp.OtherProviderTypeName, bs.OtherProviderTypeName),
+			EntityID:                stringPtrOrCurrent(sp.EntityID, bs.EntityID),
+			MetadataSource:          stringPtrOrCurrent(sp.MetadataSource, bs.MetadataSource),
+			SessionTimeout:          intPtrOrCurrent(sp.SessionTimeout, bs.SessionTimeout),
 			TokenExpirationDisabled: tokenExpirationDisabled,
-			UserMapping:             helpers.OptionalStringPointer(s.UserMapping),
+			UserMapping:             stringPtrOrCurrent(sp.UserMapping, bs.UserMapping),
 			UserAttributeEnabled:    userAttributeEnabled,
-			UserAttributeName:       helpers.OptionalStringPointer(s.UserAttributeName),
-			GroupAttributeName:      helpers.OptionalStringPointer(s.GroupAttributeName),
+			UserAttributeName:       stringPtrOrCurrent(sp.UserAttributeName, bs.UserAttributeName),
+			GroupAttributeName:      stringPtrOrCurrent(sp.GroupAttributeName, bs.GroupAttributeName),
 		}
 
-		// URL/FILE mutex on the wire — gotcha (2).
 		metadataSource := ""
-		if !s.MetadataSource.IsNull() && !s.MetadataSource.IsUnknown() {
-			metadataSource = s.MetadataSource.ValueString()
+		if !sp.MetadataSource.IsNull() && !sp.MetadataSource.IsUnknown() {
+			metadataSource = sp.MetadataSource.ValueString()
 		}
 		switch metadataSource {
 		case metadataSourceURL:
-			out.SamlSettings.IdpURL = helpers.OptionalStringPointer(s.IdpURL)
-			// URL mode: federationMetadataFile and metadataFileName must
-			// arrive as JSON null so the server clears any cached FILE
-			// state. Nil pointer marshals to null (SDK omitempty removed
-			// on SSO body types).
+			out.SamlSettings.IdpURL = stringPtrOrCurrent(sp.IdpURL, bs.IdpURL)
 			out.SamlSettings.MetadataFileName = nil
 			out.SamlSettings.FederationMetadataFile = nil
 		case metadataSourceFILE:
-			// FILE mode: idp_url must arrive as JSON null so the server
-			// clears any cached URL state. Nil pointer marshals to
-			// null.
 			out.SamlSettings.IdpURL = nil
-			out.SamlSettings.MetadataFileName = helpers.OptionalStringPointer(s.MetadataFileName)
-			if isStringConfigured(s.FederationMetadataFile) {
-				decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s.FederationMetadataFile.ValueString()))
-				if err != nil {
-					diags.AddAttributeError(
-						path.Root("saml_settings").AtName("federation_metadata_file"),
-						"Invalid federation_metadata_file base64",
-						"The supplied federation_metadata_file is not valid RFC 4648 base64: "+err.Error(),
-					)
-					return nil, diags
-				}
-				out.SamlSettings.FederationMetadataFile = &decoded
+			out.SamlSettings.MetadataFileName = stringPtrOrCurrent(sp.MetadataFileName, bs.MetadataFileName)
+			file, d := federationMetadataFileOrCurrent(sp.FederationMetadataFile, bs.FederationMetadataFile)
+			diags.Append(d...)
+			if diags.HasError() {
+				return nil, diags
 			}
+			out.SamlSettings.FederationMetadataFile = file
 		default:
-			// No metadata source declared — pass through the user's
-			// values as-is; the server will surface a field-named error.
-			out.SamlSettings.IdpURL = helpers.OptionalStringPointer(s.IdpURL)
-			out.SamlSettings.MetadataFileName = helpers.OptionalStringPointer(s.MetadataFileName)
-			if isStringConfigured(s.FederationMetadataFile) {
-				decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s.FederationMetadataFile.ValueString()))
-				if err != nil {
-					diags.AddAttributeError(
-						path.Root("saml_settings").AtName("federation_metadata_file"),
-						"Invalid federation_metadata_file base64",
-						"The supplied federation_metadata_file is not valid RFC 4648 base64: "+err.Error(),
-					)
-					return nil, diags
-				}
-				out.SamlSettings.FederationMetadataFile = &decoded
+			out.SamlSettings.IdpURL = stringPtrOrCurrent(sp.IdpURL, bs.IdpURL)
+			out.SamlSettings.MetadataFileName = stringPtrOrCurrent(sp.MetadataFileName, bs.MetadataFileName)
+			file, d := federationMetadataFileOrCurrent(sp.FederationMetadataFile, bs.FederationMetadataFile)
+			diags.Append(d...)
+			if diags.HasError() {
+				return nil, diags
 			}
+			out.SamlSettings.FederationMetadataFile = file
 		}
 
-		// groupRdnKey — gotcha (3). Pointer-to-"" so JSON renders `""`,
-		// not omitted-as-null.
-		if isStringConfigured(s.GroupRdnKey) {
-			v := s.GroupRdnKey.ValueString()
-			out.SamlSettings.GroupRdnKey = &v
+		if key := stringPtrOrCurrent(sp.GroupRdnKey, bs.GroupRdnKey); key != nil {
+			out.SamlSettings.GroupRdnKey = key
 		} else {
 			empty := ""
 			out.SamlSettings.GroupRdnKey = &empty
 		}
+	} else {
+		out.SamlSettings = base.SamlSettings
 	}
 
-	// EnrollmentSsoConfig — *EnrollmentSsoConfig + omitempty, so emit only
-	// when the user supplied a block.
 	if plan.EnrollmentSsoConfig != nil {
 		ec := &pro.EnrollmentSsoConfig{
-			ManagementHint: helpers.OptionalStringPointer(plan.EnrollmentSsoConfig.ManagementHint),
+			ManagementHint: stringPtrOrCurrent(plan.EnrollmentSsoConfig.ManagementHint, enrollmentManagementHint(base.EnrollmentSsoConfig)),
 		}
 		if !plan.EnrollmentSsoConfig.Hosts.IsNull() && !plan.EnrollmentSsoConfig.Hosts.IsUnknown() {
 			hosts, d := helpers.SetToStringSlice(ctx, plan.EnrollmentSsoConfig.Hosts)
@@ -168,8 +244,12 @@ func buildSsoSettingsInput(ctx context.Context, plan SsoSettingsResourceModel) (
 				return nil, diags
 			}
 			ec.Hosts = &hosts
+		} else if base.EnrollmentSsoConfig != nil {
+			ec.Hosts = base.EnrollmentSsoConfig.Hosts
 		}
 		out.EnrollmentSsoConfig = ec
+	} else {
+		out.EnrollmentSsoConfig = base.EnrollmentSsoConfig
 	}
 
 	return out, diags
