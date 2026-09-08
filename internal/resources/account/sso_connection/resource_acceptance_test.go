@@ -325,6 +325,17 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 					"enabled_environments",
 				},
 			},
+			// The step above verifies imported state against the configuration
+			// that built it. GenerateConfigStep goes the other way: it writes
+			// state back out as configuration and requires the result to plan as
+			// a NO-OP. That is what catches attribute_map, which
+			// `-generate-config-out` re-emits as jsonencode({ ... }) — different
+			// whitespace from the string Jamf Account returned. Because
+			// ModifyPlan replaces the connection on any changed configurable
+			// attribute, and the comparison was reflect.DeepEqual over raw
+			// strings, adopting a connection and applying its generated
+			// configuration DESTROYED AND RECREATED it over formatting.
+			testhelpers.GenerateConfigStep(connectionResourceAddress),
 		},
 	})
 }

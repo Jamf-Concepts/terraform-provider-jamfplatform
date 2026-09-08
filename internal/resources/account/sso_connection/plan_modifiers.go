@@ -5,11 +5,13 @@ package sso_connection
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -146,7 +148,7 @@ func connectionComparisons(plan, state ConnectionResourceModel) []attributeCompa
 		{"omit_login_hint", plan.OmitLoginHint, state.OmitLoginHint},
 		{"custom_username_claim_name", plan.CustomUsernameClaimName, state.CustomUsernameClaimName},
 		{"username_domain", plan.UsernameDomain, state.UsernameDomain},
-		{"attribute_map", plan.AttributeMap, state.AttributeMap},
+		{"attribute_map", jsonComparable(plan.AttributeMap), jsonComparable(state.AttributeMap)},
 		{"group_name_filter", plan.GroupNameFilter, state.GroupNameFilter},
 		{"session_duration_minutes", plan.SessionDurationMinutes, state.SessionDurationMinutes},
 		{"inactivity_timeout_minutes", plan.InactivityTimeoutMinutes, state.InactivityTimeoutMinutes},
@@ -168,6 +170,43 @@ func connectionComparisons(plan, state ConnectionResourceModel) []attributeCompa
 // Reading that as a change would replace the connection on every plan where any
 // dependency is pending, which is both wrong and destructive, so it is the one
 // case that has to be excluded rather than compared.
+// jsonComparable normalises a JSON-object string attribute for comparison, so
+// that reindenting or reordering keys is not a change.
+//
+// attribute_map's schema promises exactly that — "Formatting and key order are
+// not significant: the value is compared as JSON, so reindenting it produces no
+// change" — but the comparison behind this file is reflect.DeepEqual over the
+// raw strings, which made the promise false in the one place it matters most.
+// `-generate-config-out` re-emits the value as `jsonencode({ ... })`, whose
+// formatting differs from the string Jamf Account returned, and because every
+// changed configurable attribute here forces replacement, importing a
+// connection and applying the generated configuration DESTROYED AND RECREATED a
+// live SSO connection over whitespace.
+//
+// An unknown or null value, or one that is not valid JSON, is returned
+// unchanged: the caller's own unknown-value exemption still applies, and a
+// non-JSON value is the validator's business, not this comparison's.
+//
+// The durable fix is a JSON custom type with StringSemanticEquals, the way
+// ai_governance_policy models its settings_json, which would deliver the
+// documented contract everywhere rather than only here. That is a change to
+// every read and write site of this attribute; this file, by its own header, is
+// meant to be deleted when Jamf fixes the update endpoint.
+func jsonComparable(value types.String) any {
+	if value.IsUnknown() || value.IsNull() {
+		return value
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(value.ValueString()), &parsed); err != nil {
+		return value
+	}
+	canonical, err := json.Marshal(parsed)
+	if err != nil {
+		return value
+	}
+	return types.StringValue(string(canonical))
+}
+
 func planValueDiffers(planned, current any) bool {
 	if unknowable, ok := planned.(attr.Value); ok && unknowable.IsUnknown() {
 		return false

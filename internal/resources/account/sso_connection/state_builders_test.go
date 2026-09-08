@@ -633,3 +633,76 @@ func TestAssignConnectionDataSourceModel_ReportsEveryGatedAttribute(t *testing.T
 		})
 	}
 }
+
+// TestBuildEntraStateModel_GroupsOffDropsTheGroupOptions covers rule 14's read
+// side. validateEntraGroupOptions refuses entra.groups_scope and a true
+// entra.include_nested_groups when get_user_groups is off, so adopting what Jamf
+// returned there would commit values this resource's own validator rejects, and
+// `-generate-config-out` would write a configuration that cannot plan.
+//
+// This is the read half of the rule. Whether Jamf actually returns a
+// groups_scope alongside groups-off is not settleable from the mockingbirduat
+// estate: a connection needs a verified domain, and every verified domain there
+// already carries one. The provider's job is to not commit the combination
+// whatever Jamf sends, which is what this pins.
+func TestBuildEntraStateModel_GroupsOffDropsTheGroupOptions(t *testing.T) {
+	off, on, nested := false, true, true
+	block := buildEntraStateModel(&account.EntraOptions{
+		Domain:      new("contoso.example"),
+		GroupsScope: new("DIRECTORY_READ_ALL"),
+		ExtOptions: &account.EntraExtendedOptions{
+			Groups:       &off,
+			NestedGroups: &nested,
+		},
+	})
+	if block == nil {
+		t.Fatal("the Entra block must be built")
+	}
+	if !block.GroupsScope.IsNull() {
+		t.Errorf("groups_scope = %s, want nothing when group membership is off", block.GroupsScope)
+	}
+	// false rather than null: the attribute is Optional+Computed with
+	// UseNonNullStateForUnknown, where a null would fight the plan modifier, and
+	// false is both what the validator accepts and what Jamf does with nested
+	// groups when membership is off.
+	if block.IncludeNestedGroups.IsNull() || block.IncludeNestedGroups.ValueBool() {
+		t.Errorf("include_nested_groups = %s, want false when group membership is off", block.IncludeNestedGroups)
+	}
+
+	// Positive control: with membership on, both are adopted as sent.
+	block = buildEntraStateModel(&account.EntraOptions{
+		Domain:      new("contoso.example"),
+		GroupsScope: new("GROUP_READ_ALL"),
+		ExtOptions: &account.EntraExtendedOptions{
+			Groups:       &on,
+			NestedGroups: &nested,
+		},
+	})
+	if got := block.GroupsScope.ValueString(); got != "GROUP_READ_ALL" {
+		t.Errorf("groups_scope = %q, want it adopted when membership is on", got)
+	}
+	if !block.IncludeNestedGroups.ValueBool() {
+		t.Error("include_nested_groups must be adopted when membership is on")
+	}
+}
+
+// TestBuildEntraStateModel_UnreportedGroupsStillDropsTheScope separates the two
+// groups-off shapes. Jamf sending no group settings at all leaves
+// include_nested_groups empty rather than guessing at false, but groups_scope is
+// still dropped: the validator reads an absent get_user_groups as off and would
+// refuse a scope sitting beside it.
+func TestBuildEntraStateModel_UnreportedGroupsStillDropsTheScope(t *testing.T) {
+	block := buildEntraStateModel(&account.EntraOptions{
+		Domain:      new("contoso.example"),
+		GroupsScope: new("DIRECTORY_READ_ALL"),
+	})
+	if block == nil {
+		t.Fatal("the Entra block must be built")
+	}
+	if !block.GroupsScope.IsNull() {
+		t.Errorf("groups_scope = %s, want nothing where Jamf reported no group settings", block.GroupsScope)
+	}
+	if !block.IncludeNestedGroups.IsNull() {
+		t.Errorf("include_nested_groups = %s, want nothing where Jamf sent no nested options", block.IncludeNestedGroups)
+	}
+}
