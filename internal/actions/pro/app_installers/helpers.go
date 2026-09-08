@@ -25,6 +25,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -91,7 +92,10 @@ func (a *appInstallerAction) ensureClient(resp *action.InvokeResponse) bool {
 // downgraded to a warning saying nothing needed retrying.
 func isNothingToRetry(err error) bool {
 	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
-	return ok && apiErr.HasStatus(http.StatusNotFound) && len(apiErr.Details()) == 0
+	if !ok || helpers.IsGatewayUnrouted(err) {
+		return false
+	}
+	return apiErr.HasStatus(http.StatusNotFound) && len(apiErr.Details()) == 0
 }
 
 // nothingToRetryDiagnostic explains an empty 404 from either retry endpoint —

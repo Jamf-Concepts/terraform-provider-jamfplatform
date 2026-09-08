@@ -34,6 +34,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -156,9 +157,16 @@ func addNotEntitled(diags *diag.Diagnostics, description string) {
 
 // isNotFound reports whether an error is Jamf Security Cloud saying the named
 // integration does not exist.
+//
+// A gateway-unrouted 404 is excluded: it reports that the request reached no
+// Jamf service, so reporting the integration as absent would blame the operator
+// for a base URL problem. See helpers.IsGatewayUnrouted.
 func isNotFound(err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
+		return false
+	}
+	if helpers.IsGatewayUnrouted(err) {
 		return false
 	}
 	return apiErr.HasStatus(http.StatusNotFound)

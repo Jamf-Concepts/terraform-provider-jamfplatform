@@ -273,6 +273,59 @@ func TestAuthFailureDiagnostic_NonNotFoundSentinelStaysBlocked(t *testing.T) {
 	}
 }
 
+func TestBetaGatewayError(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		fail    bool
+	}{
+		{"beta gateway, us", "https://us.apigw.jamf.com", true},
+		{"beta gateway, eu", "https://eu.apigw.jamf.com", true},
+		{"beta gateway, apac", "https://apac.apigw.jamf.com", true},
+		{"beta gateway with the old /api segment", "https://us.apigw.jamf.com/api", true},
+		{"beta gateway with a trailing slash", "https://eu.apigw.jamf.com/", true},
+		{"beta gateway, unregioned", "https://apigw.jamf.com", true},
+		{"port does not defeat the host match", "https://us.apigw.jamf.com:8443", true},
+		{"host case does not defeat the match", "https://US.APIGW.JAMF.COM", true},
+		{"GA gateway root", "https://eu.api.jamfcloud.com", false},
+		{"GA gateway, us", "https://us.api.jamfcloud.com", false},
+		// The suffix match is anchored on a dot, so a host that merely ends in
+		// the same letters is not the beta gateway.
+		{"lookalike host", "https://notapigw.jamf.com", false},
+		{"customer reverse proxy", "https://gateway.internal.example.com", false},
+		{"other Jamf host", "https://us.stage.apigw.jamfnebula.com", false},
+		{"unparseable input stays silent", "://nonsense", false},
+		{"empty input stays silent", "", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			summary, detail := betaGatewayError(test.baseURL)
+			if test.fail {
+				if summary == "" {
+					t.Fatalf("betaGatewayError(%q) stayed silent, want an error", test.baseURL)
+				}
+				// The remedy and the reason the run has to stop are what make
+				// this diagnostic worth erroring on: without the replacement
+				// host the user cannot act, and without the state warning
+				// someone who has already applied cannot tell what happened.
+				for _, want := range []string{
+					"api.jamfcloud.com",
+					"environment_id",
+					"-refresh=false",
+				} {
+					if !strings.Contains(detail, want) {
+						t.Errorf("detail does not mention %q, got:\n%s", want, detail)
+					}
+				}
+				return
+			}
+			if summary != "" {
+				t.Fatalf("betaGatewayError(%q) errored %q, want silence", test.baseURL, summary)
+			}
+		})
+	}
+}
+
 func TestBaseURLPathWarning(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -281,9 +334,9 @@ func TestBaseURLPathWarning(t *testing.T) {
 	}{
 		{"GA gateway root", "https://eu.api.jamfcloud.com", false},
 		{"GA gateway root with trailing slash", "https://eu.api.jamfcloud.com/", false},
-		{"retired gateway root", "https://us.apigw.jamf.com", false},
+		{"beta gateway root", "https://us.apigw.jamf.com", false},
 		{"GA gateway with the dropped /api segment", "https://eu.api.jamfcloud.com/api", true},
-		{"retired gateway with /api", "https://us.apigw.jamf.com/api/", true},
+		{"beta gateway with /api", "https://us.apigw.jamf.com/api/", true},
 		{"staging host with /api", "https://us.stage.apigw.jamfnebula.com/api", true},
 		// A caller's own reverse proxy mounting Jamf beneath a prefix is supported
 		// by the SDK, so the host is what decides — not the presence of a path.

@@ -111,3 +111,28 @@ func accPreCheckCredentialsOnly(t *testing.T) {
 
 	t.Setenv("TF_ACC", "1")
 }
+
+// TestAccProviderBetaGateway_Rejected pins the beta gateway guard
+// against a real Terraform run.
+//
+// Like the scope conflict above, it earns its place in CI without an estate:
+// betaGatewayError runs before ValidateCredentials, so nothing reaches the wire
+// and the run's own credentials are never assessed. The host it configures is
+// the one that made this guard necessary — it still answers the token exchange,
+// so without the guard the run authenticates and then reports every managed
+// object as deleted from Jamf.
+//
+// The regex matches only the diagnostic summary, for the line-wrapping reason
+// given above; the detail's wording is asserted in auth_diagnostics_test.go.
+func TestAccProviderBetaGateway_Rejected(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testhelpers.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      fmt.Sprintf(scopeProbeConfig, `  base_url = "https://us.apigw.jamf.com"`),
+				ExpectError: regexp.MustCompile(`Base URL Names the Beta Gateway`),
+			},
+		},
+	})
+}

@@ -214,7 +214,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
 				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
 				"**📘 New here? Start with the getting-started guide:** [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/) on Jamf Concepts walks through installing Terraform, creating API credentials, configuring the provider, writing your first device groups, compliance benchmarks and blueprints, applying a configuration, and bringing an existing tenant under management.\n\n"+
-				"> **⚠️ Upgrading from any pre-GA version — `v0.28.1` or earlier, or a `v0.29.0` release candidate?** The Jamf Platform API has reached general availability, and this release targets the GA gateway. Beta API integration credentials are revoked whichever pre-GA version you are coming from, so register a replacement integration in Jamf Account and replace `tenant_id` with `environment_id`. On `v0.28.1` or earlier, set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade; a release candidate already points there. Earlier versions reach only the retired beta host, and several constructs were removed along with the endpoints they called. See [Upgrading to the Platform API GA](guides/platform-api-ga).\n\n"+
+				"> **⚠️ Upgrading from any pre-GA version — `v0.28.1` or earlier, or a `v0.29.0` release candidate?** The Jamf Platform API has reached general availability, and this release targets the GA gateway. Beta API integration credentials are revoked whichever pre-GA version you are coming from, so register a replacement integration in Jamf Account and replace `tenant_id` with `environment_id`. On `v0.28.1` or earlier, set `base_url` to `https://{region}.api.jamfcloud.com` in the same change as the provider upgrade; a release candidate already points there. Earlier versions reach only the beta host, which no longer serves the API, and several constructs were removed along with the endpoints they called. See [Upgrading to the Platform API GA](guides/platform-api-ga).\n\n"+
 				"**Supported Jamf products and tenant version targets**\n\n"+
 				"| Product | Resource namespace | Built against API as of |\n"+
 				"|---------|--------------------|--------------------------|\n"+
@@ -348,6 +348,10 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 			"Missing Required Provider Configuration",
 			"base_url must be set either in the provider block or via the JAMFPLATFORM_BASE_URL environment variable.",
 		)
+		return
+	}
+	if summary, detail := betaGatewayError(baseURL); summary != "" {
+		resp.Diagnostics.AddError(summary, detail)
 		return
 	}
 	if summary, detail := baseURLPathWarning(baseURL); summary != "" {

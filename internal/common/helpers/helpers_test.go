@@ -252,11 +252,65 @@ func TestIsNotFoundError(t *testing.T) {
 		{"400 with no details", &jamfplatform.APIResponseError{StatusCode: 400}, false},
 		{"500 response", &jamfplatform.APIResponseError{StatusCode: 500}, false},
 		{"200 response", &jamfplatform.APIResponseError{StatusCode: 200}, false},
+		// The regression this function exists to avoid: a 404 the gateway
+		// produced because it routes nothing there is not the object being gone,
+		// and treating it as such deletes every managed object from state on one
+		// refresh. Every fixture below carries a body a real not-found was
+		// observed to carry on 2026-09-08, so the discrimination is by body text
+		// and not by "the body is not JSON" — two of them are not JSON either.
+		{"404 from an unrouted gateway path", &jamfplatform.APIResponseError{
+			StatusCode: 404,
+			Body:       "404 page not found\n",
+		}, false},
+		{"404 carrying a Jamf JSON body", &jamfplatform.APIResponseError{
+			StatusCode: 404,
+			Body:       `{"httpStatus":404,"errors":[{"code":"NOT_FOUND"}]}`,
+		}, true},
+		{"404 carrying the classic HTML status page", &jamfplatform.APIResponseError{
+			StatusCode: 404,
+			Body:       "<html>\n<head>\n   <title>Status page</title>\n</head>\n<body>Not Found</body>\n</html>",
+		}, true},
+		{"404 carrying an empty body", &jamfplatform.APIResponseError{
+			StatusCode: 404,
+			Body:       "",
+		}, true},
+		{"404 mentioning the gateway text inside a longer body", &jamfplatform.APIResponseError{
+			StatusCode: 404,
+			Body:       `{"httpStatus":404,"errors":[{"description":"404 page not found"}]}`,
+		}, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if result := IsNotFoundError(tc.err); result != tc.expected {
 				t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, result, tc.expected)
+			}
+		})
+	}
+}
+
+// TestIsGatewayUnrouted pins the discrimination on its own, rather than only
+// through IsNotFoundError, because three other call sites act on it: two
+// Security Cloud not-found checks and the app-installer retry check, whose
+// "nothing to retry" tell is a 404 with no error details — which a bare gateway
+// 404 satisfies.
+func TestIsGatewayUnrouted(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil", nil, false},
+		{"plain error", errors.New("404 page not found"), false},
+		{"the gateway text", &jamfplatform.APIResponseError{StatusCode: 404, Body: "404 page not found"}, true},
+		{"the gateway text with trailing newline", &jamfplatform.APIResponseError{StatusCode: 404, Body: "404 page not found\n"}, true},
+		{"the gateway text on another status", &jamfplatform.APIResponseError{StatusCode: 403, Body: "404 page not found"}, false},
+		{"a Jamf JSON 404", &jamfplatform.APIResponseError{StatusCode: 404, Body: `{"httpStatus":404}`}, false},
+		{"an empty 404", &jamfplatform.APIResponseError{StatusCode: 404}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if result := IsGatewayUnrouted(tc.err); result != tc.expected {
+				t.Errorf("IsGatewayUnrouted(%v) = %v, want %v", tc.err, result, tc.expected)
 			}
 		})
 	}

@@ -115,6 +115,55 @@ func authFailureDiagnostic(baseURL string, err error) (summary, detail string) {
 		"Technical details: " + err.Error()
 }
 
+// betaGatewayHost is the host suffix of the pre-GA Jamf Platform API gateway,
+// served regionally as {region}.apigw.jamf.com. It stopped serving the API at
+// the Platform API GA; the host itself still resolves and still answers the
+// token exchange, and will be switched off at some later point.
+const betaGatewayHost = "apigw.jamf.com"
+
+// betaGatewayError reports a base URL still pointing at the beta gateway, or
+// ("", "") if there is nothing to say.
+//
+// This errors where baseURLPathWarning warns, and the asymmetry is the point: a
+// path prefix beneath a Jamf host might be a customer reverse proxy the provider
+// cannot distinguish, whereas this host is Jamf's own and serves no API
+// namespace under any configuration. Nothing usable follows from continuing.
+//
+// It is checked before the token exchange rather than left to
+// authFailureDiagnostic because the exchange *succeeds*: wire-probed 2026-09-08,
+// {region}.apigw.jamf.com still proxies /auth/token to the same auth backend and
+// answers a GA credential with a valid token, while every API namespace beneath
+// it answers a bare 404. So the failure surfaces nowhere near authentication. It
+// surfaces as every Read reporting the object gone, one refresh emptying the
+// state file, and `terraform plan` printing a clean set of creates and exit
+// status 0 — reported by a user who upgraded the provider without changing
+// base_url. helpers.IsGatewayUnrouted stops that from deleting anything; this
+// stops the run before it starts and names the cause.
+func betaGatewayError(baseURL string) (summary, detail string) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return "", ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host != betaGatewayHost && !strings.HasSuffix(host, "."+betaGatewayHost) {
+		return "", ""
+	}
+	return "Base URL Names the Beta Gateway", "`base_url` is set to " + baseURL + ", the pre-GA beta gateway. It no " +
+		"longer serves the Platform API: it still accepts your credentials, then returns 404 for every request " +
+		"after that.\n\n" +
+		"Set `base_url` to the regional gateway root, with no path:\n" +
+		"  - https://us.api.jamfcloud.com\n" +
+		"  - https://eu.api.jamfcloud.com\n" +
+		"  - https://apac.api.jamfcloud.com\n\n" +
+		"Beta API integration credentials stopped working at the same time. Register a replacement integration " +
+		"in Jamf Account and use `environment_id` in place of `tenant_id`. See the `Upgrading to the Platform " +
+		"API GA` guide.\n\n" +
+		"Without this check you would get a plan offering to create everything you already manage, with no error " +
+		"in it. On `v0.29.0` and `v0.30.0` an apply then emptied the state file and created nothing in Jamf. " +
+		"Check yours with `terraform plan -refresh=false`, and recover it from `terraform.tfstate.backup` if an " +
+		"apply emptied it."
+}
+
 // jamfGatewayHosts are the domains Jamf serves its own gateways from. A path
 // prefix is only wrong beneath these: the SDK builds every request as
 // baseURL + path, so a caller fronting Jamf with their own reverse proxy that
