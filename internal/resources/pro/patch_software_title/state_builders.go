@@ -19,14 +19,15 @@ import (
 // declared (plan keys on Create/Update, prior state keys on Read):
 // version_packages is rebuilt from only those keys by looking each up in the
 // configuration's package assignments. A declared key whose package is gone
-// server-side is dropped from the map, surfacing the drift.
+// server-side is dropped from the map, surfacing the drift. An import declares
+// nothing, so it hydrates no assignments — see managedVersionPackages.
 //
 // source_id is deliberately left untouched. The v3 configuration names its
 // patch source (patchSourceName) but never numbers it, and a title's source
 // cannot change once minted, so whatever is already in state stays correct.
 // Import is the one case with nothing in state to keep, and Read resolves the
 // number from the name there — see resolveSourceID.
-func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions, declaredKeys []string, hydrating bool) diag.Diagnostics {
+func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoftwareTitleResourceModel, s *pro.PatchSoftwareTitleConfiguration, availableVersions, declaredKeys []string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
@@ -51,7 +52,7 @@ func assignPatchSoftwareTitleResourceModel(ctx context.Context, state *PatchSoft
 	}
 	state.AvailableVersions = availList
 
-	vp, d := managedVersionPackages(ctx, declaredKeys, assignedPackagesByVersion(s.Packages), hydrating)
+	vp, d := managedVersionPackages(ctx, declaredKeys, assignedPackagesByVersion(s.Packages))
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
@@ -170,24 +171,28 @@ func assignedPackagesByVersion(pkgs []pro.PatchSoftwareTitlePackages) map[string
 // managedVersionPackages builds the version_packages map from only the declared
 // keys: each is looked up in the server's assigned set and included if still
 // present. A declared key with no server-side package is dropped (surfaces
-// drift). When no keys are declared the map is null (matches an unset config).
+// drift). When no keys are declared the map is null (matches an unset config),
+// and that holds on a first-time import hydration too.
 //
-// hydrating releases that gate on first hydration, where there are no prior
-// keys to reconstruct the managed subset from and the map used to come back
-// null however many packages the title had assigned — so a declared
-// version_packages planned as an addition on the first plan after import
-// (issue #391). The whole assigned set is adopted, and only when the server
-// reports one: storing an empty map where a create that never declared the
-// attribute stores null would break ImportStateVerify.
-func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned map[string]string, hydrating bool) (types.Map, diag.Diagnostics) {
+// # Why import does not adopt the assigned set
+//
+// It did, briefly (#391 via #400), so that a declared version_packages did not
+// plan as an addition on the first plan after an import. That adoption unassigns
+// packages (#403). Update reads the managed subset out of PRIOR STATE and hands
+// it to unionVersionPackages, which reads a prior key missing from the plan as
+// an explicit unassign — correct only while every prior key is a key the
+// configuration declared. Hydration breaks that invariant: the prior keys become
+// the server's assignments, so the settle plan's apply clears every version the
+// configuration does not mention, and a full replacement clears what it omits.
+//
+// The cost of not adopting is the cosmetic diff #391 set out to remove: a
+// declared version_packages plans as an addition against the null in state, and
+// applying it re-sends assignments the title already holds. That fold preserves
+// the live set, so the apply is a no-op on the server.
+func managedVersionPackages(ctx context.Context, declaredKeys []string, assigned map[string]string) (types.Map, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if len(declaredKeys) == 0 {
-		if !hydrating || len(assigned) == 0 {
-			return types.MapNull(types.StringType), diags
-		}
-		m, d := types.MapValueFrom(ctx, types.StringType, assigned)
-		diags.Append(d...)
-		return m, diags
+		return types.MapNull(types.StringType), diags
 	}
 	managed := map[string]string{}
 	for _, k := range declaredKeys {

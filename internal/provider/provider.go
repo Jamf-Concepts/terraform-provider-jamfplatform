@@ -625,6 +625,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		cloud_distribution_point.NewCloudDistributionPointDataSource,
 		file_share_distribution_point.NewFileShareDistributionPointDataSource,
 		cloud_identity_provider.NewCloudIdentityProviderDataSource,
+		cloud_identity_provider.NewCloudIdentityProviderDefaultsDataSource,
 		cloud_identity_provider.NewCloudIdentityProvidersDataSource,
 		department.NewDepartmentDataSource,
 		department.NewDepartmentsDataSource,

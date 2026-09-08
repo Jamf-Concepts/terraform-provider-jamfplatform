@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -292,7 +293,7 @@ func TestBuildAzureUpdateRequest_ServerIDFromPlanID(t *testing.T) {
 	plan := minimalAzurePlan("11111111-2222-3333-4444-555555555557")
 	plan.ID = types.StringValue("azure-server-id-abc")
 
-	got := buildAzureUpdateRequest(plan)
+	got := buildAzureUpdateRequest(plan, nil)
 	if got.Server.ID != "azure-server-id-abc" {
 		t.Errorf("Server.ID must equal plan ID; got %q", got.Server.ID)
 	}
@@ -309,7 +310,7 @@ func TestBuildAzureUpdateRequest_NoCode(t *testing.T) {
 	plan.ID = types.StringValue("some-id")
 	// buildAzureUpdateRequest returns AzureConfigurationUpdate which has no Code
 	// field — this test confirms the function compiles and returns a non-nil result.
-	got := buildAzureUpdateRequest(plan)
+	got := buildAzureUpdateRequest(plan, nil)
 	if got == nil {
 		t.Errorf("buildAzureUpdateRequest must not return nil")
 	}
@@ -317,12 +318,48 @@ func TestBuildAzureUpdateRequest_NoCode(t *testing.T) {
 
 // --- buildAzureMappings ------------------------------------------------------
 
-// TestBuildAzureMappings_NilReturnsEmpty verifies that nil mappings produces a
-// zero AzureMappings struct (all empty strings), not a nil pointer.
+// TestBuildAzureMappings_NilReturnsEmpty verifies that nil mappings with no
+// merge base produces a zero AzureMappings struct (all empty strings), not a nil
+// pointer. That is the create path: nothing declared and nothing to preserve.
 func TestBuildAzureMappings_NilReturnsEmpty(t *testing.T) {
-	got := buildAzureMappings(nil)
+	got := buildAzureMappings(nil, nil)
 	if got.UserID != "" || got.Email != "" || got.GroupName != "" {
 		t.Errorf("nil mappings must produce zero AzureMappings; got %+v", got)
+	}
+}
+
+// TestBuildAzureMappings_UndeclaredBlockCarriesTheStoredMappings pins #404. The
+// eleven keys are always on the wire and Jamf Pro stores what it is sent, so an
+// undeclared block sending empty strings wipes the connection's mappings. The
+// stored set goes back out instead, which is what makes the omission preserve.
+func TestBuildAzureMappings_UndeclaredBlockCarriesTheStoredMappings(t *testing.T) {
+	live := &pro.AzureMappings{
+		UserID:    "id",
+		UserName:  "userPrincipalName",
+		Email:     "mail",
+		GroupName: "displayName",
+	}
+
+	got := buildAzureMappings(nil, live)
+	if got.UserID != "id" || got.UserName != "userPrincipalName" || got.Email != "mail" || got.GroupName != "displayName" {
+		t.Errorf("an undeclared block must carry the stored mappings; got %+v", got)
+	}
+}
+
+// TestBuildAzureMappings_DeclaredBlockIgnoresTheStoredMappings pins the other
+// half of the contract: a declared block is authoritative, so a field left out
+// inside it is written empty and clears that mapping rather than inheriting what
+// the connection holds.
+func TestBuildAzureMappings_DeclaredBlockIgnoresTheStoredMappings(t *testing.T) {
+	live := &pro.AzureMappings{UserID: "id", Email: "mail"}
+	m := &cloudAzureMappingsModel{UserID: types.StringValue("objectId")}
+
+	got := buildAzureMappings(m, live)
+	if got.UserID != "objectId" {
+		t.Errorf("the declared field must win; got %q", got.UserID)
+	}
+	if got.Email != "" {
+		t.Errorf("a field omitted inside a declared block must be written empty, got %q", got.Email)
 	}
 }
 
@@ -343,7 +380,7 @@ func TestBuildAzureMappings_FieldsRoundTrip(t *testing.T) {
 		GroupName:  types.StringValue("displayName"),
 	}
 
-	got := buildAzureMappings(m)
+	got := buildAzureMappings(m, nil)
 	if got.UserID != "id" {
 		t.Errorf("UserID mismatch")
 	}

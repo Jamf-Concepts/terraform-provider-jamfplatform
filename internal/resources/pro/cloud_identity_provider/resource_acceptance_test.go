@@ -375,6 +375,14 @@ resource "jamfplatform_pro_cloud_identity_provider" "test" {
 // TestAccResource_ProCloudIdentityProvider_Azure_UpdateSkipped is an explicit
 // skip placeholder. It appears in test output so the omission is visible and
 // documented rather than silent.
+//
+// One consequence is worth naming, because it is the reason #404 was fixed
+// blind: the mappings-preserving merge base the Entra update now builds has no
+// acceptance coverage and cannot have any here. The refusal lands before
+// persistence — probed 2026-09-08, an update sending eleven empty mappings to an
+// unconsented connection left the stored ones byte identical — so nothing on
+// this estate can observe either the erasure or the fix. The unit tests over
+// buildAzureMappings are the whole guard.
 func TestAccResource_ProCloudIdentityProvider_Azure_UpdateSkipped(t *testing.T) {
 	t.Skip("Azure update requires a real consented Entra connection; PUT 400 INVALID_CONNECTION otherwise — see resource docs")
 }

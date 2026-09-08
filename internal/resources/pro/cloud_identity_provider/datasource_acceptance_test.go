@@ -138,3 +138,40 @@ data "jamfplatform_pro_cloud_identity_providers" "all" {
 		},
 	})
 }
+
+// TestAccDataSource_ProCloudIdentityProviderDefaults reads both products'
+// defaults. No backing resource: the defaults exist whatever the tenant holds,
+// which is the property the test asserts by not creating anything.
+//
+// The two values pinned exactly are the two the managed resource already
+// hard-codes as schema defaults for its Google server block, so a Jamf change to
+// either breaks this test and the resource's own defaults together rather than
+// silently leaving them stale. Everything else is asserted as present, since a
+// mapping default is Jamf's to change and a test that pins all eleven would fail
+// on a harmless one.
+func TestAccDataSource_ProCloudIdentityProviderDefaults(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	const addr = "data.jamfplatform_pro_cloud_identity_provider_defaults.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `data "jamfplatform_pro_cloud_identity_provider_defaults" "test" {}`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "google.server.server_url", "ldap.google.com"),
+					resource.TestCheckResourceAttr(addr, "google.server.port", "636"),
+					resource.TestCheckResourceAttrSet(addr, "google.server.connection_type"),
+					resource.TestCheckResourceAttrSet(addr, "google.mappings.user_mappings.username"),
+					resource.TestCheckResourceAttrSet(addr, "google.mappings.group_mappings.group_id"),
+					resource.TestCheckResourceAttrSet(addr, "google.mappings.membership_mappings.group_membership_mapping"),
+					resource.TestCheckResourceAttrSet(addr, "entra_id.type"),
+					resource.TestCheckResourceAttrSet(addr, "entra_id.search_timeout"),
+					resource.TestCheckResourceAttrSet(addr, "entra_id.mappings.user_id"),
+					resource.TestCheckResourceAttrSet(addr, "entra_id.mappings.group_name"),
+				),
+			},
+		},
+	})
+}

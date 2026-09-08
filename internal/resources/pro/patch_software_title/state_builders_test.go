@@ -173,7 +173,7 @@ func TestAssignResourceModel_ManagedSubsetReconcile(t *testing.T) {
 	declared := []string{"8.33.2.2", "8.30.0.0"}
 	state := PatchSoftwareTitleResourceModel{}
 
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, c, definitionVersions(decodeLiveDefinitions(t)), declared, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, c, definitionVersions(decodeLiveDefinitions(t)), declared)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -217,7 +217,7 @@ func TestAssignResourceModel_ManagedSubsetReconcile(t *testing.T) {
 // in config is a permanent diff.
 func TestAssignResourceModel_NoDeclaredKeysYieldsNullMap(t *testing.T) {
 	state := PatchSoftwareTitleResourceModel{}
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, nil, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, nil)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -231,7 +231,7 @@ func TestAssignResourceModel_NoDeclaredKeysYieldsNullMap(t *testing.T) {
 // to an empty map, for the same round-trip reason.
 func TestAssignResourceModel_DeclaredKeyDroppedWhenPackageGone(t *testing.T) {
 	state := PatchSoftwareTitleResourceModel{}
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, []string{"8.32.2.10"}, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, []string{"8.32.2.10"})
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -248,7 +248,7 @@ func TestAssignResourceModel_DeclaredKeyDroppedWhenPackageGone(t *testing.T) {
 // replacement of a live title on the next plan.
 func TestAssignResourceModel_LeavesSourceIDUntouched(t *testing.T) {
 	state := PatchSoftwareTitleResourceModel{SourceID: types.Int64Value(1)}
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, nil, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, decodeLiveConfig(t), nil, nil)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -265,7 +265,7 @@ func TestAssignResourceModel_PreservesIDWhenResponseOmitsIt(t *testing.T) {
 	state := PatchSoftwareTitleResourceModel{ID: types.StringValue("42")}
 	api := &pro.PatchSoftwareTitleConfiguration{DisplayName: "refreshed"}
 
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, api, nil, nil, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, api, nil, nil)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -282,7 +282,7 @@ func TestAssignResourceModel_PreservesIDWhenResponseOmitsIt(t *testing.T) {
 // already raised a diagnostic cannot also corrupt state on its way out.
 func TestAssignResourceModel_NilAPIIsNoop(t *testing.T) {
 	state := PatchSoftwareTitleResourceModel{ID: types.StringValue("7"), Name: types.StringValue("Keep")}
-	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, nil, nil, nil, false)
+	diags := assignPatchSoftwareTitleResourceModel(context.Background(), &state, nil, nil, nil)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -410,7 +410,7 @@ func TestManagedVersionPackages_NoDeclaredKeysIsNull(t *testing.T) {
 		{name: "declared key has no package", declared: []string{"9.9"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, diags := managedVersionPackages(context.Background(), tc.declared, assigned, false)
+			got, diags := managedVersionPackages(context.Background(), tc.declared, assigned)
 			if diags.HasError() {
 				t.Fatalf("diags: %v", diags)
 			}
@@ -539,33 +539,22 @@ func TestAssignedVersionPackagesValue(t *testing.T) {
 	}
 }
 
-// TestManagedVersionPackages_HydratesOnImport covers first-time import, where
-// there are no declared keys to reconstruct the managed subset from: the whole
-// assigned set is adopted so a declared version_packages does not plan as an
-// addition on the first plan after import.
-func TestManagedVersionPackages_HydratesOnImport(t *testing.T) {
+// TestManagedVersionPackages_NeverHydratesUndeclaredAssignments pins #403 so a
+// later uniform-hydration sweep cannot reintroduce it. An import declares
+// nothing, and adopting the server's assignment set here makes every one of them
+// a prior key Update reads as an explicit unassign — so the first apply after an
+// import strips every package the configuration does not mention. The cosmetic
+// addition diff #391 wanted removed is the price, and it applies as a no-op.
+func TestManagedVersionPackages_NeverHydratesUndeclaredAssignments(t *testing.T) {
 	assigned := map[string]string{"8.32.2.10": "111", "8.33.0.0": "222"}
-	got, diags := managedVersionPackages(context.Background(), nil, assigned, true)
-	if diags.HasError() {
-		t.Fatalf("diagnostics: %v", diags)
-	}
-	if got.IsNull() {
-		t.Fatal("version_packages must hydrate from the assigned set on import")
-	}
-	if n := len(got.Elements()); n != 2 {
-		t.Errorf("version_packages expected 2 entries, got %d", n)
-	}
-}
-
-// TestManagedVersionPackages_ImportWithNoAssignedStaysNull asserts the
-// non-empty rule: storing an empty map where a create that never declared the
-// attribute stores null would break ImportStateVerify.
-func TestManagedVersionPackages_ImportWithNoAssignedStaysNull(t *testing.T) {
-	got, diags := managedVersionPackages(context.Background(), nil, map[string]string{}, true)
+	got, diags := managedVersionPackages(context.Background(), nil, assigned)
 	if diags.HasError() {
 		t.Fatalf("diagnostics: %v", diags)
 	}
 	if !got.IsNull() {
-		t.Errorf("version_packages must stay null when nothing is assigned, got %v", got)
+		t.Fatalf("version_packages must stay null when nothing is declared, got %v", got)
+	}
+	if elemType := got.ElementType(context.Background()); elemType != types.StringType {
+		t.Errorf("expected a typed null with element type %v, got %v", types.StringType, elemType)
 	}
 }
