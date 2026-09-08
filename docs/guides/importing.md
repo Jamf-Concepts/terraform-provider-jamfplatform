@@ -84,10 +84,6 @@ the harmless one above. The outcome does not.
 On these two, declare what you want to keep before you apply. Each says so in its own Import
 section too.
 
-An import of `jamfplatform_pro_patch_software_title` records no `version_packages`, so that
-attribute never appears in the settle plan at all. Terraform manages only the versions you declare,
-and every other package on the title stays assigned.
-
 ## Seeing what an import will hold
 
 Write the import block, run `terraform plan`, and read it before you write any more configuration.
