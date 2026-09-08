@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -77,6 +79,15 @@ func testAccCheckPatchSoftwareTitleDestroy(t *testing.T) resource.TestCheckFunc 
 // in step 2, then change which package it points at AND remove it in step 3 to
 // exercise both the assign and the empty-package clear/unassign path). Finally
 // import with justified ignores.
+//
+// Only timeouts is ignored on that import, and every other attribute is
+// verified. version_packages included: an import declares nothing and so
+// hydrates no assignments (#403), and step 4 left the title with none, so both
+// sides are null either way — a step whose configuration declares assignments
+// has to ignore it, because imported state holds null while applied state holds
+// the declared keys. available_versions is server-derived and already matches by
+// this step, and source_id is resolved from the patch source name on import, so
+// it round-trips.
 func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -238,20 +249,155 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      patchSoftwareType + ".test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// timeouts: framework-only, never round-trips.
-				// version_packages is verified rather than ignored: an import
-				// now adopts the whole assigned set (#391), and the preceding
-				// unassign step left the title with none, so both sides are
-				// null. available_versions: server-derived, and at this step the
-				// state already matches. source_id is resolved from the patch
-				// source name on import, so it round-trips.
+				ResourceName:            patchSoftwareType + ".test",
+				ImportState:             true,
+				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"timeouts"},
 			},
 		},
 	})
+}
+
+// TestAccResource_ProPatchSoftwareTitle_ImportSettleKeepsAssignments pins #403:
+// importing a title that already has packages assigned and then applying the
+// settle plan without declaring version_packages must leave every assignment in
+// place. It regressed once already — hydration adopted the server's whole
+// assignment set into state (#391 via #400), Update read those keys as the
+// managed subset, and the fold unassigned every one the configuration did not
+// mention. A patch policy on that title was left with no package to deploy.
+//
+// It earns an acceptance test because both halves are invisible to a unit test:
+// the state an import produces comes from the framework, and the erasure lands
+// on the server rather than in state. The title is created out of band so the
+// import is a real one — an address Terraform already manages cannot be
+// imported over.
+//
+// Step 2 renames the title. Without a change there is nothing to apply, and the
+// fold that does the damage never runs.
+//
+// ImportStateVerify is off because the configuration declares no
+// version_packages, so imported state and applied state can never match on it.
+// An import step reads neither Check nor ConfigStateChecks, so what the import
+// committed is asserted through ImportStateCheck, and what survives on the
+// server through the step-2 Check.
+func TestAccResource_ProPatchSoftwareTitle_ImportSettleKeepsAssignments(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc 8x8 Work settle " + suffix
+
+	pkgID := testAccCreatePackageOutOfBand(t, "tf-acc-pst-settle-pkg-"+suffix)
+	titleID := testAccCreatePatchTitleOutOfBand(t, name, pkgID)
+
+	config := func(n string) string {
+		return fmt.Sprintf(`
+		resource "jamfplatform_pro_patch_software_title" "test" {
+			name      = %q
+			name_id   = %q
+			source_id = %d
+		}
+	`, n, accTitleNameID, accTitleSourceID)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPatchSoftwareTitleDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config:             config(name),
+				ResourceName:       patchSoftwareType + ".test",
+				ImportState:        true,
+				ImportStateId:      titleID,
+				ImportStatePersist: true,
+				ImportStateVerify:  false,
+				ImportStateCheck: func(states []*terraform.InstanceState) error {
+					if len(states) != 1 {
+						return fmt.Errorf("expected 1 imported state, got %d", len(states))
+					}
+					if got, ok := states[0].Attributes["version_packages.%"]; ok {
+						return fmt.Errorf("import hydrated %s undeclared version_packages entries; it must hydrate none (#403)", got)
+					}
+					return nil
+				},
+			},
+			{
+				Config: config(name + " renamed"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(patchSoftwareType+".test", "name", name+" renamed"),
+					resource.TestCheckNoResourceAttr(patchSoftwareType+".test", "version_packages.%"),
+					testAccCheckPatchTitleAssignment(t, &titleID, accTitleVersion, &pkgID),
+				),
+			},
+		},
+	})
+}
+
+// testAccCreatePackageOutOfBand creates a metadata-only package (no upload) and
+// returns its id. Assigning a package to a title needs nothing more than an id
+// the server recognises.
+func testAccCreatePackageOutOfBand(t *testing.T, displayName string) string {
+	t.Helper()
+	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	created, err := c.CreatePackageV1(context.Background(), &pro.Package{
+		PackageName: displayName,
+		FileName:    displayName + ".pkg",
+		CategoryID:  "-1",
+	})
+	if err != nil {
+		t.Fatalf("creating a package outside Terraform: %v", err)
+	}
+	if created == nil || created.ID == "" {
+		t.Fatal("creating a package outside Terraform: no id in the response")
+	}
+	t.Cleanup(func() {
+		if err := c.DeletePackageV1(context.Background(), created.ID); err != nil {
+			t.Logf("cleaning up package %s: %v", created.ID, err)
+		}
+	})
+	return created.ID
+}
+
+// testAccCreatePatchTitleOutOfBand mints a patch software title the way an
+// administrator would and assigns packageID to accTitleVersion, then returns the
+// title id. Two calls, because that is what minting a title takes: the classic
+// POST is the only id-minting create, and package assignments live on the v3
+// configuration.
+//
+// The cleanup is a safety net rather than the normal path — the test imports the
+// title, so CheckDestroy is what proves Terraform destroyed it.
+func testAccCreatePatchTitleOutOfBand(t *testing.T, name, packageID string) string {
+	t.Helper()
+	ctx := context.Background()
+	classic := proclassic.New(testhelpers.NewAcceptanceClient(t))
+	nameID, sourceID := accTitleNameID, accTitleSourceID
+
+	created, err := classic.CreatePatchSoftwareTitleByID(ctx, "0", &proclassic.PatchSoftwareTitle{ //nolint:staticcheck // SA1019: the classic POST is the only id-minting create, as crud.go Create documents
+		Name:     &name,
+		NameID:   &nameID,
+		SourceID: &sourceID,
+	})
+	if err != nil {
+		t.Fatalf("creating a patch software title outside Terraform: %v", err)
+	}
+	if created == nil || created.ID == nil {
+		t.Fatal("creating a patch software title outside Terraform: no id in the response")
+	}
+	id := strconv.Itoa(*created.ID)
+
+	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	t.Cleanup(func() {
+		if err := c.DeletePatchSoftwareTitleConfigurationV3(context.Background(), id); err != nil && !helpers.IsNotFoundError(err) {
+			t.Logf("cleaning up patch software title %s: %v", id, err)
+		}
+	})
+
+	version := accTitleVersion
+	packages := []pro.PatchSoftwareTitlePackages{{Version: &version, PackageID: &packageID}}
+	if _, err := c.UpdatePatchSoftwareTitleConfigurationV3(ctx, id, &pro.PatchSoftwareTitleConfigurationPatch{
+		Packages: &packages,
+	}); err != nil {
+		t.Fatalf("assigning package %s to version %s of title %s: %v", packageID, version, id, err)
+	}
+	return id
 }
 
 // TestAccResource_ProPatchSoftwareTitle_OutOfBandAssignmentSurvives pins the
