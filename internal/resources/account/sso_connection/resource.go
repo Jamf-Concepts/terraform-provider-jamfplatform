@@ -499,10 +499,11 @@ func (r *ConnectionResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"attribute_map": schema.StringAttribute{
 				MarkdownDescription: "How claims from your provider are mapped onto Jamf Account user details, " +
-					"as a JSON object string. Author it with `jsonencode({ ... })`. Formatting and key order are " +
-					"not significant: the value is compared as JSON, so reindenting it produces no " +
-					"change.\n\nEvery connection read carried one, in one of three shapes: " +
-					"`{\"mapping_mode\":\"bind_all\"}`, `{\"mapping_mode\":\"basic_profile\"}`, or " +
+					"as a JSON object string. Author it with `jsonencode({ ... })`. Formatting and key order do " +
+					"not force the connection to be replaced, because the replacement decision compares the " +
+					"value as JSON. Reindenting it does still show as an in-place change, which Jamf Account's " +
+					"update endpoint currently refuses.\n\nEvery connection read carried one, in one of three " +
+					"shapes: `{\"mapping_mode\":\"bind_all\"}`, `{\"mapping_mode\":\"basic_profile\"}`, or " +
 					"`{\"mapping_mode\":\"use_map\", \"userinfo_scope\":\"…\", \"attributes\":{…}}` whose values " +
 					"are claim templates. There is no published schema for this and Jamf Account validates " +
 					"nothing here, so a mode this provider does not recognise is a warning rather than an error. " +

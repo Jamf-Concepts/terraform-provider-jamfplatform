@@ -232,6 +232,14 @@ func testAccCheckSSOConnectionDestroy(t *testing.T) resource.TestCheckFunc {
 }
 
 // oidcConnectionConfig renders a generic OpenID Connect connection.
+//
+// `attribute_map` is in the fixture, authored with `jsonencode`, so the
+// connection's only JSON-object attribute is actually sent and read back rather
+// than left unset in every acceptance run. `bind_all` is the simplest of the
+// three shapes the attribute's validator recognises, and every test here
+// inherits it. It is not what exercises the JSON normalisation — see the
+// GenerateConfigStep comment in TestAccResource_AccountSSOConnection_Basic for
+// why no acceptance step can, while the update endpoint refuses every write.
 func oidcConnectionConfig(name, domain string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_account_sso_connection" "test" {
@@ -244,6 +252,8 @@ func oidcConnectionConfig(name, domain string) string {
 			scopes        = "openid email profile"
 
 			domains = [%q]
+
+			attribute_map = jsonencode({ mapping_mode = "bind_all" })
 
 			generic_oidc = {
 				issuer_url             = "idp.example"
@@ -305,6 +315,7 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(connectionResourceAddress, "easy_config", "false"),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "domains.#", "1"),
 					resource.TestCheckTypeSetElemAttr(connectionResourceAddress, "domains.*", domain),
+					resource.TestCheckResourceAttrSet(connectionResourceAddress, "attribute_map"),
 					resource.TestCheckResourceAttr(connectionResourceAddress, "generic_oidc.issuer_url", "idp.example"),
 					resource.TestCheckResourceAttrSet(connectionResourceAddress, "id"),
 					resource.TestMatchResourceAttr(connectionResourceAddress, "internal_name",
@@ -328,13 +339,24 @@ func TestAccResource_AccountSSOConnection_Basic(t *testing.T) {
 			// The step above verifies imported state against the configuration
 			// that built it. GenerateConfigStep goes the other way: it writes
 			// state back out as configuration and requires the result to plan as
-			// a NO-OP. That is what catches attribute_map, which
-			// `-generate-config-out` re-emits as jsonencode({ ... }) — different
-			// whitespace from the string Jamf Account returned. Because
-			// ModifyPlan replaces the connection on any changed configurable
-			// attribute, and the comparison was reflect.DeepEqual over raw
-			// strings, adopting a connection and applying its generated
-			// configuration DESTROYED AND RECREATED it over formatting.
+			// a NO-OP.
+			//
+			// It is deliberately NOT the guard for attribute_map's JSON
+			// normalisation, and it cannot be, because the two requirements
+			// exclude each other. Generation re-emits the value and Terraform
+			// compares what that evaluates to against state. Where the two are
+			// byte-identical, as they are for this single-key fixture, nothing
+			// reaches jsonComparable. Where they are not, the in-place
+			// formatting diff that jsonComparable does not remove — see its doc
+			// comment, and it cannot be removed while the update endpoint fails
+			// — is what this step's no-op assertion then reports. So the
+			// executed guard for the normalisation is
+			// TestAttributeMapReindentingIsNotAReplacement, and this step guards
+			// the round-trip of every other attribute, which is what caught the
+			// ungated Entra group options.
+			//
+			// attribute_map is in the fixture regardless, so the value is
+			// exercised on create, read and import rather than never being sent.
 			testhelpers.GenerateConfigStep(connectionResourceAddress),
 		},
 	})

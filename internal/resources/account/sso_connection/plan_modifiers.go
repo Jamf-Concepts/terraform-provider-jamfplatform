@@ -170,28 +170,43 @@ func connectionComparisons(plan, state ConnectionResourceModel) []attributeCompa
 // Reading that as a change would replace the connection on every plan where any
 // dependency is pending, which is both wrong and destructive, so it is the one
 // case that has to be excluded rather than compared.
+func planValueDiffers(planned, current any) bool {
+	if unknowable, ok := planned.(attr.Value); ok && unknowable.IsUnknown() {
+		return false
+	}
+	return !reflect.DeepEqual(planned, current)
+}
+
 // jsonComparable normalises a JSON-object string attribute for comparison, so
 // that reindenting or reordering keys is not a change.
 //
-// attribute_map's schema promises exactly that — "Formatting and key order are
-// not significant: the value is compared as JSON, so reindenting it produces no
-// change" — but the comparison behind this file is reflect.DeepEqual over the
-// raw strings, which made the promise false in the one place it matters most.
-// `-generate-config-out` re-emits the value as `jsonencode({ ... })`, whose
-// formatting differs from the string Jamf Account returned, and because every
-// changed configurable attribute here forces replacement, importing a
-// connection and applying the generated configuration DESTROYED AND RECREATED a
-// live SSO connection over whitespace.
+// attribute_map's schema promised exactly that until this landed — "Formatting
+// and key order are not significant: the value is compared as JSON, so
+// reindenting it produces no change" — but the comparison behind this file is
+// reflect.DeepEqual over the raw strings, which made the promise false in the
+// one place it matters most. `-generate-config-out` re-emits the value as
+// `jsonencode({ ... })`, whose formatting differs from the string Jamf Account
+// returned, and because every changed configurable attribute here forces
+// replacement, importing a connection and applying the generated configuration
+// DESTROYED AND RECREATED a live SSO connection over whitespace.
 //
 // An unknown or null value, or one that is not valid JSON, is returned
 // unchanged: the caller's own unknown-value exemption still applies, and a
 // non-JSON value is the validator's business, not this comparison's.
 //
-// The durable fix is a JSON custom type with StringSemanticEquals, the way
-// ai_governance_policy models its settings_json, which would deliver the
-// documented contract everywhere rather than only here. That is a change to
-// every read and write site of this attribute; this file, by its own header, is
-// meant to be deleted when Jamf fixes the update endpoint.
+// It settles the replacement decision and nothing else, and the in-place
+// formatting diff left outside that decision cannot be closed by semantic
+// equality while `PUT /sso/v1/connections/{id}` fails. The framework never
+// applies semantic equality while planning — it consults it only where a value
+// the provider returned is reconciled against the value it was handed — and the
+// convergence it does deliver comes from Update passing the *planned* state as
+// the prior side of that comparison, so state adopts the author's formatting on
+// the first apply. StringSemanticEquals in
+// internal/resources/ai_governance/policy/custom_types.go records that
+// mechanism. Here no apply of a change can succeed, so a JSON custom type would
+// have nothing to converge on. Once Jamf fixes the update endpoint, one on this
+// attribute would converge the way settings_json does — and this file, by its
+// own header, is meant to be deleted at the same time.
 func jsonComparable(value types.String) any {
 	if value.IsUnknown() || value.IsNull() {
 		return value
@@ -205,11 +220,4 @@ func jsonComparable(value types.String) any {
 		return value
 	}
 	return types.StringValue(string(canonical))
-}
-
-func planValueDiffers(planned, current any) bool {
-	if unknowable, ok := planned.(attr.Value); ok && unknowable.IsUnknown() {
-		return false
-	}
-	return !reflect.DeepEqual(planned, current)
 }
