@@ -107,14 +107,14 @@ func (r *JSONWebTokenConfigurationResource) Schema(ctx context.Context, req reso
 				Optional:            true,
 			},
 			"token_expiry": schema.Int64Attribute{
-				MarkdownDescription: "**\"Token Expiry\"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. When unset, Jamf Pro's stored default applies.",
+				MarkdownDescription: "**\"Token Expiry\"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. Omit to leave the current value untouched on update; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 				Validators:          []validator.Int64{int64validator.Between(1, 120)},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the JSON Web Token configuration is active. Defaults to `true`.",
+				MarkdownDescription: "Whether the JSON Web Token configuration is active. Defaults to `true` on create. Omit to leave the current value untouched on update; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},

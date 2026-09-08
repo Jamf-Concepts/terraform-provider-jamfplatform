@@ -106,7 +106,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "**\"Enabled\"** in the Jamf Pro admin UI. Whether the webhook is active. Defaults to `true`.",
+				MarkdownDescription: "**\"Enabled\"** in the Jamf Pro admin UI. Whether the webhook is active. Defaults to `true`. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -124,19 +124,19 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.OneOf(webhookAuthTypes...)},
 			},
 			"connection_timeout": schema.Int64Attribute{
-				MarkdownDescription: "**\"Connection Timeout\"** in the Jamf Pro admin UI. Seconds to wait when establishing the connection to the webhook host. Defaults to `5`.",
+				MarkdownDescription: "**\"Connection Timeout\"** in the Jamf Pro admin UI. Seconds to wait when establishing the connection to the webhook host. Defaults to `5`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"read_timeout": schema.Int64Attribute{
-				MarkdownDescription: "**\"Read Timeout\"** in the Jamf Pro admin UI. Seconds to wait for a response after sending the request. Defaults to `2`.",
+				MarkdownDescription: "**\"Read Timeout\"** in the Jamf Pro admin UI. Seconds to wait for a response after sending the request. Defaults to `2`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"content_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Content Type\"** in the Jamf Pro admin UI (the XML/JSON radio). Format of the webhook payload: `application/json` or `text/xml`. Defaults to `text/xml`.",
+				MarkdownDescription: "**\"Content Type\"** in the Jamf Pro admin UI (the XML/JSON radio). Format of the webhook payload: `application/json` or `text/xml`. Defaults to `text/xml`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -167,7 +167,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Sensitive:           true,
 			},
 			"hash_algorithm": schema.StringAttribute{
-				MarkdownDescription: "**\"Algorithm\"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.",
+				MarkdownDescription: "**\"Algorithm\"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it. The value is only left untouched while `authentication_type` stays the same: Jamf Pro resets it to `SHA256` on any update whose authentication type is not `HASH_SIGNATURE`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{hashAlgorithmAuthResetPlanModifier{}},
@@ -181,7 +181,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"enable_display_fields_for_group_object": schema.BoolAttribute{
-				MarkdownDescription: "**\"Include Display Fields for the Group Object\"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. The display field list itself cannot be set here; see `display_fields`.",
+				MarkdownDescription: "**\"Include Display Fields for the Group Object\"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. Omit to leave the current value untouched; set `true`/`false` to change it. The display field list itself cannot be set here; see `display_fields`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},

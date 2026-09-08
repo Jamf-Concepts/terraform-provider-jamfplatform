@@ -189,8 +189,8 @@ variable "sso_key_password" {
 ### Optional
 
 - `enrollment_sso_config` (Attributes) Configuration consumed by the Account-Driven Enrollment SSO flow. (see [below for nested schema](#nestedatt--enrollment_sso_config))
-- `enrollment_sso_for_account_driven_enrollment_enabled` (Boolean) Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant.
-- `group_enrollment_access_enabled` (Boolean) Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.
+- `enrollment_sso_for_account_driven_enrollment_enabled` (Boolean) Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `group_enrollment_access_enabled` (Boolean) Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `group_enrollment_access_name` (String) Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`. Omit to leave any existing value untouched; set to `""` to clear it.
 - `oidc_settings` (Attributes) OIDC configuration. Required when `configuration_type` is `OIDC` or `OIDC_WITH_SAML`. May be omitted in pure SAML mode. (see [below for nested schema](#nestedatt--oidc_settings))
 - `saml_settings` (Attributes) SAML configuration. Required when `configuration_type` is `SAML` or `OIDC_WITH_SAML`. Must be omitted in pure OIDC mode. (see [below for nested schema](#nestedatt--saml_settings))
@@ -200,10 +200,10 @@ variable "sso_key_password" {
 - `UPLOADED`: user-supplied PKCS12 or JKS keystore. Requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`. `key` is the case-sensitive alias inside the keystore; enumerate aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.
 
 `keystore_password` and `password` are both `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next update to re-send the value. (see [below for nested schema](#nestedatt--signing_certificate))
-- `sso_bypass_allowed` (Boolean) Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
-- `sso_enabled` (Boolean) Whether SSO is enabled on the tenant.
-- `sso_for_enrollment_enabled` (Boolean) Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
-- `sso_for_macos_self_service_enabled` (Boolean) Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
+- `sso_bypass_allowed` (Boolean) Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `sso_enabled` (Boolean) Whether SSO is enabled on the tenant. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `sso_for_enrollment_enabled` (Boolean) Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `sso_for_macos_self_service_enabled` (Boolean) Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -228,8 +228,8 @@ Required:
 
 Optional:
 
-- `jamf_id_authentication_enabled` (Boolean) Allow Jamf ID authentication alongside the configured OIDC provider. Jamf Pro applies its default when omitted.
-- `username_attribute_claim_mapping` (String) OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Jamf Pro applies its default when omitted.
+- `jamf_id_authentication_enabled` (Boolean) Allow Jamf ID authentication alongside the configured OIDC provider. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `username_attribute_claim_mapping` (String) OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 
 
 <a id="nestedatt--saml_settings"></a>
@@ -237,20 +237,20 @@ Optional:
 
 Optional:
 
-- `entity_id` (String) SAML EntityID. Required (non-empty) when `configuration_type` includes SAML.
+- `entity_id` (String) SAML EntityID. Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.
 - `federation_metadata_file` (String, Sensitive) Raw base64 of the IdP SAML metadata XML. Required when `metadata_source = "FILE"`. Idiomatic usage: `filebase64("idp-metadata.xml")`.
-- `group_attribute_name` (String) SAML attribute carrying group claims (e.g. `http://schemas.xmlsoap.org/claims/Group`). Required (non-empty) when `configuration_type` includes SAML.
+- `group_attribute_name` (String) SAML attribute carrying group claims (e.g. `http://schemas.xmlsoap.org/claims/Group`). Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.
 - `group_rdn_key` (String) RDN token (e.g. `CN`, `DC`, `OU`) applied when group claims arrive as full distinguished names. Omit to leave any existing value untouched; set to `""` to clear it.
-- `idp_provider_type` (String) SAML IdP type. One of `ADFS`, `OKTA`, `GOOGLE`, `SHIBBOLETH`, `ONELOGIN`, `PING`, `CENTRIFY`, `AZURE`, or `OTHER`. When `OTHER`, `other_provider_type_name` must also be set.
-- `idp_url` (String) URL Jamf Pro fetches IdP metadata from. Required when `metadata_source = "URL"`. Jamf Pro performs a live HTTP fetch when the resource is applied; the URL is not pre-validated for syntax or reachability by the provider.
-- `metadata_file_name` (String) Display filename for the uploaded metadata. Required when `metadata_source = "FILE"`; must be omitted when `metadata_source = "URL"`.
-- `metadata_source` (String) How Jamf Pro obtains IdP SAML metadata. `URL` (Jamf Pro fetches metadata from `idp_url`) or `FILE` (raw base64 supplied in `federation_metadata_file`). The two branches are mutually exclusive.
-- `other_provider_type_name` (String) Display name for the IdP when `idp_provider_type = "OTHER"`.
-- `session_timeout` (Number) SAML session timeout in minutes. Upper bound: 35,791,393. Stored value is preserved even when `token_expiration_disabled = true`.
-- `token_expiration_disabled` (Boolean) Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.
-- `user_attribute_enabled` (Boolean) Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.
-- `user_attribute_name` (String) Name of the SAML attribute carrying the username. Required when `user_attribute_enabled = true`.
-- `user_mapping` (String) How SAML attributes map to Jamf Pro users. One of `USERNAME` or `EMAIL`.
+- `idp_provider_type` (String) SAML IdP type. One of `ADFS`, `OKTA`, `GOOGLE`, `SHIBBOLETH`, `ONELOGIN`, `PING`, `CENTRIFY`, `AZURE`, or `OTHER`. When `OTHER`, `other_provider_type_name` must also be set. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `idp_url` (String) URL Jamf Pro fetches IdP metadata from. Required when `metadata_source = "URL"`. Jamf Pro performs a live HTTP fetch when the resource is applied; the URL is not pre-validated for syntax or reachability by the provider. Omit to leave the current value untouched.
+- `metadata_file_name` (String) Display filename for the uploaded metadata. Required when `metadata_source = "FILE"`; must be omitted when `metadata_source = "URL"`. Omit to leave the current value untouched.
+- `metadata_source` (String) How Jamf Pro obtains IdP SAML metadata. `URL` (Jamf Pro fetches metadata from `idp_url`) or `FILE` (raw base64 supplied in `federation_metadata_file`). The two branches are mutually exclusive. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `other_provider_type_name` (String) Display name for the IdP when `idp_provider_type = "OTHER"`. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `session_timeout` (Number) SAML session timeout in minutes. Upper bound: 35,791,393. Jamf Pro keeps the stored value even when `token_expiration_disabled = true`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `token_expiration_disabled` (Boolean) Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` on the first apply. Jamf Pro requires an explicit boolean here, so the provider always sends one on update. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `user_attribute_enabled` (Boolean) Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` on the first apply. Jamf Pro requires an explicit boolean here, so the provider always sends one on update. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `user_attribute_name` (String) Name of the SAML attribute carrying the username. Required when `user_attribute_enabled = true`. Omit to leave the current value untouched.
+- `user_mapping` (String) How SAML attributes map to Jamf Pro users. One of `USERNAME` or `EMAIL`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 
 
 <a id="nestedatt--signing_certificate"></a>
@@ -324,5 +324,9 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Terraform re-sends your keystore, because Jamf Pro reports no readable copy of
 # the `_wo_version` rotation triggers and the values you configure always differ
 # from the empty ones in state.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_sso_settings.this singleton
 ```

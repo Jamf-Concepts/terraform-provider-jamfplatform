@@ -4,7 +4,7 @@ page_title: "jamfplatform_pro_mobile_device_app Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device app: the "App Store App" and in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata only; uploading an in-house binary (IPA) is not supported. general.name, general.version and general.bundle_id are required. general.os_type is required only for in-house apps, and an App Store app carrying an itunes_store_url does not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations and exclusions are not supported for mobile device apps.
-  Updates are merged rather than replaced. Removing a whole optional block (scope, self_service, vpp or app_configuration) from your configuration does not clear it; the values set previously are retained. To clear a block, null its individual fields instead of deleting the block.
+  Updates are merged rather than replaced. Removing a whole optional block (scope, self_service, vpp or app_configuration) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -16,7 +16,7 @@ description: |-
 
 Manages a Jamf Pro mobile device app: the "App Store App" and in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata only; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version` and `general.bundle_id` are required. `general.os_type` is required only for in-house apps, and an App Store app carrying an `itunes_store_url` does not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations and exclusions are not supported for mobile device apps.
 
-Updates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `vpp` or `app_configuration`) from your configuration does not clear it; the values set previously are retained. To clear a block, null its individual fields instead of deleting the block.
+Updates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `vpp` or `app_configuration`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
 
 **Required Jamf permissions**
 
@@ -140,25 +140,25 @@ Required:
 
 Optional:
 
-- `allow_user_to_delete` (Boolean) Allow the user to delete the managed app.
-- `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
-- `deploy_as_managed_app` (Boolean) Deploy as a managed app (enables managed-app capabilities such as app configuration).
-- `deploy_automatically` (Boolean) Automatically push the app to in-scope devices.
-- `external_url` (String) External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side.
-- `host_externally` (Boolean) Host the app externally (in-house hosting). Flips to true automatically when an `external_url` or App Store URL is set.
-- `is_free` (Boolean) Whether the app is free.
-- `itunes_country_region` (String) Two-letter App Store country/region code used to resolve store metadata.
-- `itunes_store_url` (String) Canonical App Store (iTunes) URL. Setting it also populates the deprecated `url` mirror server-side.
+- `allow_user_to_delete` (Boolean) Allow the user to delete the managed app. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `category_id` (String) Jamf Pro category ID. Use `-1` for "No category". Omit to leave the current value untouched.
+- `deploy_as_managed_app` (Boolean) Deploy as a managed app (enables managed-app capabilities such as app configuration). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `deploy_automatically` (Boolean) Automatically push the app to in-scope devices. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `external_url` (String) External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side. Omit to leave the current value untouched.
+- `host_externally` (Boolean) Host the app externally (in-house hosting). Flips to true automatically when an `external_url` or App Store URL is set. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `is_free` (Boolean) Whether the app is free. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `itunes_country_region` (String) Two-letter App Store country/region code used to resolve store metadata. Omit to leave the current value untouched.
+- `itunes_store_url` (String) Canonical App Store (iTunes) URL. Setting it also populates the deprecated `url` mirror server-side. Omit to leave the current value untouched.
 - `itunes_sync_time` (Number) App Store sync time as a Unix epoch. Maintained by Jamf Pro.
-- `keep_app_updated_on_devices` (Boolean) Automatically update the app on managed devices when a new version ships.
-- `keep_description_and_icon_up_to_date` (Boolean) Keep the app description and icon in sync with the App Store listing.
-- `make_available_after_install` (Boolean) Make the app available in Self Service after it is installed automatically.
+- `keep_app_updated_on_devices` (Boolean) Automatically update the app on managed devices when a new version ships. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `keep_description_and_icon_up_to_date` (Boolean) Keep the app description and icon in sync with the App Store listing. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `make_available_after_install` (Boolean) Make the app available in Self Service after it is installed automatically. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `os_type` (String) Operating system the app targets. One of `iOS` or `tvOS`. Required for in-house apps; App Store apps (those with an `itunes_store_url`) do not need it.
-- `prevent_backup_of_app_data` (Boolean) Prevent the app's data from being backed up to iCloud / iTunes.
-- `remove_app_when_mdm_profile_is_removed` (Boolean) Remove the app from a device when its MDM profile is removed.
-- `require_network_tethered` (Boolean) Require a network-tethered connection to install. Relevant for automatically-deployed apps.
-- `site_id` (String) Jamf Pro site ID scoping the app. Use `-1` for "No site".
-- `take_over_management` (Boolean) Take over management of the app if it is already installed unmanaged.
+- `prevent_backup_of_app_data` (Boolean) Prevent the app's data from being backed up to iCloud / iTunes. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `remove_app_when_mdm_profile_is_removed` (Boolean) Remove the app from a device when its MDM profile is removed. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `require_network_tethered` (Boolean) Require a network-tethered connection to install. Relevant for automatically-deployed apps. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `site_id` (String) Jamf Pro site ID scoping the app. Use `-1` for "No site". Omit to leave the current value untouched.
+- `take_over_management` (Boolean) Take over management of the app if it is already installed unmanaged. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 Read-Only:
 
@@ -174,7 +174,7 @@ Read-Only:
 
 Optional:
 
-- `preferences` (String) App-configuration property list content. Whitespace, indentation, and newline-style differences are ignored when comparing, so reformatting the same configuration does not show as a change.
+- `preferences` (String) App-configuration property list content. Whitespace, indentation, and newline-style differences are ignored when comparing, so reformatting the same configuration does not show as a change. Omit to leave the current value untouched.
 
 
 <a id="nestedatt--scope"></a>
@@ -233,14 +233,14 @@ Optional:
 
 Optional:
 
-- `after_install_button_text` (String) Button label shown after the app is installed. Requires `general.make_available_after_install = true`; Jamf Pro discards the label otherwise and never returns it.
-- `feature_on_main_page` (Boolean) Feature the app on the Self Service main page.
-- `install_button_text` (String) Install-button label.
-- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available.
-- `notification_message` (String) Notification body text.
-- `notification_subject` (String) Notification subject line.
+- `after_install_button_text` (String) Button label shown after the app is installed. Requires `general.make_available_after_install = true`; Jamf Pro discards the label otherwise and never returns it. Omit to leave the current value untouched.
+- `feature_on_main_page` (Boolean) Feature the app on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_button_text` (String) Install-button label shown on the app's Self Service page. Omit to leave the current value untouched.
+- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `notification_message` (String) Notification body text. Omit to leave the current value untouched.
+- `notification_subject` (String) Notification subject line. Omit to leave the current value untouched.
 - `self_service_categories` (Attributes Set) Set of Self Service categories the app appears under. Each item identifies the category by `id`; `name` is returned by Jamf Pro. (see [below for nested schema](#nestedatt--self_service--self_service_categories))
-- `self_service_description` (String) Self Service description. Markdown supported.
+- `self_service_description` (String) Self Service description. Markdown supported. Omit to leave the current value untouched.
 - `self_service_icon` (Attributes) Self Service icon. Set `id` to reference an already-uploaded icon (e.g. `jamfplatform_pro_icon`); `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
 
 <a id="nestedatt--self_service--self_service_categories"></a>
@@ -282,8 +282,8 @@ Optional:
 
 Optional:
 
-- `assign_vpp_device_based_licenses` (Boolean) Assign VPP device-based licenses.
-- `vpp_admin_account_id` (String) VPP admin account ID. `-1` when the app is not VPP-backed.
+- `assign_vpp_device_based_licenses` (Boolean) Assign VPP device-based licenses. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `vpp_admin_account_id` (String) VPP admin account ID. `-1` when the app is not VPP-backed. Omit to leave the current value untouched.
 
 ## Import
 
@@ -295,5 +295,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing mobile device app by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_mobile_device_app.example "122"
 ```

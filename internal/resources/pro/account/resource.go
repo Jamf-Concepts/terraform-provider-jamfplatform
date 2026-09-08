@@ -99,13 +99,13 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"full_name": schema.StringAttribute{
-				MarkdownDescription: "Full name (UI \"Full Name\").",
+				MarkdownDescription: "Full name (UI \"Full Name\"). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"email_address": schema.StringAttribute{
-				MarkdownDescription: "Email address (UI \"Email Address\"). Must be unique across accounts; Jamf Pro rejects a duplicate on create.",
+				MarkdownDescription: "Email address (UI \"Email Address\"). Must be unique across accounts; Jamf Pro rejects a duplicate on create. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -121,7 +121,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.OneOf(privilegeSetValues...)},
 			},
 			"access_status": schema.StringAttribute{
-				MarkdownDescription: "Account status (UI \"Access Status\"). One of `Enabled` or `Disabled`.",
+				MarkdownDescription: "Account status (UI \"Access Status\"). One of `Enabled` or `Disabled`. Omit to leave the current value untouched; set `Enabled` or `Disabled` to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(accessStatusValues...)},
@@ -135,19 +135,19 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown(), stringplanmodifier.RequiresReplace()},
 			},
 			"ldap_server_id": schema.Int64Attribute{
-				MarkdownDescription: "ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account.",
+				MarkdownDescription: "ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"site_id": schema.Int64Attribute{
-				MarkdownDescription: "Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`.",
+				MarkdownDescription: "Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"force_password_change": schema.BoolAttribute{
-				MarkdownDescription: "Whether the user must change their password at next login (UI \"Force change at next login\").",
+				MarkdownDescription: "Whether the user must change their password at next login (UI \"Force change at next login\"). Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},

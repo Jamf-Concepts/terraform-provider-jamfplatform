@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_mac_app_store_app Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac Apps" sidebar. general.name, general.version, general.bundle_id and general.url are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.
+  Updates are merged rather than replaced. Removing a whole optional block (self_service or vpp) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,6 +15,8 @@ description: |-
 # jamfplatform_pro_mac_app_store_app (Resource)
 
 Manages a Jamf Pro App Store Mac app, the "App Store App" entry under the "Mac Apps" sidebar. `general.name`, `general.version`, `general.bundle_id` and `general.url` are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.
+
+Updates are merged rather than replaced. Removing a whole optional block (`self_service` or `vpp`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
 
 **Required Jamf permissions**
 
@@ -106,9 +109,9 @@ resource "jamfplatform_pro_mac_app_store_app" "automatic" {
 ### Optional
 
 - `scope` (Attributes) App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids` and `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations and exclusions are deliberately absent, because Jamf Pro silently drops them. (see [below for nested schema](#nestedatt--scope))
-- `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
+- `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, "App is not available for device assignment". The license counts are calculated by Jamf Pro. (see [below for nested schema](#nestedatt--vpp))
+- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, "App is not available for device assignment". The license counts are calculated by Jamf Pro. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--vpp))
 
 ### Read-Only
 
@@ -126,10 +129,10 @@ Required:
 
 Optional:
 
-- `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
-- `deployment_type` (String) Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service` on create.
-- `is_free` (Boolean) Whether the app is free. Server-defaults to false on create.
-- `site_id` (String) Jamf Pro site ID scoping the app. Use `-1` for "No site".
+- `category_id` (String) Jamf Pro category ID. Use `-1` for "No category". Omit to leave the current value untouched.
+- `deployment_type` (String) Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service` on create. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `is_free` (Boolean) Whether the app is free. Server-defaults to false on create. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `site_id` (String) Jamf Pro site ID scoping the app. Use `-1` for "No site". Omit to leave the current value untouched.
 
 Read-Only:
 
@@ -194,15 +197,15 @@ Optional:
 
 Optional:
 
-- `feature_on_main_page` (Boolean) Feature the app on the Self Service main page.
-- `force_users_to_view_description` (Boolean) Force users to view the description before installing.
-- `install_button_text` (String) Install-button label.
-- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available. Pair with `notification_method`.
-- `notification_message` (String) Notification body text.
-- `notification_method` (String) Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled.
-- `notification_subject` (String) Notification subject line.
+- `feature_on_main_page` (Boolean) Feature the app on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `force_users_to_view_description` (Boolean) Force users to view the description before installing. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_button_text` (String) Install-button label shown on the app's Self Service page. Omit to leave the current value untouched.
+- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the app becomes available. Pair with `notification_method`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `notification_message` (String) Notification body text. Omit to leave the current value untouched.
+- `notification_method` (String) Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled. Omit to leave the current value untouched.
+- `notification_subject` (String) Notification subject line. Omit to leave the current value untouched.
 - `self_service_categories` (Attributes Set) Set of Self Service categories the app appears under. Each item identifies the category by `id`; `name` is returned by Jamf Pro. (see [below for nested schema](#nestedatt--self_service--self_service_categories))
-- `self_service_description` (String) Self Service description. Markdown supported.
+- `self_service_description` (String) Self Service description. Markdown supported. Omit to leave the current value untouched.
 - `self_service_icon` (Attributes) Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported, because Jamf Pro re-encodes PNGs and the result would diff forever. Open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
 
 <a id="nestedatt--self_service--self_service_categories"></a>
@@ -245,8 +248,8 @@ Optional:
 
 Optional:
 
-- `assign_vpp_device_based_licenses` (Boolean) Assign VPP device-based licenses.
-- `vpp_admin_account_id` (String) VPP admin account ID. `-1` when the app is not VPP-backed.
+- `assign_vpp_device_based_licenses` (Boolean) Assign VPP device-based licenses. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `vpp_admin_account_id` (String) VPP admin account ID. `-1` when the app is not VPP-backed. Omit to leave the current value untouched.
 
 Read-Only:
 
@@ -264,5 +267,12 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing Mac App Store app by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing the
+# scope, Self Service and volume purchasing blocks you did not declare. Applying
+# that plan changes only the state file: Jamf Pro keeps every value it holds
+# there. See the "Importing existing objects" guide.
 terraform import jamfplatform_pro_mac_app_store_app.example "84"
 ```

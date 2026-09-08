@@ -31,7 +31,7 @@ func SchemaBlock() rschema.SingleNestedAttribute {
 	return rschema.SingleNestedAttribute{
 		Optional:            true,
 		Attributes:          attrs,
-		Description:         "Custom privilege grid. Only applied when privilege_set is \"Custom\". Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog.",
-		MarkdownDescription: "Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog.",
+		Description:         "Custom privilege grid. Only applied when privilege_set is \"Custom\". Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. Omit a category to leave any existing entries untouched (they are not cleared on update); set to [] to clear them.",
+		MarkdownDescription: "Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. Omit a category to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.",
 	}
 }

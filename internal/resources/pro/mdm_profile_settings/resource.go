@@ -86,7 +86,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"auto_renew_computer_profile_when_ca_renewed": schema.BoolAttribute{
 				MarkdownDescription: "When the certificate authority is renewed, automatically renew the computer MDM profile. " +
-					"Maps to the \"Automatically renew the MDM profile when the built-in CA is renewed\" computer control under MDM profile settings.",
+					"Maps to the \"Automatically renew the MDM profile when the built-in CA is renewed\" computer control under MDM profile settings. Omit to leave the current value untouched on update; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -95,7 +95,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"auto_renew_computer_profile_before_expiry": schema.BoolAttribute{
 				MarkdownDescription: "Automatically renew the computer MDM profile before its device identity certificate expires. " +
-					"Maps to the \"Automatically renew the MDM profile before the device identity certificate expires\" computer control under MDM profile settings.",
+					"Maps to the \"Automatically renew the MDM profile before the device identity certificate expires\" computer control under MDM profile settings. Omit to leave the current value untouched on update; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -104,7 +104,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"computer_profile_expiration_limit_days": schema.Int64Attribute{
 				MarkdownDescription: "Number of days before the computer device identity certificate expires at which Jamf Pro begins renewing the MDM profile. " +
-					"Maps to the computer \"expiration limit (in days)\" field under MDM profile settings.",
+					"Maps to the computer \"expiration limit (in days)\" field under MDM profile settings. Omit to leave the current value untouched on update; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
@@ -113,7 +113,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"auto_renew_mobile_device_profile_when_ca_renewed": schema.BoolAttribute{
 				MarkdownDescription: "When the certificate authority is renewed, automatically renew the mobile device MDM profile. " +
-					"Maps to the \"Automatically renew the MDM profile when the built-in CA is renewed\" mobile device control under MDM profile settings.",
+					"Maps to the \"Automatically renew the MDM profile when the built-in CA is renewed\" mobile device control under MDM profile settings. Omit to leave the current value untouched on update; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -122,7 +122,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"auto_renew_mobile_device_profile_before_expiry": schema.BoolAttribute{
 				MarkdownDescription: "Automatically renew the mobile device MDM profile before its device identity certificate expires. " +
-					"Maps to the \"Automatically renew the MDM profile before the device identity certificate expires\" mobile device control under MDM profile settings.",
+					"Maps to the \"Automatically renew the MDM profile before the device identity certificate expires\" mobile device control under MDM profile settings. Omit to leave the current value untouched on update; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -131,7 +131,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 			},
 			"mobile_device_profile_expiration_limit_days": schema.Int64Attribute{
 				MarkdownDescription: "Number of days before the mobile device identity certificate expires at which Jamf Pro begins renewing the MDM profile. " +
-					"Maps to the mobile device \"expiration limit (in days)\" field under MDM profile settings.",
+					"Maps to the mobile device \"expiration limit (in days)\" field under MDM profile settings. Omit to leave the current value untouched on update; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{

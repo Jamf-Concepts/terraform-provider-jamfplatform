@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_volume_purchasing_notification Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Volume Purchasing notification, configured on the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
+  Manages a Volume Purchasing notification, configured on the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Every apply replaces recipients, triggers and included locations in full: omit one to leave its existing entries untouched, or set it to [] to clear it. Set site_id to -1 for no site.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_volume_purchasing_notification (Resource)
 
-Manages a Volume Purchasing notification, configured on the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.
+Manages a Volume Purchasing notification, configured on the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Every apply replaces recipients, triggers and included locations in full: omit one to leave its existing entries untouched, or set it to `[]` to clear it. Set `site_id` to `-1` for no site.
 
 **Required Jamf permissions**
 
@@ -61,13 +61,13 @@ resource "jamfplatform_pro_volume_purchasing_notification" "low_licenses" {
 
 ### Optional
 
-- `enabled` (Boolean) **"Enabled"** in the Jamf Pro admin UI. Whether the notification is active. Defaults to enabled.
-- `external_recipients` (Attributes Set) **"External Recipients"** in the Jamf Pro admin UI. Email addresses outside Jamf Pro that receive the daily summary. Supply an empty set for no external recipients. (see [below for nested schema](#nestedatt--external_recipients))
-- `internal_recipients` (Set of String) **"Existing Jamf Pro User Accounts"** in the Jamf Pro admin UI. Jamf Pro account IDs that receive the daily summary email. Supply an empty set for no internal recipients.
-- `location_ids` (Set of String) **"Included locations"** in the Jamf Pro admin UI. Volume Purchasing location IDs (`jamfplatform_pro_volume_purchasing_location`) the notification covers. Supply an empty set for no locations.
-- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the notification. Use `-1` for no site.
+- `enabled` (Boolean) **"Enabled"** in the Jamf Pro admin UI. Whether the notification is active. Defaults to enabled. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `external_recipients` (Attributes Set) **"External Recipients"** in the Jamf Pro admin UI. Email addresses outside Jamf Pro that receive the daily summary. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no external recipients. (see [below for nested schema](#nestedatt--external_recipients))
+- `internal_recipients` (Set of String) **"Existing Jamf Pro User Accounts"** in the Jamf Pro admin UI. Jamf Pro account IDs that receive the daily summary email. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no internal recipients.
+- `location_ids` (Set of String) **"Included locations"** in the Jamf Pro admin UI. Volume Purchasing location IDs (`jamfplatform_pro_volume_purchasing_location`) the notification covers. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no locations.
+- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the notification. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `triggers` (Set of String) Events that send the notification. Any of `REMOVED_FROM_APP_STORE` (an item is removed from the App Store) or `NO_MORE_LICENSES` (a location runs out of licenses). Supply an empty set to send the notification for no events.
+- `triggers` (Set of String) Events that send the notification. Any of `REMOVED_FROM_APP_STORE` (an item is removed from the App Store) or `NO_MORE_LICENSES` (a location runs out of licenses). Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to send the notification for no events.
 
 ### Read-Only
 

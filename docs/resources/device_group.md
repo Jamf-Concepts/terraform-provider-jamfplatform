@@ -111,8 +111,8 @@ output "smart_computer_group_jamf_pro_id" {
 ### Optional
 
 - `criteria` (Attributes List) Smart-group criteria evaluated by the Jamf inventory service. Ordered: criteria are evaluated and rendered in the order listed. (see [below for nested schema](#nestedatt--criteria))
-- `description` (String) Optional Description for the device group.
-- `members` (Set of String) Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.
+- `description` (String) Free-text description for the device group. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `members` (Set of String) Device IDs making up a static group's membership. Not accepted on a smart group, whose membership the Jamf inventory service works out from `criteria`. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -147,3 +147,22 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Copyright Jamf Software LLC 2026
+# SPDX-License-Identifier: MPL-2.0
+
+# Import an existing device group by its ID.
+#
+# Import records every optional attribute the platform reports, including a
+# static group's members and its description, so the first plan afterwards can
+# propose removing what your configuration does not declare. See the "Importing
+# existing objects" guide for what applying that plan does.
+terraform import jamfplatform_device_group.example "3ff60bb2-95dd-48f1-9141-0de74f5ad18c"
+```

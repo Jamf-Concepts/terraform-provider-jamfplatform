@@ -149,39 +149,39 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 					},
 					// Wire: <match_exact_process_name>. Server-defaults true.
 					"restrict_exact_process_name": schema.BoolAttribute{
-						MarkdownDescription: "**\"Restrict exact process name\"** in the Jamf Pro admin UI. Only restrict processes that match the exact process name. Defaults to `true`.",
+						MarkdownDescription: "**\"Restrict exact process name\"** in the Jamf Pro admin UI. Only restrict processes that match the exact process name. Defaults to `true`. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 					},
 					// Wire: <send_notification>.
 					"send_email_notification_on_violation": schema.BoolAttribute{
-						MarkdownDescription: "**\"Send email notification on violation\"** in the Jamf Pro admin UI. When the process is found, send an email notification to Jamf Pro users with email notifications enabled (an SMTP server must be configured). Defaults to `false`.",
+						MarkdownDescription: "**\"Send email notification on violation\"** in the Jamf Pro admin UI. When the process is found, send an email notification to Jamf Pro users with email notifications enabled (an SMTP server must be configured). Defaults to `false`. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"kill_process": schema.BoolAttribute{
-						MarkdownDescription: "**\"Kill process\"** in the Jamf Pro admin UI. Terminate the restricted process when found. Defaults to `false`.",
+						MarkdownDescription: "**\"Kill process\"** in the Jamf Pro admin UI. Terminate the restricted process when found. Defaults to `false`. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 					},
 					// Wire: <delete_executable>.
 					"delete_application": schema.BoolAttribute{
-						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time.",
+						MarkdownDescription: "**\"Delete application\"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"display_message": schema.StringAttribute{
-						MarkdownDescription: "**\"Message\"** in the Jamf Pro admin UI. Message to display to users when the process is found. Defaults to an empty string.",
+						MarkdownDescription: "**\"Message\"** in the Jamf Pro admin UI. Message to display to users when the process is found. Defaults to an empty string. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"site_id": schema.StringAttribute{
-						MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Use `-1` for \"None\".",
+						MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},

@@ -77,10 +77,13 @@ func (r *ComputerInventoryCollectionSettingsResource) IdentitySchema(ctx context
 
 // optionalComputedBool returns the canonical Optional+Computed bool attribute used for
 // every collection-preference toggle. These are plain (non-nested) scalars, so
-// UseStateForUnknown is the correct plan modifier.
+// UseStateForUnknown is the correct plan modifier. The settings update is a merge-patch,
+// so an omitted toggle keeps its stored value; the standard description sentence is
+// appended here so all fourteen toggles document the same contract — see
+// STYLE_GUIDE.md §Full-replace endpoints & shared backing stores.
 func optionalComputedBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " Omit to leave the current value untouched; set `true`/`false` to change it.",
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.Bool{

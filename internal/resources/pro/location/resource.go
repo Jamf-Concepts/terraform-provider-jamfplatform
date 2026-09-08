@@ -138,8 +138,8 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			},
 			"automatically_populate_purchased_content": schema.BoolAttribute{
 				MarkdownDescription: "Whether Jamf Pro should automatically populate purchased content from " +
-					"Apple after every sync. Jamf Pro decides the default on create; leave the attribute " +
-					"unset to let Jamf Pro choose.",
+					"Apple after every sync. Jamf Pro decides the default on create. Omit to leave the " +
+					"current value untouched; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -149,7 +149,7 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			"send_notification_when_no_longer_assigned": schema.BoolAttribute{
 				MarkdownDescription: "Whether Jamf Pro should send a notification when a previously-assigned " +
 					"content item is no longer assigned to the location. Jamf Pro decides the default on " +
-					"create.",
+					"create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -158,7 +158,8 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			},
 			"auto_register_managed_users": schema.BoolAttribute{
 				MarkdownDescription: "Whether Jamf Pro should auto-register managed users associated with this " +
-					"location. Jamf Pro decides the default on create.",
+					"location. Jamf Pro decides the default on create. Omit to leave the current value " +
+					"untouched; set `true`/`false` to change it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -168,8 +169,8 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro site ID to associate with this VPP location. Jamf Pro " +
 					"reports the sentinel `\"-1\"` when no site is set; the provider mirrors whatever Jamf Pro " +
-					"reports into state and does not apply a default. Leave the attribute unset to let Jamf " +
-					"Pro decide.",
+					"reports into state and does not apply a default. Omit to leave the current value " +
+					"untouched; set `-1` to clear the site association.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{

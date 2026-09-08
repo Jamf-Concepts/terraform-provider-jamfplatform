@@ -133,7 +133,7 @@ func (d *PatchSoftwareTitleDataSource) Schema(ctx context.Context, req datasourc
 				Computed:            true,
 			},
 			"email_notification": schema.BoolAttribute{
-				MarkdownDescription: "Whether an email notification is sent for new versions.",
+				MarkdownDescription: "Whether Jamf Pro sends an email notification for new versions.",
 				Computed:            true,
 			},
 			"version_packages": schema.MapAttribute{

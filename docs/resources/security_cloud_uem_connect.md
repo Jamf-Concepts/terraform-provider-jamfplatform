@@ -8,7 +8,7 @@ description: |-
   Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here. Prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
   ~> platform_tenant leaves credentials behind when the integration is destroyed. Jamf Security Cloud creates a Jamf Pro API integration named JSC Connector to authenticate with, and that integration survives the destroy. Neither Jamf Security Cloud nor this provider removes it, and this provider holds no Jamf Pro credentials for that tenant to remove it with. Each create/destroy cycle therefore leaves one more enabled client credential on the Jamf Pro instance, each carrying the 31-privilege JSC Connector role, which includes writing configuration profiles, computer and mobile device records, extension attributes and group memberships. Audit Settings → API roles and clients on the Jamf Pro instance after any destroy and delete the orphans. Observed 2026-09-01 on a test instance: 97 enabled JSC Connector integrations against zero live connectors, 88% of every integration on it.
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
-  After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
+  After importing, run terraform plan before you apply: user_data_field_mapping and group_membership_mapping are captured from the tenant even where your configuration does not declare them, so the plan proposes removing both. That removal is real: Jamf Security Cloud writes the sync settings whole and resets whatever you leave out. Copy the values the plan shows you into your configuration to keep them. See the Importing existing objects guide ../guides/importing.
   See the Jamf Security Cloud guide ../guides/security-cloud for how a Jamf Pro group is named in a membership mapping, why the order of the mappings decides which group a device joins, and what an import leaves you to reconcile.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
@@ -29,7 +29,7 @@ Choose one of two ways to authenticate to Jamf Pro. With `platform_tenant`, Jamf
 
 The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
 
-After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
+After importing, run `terraform plan` before you apply: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even where your configuration does not declare them, so the plan proposes removing both. That removal is real: Jamf Security Cloud writes the sync settings whole and resets whatever you leave out. Copy the values the plan shows you into your configuration to keep them. See the [Importing existing objects guide](../guides/importing).
 
 See the [Jamf Security Cloud guide](../guides/security-cloud) for how a Jamf Pro group is named in a membership mapping, why the order of the mappings decides which group a device joins, and what an import leaves you to reconcile.
 
@@ -311,6 +311,14 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 #   list "jamfplatform_security_cloud_uem_connect" "existing" {
 #     provider = jamfplatform
 #   }
+
+# Import records the user data field mapping and the group membership mapping the
+# tenant reports, even where your configuration declares none, so the first plan
+# afterwards proposes removing them. On this integration that removal is real:
+# Jamf Security Cloud writes the sync settings whole and resets whatever you
+# leave out of your configuration. Copy the values out of the plan output into
+# your configuration before you apply. See the "Importing existing objects"
+# guide.
 
 # Or import by ID directly, which the data source reports:
 #

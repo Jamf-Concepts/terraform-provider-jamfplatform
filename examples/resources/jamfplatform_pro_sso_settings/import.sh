@@ -16,4 +16,8 @@
 # Terraform re-sends your keystore, because Jamf Pro reports no readable copy of
 # the `_wo_version` rotation triggers and the values you configure always differ
 # from the empty ones in state.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_sso_settings.this singleton

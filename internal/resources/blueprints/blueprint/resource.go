@@ -86,7 +86,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			Required:            true,
 		},
 		"description": schema.StringAttribute{
-			MarkdownDescription: "Blueprint description.",
+			MarkdownDescription: "Blueprint description. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 			Optional:            true,
 		},
 		"deployed": schema.BoolAttribute{

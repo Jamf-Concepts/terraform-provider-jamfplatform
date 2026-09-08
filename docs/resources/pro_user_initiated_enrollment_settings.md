@@ -121,32 +121,32 @@ resource "jamfplatform_pro_user_initiated_enrollment_settings" "this" {
 ### Optional
 
 - `access_group` (Attributes Set) Directory-service Access Groups permitted to perform user-initiated enrollment (UI: Access tab). Each group is identified by its `name` and `ldap_server_id`; the provider resolves the directory's canonical group id for you (like the UI's "Resolve" action). Omit the block entirely to leave the tenant's Access Groups unmanaged. The built-in "All Directory Service Users" group always exists and cannot be created or removed. Declare it (with `ldap_server_id = "-1"`) to edit its toggles, or leave it out to keep it untouched. (see [below for nested schema](#nestedatt--access_group))
-- `account_driven_device_enrollment_ios` (Boolean) Enable Account-Driven Device Enrollment for institutionally owned mobile devices. Matches the device Account-Driven Device Enrollment toggle.
-- `account_driven_device_enrollment_macos` (Boolean) Enable Account-Driven Device Enrollment for institutionally owned computers. Matches the computers Account-Driven Device Enrollment toggle.
-- `account_driven_device_enrollment_visionos` (Boolean) Enable Account-Driven Device Enrollment for Apple Vision Pro. Matches the Account-Driven Device Enrollment (Apple Vision Pro) toggle.
-- `account_driven_user_enrollment` (Boolean) Enable Account-Driven User Enrollment for mobile devices. Matches the Account-Driven User Enrollment toggle.
-- `account_driven_user_enrollment_visionos` (Boolean) Enable Account-Driven User Enrollment for Apple Vision Pro. Matches the Account-Driven User Enrollment (Apple Vision Pro) toggle.
-- `allow_ssh_only_management_account` (Boolean) Allow the managed local administrator account SSH access only. Matches the "Allow SSH access for the managed local administrator account only" checkbox.
-- `create_management_account` (Boolean) Create a managed local administrator account on enrolled computers. Matches the "Create managed local administrator account" checkbox.
+- `account_driven_device_enrollment_ios` (Boolean) Enable Account-Driven Device Enrollment for institutionally owned mobile devices. Matches the device Account-Driven Device Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `account_driven_device_enrollment_macos` (Boolean) Enable Account-Driven Device Enrollment for institutionally owned computers. Matches the computers Account-Driven Device Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `account_driven_device_enrollment_visionos` (Boolean) Enable Account-Driven Device Enrollment for Apple Vision Pro. Matches the Account-Driven Device Enrollment (Apple Vision Pro) toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `account_driven_user_enrollment` (Boolean) Enable Account-Driven User Enrollment for mobile devices. Matches the Account-Driven User Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `account_driven_user_enrollment_visionos` (Boolean) Enable Account-Driven User Enrollment for Apple Vision Pro. Matches the Account-Driven User Enrollment (Apple Vision Pro) toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `allow_ssh_only_management_account` (Boolean) Allow the managed local administrator account SSH access only. Matches the "Allow SSH access for the managed local administrator account only" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `create_management_account` (Boolean) Create a managed local administrator account on enrolled computers. Matches the "Create managed local administrator account" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `developer_certificate` (Attributes) Developer signing identity used to sign the QuickAdd package when `sign_quickadd_package = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. This path expects an Apple Developer ID signing certificate.
 
 `keystore_password` is `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password. (see [below for nested schema](#nestedatt--developer_certificate))
-- `enable_computer_enrollment` (Boolean) Enable user-initiated enrollment for computers. Matches the computers "Enable user-initiated enrollment" toggle.
-- `ensure_ssh_running` (Boolean) Ensure SSH (Remote Login) is enabled on enrolled computers. Matches the "Ensure SSH is enabled" checkbox.
-- `hide_management_account` (Boolean) Hide the managed local administrator account on enrolled computers. Matches the "Hide managed local administrator account" checkbox.
-- `launch_self_service` (Boolean) Launch Self Service after a computer completes enrollment. Matches the "Launch Self Service when done" checkbox.
-- `management_username` (String) Username for the managed local administrator account created on enrolled computers. Matches the "Management Account" username field.
+- `enable_computer_enrollment` (Boolean) Enable user-initiated enrollment for computers. Matches the computers "Enable user-initiated enrollment" toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `ensure_ssh_running` (Boolean) Ensure SSH (Remote Login) is enabled on enrolled computers. Matches the "Ensure SSH is enabled" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `hide_management_account` (Boolean) Hide the managed local administrator account on enrolled computers. Matches the "Hide managed local administrator account" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `launch_self_service` (Boolean) Launch Self Service after a computer completes enrollment. Matches the "Launch Self Service when done" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `management_username` (String) Username for the managed local administrator account created on enrolled computers. Matches the "Management Account" username field. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `mdm_signing_certificate` (Attributes) Third-party signing certificate used to sign the MDM enrollment profile. Required when `signing_mdm_profile_enabled = true`. Supply `keystore_file` (raw base64 of a `.p12`) and `keystore_password`; both are `WriteOnly`. Removing the block while `signing_mdm_profile_enabled` stays `true` preserves the existing certificate; setting `signing_mdm_profile_enabled = false` removes it.
 
 `keystore_password` is `WriteOnly`: sent to Jamf Pro on writes and never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password. (see [below for nested schema](#nestedatt--mdm_signing_certificate))
-- `merge_managed_apple_account_usernames` (Boolean) Merge matching Managed Apple Account usernames during enrollment. Matches the "Merge matching Managed Apple Account usernames" checkbox.
+- `merge_managed_apple_account_usernames` (Boolean) Merge matching Managed Apple Account usernames during enrollment. Matches the "Merge matching Managed Apple Account usernames" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `messaging_languages` (Attributes Map) Per-language enrollment messaging (UI: Messaging tab), keyed by ISO 639-1 language code (e.g. `fr`, `de`, `en`; a few locale variants such as `en-gb` and `zh-Hant` are also accepted). Each entry configures the text shown during user-initiated enrollment for that language. All text is displayed to the user exactly as entered. Omit the attribute entirely to leave the tenant's languages unmanaged. Only the fields you set are overridden; unset fields are seeded from the current English messaging when a language is first added, and otherwise left at their current Jamf Pro value. The built-in English language always exists, is the default shown when no language matches a device's locale, and cannot be removed. Set the `en` key to edit its messaging, or leave it out to keep it untouched. Map keys are validated at plan time against the language codes Jamf Pro recognises. (see [below for nested schema](#nestedatt--messaging_languages))
-- `profile_driven_enrollment_via_url_institutional` (Boolean) Enable Profile-Driven Enrollment via URL for institutionally owned mobile devices. Matches the institutional Profile-Driven Enrollment via URL toggle.
-- `profile_driven_enrollment_via_url_personal` (Boolean) Enable Profile-Driven Enrollment via URL for personally owned mobile devices. Matches the personal Profile-Driven Enrollment via URL toggle.
-- `restrict_reenrollment` (Boolean) Restrict re-enrollment to authorized users only. Matches the "Restrict re-enrollment to authorized users only" checkbox.
-- `sign_quickadd_package` (Boolean) Sign the QuickAdd package with a developer certificate. Matches the "Sign QuickAdd Package" checkbox. Supply the `developer_certificate` block to upload a signing identity.
-- `signing_mdm_profile_enabled` (Boolean) Use a third-party signing certificate to sign the MDM profile. Matches the "Use a third-party signing certificate" checkbox. When `true`, supply the `mdm_signing_certificate` block (or rely on a previously-uploaded certificate).
-- `skip_certificate_installation` (Boolean) Skip certificate installation during enrollment. Matches the "Skip certificate installation during enrollment" checkbox.
+- `profile_driven_enrollment_via_url_institutional` (Boolean) Enable Profile-Driven Enrollment via URL for institutionally owned mobile devices. Matches the institutional Profile-Driven Enrollment via URL toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `profile_driven_enrollment_via_url_personal` (Boolean) Enable Profile-Driven Enrollment via URL for personally owned mobile devices. Matches the personal Profile-Driven Enrollment via URL toggle. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `restrict_reenrollment` (Boolean) Restrict re-enrollment to authorized users only. Matches the "Restrict re-enrollment to authorized users only" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `sign_quickadd_package` (Boolean) Sign the QuickAdd package with a developer certificate. Matches the "Sign QuickAdd Package" checkbox. Supply the `developer_certificate` block to upload a signing identity. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `signing_mdm_profile_enabled` (Boolean) Use a third-party signing certificate to sign the MDM profile. Matches the "Use a third-party signing certificate" checkbox. When `true`, supply the `mdm_signing_certificate` block (or rely on a previously-uploaded certificate). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `skip_certificate_installation` (Boolean) Skip certificate installation during enrollment. Matches the "Skip certificate installation during enrollment" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -164,11 +164,11 @@ Required:
 
 Optional:
 
-- `account_driven_user_enrollment_enabled` (Boolean) Allow Account-Driven User Enrollment for members of this group.
-- `enterprise_enrollment_enabled` (Boolean) Allow institutional (enterprise) enrollment for members of this group.
-- `personal_enrollment_enabled` (Boolean) Allow personal-device enrollment for members of this group.
-- `require_eula` (Boolean) Require members of this group to accept the EULA during enrollment. Jamf Pro may override the requested value depending on the other enrollment toggles, and has been observed to force `true`. When it overrides an explicitly-set value, Terraform shows a perpetual diff for this attribute. Leave it unset to defer to Jamf Pro, or align it with the value Jamf Pro enforces.
-- `site_id` (String) Site assigned to devices enrolled through this group, or `-1` for no site.
+- `account_driven_user_enrollment_enabled` (Boolean) Allow Account-Driven User Enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `enterprise_enrollment_enabled` (Boolean) Allow institutional (enterprise) enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `personal_enrollment_enabled` (Boolean) Allow personal-device enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `require_eula` (Boolean) Require members of this group to accept the EULA during enrollment. Jamf Pro may override the requested value depending on the other enrollment toggles, and has been observed to force `true`. When it overrides an explicitly-set value, Terraform shows a perpetual diff for this attribute. Omit to leave the current value untouched; set `true`/`false` to change it. Where Jamf Pro enforces a value, align the configuration with it.
+- `site_id` (String) Site assigned to devices enrolled through this group. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.
 
 Read-Only:
 
@@ -213,44 +213,44 @@ Read-Only:
 
 Optional:
 
-- `ca_certificate_description` (String) Description to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Description).
-- `ca_certificate_install_button_name` (String) Name for the button that users tap to install the CA certificate (UI: Certificate → CA Certificate Install Button Name).
-- `ca_certificate_installation_text` (String) Text to display when installing the CA certificate during enrollment (UI: Certificate → CA Certificate Installation Text).
-- `ca_certificate_name` (String) Name to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Name).
-- `device_ownership_page_text` (String) Text to display during enrollment that prompts the user to specify the device ownership type (UI: Device ownership → Device Ownership Page Text).
-- `enroll_device_button_name` (String) Name for the button that users tap to start enrollment (UI: Device ownership → Enroll Device Button Name).
-- `enrollment_complete_text` (String) Text to display when enrollment is complete (UI: Complete → Enrollment Complete Text).
-- `enrollment_failed_text` (String) Text to display when enrollment fails (UI: Complete → Enrollment Failed Text).
-- `eula_accept_button_text` (String) Name for the button that users tap/click to accept the End User License Agreement (UI: EULA → Accept Button Text).
-- `institutional_device_management_description` (String) Description to display for institutional device management when users enroll an institutionally owned device (UI: Device ownership → Institutional Device Management Description).
-- `institutional_eula` (String) End User License Agreement to display during enrollment of institutionally owned devices and computers (UI: EULA → For Institutionally Owned Devices And Computers).
-- `institutional_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: Institutional MDM → MDM Profile Install Button Name).
-- `institutional_mdm_installation_text` (String) Text to display when installing the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Installation Text).
-- `institutional_mdm_pending_text` (String) Text to display when the user is installing the MDM profile on their computer (UI: Institutional MDM → MDM Profile Pending Page Text).
-- `institutional_mdm_profile_description` (String) Description to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Description).
-- `institutional_mdm_profile_name` (String) Name to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Name).
-- `institutional_ownership_button_name` (String) Name for the button that users tap to enroll an institutionally owned device (UI: Device ownership → Institutional Ownership Button Name).
-- `log_out_button_name` (String) Name for the button that users tap/click to log out (UI: Complete → Log Out Button Name).
-- `login_button_text` (String) Name for the button that users tap/click to log in (UI: Login → Login Button Text).
-- `login_page_text` (String) Text to display below the title on the login page during enrollment (UI: Login → Login Page Text).
-- `page_title` (String) Title to display on all enrollment pages (UI: Page Title for Enrollment).
-- `password_text` (String) Text to display for the password field on the login page during enrollment (UI: Login → Password Text).
-- `personal_device_button_name` (String) Name for the button that users tap to enroll a personally owned device (UI: Device ownership → Personal Device Button Name).
-- `personal_device_management_description` (String) Description to display for personal device management when users enroll a personally owned device (UI: Device ownership → Personal Device Management Description).
-- `personal_eula` (String) End User License Agreement to display during enrollment of personally owned devices (UI: EULA → For Personally Owned Devices).
-- `quickadd_install_button_name` (String) Name for the button that users tap to install the QuickAdd package (UI: QuickAdd → QuickAdd Package Install Button Name).
-- `quickadd_installation_text` (String) Text to display when installing the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Installation Text).
-- `quickadd_name` (String) Name to display for the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Name).
-- `quickadd_progress_text` (String) Text to display when the QuickAdd package is downloading (UI: QuickAdd → QuickAdd Package Progress Text).
-- `site_selection_text` (String) Text to display that prompts the user to select a site if the user has more than one site to choose from during enrollment (UI: Sites → Site Selection Text).
-- `try_again_button_name` (String) Name for the button that users tap/click to try enrolling again (UI: Complete → Try Again Button Name).
-- `user_enrollment_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: User Enrollment MDM → MDM Profile Install Button Name).
-- `user_enrollment_mdm_installation_text` (String) Text to display when prompting to install the MDM profile (UI: User Enrollment MDM → MDM Profile Installation Text).
-- `user_enrollment_mdm_profile_description` (String) Description to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Description).
-- `user_enrollment_mdm_profile_name` (String) Name to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Name).
-- `username_text` (String) Text to display for the username field on the login page during enrollment (UI: Login → Username Text).
-- `view_enrollment_status_button_name` (String) Name for the button that users tap to view the enrollment status for the device (UI: Complete → View Enrollment Status Button Name).
-- `view_enrollment_status_text` (String) Text to display during enrollment that prompts the user to view the enrollment status for the device (UI: Complete → View Enrollment Status Text).
+- `ca_certificate_description` (String) Description to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Description). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `ca_certificate_install_button_name` (String) Name for the button that users tap to install the CA certificate (UI: Certificate → CA Certificate Install Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `ca_certificate_installation_text` (String) Text to display when installing the CA certificate during enrollment (UI: Certificate → CA Certificate Installation Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `ca_certificate_name` (String) Name to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `device_ownership_page_text` (String) Text to display during enrollment that prompts the user to specify the device ownership type (UI: Device ownership → Device Ownership Page Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `enroll_device_button_name` (String) Name for the button that users tap to start enrollment (UI: Device ownership → Enroll Device Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `enrollment_complete_text` (String) Text to display when enrollment is complete (UI: Complete → Enrollment Complete Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `enrollment_failed_text` (String) Text to display when enrollment fails (UI: Complete → Enrollment Failed Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `eula_accept_button_text` (String) Name for the button that users tap/click to accept the End User License Agreement (UI: EULA → Accept Button Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_device_management_description` (String) Description to display for institutional device management when users enroll an institutionally owned device (UI: Device ownership → Institutional Device Management Description). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_eula` (String) End User License Agreement to display during enrollment of institutionally owned devices and computers (UI: EULA → For Institutionally Owned Devices And Computers). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: Institutional MDM → MDM Profile Install Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_mdm_installation_text` (String) Text to display when installing the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Installation Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_mdm_pending_text` (String) Text to display when the user is installing the MDM profile on their computer (UI: Institutional MDM → MDM Profile Pending Page Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_mdm_profile_description` (String) Description to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Description). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_mdm_profile_name` (String) Name to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `institutional_ownership_button_name` (String) Name for the button that users tap to enroll an institutionally owned device (UI: Device ownership → Institutional Ownership Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `log_out_button_name` (String) Name for the button that users tap/click to log out (UI: Complete → Log Out Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `login_button_text` (String) Name for the button that users tap/click to log in (UI: Login → Login Button Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `login_page_text` (String) Text to display below the title on the login page during enrollment (UI: Login → Login Page Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `page_title` (String) Title to display on all enrollment pages (UI: Page Title for Enrollment). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `password_text` (String) Text to display for the password field on the login page during enrollment (UI: Login → Password Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `personal_device_button_name` (String) Name for the button that users tap to enroll a personally owned device (UI: Device ownership → Personal Device Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `personal_device_management_description` (String) Description to display for personal device management when users enroll a personally owned device (UI: Device ownership → Personal Device Management Description). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `personal_eula` (String) End User License Agreement to display during enrollment of personally owned devices (UI: EULA → For Personally Owned Devices). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `quickadd_install_button_name` (String) Name for the button that users tap to install the QuickAdd package (UI: QuickAdd → QuickAdd Package Install Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `quickadd_installation_text` (String) Text to display when installing the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Installation Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `quickadd_name` (String) Name to display for the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `quickadd_progress_text` (String) Text to display when the QuickAdd package is downloading (UI: QuickAdd → QuickAdd Package Progress Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `site_selection_text` (String) Text to display that prompts the user to select a site if the user has more than one site to choose from during enrollment (UI: Sites → Site Selection Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `try_again_button_name` (String) Name for the button that users tap/click to try enrolling again (UI: Complete → Try Again Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_enrollment_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: User Enrollment MDM → MDM Profile Install Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_enrollment_mdm_installation_text` (String) Text to display when prompting to install the MDM profile (UI: User Enrollment MDM → MDM Profile Installation Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_enrollment_mdm_profile_description` (String) Description to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Description). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_enrollment_mdm_profile_name` (String) Name to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `username_text` (String) Text to display for the username field on the login page during enrollment (UI: Login → Username Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `view_enrollment_status_button_name` (String) Name for the button that users tap to view the enrollment status for the device (UI: Complete → View Enrollment Status Button Name). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `view_enrollment_status_text` (String) Text to display during enrollment that prompts the user to view the enrollment status for the device (UI: Complete → View Enrollment Status Text). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 Read-Only:
 
@@ -290,5 +290,9 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # a certificate, turn off the toggle that governs it,
 # `signing_mdm_profile_enabled` or `sign_quickadd_package`. Declare a block
 # holding a keystore and the first apply after you import uploads that keystore.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_user_initiated_enrollment_settings.this singleton
 ```

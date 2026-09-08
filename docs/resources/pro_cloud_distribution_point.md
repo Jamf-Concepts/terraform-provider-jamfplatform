@@ -69,19 +69,19 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `directory` (String) Directory / bucket path on the distribution point. Used by non-JCDS types.
-- `download_url` (String) Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.
-- `expiration_seconds` (Number) AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1.
-- `key_pair_id` (String) AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled.
-- `master` (Boolean) Whether this is the master (primary) distribution point.
+- `directory` (String) Directory / bucket path on the distribution point. Used by non-JCDS types. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `download_url` (String) Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `expiration_seconds` (Number) AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `key_pair_id` (String) AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `master` (Boolean) Whether this is the master (primary) distribution point. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Connection password or secret key for the non-JCDS types. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**, and never returned on read. Keep it in configuration, because it is re-sent on every apply. Jamf Pro will not accept a write that omits the value, so there is no `_wo_version` rotation companion. See the resource documentation.
-- `private_key` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = "AMAZON_S3"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64("cloudfront-key.pem")`.
-- `require_signed_urls` (Boolean) Whether downloads require AWS CloudFront signed URLs. Used by `AMAZON_S3`; enabling it makes `private_key` required.
-- `secondary_auth_required` (Boolean) Whether secondary authentication is required for downloads.
-- `secondary_auth_time_to_live` (Number) Secondary authentication token time-to-live in seconds. Must be at least 1.
+- `private_key` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = "AMAZON_S3"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64("cloudfront-key.pem")`. Omit to leave the stored key untouched.
+- `require_signed_urls` (Boolean) Whether downloads require AWS CloudFront signed URLs. Used by `AMAZON_S3`; enabling it makes `private_key` required. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `secondary_auth_required` (Boolean) Whether secondary authentication is required for downloads. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `secondary_auth_time_to_live` (Number) Secondary authentication token time-to-live in seconds. Must be at least 1. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `upload_url` (String) Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.
-- `username` (String) Connection username. Used by non-JCDS types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`); empty for `JAMF_CLOUD`.
+- `upload_url` (String) Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `username` (String) Connection username. Used by non-JCDS types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`); empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 ### Read-Only
 

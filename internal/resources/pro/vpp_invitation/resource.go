@@ -143,7 +143,7 @@ func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaR
 				Optional:            true,
 			},
 			"require_login": schema.BoolAttribute{
-				MarkdownDescription: "Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`.",
+				MarkdownDescription: "Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 			},
 			"scope": schema.SingleNestedAttribute{

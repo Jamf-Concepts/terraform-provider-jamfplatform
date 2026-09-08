@@ -123,7 +123,7 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
 ### Optional
 
 - `scope` (Attributes) Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. `all_mobile_devices = true` forbids the per-device, per-group, per-building and per-department targets. `all_jss_users = true` forbids the per-user and per-user-group targets. `user_ids` and `user_group_ids` map to the admin UI's "Users" and "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
-- `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"`. (see [below for nested schema](#nestedatt--self_service))
+- `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"`. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -140,13 +140,13 @@ Required:
 
 Optional:
 
-- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category".
-- `description` (String) Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.
-- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually.
-- `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.
-- `redeploy_days_before_certificate_expires` (Number) Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment.
-- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default.
-- `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site".
+- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category". Omit to leave the current value untouched.
+- `description` (String) Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset. Omit to leave the current value untouched.
+- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `redeploy_days_before_certificate_expires` (Number) Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site". Omit to leave the current value untouched.
 
 Read-Only:
 
@@ -215,9 +215,9 @@ Optional:
 Optional:
 
 - `authorization_password` (String, Sensitive) Authorization password required to remove the profile. Only effective when `removal_disallowed = "With Authorization"`. Jamf Pro stores and returns the value in plaintext, so it is held in Terraform state and masked in plan/apply output.
-- `categories` (Attributes List) Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's "Display in" tick; Jamf Pro keeps no undisplayed state and offers no per-category "Feature in" control for mobile profiles, so neither is exposed here. (see [below for nested schema](#nestedatt--self_service--categories))
-- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
-- `removal_disallowed` (String) Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.
+- `categories` (Attributes List) Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's "Display in" tick; Jamf Pro keeps no undisplayed state and offers no per-category "Feature in" control for mobile profiles, so neither is exposed here. Declaring one or more entries replaces the stored list. An empty list reads as an omission. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--self_service--categories))
+- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `removal_disallowed` (String) Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 
 <a id="nestedatt--self_service--categories"></a>
 ### Nested Schema for `self_service.categories`
@@ -241,3 +241,22 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+# Copyright Jamf Software LLC 2026
+# SPDX-License-Identifier: MPL-2.0
+
+# Import an existing mobile device configuration profile by its Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, including the scope and
+# the Self Service settings, so the first plan afterwards can propose removing
+# what your configuration does not declare. See the "Importing existing objects"
+# guide for what applying that plan does.
+terraform import jamfplatform_pro_mobile_device_configuration_profile.example "112"
+```

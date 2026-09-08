@@ -8,6 +8,13 @@
 //   pro.ReplaceDeviceEnrollmentTokenV1
 //   pro.DeleteDeviceEnrollmentV1
 //   pro.GetLatestDeviceEnrollmentSyncV1                    (Create / token-rotation sync wait)
+//
+// The metadata update has never been probed for merge-versus-replace. Omitting
+// site_id or supervision_identity_id preserves the stored value because both
+// attributes carry UseStateForUnknown and so re-send the prior value, not
+// because the endpoint was seen to merge an omitted field. Probe it before
+// relying on merge behaviour here.
+//
 // Status: current. Last reviewed 2026-05-28.
 
 package automated_device_enrollment

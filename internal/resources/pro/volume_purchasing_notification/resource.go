@@ -85,7 +85,7 @@ func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req r
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Volume Purchasing notification, configured on the **\"Notifications\"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. " +
 			"A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. " +
-			"Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site." + resourcePrivileges,
+			"Every apply replaces recipients, triggers and included locations in full: omit one to leave its existing entries untouched, or set it to `[]` to clear it. Set `site_id` to `-1` for no site." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Notification ID assigned by Jamf Pro.",
@@ -98,13 +98,13 @@ func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req r
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "**\"Enabled\"** in the Jamf Pro admin UI. Whether the notification is active. Defaults to enabled.",
+				MarkdownDescription: "**\"Enabled\"** in the Jamf Pro admin UI. Whether the notification is active. Defaults to enabled. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"triggers": schema.SetAttribute{
-				MarkdownDescription: "Events that send the notification. Any of `REMOVED_FROM_APP_STORE` (an item is removed from the App Store) or `NO_MORE_LICENSES` (a location runs out of licenses). Supply an empty set to send the notification for no events.",
+				MarkdownDescription: "Events that send the notification. Any of `REMOVED_FROM_APP_STORE` (an item is removed from the App Store) or `NO_MORE_LICENSES` (a location runs out of licenses). Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to send the notification for no events.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -114,21 +114,21 @@ func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req r
 				},
 			},
 			"location_ids": schema.SetAttribute{
-				MarkdownDescription: "**\"Included locations\"** in the Jamf Pro admin UI. Volume Purchasing location IDs (`jamfplatform_pro_volume_purchasing_location`) the notification covers. Supply an empty set for no locations.",
+				MarkdownDescription: "**\"Included locations\"** in the Jamf Pro admin UI. Volume Purchasing location IDs (`jamfplatform_pro_volume_purchasing_location`) the notification covers. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no locations.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"internal_recipients": schema.SetAttribute{
-				MarkdownDescription: "**\"Existing Jamf Pro User Accounts\"** in the Jamf Pro admin UI. Jamf Pro account IDs that receive the daily summary email. Supply an empty set for no internal recipients.",
+				MarkdownDescription: "**\"Existing Jamf Pro User Accounts\"** in the Jamf Pro admin UI. Jamf Pro account IDs that receive the daily summary email. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no internal recipients.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"external_recipients": schema.SetNestedAttribute{
-				MarkdownDescription: "**\"External Recipients\"** in the Jamf Pro admin UI. Email addresses outside Jamf Pro that receive the daily summary. Supply an empty set for no external recipients.",
+				MarkdownDescription: "**\"External Recipients\"** in the Jamf Pro admin UI. Email addresses outside Jamf Pro that receive the daily summary. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` for no external recipients.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
@@ -148,7 +148,7 @@ func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req r
 				},
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the notification. Use `-1` for no site.",
+				MarkdownDescription: "**\"Site\"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the notification. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},

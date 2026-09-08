@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: general, scope, self_service, user_interaction, and the Options payloads packages, scripts, printers, disk_encryption, dock_items, local_accounts, management_account, directory_bindings, efi_password, restart_options, maintenance, files_and_processes. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The four account-maintenance payloads (local_accounts, management_account, directory_bindings, efi_password) are flattened peers of the UI sections; internally Jamf Pro stores them as a single account_maintenance object. The legacy Software Update and Conditional Access policy sections are intentionally not modelled. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+  Updates are merged rather than replaced. Removing a whole optional block (scope, self_service, packages, scripts, printers, dock_items, local_accounts, management_account, directory_bindings, efi_password, restart_options, maintenance, files_and_processes, user_interaction or disk_encryption) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,6 +15,8 @@ description: |-
 # jamfplatform_pro_policy (Resource)
 
 Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled**. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+
+Updates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `packages`, `scripts`, `printers`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`, `user_interaction` or `disk_encryption`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
 
 **Required Jamf permissions**
 
@@ -177,22 +180,22 @@ resource "jamfplatform_pro_policy" "options" {
 
 ### Optional
 
-- `directory_bindings` (Attributes Set) Directory binding assignments (admin UI: Options ▸ Directory Bindings). (see [below for nested schema](#nestedatt--directory_bindings))
-- `disk_encryption` (Attributes) Disk encryption configuration to apply. (see [below for nested schema](#nestedatt--disk_encryption))
-- `dock_items` (Attributes) Dock items to add or remove. (see [below for nested schema](#nestedatt--dock_items))
-- `efi_password` (Attributes) Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password). (see [below for nested schema](#nestedatt--efi_password))
-- `files_and_processes` (Attributes) File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--files_and_processes))
-- `local_accounts` (Attributes List) Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute: sent to Jamf Pro on writes, never persisted in state. Pair it with `password_wo_version` to rotate. Modelled as a List rather than a Set so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username`, and the order has no semantic effect. (see [below for nested schema](#nestedatt--local_accounts))
-- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels. (see [below for nested schema](#nestedatt--maintenance))
-- `management_account` (Attributes) Management account configuration (admin UI: Options ▸ Management Accounts). (see [below for nested schema](#nestedatt--management_account))
-- `packages` (Attributes) Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section. (see [below for nested schema](#nestedatt--packages))
-- `printers` (Attributes) Printers to install or remove. (see [below for nested schema](#nestedatt--printers))
-- `restart_options` (Attributes) Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section. (see [below for nested schema](#nestedatt--restart_options))
+- `directory_bindings` (Attributes Set) Directory binding assignments (admin UI: Options ▸ Directory Bindings). Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--directory_bindings))
+- `disk_encryption` (Attributes) Disk encryption configuration to apply. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--disk_encryption))
+- `dock_items` (Attributes) Dock items to add or remove. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--dock_items))
+- `efi_password` (Attributes) Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password). Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--efi_password))
+- `files_and_processes` (Attributes) File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--files_and_processes))
+- `local_accounts` (Attributes List) Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute: sent to Jamf Pro on writes, never persisted in state. Pair it with `password_wo_version` to rotate. Modelled as a List rather than a Set so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username`, and the order has no semantic effect. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--local_accounts))
+- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--maintenance))
+- `management_account` (Attributes) Management account configuration (admin UI: Options ▸ Management Accounts). Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--management_account))
+- `packages` (Attributes) Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--packages))
+- `printers` (Attributes) Printers to install or remove. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--printers))
+- `restart_options` (Attributes) Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--restart_options))
 - `scope` (Attributes) Policy scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, with updates preserving it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
-- `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
-- `self_service` (Attributes) Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available. (see [below for nested schema](#nestedatt--self_service))
+- `scripts` (Attributes) Scripts to run as part of the policy. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--scripts))
+- `self_service` (Attributes) Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction prompts shown around policy execution. The "Deferral Type" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Switching between deferral types is an in-place change. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction prompts shown around policy execution. The "Deferral Type" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Switching between deferral types is an in-place change. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -207,27 +210,27 @@ Required:
 
 Optional:
 
-- `category_id` (String) Jamf Pro category ID. Use `-1` to clear.
+- `category_id` (String) Jamf Pro category ID. Use `-1` to clear. Omit to leave the current value untouched.
 - `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. Only the user-authored date/time inputs are surfaced. The derived epoch and UTC siblings Jamf Pro also stores are deterministic transforms of `activation_date` / `expiration_date`, reproducible client-side with Terraform stdlib functions such as `formatdate`. (see [below for nested schema](#nestedatt--general--date_time_limitations))
-- `enabled` (Boolean) Whether the policy is enabled.
-- `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`.
-- `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user.
+- `enabled` (Boolean) Whether the policy is enabled. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `network_limitations` (Attributes) Read-only view of the network conditions under which the policy may run. Jamf Pro derives all three attributes from `general.network_requirements` and `scope.limitations.network_segment_ids`. Declare the block as `{}` to read the derived values into state. (see [below for nested schema](#nestedatt--general--network_limitations))
-- `network_requirements` (String) Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts the policy to a wired connection. Shown in the admin UI as Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements. Also drives the read-only `network_limitations.minimum_network_connection`.
-- `notify_on_each_failed_retry` (Boolean) Notify the administrator on each failed retry. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency.
-- `offline` (Boolean) Allow execution while the device is offline.
+- `network_requirements` (String) Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts the policy to a wired connection. Shown in the admin UI as Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements. Also drives the read-only `network_limitations.minimum_network_connection`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `notify_on_each_failed_retry` (Boolean) Notify the administrator on each failed retry. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `offline` (Boolean) Allow execution while the device is offline. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `override_default_settings` (Attributes) Read-only view of the per-policy overrides of tenant-wide defaults, matching the admin UI's "Override Default Settings" panel. Jamf Pro derives each attribute from a setting that lives elsewhere. Declare the block as `{}` to read the derived values into state. (see [below for nested schema](#nestedatt--general--override_default_settings))
-- `retry_attempts` (Number) Maximum number of retry attempts; `-1` means no retries. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency.
-- `retry_event` (String) When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency.
-- `site_id` (String) Jamf Pro site ID scoping the policy. Use `-1` for "no site".
-- `target_drive` (String) Drive target (e.g. `/`).
-- `trigger` (String) Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.).
-- `trigger_checkin` (Boolean) Fire on managed check-in.
-- `trigger_enrollment_complete` (Boolean) Fire when device enrollment completes.
-- `trigger_login` (Boolean) Fire on user login.
-- `trigger_network_state_changed` (Boolean) Fire when the device's network state changes.
-- `trigger_other` (String) Custom event name to trigger the policy.
-- `trigger_startup` (Boolean) Fire on device startup.
+- `retry_attempts` (Number) Maximum number of retry attempts; `-1` means no retries. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `retry_event` (String) When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = "Once per computer"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `site_id` (String) Jamf Pro site ID scoping the policy. Use `-1` for "no site". Omit to leave the current value untouched.
+- `target_drive` (String) Drive target (e.g. `/`). Omit to leave the current value untouched.
+- `trigger` (String) Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.). Omit to leave the current value untouched.
+- `trigger_checkin` (Boolean) Fire on managed check-in. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `trigger_enrollment_complete` (Boolean) Fire when device enrollment completes. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `trigger_login` (Boolean) Fire on user login. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `trigger_network_state_changed` (Boolean) Fire when the device's network state changes. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `trigger_other` (String) Custom event name to trigger the policy. Omit to leave the current value untouched.
+- `trigger_startup` (Boolean) Fire on device startup. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 Read-Only:
 
@@ -286,11 +289,11 @@ Optional:
 
 Optional:
 
-- `action` (String) Disk encryption action (`apply`, `remediate`, `none`).
-- `auth_restart` (Boolean) Use authenticated restart.
-- `disk_encryption_configuration_id` (Number) Disk encryption configuration ID to apply.
-- `remediate_disk_encryption_configuration_id` (Number) Disk encryption configuration ID used to remediate.
-- `remediate_key_type` (String) Key type for remediation (`Individual`, `Institutional`, `Individual And Institutional`).
+- `action` (String) Disk encryption action (`apply`, `remediate`, `none`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `auth_restart` (Boolean) Use authenticated restart. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `disk_encryption_configuration_id` (Number) Disk encryption configuration ID to apply. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `remediate_disk_encryption_configuration_id` (Number) Disk encryption configuration ID used to remediate. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `remediate_key_type` (String) Key type for remediation (`Individual`, `Institutional`, `Individual And Institutional`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 
 
 <a id="nestedatt--dock_items"></a>
@@ -298,7 +301,7 @@ Optional:
 
 Optional:
 
-- `dock_items` (Attributes Set) Set of dock item assignments. (see [below for nested schema](#nestedatt--dock_items--dock_items))
+- `dock_items` (Attributes Set) Set of dock item assignments. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--dock_items--dock_items))
 
 <a id="nestedatt--dock_items--dock_items"></a>
 ### Nested Schema for `dock_items.dock_items`
@@ -329,14 +332,14 @@ Optional:
 
 Optional:
 
-- `delete_file_if_found` (Boolean) Delete files matching the search criteria if found.
-- `execute_command` (String) Command to execute. Mirrors the admin UI "Execute Command" input.
-- `kill_process_if_found` (Boolean) Kill processes matching the search if found.
-- `search_by_filename` (String) File name to search for. Mirrors the admin UI "Search for File by Filename" input.
-- `search_by_path` (String) Path to search for. Mirrors the admin UI "Search for File by Path" input.
-- `search_by_spotlight` (String) Spotlight query. Mirrors the admin UI "Search for File Using Spotlight" input.
-- `search_for_process` (String) Process name to search for.
-- `update_locate_database` (Boolean) Update the locate database before searching.
+- `delete_file_if_found` (Boolean) Delete files matching the search criteria if found. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `execute_command` (String) Command to execute. Mirrors the admin UI "Execute Command" input. Omit to leave the current value untouched.
+- `kill_process_if_found` (Boolean) Kill processes matching the search if found. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `search_by_filename` (String) File name to search for. Mirrors the admin UI "Search for File by Filename" input. Omit to leave the current value untouched.
+- `search_by_path` (String) Path to search for. Mirrors the admin UI "Search for File by Path" input. Omit to leave the current value untouched.
+- `search_by_spotlight` (String) Spotlight query. Mirrors the admin UI "Search for File Using Spotlight" input. Omit to leave the current value untouched.
+- `search_for_process` (String) Process name to search for. Omit to leave the current value untouched.
+- `update_locate_database` (Boolean) Update the locate database before searching. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 
 <a id="nestedatt--local_accounts"></a>
@@ -364,14 +367,14 @@ Optional:
 
 Optional:
 
-- `fix_byhost_files` (Boolean) Fix ByHost files.
-- `fix_disk_permissions` (Boolean) Fix disk permissions.
-- `flush_system_caches` (Boolean) Flush system caches.
-- `flush_user_caches` (Boolean) Flush user caches.
-- `install_cached_packages` (Boolean) Install cached packages.
-- `reset_computer_names` (Boolean) Reset computer names.
-- `update_inventory` (Boolean) Update inventory.
-- `verify_startup_disk` (Boolean) Verify startup disk.
+- `fix_byhost_files` (Boolean) Fix ByHost files. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `fix_disk_permissions` (Boolean) Fix disk permissions. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `flush_system_caches` (Boolean) Flush system caches. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `flush_user_caches` (Boolean) Flush user caches. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_cached_packages` (Boolean) Install cached packages. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `reset_computer_names` (Boolean) Reset computer names. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `update_inventory` (Boolean) Update inventory. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `verify_startup_disk` (Boolean) Verify startup disk. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 
 <a id="nestedatt--management_account"></a>
@@ -379,7 +382,7 @@ Optional:
 
 Optional:
 
-- `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
+- `action` (String) Management account action (e.g. `doNotChange`, `rotate`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 - `managed_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext managed password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.
 - `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Set `managed_password_wo_version = 1` on create. Leaving it unset or unchanged signals "leave the stored password alone": the provider omits the password from the next update, so Jamf Pro retains the existing value.
 
@@ -389,8 +392,8 @@ Optional:
 
 Optional:
 
-- `distribution_point` (String) Name of the file share distribution point the policy uses. Omit to inherit the tenant default.
-- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--packages--packages))
+- `distribution_point` (String) Name of the file share distribution point the policy uses. On create Jamf Pro falls back to the tenant default. Omit to leave the current value untouched.
+- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--packages--packages))
 
 <a id="nestedatt--packages--packages"></a>
 ### Nested Schema for `packages.packages`
@@ -414,7 +417,7 @@ Optional:
 
 Optional:
 
-- `printers` (Attributes Set) Set of printer assignments. (see [below for nested schema](#nestedatt--printers--printers))
+- `printers` (Attributes Set) Set of printer assignments. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--printers--printers))
 
 <a id="nestedatt--printers--printers"></a>
 ### Nested Schema for `printers.printers`
@@ -436,14 +439,14 @@ Optional:
 
 Optional:
 
-- `delay_minutes` (Number) Minutes to wait before forcing reboot. Mirrors the admin UI "Delay" input.
-- `file_vault_2_reboot` (Boolean) Trigger a FileVault 2 reboot.
-- `message` (String) Reboot prompt message.
-- `no_user_logged_in` (String) Action when no user is logged in.
-- `specify_startup` (String) Reboot-method discriminator. Empty string is the default: a standard reboot with no explicit method. `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The admin UI surfaces a separate "KEXT PATH" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not exposed here.
-- `start_reboot_timer_immediately` (Boolean) Start the reboot countdown immediately.
-- `startup_disk` (String) Startup disk label.
-- `user_logged_in` (String) Action when a user is logged in.
+- `delay_minutes` (Number) Minutes to wait before forcing reboot. Mirrors the admin UI "Delay" input. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `file_vault_2_reboot` (Boolean) Trigger a FileVault 2 reboot. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `message` (String) Reboot prompt message. Omit to leave the current value untouched.
+- `no_user_logged_in` (String) Action when no user is logged in. Omit to leave the current value untouched.
+- `specify_startup` (String) Reboot-method discriminator. Empty string is the default: a standard reboot with no explicit method. `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The admin UI surfaces a separate "KEXT PATH" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not exposed here. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `start_reboot_timer_immediately` (Boolean) Start the reboot countdown immediately. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `startup_disk` (String) Startup disk label. Omit to leave the current value untouched.
+- `user_logged_in` (String) Action when a user is logged in. Omit to leave the current value untouched.
 
 
 <a id="nestedatt--scope"></a>
@@ -504,7 +507,7 @@ Optional:
 
 Optional:
 
-- `scripts` (Attributes Set) Set of script assignments. `priority` is one of `Before`, `After`, `At Reboot`. (see [below for nested schema](#nestedatt--scripts--scripts))
+- `scripts` (Attributes Set) Set of script assignments. `priority` is one of `Before`, `After`, `At Reboot`. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--scripts--scripts))
 
 <a id="nestedatt--scripts--scripts"></a>
 ### Nested Schema for `scripts.scripts`
@@ -533,19 +536,19 @@ Optional:
 
 Optional:
 
-- `categories` (Attributes Set) Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel "Display in" / "Feature in" columns. A policy may appear in multiple categories. (see [below for nested schema](#nestedatt--self_service--categories))
-- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target.
-- `ensure_users_view_description` (Boolean) Force users to view the description before installing.
-- `include_in_featured_category` (Boolean) Feature the policy on the Self Service main page.
-- `install_button_text` (String) Install-button label. Defaults to `Install`.
-- `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.
-- `notification_message` (String) Notification body text.
-- `notification_subject` (String) Notification subject line.
-- `reinstall_button_text` (String) Re-install-button label. Defaults to `Reinstall`.
-- `self_service_description` (String) Self Service description. Markdown supported.
-- `self_service_display_name` (String) Self Service display name (defaults to the policy name).
+- `categories` (Attributes Set) Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel "Display in" / "Feature in" columns. A policy may appear in multiple categories. Declaring one or more entries replaces the stored list. An empty list reads as an omission. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--self_service--categories))
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `ensure_users_view_description` (Boolean) Force users to view the description before installing. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `include_in_featured_category` (Boolean) Feature the policy on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_button_text` (String) Install-button label. Defaults to `Install`. Omit to leave the current value untouched.
+- `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `notification_message` (String) Notification body text. Omit to leave the current value untouched.
+- `notification_subject` (String) Notification subject line. Omit to leave the current value untouched.
+- `reinstall_button_text` (String) Re-install-button label. Defaults to `Reinstall`. Omit to leave the current value untouched.
+- `self_service_description` (String) Self Service description. Markdown supported. Omit to leave the current value untouched.
+- `self_service_display_name` (String) Self Service display name (defaults to the policy name). Omit to leave the current value untouched.
 - `self_service_icon` (Attributes) Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported. Open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
-- `use_for_self_service` (Boolean) Expose the policy in Self Service.
+- `use_for_self_service` (Boolean) Expose the policy in Self Service. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 <a id="nestedatt--self_service--categories"></a>
 ### Nested Schema for `self_service.categories`
@@ -612,5 +615,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # SPDX-License-Identifier: MPL-2.0
 
 # Import an existing Jamf Pro policy by its numeric ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing the
+# scope, Self Service and payload blocks you did not declare. Applying that plan
+# changes only the state file: Jamf Pro keeps every value it holds there. See
+# the "Importing existing objects" guide.
 terraform import jamfplatform_pro_policy.example 42
 ```

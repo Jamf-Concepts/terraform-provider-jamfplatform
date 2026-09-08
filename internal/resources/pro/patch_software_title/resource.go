@@ -157,7 +157,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"web_notification": schema.BoolAttribute{
-				MarkdownDescription: "Whether a Jamf Pro notification is raised for new versions (UI \"Jamf Pro Notification\"). Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether a Jamf Pro notification is raised for new versions (UI \"Jamf Pro Notification\"). Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -165,7 +165,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"email_notification": schema.BoolAttribute{
-				MarkdownDescription: "Whether an email notification is sent for new versions (UI \"Email\"). Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether Jamf Pro sends an email notification for new versions (UI \"Email\"). Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

@@ -71,8 +71,8 @@ output "ade_prod_token_expiration" {
 
 ### Optional
 
-- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no site is set. The provider mirrors whatever Jamf Pro reports into state and applies no default, so leave the attribute unset to let Jamf Pro decide.
-- `supervision_identity_id` (String) Optional Jamf Pro supervision identity ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no supervision identity is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default.
+- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no site is set. The provider mirrors whatever Jamf Pro reports into state and applies no default. Omit to leave the current value untouched; set `-1` to clear it.
+- `supervision_identity_id` (String) Optional Jamf Pro supervision identity ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no supervision identity is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default. Omit to leave the current value untouched; set `-1` to clear it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `token_file_name` (String) Optional file name to send alongside the uploaded token (e.g. `"my-org-ade-token.p7m"`). Jamf Pro does not return this field on reads, so the attribute is plain `Optional` rather than `Optional+Computed`: it is used only at upload time and is not refreshed on read.
 

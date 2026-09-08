@@ -113,7 +113,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "Optional Description for the device group.",
+				MarkdownDescription: "Free-text description for the device group. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 			},
 			"device_type": schema.StringAttribute{
@@ -137,7 +137,7 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"members": schema.SetAttribute{
-				MarkdownDescription: "Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.",
+				MarkdownDescription: "Device IDs making up a static group's membership. Not accepted on a smart group, whose membership the Jamf inventory service works out from `criteria`. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Set{

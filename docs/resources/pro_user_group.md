@@ -69,7 +69,7 @@ resource "jamfplatform_pro_user_group" "managed_apple_ids_vpp_associated" {
 ### Optional
 
 - `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to determine smart-group membership. Required when `group_type = "smart"`. Forbidden when `group_type = "static"`. Order is significant: Jamf Pro evaluates the criteria left to right with the supplied `and_or` joins. (see [below for nested schema](#nestedatt--criteria))
-- `members` (Set of String) User IDs (as strings) to assign as members of a static user group. Required when `group_type = "static"`. Forbidden when `group_type = "smart"`: Jamf Pro resolves smart-group membership from `criteria`.
+- `members` (Set of String) User IDs (as strings) to assign as members of a static user group. Forbidden when `group_type = "smart"`: Jamf Pro resolves smart-group membership from `criteria`. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.
 - `notify_on_membership_change` (Boolean) Whether Jamf Pro emits a notification when group membership changes. Defaults to `false`.
 - `site_id` (String) Optional Jamf Pro site ID to scope the user group. Omit to leave unscoped (server sets the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -117,5 +117,10 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing user group by its numeric Jamf Pro ID.
+#
+# Import records the group members Jamf Pro reports even when your configuration
+# does not declare them, so the first plan afterwards can propose removing them.
+# See the "Importing existing objects" guide for what applying that plan does.
 terraform import jamfplatform_pro_user_group.example "3"
 ```

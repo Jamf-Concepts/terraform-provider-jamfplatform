@@ -151,6 +151,8 @@ Valid values: `Africa - Cape Town`, `Asia - Hong Kong`, `Asia - Japan`, `Asia - 
 - `ipsec_source_ip_addresses` (Set of String) **"Jamf Security Cloud IPsec source IP addresses"** in the Jamf Security Cloud admin UI: the addresses IPsec traffic from Jamf Security Cloud originates from, which your firewall must allow. Supply both addresses your egress region offers for dynamic addressing, or one to pin a single source address. Only valid on an IPsec gateway: a dedicated internet gateway must leave this unset.
 
 The accepted addresses are fixed per egress region and are the ones the admin UI lists when you pick the region. The provider does not check them at plan time because the accepted set is not published anywhere it can read.
+
+Taking the attribute out of your configuration clears the addresses on the next update rather than leaving them alone.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

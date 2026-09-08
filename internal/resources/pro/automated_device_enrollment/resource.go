@@ -158,8 +158,8 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro " +
 					"reports the sentinel `\"-1\"` when no site is set. The provider mirrors whatever Jamf Pro " +
-					"reports into state and applies no default, so leave the attribute unset to let Jamf " +
-					"Pro decide.",
+					"reports into state and applies no default. Omit to leave the current value untouched; " +
+					"set `-1` to clear it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -169,7 +169,8 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"supervision_identity_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro supervision identity ID to associate with this ADE " +
 					"instance. Jamf Pro reports the sentinel `\"-1\"` when no supervision identity is set; the " +
-					"provider mirrors whatever Jamf Pro reports into state and does not apply a default.",
+					"provider mirrors whatever Jamf Pro reports into state and does not apply a default. Omit " +
+					"to leave the current value untouched; set `-1` to clear it.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{

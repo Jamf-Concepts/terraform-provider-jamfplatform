@@ -55,8 +55,8 @@ resource "jamfplatform_pro_user_extension_attribute" "cost_center" {
 
 ### Optional
 
-- `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute.
-- `popup_menu_choices` (List of String) **"Pop-up menu choices"** in the Jamf Pro admin UI. Ordered list of choices presented for a pop-up menu attribute. Valid only when `input_type = "Pop-up Menu"` (optional even then).
+- `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Remove the attribute to clear the stored text on the next update.
+- `popup_menu_choices` (List of String) **"Pop-up menu choices"** in the Jamf Pro admin UI. Ordered list of choices presented for a pop-up menu attribute. Valid only when `input_type = "Pop-up Menu"` (optional even then). Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
