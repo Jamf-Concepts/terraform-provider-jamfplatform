@@ -4,8 +4,8 @@ page_title: "jamfplatform_pro_sso_settings Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages Jamf Pro Single Sign-On (SSO) settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded signing_certificate sub-block that manages the SAML signing keystore as a single resource.
-  Declare every option on the first apply
-  This resource owns the entire SSO configuration as one unit, and the first apply writes it from your configuration alone: Terraform writes an option you leave out as its Jamf Pro default rather than adopting the tenant's value. Import the tenant's existing settings, or declare every option you want to keep, before applying. Once Terraform holds a value, omitting the attribute leaves that value untouched, so manage SSO entirely through Terraform rather than partly here and partly in the admin console.
+  What Terraform owns
+  Terraform owns every option you declare: change one in the admin console and the next plan reports drift. An option you leave out keeps whatever the tenant already holds, on the first apply as well as later ones, so you can hand SSO over without transcribing every setting you want to keep. Set an empty string to clear a field.
   Cross-field requirements
   All of these are enforced at plan time.
   configuration_type = "SAML" requires the saml_settings block.configuration_type = "OIDC" requires the oidc_settings block and forbids saml_settings (Jamf Pro ignores SAML configuration in pure OIDC mode).configuration_type = "OIDC_WITH_SAML" requires both saml_settings and oidc_settings.saml_settings.entity_id and saml_settings.group_attribute_name must be non-empty whenever SAML is part of the configuration.saml_settings.metadata_source = "URL" requires idp_url and forbids federation_metadata_file / metadata_file_name; = "FILE" is the inverse.saml_settings.idp_provider_type = "OTHER" requires other_provider_type_name.saml_settings.user_attribute_enabled = true requires user_attribute_name.group_enrollment_access_enabled = true together with sso_for_enrollment_enabled = true requires group_enrollment_access_name.signing_certificate.setup_type = "UPLOADED" requires type, key, keystore_file, keystore_file_name, keystore_password, and password.
@@ -27,9 +27,9 @@ description: |-
 
 Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.
 
-### Declare every option on the first apply
+### What Terraform owns
 
-This resource owns the entire SSO configuration as one unit, and the first apply writes it from your configuration alone: Terraform writes an option you leave out as its Jamf Pro default rather than adopting the tenant's value. Import the tenant's existing settings, or declare every option you want to keep, before applying. Once Terraform holds a value, omitting the attribute leaves that value untouched, so manage SSO entirely through Terraform rather than partly here and partly in the admin console.
+Terraform owns every option you declare: change one in the admin console and the next plan reports drift. An option you leave out keeps whatever the tenant already holds, on the first apply as well as later ones, so you can hand SSO over without transcribing every setting you want to keep. Set an empty string to clear a field.
 
 ### Cross-field requirements
 
@@ -191,7 +191,7 @@ variable "sso_key_password" {
 - `enrollment_sso_config` (Attributes) Configuration consumed by the Account-Driven Enrollment SSO flow. (see [below for nested schema](#nestedatt--enrollment_sso_config))
 - `enrollment_sso_for_account_driven_enrollment_enabled` (Boolean) Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `group_enrollment_access_enabled` (Boolean) Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied. Omit to leave the current value untouched; set `true`/`false` to change it.
-- `group_enrollment_access_name` (String) Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`.
+- `group_enrollment_access_name` (String) Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`. Omit to leave any existing value untouched; set to `""` to clear it.
 - `oidc_settings` (Attributes) OIDC configuration. Required when `configuration_type` is `OIDC` or `OIDC_WITH_SAML`. May be omitted in pure SAML mode. (see [below for nested schema](#nestedatt--oidc_settings))
 - `saml_settings` (Attributes) SAML configuration. Required when `configuration_type` is `SAML` or `OIDC_WITH_SAML`. Must be omitted in pure OIDC mode. (see [below for nested schema](#nestedatt--saml_settings))
 - `signing_certificate` (Attributes) Embedded signing certificate sub-block. Three modes selected by `setup_type`:
@@ -240,7 +240,7 @@ Optional:
 - `entity_id` (String) SAML EntityID. Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.
 - `federation_metadata_file` (String, Sensitive) Raw base64 of the IdP SAML metadata XML. Required when `metadata_source = "FILE"`. Idiomatic usage: `filebase64("idp-metadata.xml")`.
 - `group_attribute_name` (String) SAML attribute carrying group claims (e.g. `http://schemas.xmlsoap.org/claims/Group`). Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.
-- `group_rdn_key` (String) Optional RDN token (e.g. `CN`, `DC`, `OU`) used when parsing group claims that arrive as full distinguished names. Unlike its siblings this value is always written, empty when unset, so the first apply clears whatever token the tenant already had; setting `""` clears it too. Once Terraform holds a value, omitting the attribute leaves that value untouched.
+- `group_rdn_key` (String) RDN token (e.g. `CN`, `DC`, `OU`) applied when group claims arrive as full distinguished names. Omit to leave any existing value untouched; set to `""` to clear it.
 - `idp_provider_type` (String) SAML IdP type. One of `ADFS`, `OKTA`, `GOOGLE`, `SHIBBOLETH`, `ONELOGIN`, `PING`, `CENTRIFY`, `AZURE`, or `OTHER`. When `OTHER`, `other_provider_type_name` must also be set. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 - `idp_url` (String) URL Jamf Pro fetches IdP metadata from. Required when `metadata_source = "URL"`. Jamf Pro performs a live HTTP fetch when the resource is applied; the URL is not pre-validated for syntax or reachability by the provider. Omit to leave the current value untouched.
 - `metadata_file_name` (String) Display filename for the uploaded metadata. Required when `metadata_source = "FILE"`; must be omitted when `metadata_source = "URL"`. Omit to leave the current value untouched.
