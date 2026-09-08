@@ -30,8 +30,13 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck/queryfilter"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
@@ -256,6 +261,73 @@ func TestAccDataSource_ProMobileDeviceProvisioningProfile_AmbiguousSelector(t *t
 					}
 				`,
 				ExpectError: regexp.MustCompile(`Invalid Attribute Combination`),
+			},
+		},
+	})
+}
+
+// TestAccListResource_ProMobileDeviceProvisioningProfile_HydratesTheBlob pins
+// that a list result carries profile_data.
+//
+// The list endpoint omits the blob, and leaving it null is worse here than on a
+// plain optional attribute: profile_data is RequiresReplace (the server invariant
+// this file's header records — every PUT to a blob-bearing profile returns 500).
+// So `terraform query -generate-config-out` wrote a profile with no
+// profile_data, and planning that configuration against the imported object
+// proposed a DESTROY AND RECREATE rather than a no-op.
+//
+// There was no query test on this resource at all, which is why that went
+// unseen. It belongs here rather than on testhelpers.GenerateConfigStep, which
+// adopts through the singular read — the read that returns the blob correctly —
+// and never touches the list resource.
+func TestAccListResource_ProMobileDeviceProvisioningProfile_HydratesTheBlob(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-mdpp-list-" + suffix
+	b64 := fixtureBase64(t)
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckProvisioningProfileDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// display_name is Computed (server-forced to name), so the shared
+				// helper is what defines a settable configuration.
+				Config: provisioningProfileConfig(name, b64),
+				Check:  resource.TestCheckResourceAttrSet(resourceAddr, "id"),
+			},
+			{
+				Query: true,
+				Config: fmt.Sprintf(`
+					provider "jamfplatform" {}
+
+					list "jamfplatform_pro_mobile_device_provisioning_profile" "test" {
+						provider         = jamfplatform
+						include_resource = true
+
+						config {
+							filter = {
+								name_substring = %q
+							}
+						}
+					}
+				`, name),
+				QueryResultChecks: []querycheck.QueryResultCheck{
+					querycheck.ExpectLength("jamfplatform_pro_mobile_device_provisioning_profile.test", 1),
+					querycheck.ExpectResourceKnownValues(
+						"jamfplatform_pro_mobile_device_provisioning_profile.test",
+						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
+						[]querycheck.KnownValueCheck{
+							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// The blob is the fix. Without the per-item GET this is null,
+							// and the generated configuration replaces the profile.
+							{Path: tfjsonpath.New("profile_data"), KnownValue: knownvalue.StringExact(b64)},
+						},
+					),
+				},
 			},
 		},
 	})

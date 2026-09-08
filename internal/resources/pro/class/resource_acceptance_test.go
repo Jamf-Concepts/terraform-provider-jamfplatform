@@ -337,7 +337,10 @@ func TestAccListResource_ProClass_Basic(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_class" "test" {
-						name = %q
+						name        = %q
+						description = "list hydration fixture"
+
+						students = ["tf-acc-class-list-student@example.com"]
 					}
 				`, name),
 				Check: resource.TestCheckResourceAttrSet(classResource, "id"),
@@ -365,6 +368,16 @@ func TestAccListResource_ProClass_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// The /classes summary row carries id, name and description
+							// only — never membership. Asserting name alone is what let a
+							// list resource emitting null students/teachers/groups pass,
+							// while `terraform query -generate-config-out` wrote a class
+							// with no members. Membership is authoritative on write, so
+							// applying that back emptied the class. This pins the
+							// per-item GET.
+							{Path: tfjsonpath.New("students"), KnownValue: knownvalue.SetExact([]knownvalue.Check{
+								knownvalue.StringExact("tf-acc-class-list-student@example.com"),
+							})},
 						},
 					),
 				},

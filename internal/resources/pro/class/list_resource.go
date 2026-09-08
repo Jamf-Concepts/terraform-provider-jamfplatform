@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -23,6 +22,10 @@ import (
 // defaultListTimeout caps how long the list operation waits on the classic
 // /classes endpoint.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &ClassListResource{}
 var _ list.ListResourceWithConfigure = &ClassListResource{}
@@ -135,23 +138,30 @@ func (r *ClassListResource) List(ctx context.Context, req list.ListRequest, stre
 		}
 
 		if req.IncludeResource {
-			// List response carries id, name, and description only. Every membership
-			// attribute is null on list results.
+			// The list response carries id, name and description only. A list
+			// result with null membership makes `terraform query
+			// -generate-config-out` write a class with no students, teachers or
+			// groups, and applying that config back would empty the class —
+			// membership is authoritative on write. Follow up with a singular
+			// GET and hydrate from the same state builder Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetClassByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping class from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := ClassResourceModel{
-				ID:                   id,
-				Name:                 helpers.StringPointerValueOrNull(c.Name),
-				Description:          helpers.StringPointerValueOrNull(c.Description),
-				SiteID:               types.StringNull(),
-				SiteName:             types.StringNull(),
-				Source:               types.StringNull(),
-				Students:             types.SetNull(types.StringType),
-				Teachers:             types.SetNull(types.StringType),
-				StudentGroupIDs:      types.SetNull(types.StringType),
-				TeacherGroupIDs:      types.SetNull(types.StringType),
-				MobileDeviceGroupIDs: types.SetNull(types.StringType),
-				StudentIDs:           types.SetNull(types.StringType),
-				TeacherIDs:           types.SetNull(types.StringType),
-				Timeouts:             helpers.NewResourceTimeoutsNullValue(classTimeoutAttributeTypes),
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(classTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignClassResourceModel(itemCtx, &state, full)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

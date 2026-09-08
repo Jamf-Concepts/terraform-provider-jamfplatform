@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -23,6 +22,10 @@ import (
 // defaultListTimeout caps how long the list operation waits on the classic
 // /advancedcomputersearches endpoint.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &AdvancedComputerSearchListResource{}
 var _ list.ListResourceWithConfigure = &AdvancedComputerSearchListResource{}
@@ -36,8 +39,8 @@ func NewAdvancedComputerSearchListResource() list.ListResource {
 // AdvancedComputerSearchListResource implements Terraform query list support.
 // Classic /advancedcomputersearches has no RSQL — the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter after the full list is
-// fetched. List items carry only id and name on the wire; every other resource
-// attribute is set to null on list results.
+// fetched. List items carry only id and name on the wire, so IncludeResource
+// hydrates each record with a singular GET.
 type AdvancedComputerSearchListResource struct {
 	client *proclassic.Client
 }
@@ -137,16 +140,30 @@ func (r *AdvancedComputerSearchListResource) List(ctx context.Context, req list.
 		}
 
 		if req.IncludeResource {
-			// List response carries id and name only. Every other Optional/Computed
-			// attribute is null on list results.
+			// The /advancedcomputersearches list response carries id and name only. A list
+			// result with null criteria makes `terraform query
+			// -generate-config-out` write a search with no criteria at all, and
+			// applying that config back would delete the ones the search
+			// actually has — so follow up with a singular GET and hydrate from
+			// the same state builder Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetAdvancedComputerSearchByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping advanced computer search from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := AdvancedComputerSearchResourceModel{
-				ID:            id,
-				Name:          helpers.StringPointerValueOrNull(s.Name),
-				SiteID:        types.StringNull(),
-				SiteName:      types.StringNull(),
-				Criteria:      nil,
-				DisplayFields: types.SetNull(types.StringType),
-				Timeouts:      helpers.NewResourceTimeoutsNullValue(advancedComputerSearchTimeoutAttributeTypes),
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(advancedComputerSearchTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignAdvancedComputerSearchResourceModel(itemCtx, &state, full)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

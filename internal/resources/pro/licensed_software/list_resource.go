@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -23,6 +22,10 @@ import (
 // defaultListTimeout caps how long the list operation waits on the classic
 // /licensedsoftware endpoint.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &LicensedSoftwareListResource{}
 var _ list.ListResourceWithConfigure = &LicensedSoftwareListResource{}
@@ -132,23 +135,31 @@ func (r *LicensedSoftwareListResource) List(ctx context.Context, req list.ListRe
 
 		if req.IncludeResource {
 			// The classic /licensedsoftware list response carries id and name
-			// only. Every other Optional/Computed attribute is null on list
-			// results; full detail requires a per-record read.
+			// only. A list result with null software_definitions and licenses
+			// makes `terraform query -generate-config-out` write a title with
+			// neither, and applying that config back would strip both — so
+			// follow up with a singular GET and hydrate from the same state
+			// builder Read uses. firstHydration is true here for the same
+			// reason it is on an import: the incoming model is unpopulated, so
+			// the wire-present optional lists are the ones to adopt.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetLicensedSoftwareByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping licensed software from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := LicensedSoftwareResourceModel{
-				ID:                                 id,
-				Name:                               helpers.StringPointerValueOrNull(item.Name),
-				Publisher:                          types.StringNull(),
-				Platform:                           types.StringNull(),
-				Notes:                              types.StringNull(),
-				SendEmailOnViolation:               types.BoolNull(),
-				RemoveTitlesFromInventoryReports:   types.BoolNull(),
-				ExcludeTitlesPurchasedFromAppStore: types.BoolNull(),
-				SiteID:                             types.StringNull(),
-				SiteName:                           types.StringNull(),
-				SoftwareDefinitions:                nil,
-				Licenses:                           nil,
-				Computers:                          types.ListNull(computerObjectType),
-				Timeouts:                           helpers.NewResourceTimeoutsNullValue(licensedSoftwareTimeoutAttributeTypes),
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(licensedSoftwareTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignLicensedSoftwareResourceModel(itemCtx, &state, full, true)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

@@ -17,7 +17,16 @@ import (
 // distinction the user set in config is preserved across refreshes. Computed-only
 // server-derived fields (distribution_point, distribution_server, swu_server, url)
 // are populated unconditionally with the API value (or null when absent).
-func assignNetworkSegmentResourceModel(state *NetworkSegmentResourceModel, s *proclassic.NetworkSegment) {
+// adopt selects between the two read contexts, the way the licensed-software and
+// mobile-device-enrollment-profile builders do. A CRUD read reconciles: an
+// Optional+Computed value the practitioner never authored stays null, so a
+// refresh does not snap it to the server default. Config generation has no plan
+// to reconcile against — the list resource builds a fresh model — so the server
+// value is authoritative and a value-carrying flag has to survive into the
+// exported configuration. Reconciling there left override_buildings and
+// override_departments null on every generated network segment even though the
+// endpoint returns them.
+func assignNetworkSegmentResourceModel(state *NetworkSegmentResourceModel, s *proclassic.NetworkSegment, adopt bool) {
 	if s == nil {
 		return
 	}
@@ -33,10 +42,14 @@ func assignNetworkSegmentResourceModel(state *NetworkSegmentResourceModel, s *pr
 	if s.EndingAddress != nil {
 		state.EndingAddress = helpers.StringPointerValueOrNull(s.EndingAddress)
 	}
+	// The two strings need no adopt switch: ReconcileOptionalStringPointer
+	// already returns a wire value the caller never authored, which is why
+	// building and department survived into generated config while the two bools
+	// beside them did not.
 	state.Building = helpers.ReconcileOptionalStringPointer(s.Building, state.Building)
 	state.Department = helpers.ReconcileOptionalStringPointer(s.Department, state.Department)
-	state.OverrideBuildings = helpers.ReconcileOptionalBoolPointer(s.OverrideBuildings, state.OverrideBuildings)
-	state.OverrideDepartments = helpers.ReconcileOptionalBoolPointer(s.OverrideDepartments, state.OverrideDepartments)
+	state.OverrideBuildings = helpers.ReconcileOrAdoptBoolPointer(s.OverrideBuildings, state.OverrideBuildings, adopt)
+	state.OverrideDepartments = helpers.ReconcileOrAdoptBoolPointer(s.OverrideDepartments, state.OverrideDepartments, adopt)
 	state.DistributionPoint = helpers.StringPointerValueOrNull(s.DistributionPoint)
 	state.DistributionServer = helpers.StringPointerValueOrNull(s.DistributionServer)
 	state.SwuServer = helpers.StringPointerValueOrNull(s.SwuServer)

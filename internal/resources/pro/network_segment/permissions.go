@@ -52,6 +52,9 @@ var pluralDataSourcePrivileges = permissions.Section(proclassic.Privileges, plur
 // calls.
 var listResourceSDKMethods = []string{
 	"ListNetworkSegments",
+	// The per-item hydration GET the list resource issues when
+	// IncludeResource asks for full resource state.
+	"GetNetworkSegmentByID",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown

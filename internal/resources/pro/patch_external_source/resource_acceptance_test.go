@@ -268,6 +268,11 @@ func TestAccListResource_ProPatchExternalSource_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// host_name is NOT in the summary row, and it is Required on
+							// the schema — a list result carrying null for it generates
+							// configuration the provider refuses to plan. This pins the
+							// per-item GET.
+							{Path: tfjsonpath.New("host_name"), KnownValue: knownvalue.StringExact("definitions.example.com/v2/")},
 						},
 					),
 				},

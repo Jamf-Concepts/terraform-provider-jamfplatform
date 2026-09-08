@@ -39,6 +39,17 @@ func TestAccListResource_ProEnrollmentCustomization_Basic(t *testing.T) {
 						display_name = %q
 						description  = "tf acc list"
 						%s
+
+						text_panes = [
+							{
+								display_name         = "Welcome"
+								rank                 = 0
+								title                = "Welcome"
+								body                 = "list hydration fixture"
+								previous_button_text = "Back"
+								next_button_text     = "Next"
+							},
+						]
 					}
 				`, name, configCommon()),
 				Check: resource.TestCheckResourceAttrSet("jamfplatform_pro_enrollment_customization.src", "id"),
@@ -66,6 +77,14 @@ func TestAccListResource_ProEnrollmentCustomization_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("display_name"), KnownValue: knownvalue.StringExact(name)},
+							// The list endpoint carries the parent record only — panes
+							// live on their own endpoints. Asserting display_name alone
+							// is what let a list resource leaving them null pass, while
+							// `terraform query -generate-config-out` wrote a
+							// customization with no panes, and applying that back deleted
+							// them. This pins the pane hydration.
+							{Path: tfjsonpath.New("text_panes").AtSliceIndex(0).AtMapKey("title"), KnownValue: knownvalue.StringExact("Welcome")},
+							{Path: tfjsonpath.New("text_panes").AtSliceIndex(0).AtMapKey("body"), KnownValue: knownvalue.StringExact("list hydration fixture")},
 						},
 					),
 				},
