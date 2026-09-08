@@ -240,7 +240,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 					"migrated":           computedBool("Whether the connection has been migrated. Read-only."),
 					"deprecated_consent": computedBool("Whether the connection uses a deprecated consent flow. Read-only."),
 					"mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Entra ID attribute mappings. Omit the block to let Jamf Pro generate defaults, or supply it to override them.",
+						MarkdownDescription: "Entra ID attribute mappings. Omit the block to leave the connection's current mappings untouched. Jamf Pro supplies no defaults here, so a connection created without the block has all eleven mappings empty. Declare it and Terraform owns every field: a field you leave out inside the block clears that mapping.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"user_id":    nestedOptString("Attribute mapped to user ID (e.g. `id`)."),
