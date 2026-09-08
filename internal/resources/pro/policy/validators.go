@@ -293,6 +293,24 @@ func isStringSet(s types.String) bool {
 // request into a 201, with username, realname, password and admin unchanged. The
 // message is identical whatever else the entry carries, so a plan-time check is
 // the only way the practitioner learns which field is missing.
+//
+// An EMPTY home is refused on the same terms. The same probe sent
+// `<home></home>` and was refused identically to sending no `home` at all, while
+// `<home>/Users/...</home>` returned 201 and round-tripped. So a stored blank
+// home cannot exist by way of the API, and the check treats empty and absent as
+// one case.
+//
+// The check reads CONFIGURATION, not state, and that is deliberate rather than
+// an oversight. `home` is Optional+Computed with UseNonNullStateForUnknown, so a
+// configuration that applied once with `home` set and later drops the attribute
+// is legal today: the plan modifier carries the prior value into the plan and
+// the update sends it. This validator refuses that configuration too, which is
+// stronger than what Jamf Pro alone requires — and the schema description says
+// so. The alternative does not exist: on a create the planned value of an
+// Optional+Computed attribute is unknown, so a ModifyPlan variant reading the
+// plan could never fire on the one apply where the 409 actually lands. A check
+// that is silent exactly where it is needed is worse than one that asks for the
+// attribute to stay in the configuration.
 type createAccountRequiresHomeValidator struct{}
 
 // Description returns a plain-text description of the validator.
@@ -343,7 +361,9 @@ func (createAccountRequiresHomeValidator) ValidateResource(ctx context.Context, 
 			"home required for a Create account action",
 			`This local_accounts entry has action = "Create", which Jamf Pro will not accept without `+
 				"`home`. It answers `409 Problem with create account fields` and names no field. Set "+
-				"`home` to the account's home directory path (e.g. \"/Users/<username>\").",
+				"`home` to the account's home directory path (e.g. \"/Users/<username>\"). This check reads "+
+				"your configuration rather than Terraform state, so `home` has to stay in a `Create` entry "+
+				"even on a policy that already applied with it.",
 		)
 	}
 }

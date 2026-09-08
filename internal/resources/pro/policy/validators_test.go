@@ -270,8 +270,6 @@ func localAccountsConfig(ctx context.Context, t *testing.T, entries [][2]*string
 	return tfsdk.Config{Schema: s, Raw: raw}
 }
 
-func strptr(in string) *string { return &in }
-
 // TestCreateAccountRequiresHome pins the plan-time replacement for Jamf Pro's
 // `409 Problem with create account fields`, which names no field.
 func TestCreateAccountRequiresHome(t *testing.T) {
@@ -284,16 +282,16 @@ func TestCreateAccountRequiresHome(t *testing.T) {
 	}{
 		{
 			name:      "create without home is refused",
-			entries:   [][2]*string{{strptr("Create"), nil}},
+			entries:   [][2]*string{{new("Create"), nil}},
 			wantError: true,
 		},
 		{
 			name:    "create with home is accepted",
-			entries: [][2]*string{{strptr("Create"), strptr("/Users/svc")}},
+			entries: [][2]*string{{new("Create"), new("/Users/svc")}},
 		},
 		{
 			name:    "a non-create action needs no home",
-			entries: [][2]*string{{strptr("Reset"), nil}},
+			entries: [][2]*string{{new("Reset"), nil}},
 		},
 		{
 			name:    "an entry with no action at all is left alone",
@@ -303,7 +301,7 @@ func TestCreateAccountRequiresHome(t *testing.T) {
 			// The validator reads each element, so a good entry must not mask a
 			// bad one sitting behind it in the list.
 			name:      "a later create without home is still refused",
-			entries:   [][2]*string{{strptr("Reset"), nil}, {strptr("Create"), nil}},
+			entries:   [][2]*string{{new("Reset"), nil}, {new("Create"), nil}},
 			wantError: true,
 		},
 	}
