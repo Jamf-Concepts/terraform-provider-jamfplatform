@@ -32,7 +32,9 @@ Jamf lists this under **Platform environment** scope (preferred for new integrat
 # `password` are `WriteOnly`, sent to Jamf Pro on writes but never persisted
 # in Terraform state. Bump `keystore.wo_version` to re-upload (rotate) the
 # certificate on a later apply. Omit `mappings` to let Jamf Pro generate the
-# standard Google defaults.
+# standard Google defaults, or read them from the
+# jamfplatform_pro_cloud_identity_provider_defaults data source and declare what
+# you want to change.
 #
 # Attribute names mirror the labels used in the Jamf Pro admin UI.
 resource "jamfplatform_pro_cloud_identity_provider" "google" {
@@ -68,8 +70,11 @@ resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   entra_id = {
     tenant_id = "d5749c84-5cc5-4691-a187-4545c02ff915" # your Entra ID tenant GUID
     # search_timeout, enabled, transitivity flags and the membership user
-    # field all carry sensible defaults when omitted. Omit `mappings` to let
-    # Jamf Pro generate the Entra ID defaults.
+    # field all carry sensible defaults when omitted. Entra ID mappings are
+    # different: Jamf Pro generates none, so a connection created without the
+    # block has all eleven empty. The
+    # jamfplatform_pro_cloud_identity_provider_defaults data source reports the
+    # values the admin UI would have pre-filled.
   }
 }
 
@@ -108,7 +113,7 @@ Required:
 Optional:
 
 - `enabled` (Boolean) Whether the Entra ID connection is enabled. Defaults to `true`.
-- `mappings` (Attributes) Entra ID attribute mappings. Omit the block to let Jamf Pro generate defaults, or supply it to override them. (see [below for nested schema](#nestedatt--entra_id--mappings))
+- `mappings` (Attributes) Entra ID attribute mappings. Omit the block to leave the connection's current mappings untouched. Jamf Pro supplies no defaults here, so a connection created without the block has all eleven mappings empty. Declare it and Terraform owns every field: a field you leave out inside the block clears that mapping. (see [below for nested schema](#nestedatt--entra_id--mappings))
 - `membership_calculation_optimization_enabled` (Boolean) Whether membership-calculation optimization is enabled. Defaults to `false`.
 - `search_timeout` (Number) Search timeout in seconds. Defaults to `30`.
 - `transitive_directory_membership_enabled` (Boolean) Whether transitive directory membership is enabled. Defaults to `false`.

@@ -109,7 +109,7 @@ output "adobe_air_extension_attributes" {
 - `email_notification` (Boolean) Whether Jamf Pro sends an email notification for new versions (UI "Email"). Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `site_id` (String) Jamf Pro site ID (UI "Site"). Set `-1` for "None", the value a title starts out with. Only a positive ID or `-1` is accepted; `0` and other non-positive values are rejected when you plan. Removing this attribute from your configuration leaves the current site in place, so clear an assigned site by setting `-1` explicitly.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `version_packages` (Map of String) Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments. An empty map is not accepted.
+- `version_packages` (Map of String) Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Terraform manages only the keys you declare and leaves the title's other assignments alone. Remove a key and the next apply clears that version's package. Omit the attribute entirely to manage no assignments, and every package on the title stays assigned. An empty map is not accepted.
 - `web_notification` (Boolean) Whether a Jamf Pro notification is raised for new versions (UI "Jamf Pro Notification"). Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 ### Read-Only
@@ -148,11 +148,10 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
-# Import an existing patch software title by its Jamf Pro ID.
+# Import by patch software title ID.
 #
-# Import records the package assigned to each version Jamf Pro reports, even
-# where your configuration declares none, so the first plan afterwards can
-# propose removing the entries you did not declare. See the "Importing existing
-# objects" guide for what applying that plan does.
+# Import records no version_packages: Terraform manages only the versions you
+# declare, and every package already on the title stays assigned. Declare the
+# ones you want it to own and leave the rest to the admin UI.
 terraform import jamfplatform_pro_patch_software_title.example "6"
 ```

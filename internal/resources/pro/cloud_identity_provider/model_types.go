@@ -203,3 +203,45 @@ type CloudIdentityProviderDataSourceEntryModel struct {
 type CloudIdentityProviderListResourceModel struct {
 	Filter *filters.ClassicFilterModel `tfsdk:"filter"`
 }
+
+// CloudIdentityProviderDefaultsDataSourceModel is the defaults reference data
+// source model. Both blocks are always populated: the defaults Jamf Pro reports
+// exist whether or not the tenant has a connection of either kind.
+type CloudIdentityProviderDefaultsDataSourceModel struct {
+	EntraID  *cloudIdentityProviderEntraIDDefaultsModel `tfsdk:"entra_id"`
+	Google   *cloudIdentityProviderGoogleDefaultsModel  `tfsdk:"google"`
+	Timeouts datasourceTimeouts.Value                   `tfsdk:"timeouts"`
+}
+
+// cloudIdentityProviderEntraIDDefaultsModel carries the Entra ID defaults.
+// Mappings reuses the resource's own model so the two objects share their tfsdk
+// tags by construction and one assigns straight into the other.
+type cloudIdentityProviderEntraIDDefaultsModel struct {
+	Type                                     types.String             `tfsdk:"type"`
+	SearchTimeout                            types.Int64              `tfsdk:"search_timeout"`
+	TransitiveMembershipEnabled              types.Bool               `tfsdk:"transitive_membership_enabled"`
+	TransitiveMembershipUserField            types.String             `tfsdk:"transitive_membership_user_field"`
+	TransitiveDirectoryMembershipEnabled     types.Bool               `tfsdk:"transitive_directory_membership_enabled"`
+	MembershipCalculationOptimizationEnabled types.Bool               `tfsdk:"membership_calculation_optimization_enabled"`
+	Mappings                                 *cloudAzureMappingsModel `tfsdk:"mappings"`
+}
+
+// cloudIdentityProviderGoogleDefaultsModel carries the Google Secure LDAP
+// defaults, which come from two separate reads.
+type cloudIdentityProviderGoogleDefaultsModel struct {
+	Server   *cloudIdentityProviderGoogleServerDefaultsModel `tfsdk:"server"`
+	Mappings *cloudLdapMappingsModel                         `tfsdk:"mappings"`
+}
+
+// cloudIdentityProviderGoogleServerDefaultsModel carries the Google server
+// connection defaults. domain_name and keystore are absent because the defaults
+// report neither: they are the two things only the practitioner supplies.
+type cloudIdentityProviderGoogleServerDefaultsModel struct {
+	ServerURL                                types.String `tfsdk:"server_url"`
+	Port                                     types.Int64  `tfsdk:"port"`
+	ConnectionType                           types.String `tfsdk:"connection_type"`
+	ConnectionTimeout                        types.Int64  `tfsdk:"connection_timeout"`
+	SearchTimeout                            types.Int64  `tfsdk:"search_timeout"`
+	UseWildcards                             types.Bool   `tfsdk:"use_wildcards"`
+	MembershipCalculationOptimizationEnabled types.Bool   `tfsdk:"membership_calculation_optimization_enabled"`
+}

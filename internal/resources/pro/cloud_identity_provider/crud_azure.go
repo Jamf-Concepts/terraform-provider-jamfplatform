@@ -6,6 +6,7 @@ package cloud_identity_provider
 import (
 	"context"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -80,12 +81,30 @@ func (r *CloudIdentityProviderResource) readAzure(ctx context.Context, state *Cl
 
 // updateAzure full-replaces via PUT /v1/cloud-azure/{id}, then GET.
 // The state and cfg args are unused for Azure.
+//
+// A configuration that declares no mappings block costs an extra GET first: the
+// eleven mapping keys are always on the wire, so preserving what the connection
+// holds means reading it before writing it back (#404, see buildAzureMappings).
+// A declared block needs no merge base and skips the read.
 func (r *CloudIdentityProviderResource) updateAzure(ctx context.Context, plan, _, _ CloudIdentityProviderResourceModel, resp *resource.UpdateResponse) {
 	if plan.Azure == nil {
 		resp.Diagnostics.AddError(missingProviderBlockError(providerEntraID, "entra_id"))
 		return
 	}
-	body := buildAzureUpdateRequest(plan)
+
+	var liveMappings *pro.AzureMappings
+	if plan.Azure.Mappings == nil {
+		live, err := r.client.GetCloudAzureV1(ctx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Azure) attribute mappings", err.Error())
+			return
+		}
+		if live != nil && live.Server != nil {
+			liveMappings = live.Server.Mappings
+		}
+	}
+
+	body := buildAzureUpdateRequest(plan, liveMappings)
 
 	if _, err := r.client.UpdateCloudAzureV1(ctx, plan.ID.ValueString(), body); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro Cloud Identity Provider (Azure)", err.Error())

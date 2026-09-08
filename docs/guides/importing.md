@@ -73,17 +73,21 @@ says which applies, so check the field before you trust the block-level answer.
 
 ## Where the removal is real
 
-!> **Three resources reset what you leave out instead of keeping it.** The plan reads identically to
+!> **Two resources reset what you leave out instead of keeping it.** The plan reads identically to
 the harmless one above. The outcome does not.
 
 | Resource | What a proposed removal really removes |
 |---|---|
 | `jamfplatform_pro_app_installer` | Terraform writes the notification and Self Service settings whole, so Jamf Pro resets both blocks to their defaults. The description, the deadline and the notification messages go with them. |
-| `jamfplatform_pro_patch_software_title` | `version_packages` arrives from the import holding every package the title has assigned. Remove it and Jamf Pro unassigns all of them, leaving a patch policy on that title with no package to deploy. |
 | `jamfplatform_security_cloud_uem_connect` | Terraform writes the sync settings whole, so Jamf Security Cloud resets `user_data_field_mapping` and `group_membership_mapping` to their defaults. |
 
-On these three, declare what you want to keep before you apply. Each says so in its own Import
+On these two, declare what you want to keep before you apply. Each says so in its own Import
 section too.
+
+`jamfplatform_pro_patch_software_title` was a third until recently. Importing a title and applying
+the settle plan without declaring `version_packages` unassigned every package on it, which left a
+patch policy targeting that title with nothing to deploy. An import now records no
+`version_packages` at all, so there is no removal to propose and nothing to lose.
 
 ## Seeing what an import will hold
 
@@ -109,7 +113,7 @@ Two ways, and which one is right depends on the resource.
 
 Declare what you want to keep. Copy the values out of the plan output into your configuration, then
 re-plan. The removal disappears, because state and configuration now agree, and Terraform manages
-those blocks from then on. **This is the only safe route on the three resources above.**
+those blocks from then on. **This is the only safe route on the two resources above.**
 
 Or apply once and let state converge. The removal applies, state drops the blocks, and every later
 plan is clean. Nothing in Jamf Pro moves. Choose this where you want the object co-managed, and

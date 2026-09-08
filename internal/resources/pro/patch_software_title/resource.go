@@ -173,7 +173,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"version_packages": schema.MapAttribute{
-				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Only the keys you declare are managed: other assignments on the title are left alone, and removing a key clears that version's package on the next apply. Omit the attribute entirely to manage no assignments. An empty map is not accepted.",
+				MarkdownDescription: "Managed map of version→package assignments. Keys are `software_version` strings drawn from `available_versions`; values are Jamf Pro package ID strings. A patch policy can only target a version that has a package assigned here. Terraform manages only the keys you declare and leaves the title's other assignments alone. Remove a key and the next apply clears that version's package. Omit the attribute entirely to manage no assignments, and every package on the title stays assigned. An empty map is not accepted.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.Map{
