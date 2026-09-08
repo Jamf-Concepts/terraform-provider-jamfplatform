@@ -334,6 +334,10 @@ func TestAccResource_ProPatchSoftwareTitle_ImportSettleKeepsAssignments(t *testi
 // testAccCreatePackageOutOfBand creates a metadata-only package (no upload) and
 // returns its id. Assigning a package to a title needs nothing more than an id
 // the server recognises.
+//
+// Priority carries the admin UI's own default of 10 because the field is a
+// value-type int the server rejects below 1, so a zero value fails the create
+// with "priority: must be greater than or equal to 1".
 func testAccCreatePackageOutOfBand(t *testing.T, displayName string) string {
 	t.Helper()
 	c := pro.New(testhelpers.NewAcceptanceClient(t))
@@ -341,6 +345,7 @@ func testAccCreatePackageOutOfBand(t *testing.T, displayName string) string {
 		PackageName: displayName,
 		FileName:    displayName + ".pkg",
 		CategoryID:  "-1",
+		Priority:    10,
 	})
 	if err != nil {
 		t.Fatalf("creating a package outside Terraform: %v", err)
