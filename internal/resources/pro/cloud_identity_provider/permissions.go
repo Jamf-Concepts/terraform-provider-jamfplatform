@@ -56,6 +56,19 @@ var pluralDataSourceSDKMethods = []string{
 // Markdown section for the plural data source.
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
 
+// defaultsDataSourceSDKMethods lists the SDK methods the cloud identity
+// provider defaults data source calls. Entra ID needs one read because its
+// server-configuration response carries the mappings inline; Google needs two.
+var defaultsDataSourceSDKMethods = []string{
+	"GetCloudAzureDefaultServerConfigurationV1",
+	"GetCloudLdapDefaultServerConfigurationV2",
+	"GetCloudLdapDefaultMappingsV2",
+}
+
+// defaultsDataSourcePrivileges is the rendered "Required Jamf permissions"
+// Markdown section for the defaults data source.
+var defaultsDataSourcePrivileges = permissions.Section(pro.Privileges, defaultsDataSourceSDKMethods...)
+
 // listResourceSDKMethods lists the SDK methods the Cloud Identity Provider
 // list resource calls. A plain query needs only the registry list; config
 // generation additionally reads each Entra ID provider individually, so an

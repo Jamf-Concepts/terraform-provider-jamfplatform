@@ -351,6 +351,15 @@ func computedBool(desc string) schema.BoolAttribute {
 	}
 }
 
+// computedInt64 returns a Computed-only int64 attribute, for the numeric
+// settings the defaults data source reports.
+func computedInt64(desc string) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+	}
+}
+
 // defaulted* constructors return Optional+Computed attributes with a static
 // default. Used for the Google server connection scalars: a static default
 // keeps the value known at plan time (so Create sends a concrete value rather

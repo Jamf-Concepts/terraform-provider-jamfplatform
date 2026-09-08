@@ -124,6 +124,31 @@ func TestDataSourcePrivileges_Rendered(t *testing.T) {
 	}
 }
 
+// --- defaults data source ----------------------------------------------
+
+// TestDefaultsDataSourceSDKMethods_KnownToSDK fails if a declared defaults data
+// source method has been renamed or removed in the SDK privilege registry.
+func TestDefaultsDataSourceSDKMethods_KnownToSDK(t *testing.T) {
+	if missing := permissions.Missing(pro.Privileges, defaultsDataSourceSDKMethods...); len(missing) > 0 {
+		t.Fatalf("defaultsDataSourceSDKMethods not present in pro.Privileges (SDK drift): %v", missing)
+	}
+}
+
+// TestDefaultsDataSourceSDKMethods_MatchCalls fails if data_source_defaults.go
+// calls an SDK method not declared in defaultsDataSourceSDKMethods, or declares
+// one it does not call. It is also what would catch a return to the deprecated
+// Entra ID mappings endpoint, which the data source deliberately does not call.
+func TestDefaultsDataSourceSDKMethods_MatchCalls(t *testing.T) {
+	assertCallsMatch(t, defaultsDataSourceSDKMethods, "data_source_defaults.go")
+}
+
+// TestDefaultsDataSourcePrivileges_Rendered guards that the table rendered.
+func TestDefaultsDataSourcePrivileges_Rendered(t *testing.T) {
+	if !permissions.Renders(defaultsDataSourcePrivileges, "ldap-servers:read") {
+		t.Fatalf("defaultsDataSourcePrivileges did not render the ldap-servers privileges:\n%s", defaultsDataSourcePrivileges)
+	}
+}
+
 // --- plural data source -------------------------------------------------
 
 // TestPluralDataSourceSDKMethods_KnownToSDK fails if a declared plural data

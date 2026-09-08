@@ -4,7 +4,9 @@
 # `password` are `WriteOnly`, sent to Jamf Pro on writes but never persisted
 # in Terraform state. Bump `keystore.wo_version` to re-upload (rotate) the
 # certificate on a later apply. Omit `mappings` to let Jamf Pro generate the
-# standard Google defaults.
+# standard Google defaults, or read them from the
+# jamfplatform_pro_cloud_identity_provider_defaults data source and declare what
+# you want to change.
 #
 # Attribute names mirror the labels used in the Jamf Pro admin UI.
 resource "jamfplatform_pro_cloud_identity_provider" "google" {
@@ -40,8 +42,11 @@ resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   entra_id = {
     tenant_id = "d5749c84-5cc5-4691-a187-4545c02ff915" # your Entra ID tenant GUID
     # search_timeout, enabled, transitivity flags and the membership user
-    # field all carry sensible defaults when omitted. Omit `mappings` to let
-    # Jamf Pro generate the Entra ID defaults.
+    # field all carry sensible defaults when omitted. Entra ID mappings are
+    # different: Jamf Pro generates none, so a connection created without the
+    # block has all eleven empty. The
+    # jamfplatform_pro_cloud_identity_provider_defaults data source reports the
+    # values the admin UI would have pre-filled.
   }
 }
 
