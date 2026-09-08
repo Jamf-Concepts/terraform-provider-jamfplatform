@@ -465,9 +465,56 @@ func PreserveStringWhenWireEmpty(wire *string, current types.String) types.Strin
 	return current
 }
 
+// gatewayUnroutedBody is the response body the Jamf Platform gateway serves for
+// a path it routes nowhere: Go's net/http NotFound text, verbatim, as
+// text/plain. Matched exactly rather than by content type or by "the body is not
+// JSON", because a genuine not-found is not reliably JSON either — see
+// IsGatewayUnrouted.
+const gatewayUnroutedBody = "404 page not found"
+
+// IsGatewayUnrouted reports whether err is a 404 the *gateway* produced because
+// it routes nothing at that path, rather than one a Jamf service produced
+// because the object does not exist.
+//
+// The distinction decides whether a Read may delete a resource from state, and
+// getting it wrong is silent and estate-wide: a base URL that serves
+// authentication but no namespaces — the pre-GA {region}.apigw.jamf.com beta
+// gateway is exactly that, and still answers /auth/token — passes provider
+// Configure, then answers every Read with a 404. Read the reply as "the object
+// is gone" and one refresh empties the state file of every managed object, which
+// `terraform plan` then reports as a clean set of creates with no error and exit
+// status 0. Reported by a user upgrading to the GA gateway without changing
+// base_url, and reproduced against a mock gateway of that shape.
+//
+// Wire-probed 2026-09-08 against eu.api.jamfcloud.com under environment scope.
+// A genuine not-found has no single shape, which is why this matches the
+// gateway's text instead of the absence of a Jamf-shaped body:
+//
+//   - JSON, `httpStatus: 404` — /devices/v1, /device-groups/v1, /blueprints/v1,
+//     /ai/governance/policies/v1, and Pro v1/v2/v3.
+//   - An HTML "Status page — Not Found" — every /proclassic path.
+//   - An empty body with no content type — /pro/v1/scripts/{id} and
+//     /compliance-benchmarks/v1/benchmarks/{id}.
+//
+// The gateway's own text appeared only for a path no namespace claims: a wrong
+// host, a stray /api prefix, or a namespace that does not exist. A path *inside*
+// a routed namespace that the service does not serve answers 403 BAD_PERMISSIONS
+// instead, so this never has to separate those two.
+func IsGatewayUnrouted(err error) bool {
+	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
+	if !ok {
+		return false
+	}
+	return apiErr.HasStatus(http.StatusNotFound) && strings.TrimSpace(apiErr.Body) == gatewayUnroutedBody
+}
+
 // IsNotFoundError reports whether an error represents a "resource is gone"
 // response from the Jamf API. Matches HTTP 404 (the conventional shape) AND
 // HTTP 400 with an `INVALID_ID` error detail.
+//
+// A gateway-unrouted 404 is excluded: it reports that the request reached no
+// Jamf service at all, so answering "the object is gone" would delete a live
+// object from state. See IsGatewayUnrouted.
 //
 // Some Pro v1 endpoints — confirmed for `/device-enrollments/{id}` and
 // `/volume-purchasing-locations/{id}` — return `400 Bad Request` with an
@@ -484,6 +531,9 @@ func PreserveStringWhenWireEmpty(wire *string, current types.String) types.Strin
 func IsNotFoundError(err error) bool {
 	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
 	if !ok {
+		return false
+	}
+	if IsGatewayUnrouted(err) {
 		return false
 	}
 	if apiErr.HasStatus(http.StatusNotFound) {

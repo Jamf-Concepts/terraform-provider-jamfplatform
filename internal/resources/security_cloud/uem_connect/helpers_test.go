@@ -138,6 +138,12 @@ func TestIsNotFound(t *testing.T) {
 		{"status without the code", apiError(http.StatusNotFound, "SOMETHING_ELSE", "gone"), true},
 		{"code without the status", apiError(http.StatusBadRequest, codeNotFound, "gone"), true},
 		{"both the status and the code", apiError(http.StatusNotFound, codeNotFound, "Config with ID '0' doesn't exist"), true},
+		// A 404 the gateway produced because it routes nothing at that path is not
+		// the integration being absent, and Read acts on isNotFound by deleting the
+		// resource from state. The apiError helper above sets no Body, so without
+		// this case the helpers.IsGatewayUnrouted guard is unreachable and deleting
+		// it leaves every test in the package green.
+		{"a gateway-unrouted 404 is not a not-found", &jamfplatform.APIResponseError{StatusCode: http.StatusNotFound, Body: "404 page not found"}, false},
 		{"a conflict is not a not-found", apiError(http.StatusConflict, codeConfigAlreadyExists, "exists"), false},
 		{"a transport error is not a not-found", errors.New("connection refused"), false},
 		{"nil", nil, false},

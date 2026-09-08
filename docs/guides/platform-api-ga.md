@@ -12,9 +12,9 @@ public beta.
 
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
-constructs have been removed. The beta gateway and beta API integration credentials are both
-retired, so a configuration on `v0.28.1` or earlier can no longer reach the Platform API at all —
-this upgrade is the only way forward, not an option.
+constructs have been removed. The beta gateway stopped serving the Platform API,
+and beta credentials stopped working, so a configuration on `v0.28.1` or earlier cannot reach
+it.
 
 Each section below states the action required, or says explicitly that none is.
 
@@ -64,7 +64,7 @@ on the GA host, and every other step below still applies to it.
    tenant scope only if single-product access is deliberately what you want: it is the legacy
    option, costs one integration per tenant per product, and cannot hold the blueprint or
    compliance-benchmark permissions at all. See [Scope](#scope).
-4. **Set `base_url` to the GA gateway.** The beta host is retired. See [Base URL](#base-url).
+4. **Set `base_url` to the GA gateway.** The beta host stopped serving the API. See [Base URL](#base-url).
 5. **Remove the deleted resources from state.** After the upgrade, a workspace still holding one of
    them cannot produce a plan of any kind. See [Removed constructs](#removed-constructs).
 6. **Extend the integration's permissions where a workspace uses
@@ -226,7 +226,7 @@ directions:
 
 | Provider version | `base_url` |
 |---|---|
-| `v0.28.1` and earlier | `https://{region}.apigw.jamf.com`, the beta host, now retired. These versions cannot reach the GA host. |
+| `v0.28.1` and earlier | `https://{region}.apigw.jamf.com`, the beta host, which stopped serving the API. These versions cannot reach the GA host. |
 | `v0.29.0-rc.4` through `rc.7` | `https://{region}.api.jamfcloud.com`, already in place. The host needs no change, but the credential and scope replacement still do. |
 | `v0.29.0` | `https://{region}.api.jamfcloud.com`, required. This version cannot reach the beta host. |
 
@@ -245,6 +245,12 @@ The value may also be supplied through `JAMFPLATFORM_BASE_URL`. The region remai
 Supply the host only. The gateway serves the token endpoint and every API namespace at the root,
 and the `/api` path segment used during the beta is gone. A request carrying it gets the gateway's
 bare `404 page not found`, not a JSON error.
+
+The beta host no longer works with this provider. `v0.29.0` and `v0.30.0` let you set it anyway,
+and you got a plan offering to create everything you already manage. Running that plan changed
+nothing in Jamf, since every create failed as well. It emptied your state file, so recover that
+from `terraform.tfstate.backup` or your backend's state history. This release refuses the beta
+host.
 
 ## Scope
 
@@ -599,7 +605,8 @@ environment scope, described under [Scope](#scope). Further detail:
 | Symptom | Cause and resolution |
 |---|---|
 | `no schema available for <type>.<name> while reading state; this is a bug in Terraform and should be reported` | Not a Terraform defect. A removed resource remains in state; remove it with `terraform state rm`. Every operation in the workspace fails until it is removed. |
-| `404 page not found`, with no JSON body | `base_url` includes a path. Supply the host only. |
+| `404 page not found`, with no JSON body | `base_url` includes a path, or names a host that does not serve the Platform API. Supply the regional gateway host with no path. |
+| A plan offers to create objects that already exist, with no error | `base_url` still names the beta host, on `v0.29.0` or `v0.30.0`. Check the state with `terraform plan -refresh=false`, then change the host. This release refuses that host at configure time. |
 | `403 OWNERSHIP_FORBIDDEN` | `environment_id` supplied for a tenant-scoped integration, or the reverse. |
 | `403 BAD_PERMISSIONS` | The integration lacks a permission the construct requires; the resource's documentation page lists them, alongside the scope it needs. Blueprints and compliance benchmarks under a tenant-scoped integration used to land here; they are now refused at configure time instead. |
 | `403 NOT_ENTITLED` on a Security Cloud construct | The tenant does not hold that Security Cloud capability. Additional permissions will not resolve it. |

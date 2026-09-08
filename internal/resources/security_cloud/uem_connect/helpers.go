@@ -11,6 +11,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -138,9 +139,16 @@ func appendUpdateDiagnostics(diags *diag.Diagnostics, err error) bool {
 
 // isNotFound reports whether an error is Jamf Security Cloud saying the
 // integration is gone, which Read treats as a removal rather than a failure.
+//
+// A gateway-unrouted 404 is excluded, because Read acts on this by deleting the
+// resource from state and that reply means the request reached no Jamf service —
+// see helpers.IsGatewayUnrouted.
 func isNotFound(err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
+		return false
+	}
+	if helpers.IsGatewayUnrouted(err) {
 		return false
 	}
 	if apiErr.HasStatus(http.StatusNotFound) {
