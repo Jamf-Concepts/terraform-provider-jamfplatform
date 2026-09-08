@@ -60,3 +60,20 @@ func buildEbookNotification(enabled types.Bool, method types.String) *proclassic
 	}
 	return n
 }
+
+// isAcceptedAsyncDelete reports whether err is the classic /ebooks DELETE
+// reporting an accepted deletion through a misleading client error, rather than
+// a genuine refusal.
+//
+// The endpoint answers an accepted async delete with a 4xx (wire-probed), so the
+// switch in Delete treats a client error as success-with-a-warning. Two 4xx
+// replies must not take that branch. A gateway-unrouted 404 means the request
+// reached no Jamf service, so nothing was accepted and clearing state would
+// leave a live ebook unmanaged — see helpers.IsGatewayUnrouted. A 403 is the
+// integration lacking the delete privilege, which is a refusal the operator has
+// to act on.
+func isAcceptedAsyncDelete(err error) bool {
+	return helpers.IsClientError(err) &&
+		!helpers.IsGatewayUnrouted(err) &&
+		!helpers.IsForbiddenError(err)
+}

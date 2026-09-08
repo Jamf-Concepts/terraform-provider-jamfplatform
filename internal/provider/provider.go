@@ -231,7 +231,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
 				Optional:    true,
-				Description: "Required. The regional Jamf Platform gateway root: `https://us.api.jamfcloud.com`, `https://eu.api.jamfcloud.com` or `https://apac.api.jamfcloud.com`. Give the host alone. The gateway serves the token endpoint and every API namespace at the root, so a path such as `/api` makes authentication fail. Must be set either here or via the JAMFPLATFORM_BASE_URL environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
+				Description: "Required. The regional Jamf Platform gateway root: `https://us.api.jamfcloud.com`, `https://eu.api.jamfcloud.com` or `https://apac.api.jamfcloud.com`. Give the host alone. The gateway serves the token endpoint and every API namespace at the root, so a path such as `/api` makes authentication fail. A `base_url` naming the pre-GA `{region}.apigw.jamf.com` beta gateway is refused at configure time, because that host still accepts credentials and then serves no API namespace. Must be set either here or via the JAMFPLATFORM_BASE_URL environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
 			},
 			"client_id": schema.StringAttribute{
 				Optional:    true,

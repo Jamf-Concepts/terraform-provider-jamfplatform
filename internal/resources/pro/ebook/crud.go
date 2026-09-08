@@ -309,7 +309,7 @@ func (r *EbookResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	switch {
 	case delErr == nil || helpers.IsNotFoundError(delErr):
 		tflog.Trace(ctx, "Jamf Pro ebook deletion confirmed", map[string]any{"id": id})
-	case helpers.IsClientError(delErr):
+	case isAcceptedAsyncDelete(delErr):
 		resp.Diagnostics.AddWarning(
 			"Jamf Pro ebook deletion is asynchronous and was not confirmed",
 			fmt.Sprintf("The classic /ebooks DELETE for id %s returned an accepted-but-misleading client error. The ebook has been removed from Terraform state; Jamf Pro completes the deletion a short time later. Confirmation is intentionally not polled because reading the ebook back delays the removal. (delete response: %v)", id, delErr),

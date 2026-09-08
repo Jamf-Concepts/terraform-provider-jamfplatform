@@ -287,6 +287,10 @@ func TestBetaGatewayError(t *testing.T) {
 		{"beta gateway, unregioned", "https://apigw.jamf.com", true},
 		{"port does not defeat the host match", "https://us.apigw.jamf.com:8443", true},
 		{"host case does not defeat the match", "https://US.APIGW.JAMF.COM", true},
+		// The fully qualified form is reachable — its token endpoint answers 200 —
+		// so a silent pass would leave the operator with a 404 on every read
+		// instead of one named diagnostic.
+		{"a trailing dot on the host does not defeat the match", "https://eu.apigw.jamf.com.", true},
 		{"GA gateway root", "https://eu.api.jamfcloud.com", false},
 		{"GA gateway, us", "https://us.api.jamfcloud.com", false},
 		// The suffix match is anchored on a dot, so a host that merely ends in
@@ -306,12 +310,14 @@ func TestBetaGatewayError(t *testing.T) {
 				}
 				// The remedy and the reason the run has to stop are what make
 				// this diagnostic worth erroring on: without the replacement
-				// host the user cannot act, and without the state warning
-				// someone who has already applied cannot tell what happened.
+				// host the user cannot act, and without the recovery artefact
+				// someone who has already applied cannot get their state back.
+				// The backup file is what that assertion pins rather than
+				// `-refresh=false`, which this check runs too early to allow.
 				for _, want := range []string{
 					"api.jamfcloud.com",
 					"environment_id",
-					"-refresh=false",
+					"terraform.tfstate.backup",
 				} {
 					if !strings.Contains(detail, want) {
 						t.Errorf("detail does not mention %q, got:\n%s", want, detail)
@@ -344,6 +350,9 @@ func TestBaseURLPathWarning(t *testing.T) {
 		{"customer reverse proxy at root", "https://gateway.internal.example.com", false},
 		{"port does not defeat the host match", "https://eu.api.jamfcloud.com:8443/api", true},
 		{"host case does not defeat the match", "https://EU.API.JAMFCLOUD.COM/api", true},
+		// url.Hostname preserves a trailing dot here too, and the path prefix is
+		// the same misconfiguration written a second way.
+		{"a trailing dot on the host does not defeat the match", "https://eu.api.jamfcloud.com./api", true},
 		{"unparseable input stays silent", "://nonsense", false},
 		{"empty input stays silent", "", false},
 	}

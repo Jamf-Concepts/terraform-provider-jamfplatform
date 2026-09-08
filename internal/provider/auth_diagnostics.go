@@ -139,12 +139,18 @@ const betaGatewayHost = "apigw.jamf.com"
 // status 0 — reported by a user who upgraded the provider without changing
 // base_url. helpers.IsGatewayUnrouted stops that from deleting anything; this
 // stops the run before it starts and names the cause.
+//
+// The hostname is matched with any trailing dot removed because url.Hostname
+// preserves one, and the fully qualified form is a live host rather than a
+// curiosity: wire-probed 2026-09-08, POST https://eu.apigw.jamf.com./auth/token
+// returns a valid token, so leaving it unmatched would trade one named
+// diagnostic for a 404 on every subsequent read.
 func betaGatewayError(baseURL string) (summary, detail string) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return "", ""
 	}
-	host := strings.ToLower(parsed.Hostname())
+	host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
 	if host != betaGatewayHost && !strings.HasSuffix(host, "."+betaGatewayHost) {
 		return "", ""
 	}
@@ -158,10 +164,11 @@ func betaGatewayError(baseURL string) (summary, detail string) {
 		"Beta API integration credentials stopped working at the same time. Register a replacement integration " +
 		"in Jamf Account and use `environment_id` in place of `tenant_id`. See the `Upgrading to the Platform " +
 		"API GA` guide.\n\n" +
-		"Without this check you would get a plan offering to create everything you already manage, with no error " +
-		"in it. On `v0.29.0` and `v0.30.0` an apply then emptied the state file and created nothing in Jamf. " +
-		"Check yours with `terraform plan -refresh=false`, and recover it from `terraform.tfstate.backup` if an " +
-		"apply emptied it."
+		"On `v0.29.0` and `v0.30.0` this same setting produced a plan offering to create everything you already " +
+		"manage, with no error in it, and an apply then emptied the state file and created nothing in Jamf. " +
+		"This check runs before Terraform decides whether to refresh, so `terraform plan -refresh=false` will not " +
+		"get past it: inspect `terraform show terraform.tfstate.backup` now to see whether an earlier apply emptied " +
+		"your state, and restore that file if it did."
 }
 
 // jamfGatewayHosts are the domains Jamf serves its own gateways from. A path
@@ -180,6 +187,11 @@ var jamfGatewayHosts = []string{".jamfcloud.com", ".jamf.com", ".jamfnebula.com"
 // provider cannot tell a mis-set base URL from a deliberate reverse proxy except
 // by the host, and being wrong in the erroring direction would make a working
 // configuration unusable.
+//
+// The hostname is matched with any trailing dot removed for the same reason
+// betaGatewayError does it: url.Hostname preserves one, and a fully qualified
+// Jamf host carrying a path prefix is the same misconfiguration written a
+// second way.
 func baseURLPathWarning(baseURL string) (summary, detail string) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Host == "" {
@@ -188,7 +200,7 @@ func baseURLPathWarning(baseURL string) (summary, detail string) {
 	if trimmed := strings.Trim(parsed.Path, "/"); trimmed == "" {
 		return "", ""
 	}
-	host := strings.ToLower(parsed.Hostname())
+	host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
 	isJamf := false
 	for _, suffix := range jamfGatewayHosts {
 		if strings.HasSuffix(host, suffix) {

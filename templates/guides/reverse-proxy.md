@@ -114,3 +114,4 @@ A proxy needing a different media type on its own hop has to rewrite the header 
 | `403 OWNERSHIP_FORBIDDEN` | Scope mismatch. Check `environment_id` / `tenant_id`, not these attributes. |
 | Rejected before Jamf sees it | Missing or misspelled header. `TF_LOG=INFO` lists what is sent. |
 | A correct-looking value rejected | Trailing newline from a file or secret store. The provider names the header. |
+| A plan offers to create objects that already exist, with no error | The proxy forwards `/auth/token` but does not route every API namespace, so reads answer with the proxy's own 404. Check the state with `terraform plan -refresh=false` before applying, and route every namespace the configuration uses. |

@@ -322,6 +322,13 @@ func TestIsNothingToRetry(t *testing.T) {
 		"404 with error details": {&jamfplatform.APIResponseError{StatusCode: http.StatusNotFound, Errors: []jamfplatform.ErrorDetail{{Code: "OBJECT_NOT_FOUND"}}}, false},
 		"403 unrouted":           {&jamfplatform.APIResponseError{StatusCode: http.StatusForbidden, Errors: []jamfplatform.ErrorDetail{{Code: "BAD_PERMISSIONS"}}}, false},
 		"wrapped empty 404":      {errors.Join(emptyNotFound()), true},
+		// A 404 the gateway produced because it routes nothing at that path carries
+		// no error details either, so it satisfies this classifier's own tell — an
+		// empty 404 — exactly, and it is not a deployment with nothing to retry.
+		// emptyNotFound sets no Body, and an empty body is precisely not the gateway
+		// text, so without this case the helpers.IsGatewayUnrouted guard is
+		// unreachable and deleting it leaves every test in the package green.
+		"gateway-unrouted 404": {&jamfplatform.APIResponseError{StatusCode: http.StatusNotFound, Body: "404 page not found"}, false},
 	} {
 		if got := isNothingToRetry(tc.err); got != tc.want {
 			t.Errorf("%s: isNothingToRetry = %v, want %v", name, got, tc.want)
