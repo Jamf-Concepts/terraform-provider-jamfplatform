@@ -115,19 +115,19 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 
 			// ===== General tab =====
 			"skip_certificate_installation": schema.BoolAttribute{
-				MarkdownDescription: "Skip certificate installation during enrollment. Matches the \"Skip certificate installation during enrollment\" checkbox.",
+				MarkdownDescription: "Skip certificate installation during enrollment. Matches the \"Skip certificate installation during enrollment\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"restrict_reenrollment": schema.BoolAttribute{
-				MarkdownDescription: "Restrict re-enrollment to authorized users only. Matches the \"Restrict re-enrollment to authorized users only\" checkbox.",
+				MarkdownDescription: "Restrict re-enrollment to authorized users only. Matches the \"Restrict re-enrollment to authorized users only\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"signing_mdm_profile_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Use a third-party signing certificate to sign the MDM profile. Matches the \"Use a third-party signing certificate\" checkbox. When `true`, supply the `mdm_signing_certificate` block (or rely on a previously-uploaded certificate).",
+				MarkdownDescription: "Use a third-party signing certificate to sign the MDM profile. Matches the \"Use a third-party signing certificate\" checkbox. When `true`, supply the `mdm_signing_certificate` block (or rely on a previously-uploaded certificate). Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -135,55 +135,55 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 
 			// ===== Computers tab =====
 			"enable_computer_enrollment": schema.BoolAttribute{
-				MarkdownDescription: "Enable user-initiated enrollment for computers. Matches the computers \"Enable user-initiated enrollment\" toggle.",
+				MarkdownDescription: "Enable user-initiated enrollment for computers. Matches the computers \"Enable user-initiated enrollment\" toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"create_management_account": schema.BoolAttribute{
-				MarkdownDescription: "Create a managed local administrator account on enrolled computers. Matches the \"Create managed local administrator account\" checkbox.",
+				MarkdownDescription: "Create a managed local administrator account on enrolled computers. Matches the \"Create managed local administrator account\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"management_username": schema.StringAttribute{
-				MarkdownDescription: "Username for the managed local administrator account created on enrolled computers. Matches the \"Management Account\" username field.",
+				MarkdownDescription: "Username for the managed local administrator account created on enrolled computers. Matches the \"Management Account\" username field. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"hide_management_account": schema.BoolAttribute{
-				MarkdownDescription: "Hide the managed local administrator account on enrolled computers. Matches the \"Hide managed local administrator account\" checkbox.",
+				MarkdownDescription: "Hide the managed local administrator account on enrolled computers. Matches the \"Hide managed local administrator account\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"allow_ssh_only_management_account": schema.BoolAttribute{
-				MarkdownDescription: "Allow the managed local administrator account SSH access only. Matches the \"Allow SSH access for the managed local administrator account only\" checkbox.",
+				MarkdownDescription: "Allow the managed local administrator account SSH access only. Matches the \"Allow SSH access for the managed local administrator account only\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"ensure_ssh_running": schema.BoolAttribute{
-				MarkdownDescription: "Ensure SSH (Remote Login) is enabled on enrolled computers. Matches the \"Ensure SSH is enabled\" checkbox.",
+				MarkdownDescription: "Ensure SSH (Remote Login) is enabled on enrolled computers. Matches the \"Ensure SSH is enabled\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"launch_self_service": schema.BoolAttribute{
-				MarkdownDescription: "Launch Self Service after a computer completes enrollment. Matches the \"Launch Self Service when done\" checkbox.",
+				MarkdownDescription: "Launch Self Service after a computer completes enrollment. Matches the \"Launch Self Service when done\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"sign_quickadd_package": schema.BoolAttribute{
-				MarkdownDescription: "Sign the QuickAdd package with a developer certificate. Matches the \"Sign QuickAdd Package\" checkbox. Supply the `developer_certificate` block to upload a signing identity.",
+				MarkdownDescription: "Sign the QuickAdd package with a developer certificate. Matches the \"Sign QuickAdd Package\" checkbox. Supply the `developer_certificate` block to upload a signing identity. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"account_driven_device_enrollment_macos": schema.BoolAttribute{
-				MarkdownDescription: "Enable Account-Driven Device Enrollment for institutionally owned computers. Matches the computers Account-Driven Device Enrollment toggle.",
+				MarkdownDescription: "Enable Account-Driven Device Enrollment for institutionally owned computers. Matches the computers Account-Driven Device Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -191,43 +191,43 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 
 			// ===== Devices tab =====
 			"profile_driven_enrollment_via_url_institutional": schema.BoolAttribute{
-				MarkdownDescription: "Enable Profile-Driven Enrollment via URL for institutionally owned mobile devices. Matches the institutional Profile-Driven Enrollment via URL toggle.",
+				MarkdownDescription: "Enable Profile-Driven Enrollment via URL for institutionally owned mobile devices. Matches the institutional Profile-Driven Enrollment via URL toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"profile_driven_enrollment_via_url_personal": schema.BoolAttribute{
-				MarkdownDescription: "Enable Profile-Driven Enrollment via URL for personally owned mobile devices. Matches the personal Profile-Driven Enrollment via URL toggle.",
+				MarkdownDescription: "Enable Profile-Driven Enrollment via URL for personally owned mobile devices. Matches the personal Profile-Driven Enrollment via URL toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"account_driven_user_enrollment": schema.BoolAttribute{
-				MarkdownDescription: "Enable Account-Driven User Enrollment for mobile devices. Matches the Account-Driven User Enrollment toggle.",
+				MarkdownDescription: "Enable Account-Driven User Enrollment for mobile devices. Matches the Account-Driven User Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"account_driven_user_enrollment_visionos": schema.BoolAttribute{
-				MarkdownDescription: "Enable Account-Driven User Enrollment for Apple Vision Pro. Matches the Account-Driven User Enrollment (Apple Vision Pro) toggle.",
+				MarkdownDescription: "Enable Account-Driven User Enrollment for Apple Vision Pro. Matches the Account-Driven User Enrollment (Apple Vision Pro) toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"merge_managed_apple_account_usernames": schema.BoolAttribute{
-				MarkdownDescription: "Merge matching Managed Apple Account usernames during enrollment. Matches the \"Merge matching Managed Apple Account usernames\" checkbox.",
+				MarkdownDescription: "Merge matching Managed Apple Account usernames during enrollment. Matches the \"Merge matching Managed Apple Account usernames\" checkbox. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"account_driven_device_enrollment_ios": schema.BoolAttribute{
-				MarkdownDescription: "Enable Account-Driven Device Enrollment for institutionally owned mobile devices. Matches the device Account-Driven Device Enrollment toggle.",
+				MarkdownDescription: "Enable Account-Driven Device Enrollment for institutionally owned mobile devices. Matches the device Account-Driven Device Enrollment toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"account_driven_device_enrollment_visionos": schema.BoolAttribute{
-				MarkdownDescription: "Enable Account-Driven Device Enrollment for Apple Vision Pro. Matches the Account-Driven Device Enrollment (Apple Vision Pro) toggle.",
+				MarkdownDescription: "Enable Account-Driven Device Enrollment for Apple Vision Pro. Matches the Account-Driven Device Enrollment (Apple Vision Pro) toggle. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -347,31 +347,31 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"site_id": schema.StringAttribute{
-							MarkdownDescription: "Site assigned to devices enrolled through this group, or `-1` for no site.",
+							MarkdownDescription: "Site assigned to devices enrolled through this group. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"enterprise_enrollment_enabled": schema.BoolAttribute{
-							MarkdownDescription: "Allow institutional (enterprise) enrollment for members of this group.",
+							MarkdownDescription: "Allow institutional (enterprise) enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"personal_enrollment_enabled": schema.BoolAttribute{
-							MarkdownDescription: "Allow personal-device enrollment for members of this group.",
+							MarkdownDescription: "Allow personal-device enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"account_driven_user_enrollment_enabled": schema.BoolAttribute{
-							MarkdownDescription: "Allow Account-Driven User Enrollment for members of this group.",
+							MarkdownDescription: "Allow Account-Driven User Enrollment for members of this group. Omit to leave the current value untouched; set `true`/`false` to change it.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 						},
 						"require_eula": schema.BoolAttribute{
-							MarkdownDescription: "Require members of this group to accept the EULA during enrollment. Jamf Pro may override the requested value depending on the other enrollment toggles, and has been observed to force `true`. When it overrides an explicitly-set value, Terraform shows a perpetual diff for this attribute. Leave it unset to defer to Jamf Pro, or align it with the value Jamf Pro enforces.",
+							MarkdownDescription: "Require members of this group to accept the EULA during enrollment. Jamf Pro may override the requested value depending on the other enrollment toggles, and has been observed to force `true`. When it overrides an explicitly-set value, Terraform shows a perpetual diff for this attribute. Omit to leave the current value untouched; set `true`/`false` to change it. Where Jamf Pro enforces a value, align the configuration with it.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
@@ -453,7 +453,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 // "was null, now …" consistency check).
 func messagingLanguageStringAttribute(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},

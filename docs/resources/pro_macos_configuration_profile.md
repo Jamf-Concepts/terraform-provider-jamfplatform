@@ -138,7 +138,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "self_service" {
 - `scope` (Attributes) Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. `all_computers = true` forbids the per-computer, per-group, per-building and per-department targets. `all_jss_users = true` forbids the per-user and per-user-group targets. `user_ids` and `user_group_ids` map to the admin UI's "Users" and "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Meaningful only when `general.distribution_method = "Make Available in Self Service"`. For `Install Automatically` profiles Jamf Pro still stores these values, but users never see them.
 
-Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the profile becomes available. (see [below for nested schema](#nestedatt--self_service))
+Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the profile becomes available.
+
+Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -155,13 +157,13 @@ Required:
 
 Optional:
 
-- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category".
-- `description` (String) Free-text description shown in the Jamf Pro admin UI.
-- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile under the Self Service tab so users install it manually.
-- `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Computer Level` (default) or `User Level`.
-- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default. Set it explicitly to control redeployment behaviour on update.
-- `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site".
-- `user_removable` (Boolean) Whether end users can remove the profile from System Settings. Defaults to `false`. Independent of the Self Service `removal_disallowed` setting; the two interact only for Self Service profiles.
+- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category". Omit to leave the current value untouched.
+- `description` (String) Free-text description shown in the Jamf Pro admin UI. Omit to leave the current value untouched.
+- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile under the Self Service tab so users install it manually. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Computer Level` (default) or `User Level`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site". Omit to leave the current value untouched.
+- `user_removable` (Boolean) Whether end users can remove the profile from System Settings. Defaults to `false`. Independent of the Self Service `removal_disallowed` setting; the two interact only for Self Service profiles. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 Read-Only:
 
@@ -229,19 +231,19 @@ Optional:
 
 Optional:
 
-- `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. Omit the block entirely and the categories set outside Terraform are left alone; declare it (including `[]`, which clears it) and Terraform manages the list. (see [below for nested schema](#nestedatt--self_service--categories))
-- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. See `notification_location` for the one pairing Jamf Pro cannot store.
-- `ensure_users_view_description` (Boolean) Force users to view the description before installing.
-- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
-- `install_button_text` (String) Install-button label. Defaults to `Install`.
+- `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. Declaring one or more entries replaces the stored list. An empty list reads as an omission. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--self_service--categories))
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. See `notification_location` for the one pairing Jamf Pro cannot store. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `ensure_users_view_description` (Boolean) Force users to view the description before installing. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_button_text` (String) Install-button label. Defaults to `Install`. Omit to leave the current value untouched.
 - `notification_location` (String) Where Self Service surfaces the notification. `Self Service` or `Self Service and Notification Center`.
 
 Jamf Pro stores this and `display_notifications` in one field, and setting either resets the other, so `Self Service and Notification Center` cannot be combined with `display_notifications = true` and is refused at plan time. To have both, set them under Self Service ▸ Notification in the Jamf Pro admin UI and leave both attributes out of the configuration; Terraform reads the pairing back and preserves it.
-- `notification_message` (String) Notification body text. Displays in Self Service only.
-- `notification_subject` (String) Notification subject line.
-- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. `With Authorization` also needs an authorization password, which this resource does not yet expose. Open an issue if you need it.
-- `self_service_description` (String) Description shown in Self Service. Markdown supported.
-- `self_service_display_name` (String) Display name shown in Self Service. Defaults to the profile name when blank. Requires Self Service 10.0.0+.
+- `notification_message` (String) Notification body text. Displays in Self Service only. Omit to leave the current value untouched.
+- `notification_subject` (String) Notification subject line. Omit to leave the current value untouched.
+- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. `With Authorization` also needs an authorization password, which this resource does not yet expose. Open an issue if you need it. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `self_service_description` (String) Description shown in Self Service. Markdown supported. Omit to leave the current value untouched.
+- `self_service_display_name` (String) Display name shown in Self Service. Defaults to the profile name when blank. Requires Self Service 10.0.0+. Omit to leave the current value untouched.
 
 <a id="nestedatt--self_service--categories"></a>
 ### Nested Schema for `self_service.categories`
@@ -278,5 +280,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing macOS configuration profile by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_macos_configuration_profile.example "42"
 ```

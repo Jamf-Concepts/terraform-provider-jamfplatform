@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro patch policy, found in the UI under Computers → Patch management on a software title's Patch Policies tab (the New Patch Policy form). A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
   The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope) and User Interaction (user_interaction). Five General-tab fields are read-only, because Jamf Pro derives them from the selected target_version's patch definition: release_date, incremental_update, reboot, minimum_os and kill_apps.
+  Updates are merged rather than replaced. Removing a whole optional block (scope or user_interaction) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -17,6 +18,8 @@ description: |-
 Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.
 
 The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`) and **User Interaction** (`user_interaction`). Five **General**-tab fields are read-only, because Jamf Pro derives them from the selected `target_version`'s patch definition: `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps`.
+
+Updates are merged rather than replaced. Removing a whole optional block (`scope` or `user_interaction`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block.
 
 **Required Jamf permissions**
 
@@ -140,13 +143,13 @@ output "patch_policy_kill_apps" {
 
 ### Optional
 
-- `allow_downgrade` (Boolean) **"Allow downgrade"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default when omitted.
-- `distribution_method` (String) How the patch is delivered. `selfservice` is the admin UI's "Make Available in Self Service", and `prompt` is "Install Automatically". Jamf Pro applies its own default when omitted.
-- `enabled` (Boolean) Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default when omitted.
-- `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default when omitted.
+- `allow_downgrade` (Boolean) **"Allow downgrade"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `distribution_method` (String) How the patch is delivered. `selfservice` is the admin UI's "Make Available in Self Service", and `prompt` is "Install Automatically". Jamf Pro applies its own default on create. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `enabled` (Boolean) Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `scope` (Attributes) Policy scope, the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it stays as configured outside Terraform, preserved across updates. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer, per-group, per-building and per-department targets. Targets, limitations and exclusions are all addressed by computer, computer group, building, department, network segment and iBeacon. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction, the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction, the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults on create when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block. To clear a stored value, null the individual field rather than deleting the block. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -217,20 +220,20 @@ Optional:
 
 Optional:
 
-- `deadlines` (Attributes) Install deadline after which the patch is enforced. (see [below for nested schema](#nestedatt--user_interaction--deadlines))
-- `grace_period` (Attributes) Grace period granted to a user who is actively running a to-be-killed application at install time. (see [below for nested schema](#nestedatt--user_interaction--grace_period))
-- `install_button_text` (String) Text on the Self Service install button (UI "Button Name", under "Display in Self Service"). Defaults to `Update`.
-- `notifications` (Attributes) Notifications shown to the user before the deadline. (see [below for nested schema](#nestedatt--user_interaction--notifications))
-- `self_service_description` (String) Description shown in Self Service (UI "Description").
-- `self_service_icon_id` (String) Jamf Pro icon ID shown in Self Service (UI "Icon").
+- `deadlines` (Attributes) Install deadline after which the patch is enforced. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction--deadlines))
+- `grace_period` (Attributes) Grace period granted to a user who is actively running a to-be-killed application at install time. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction--grace_period))
+- `install_button_text` (String) Text on the Self Service install button (UI "Button Name", under "Display in Self Service"). Defaults to `Update`. Omit to leave the current value untouched.
+- `notifications` (Attributes) Notifications shown to the user before the deadline. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction--notifications))
+- `self_service_description` (String) Description shown in Self Service (UI "Description"). Omit to leave the current value untouched.
+- `self_service_icon_id` (String) Jamf Pro icon ID shown in Self Service (UI "Icon"). Omit to leave the current value untouched.
 
 <a id="nestedatt--user_interaction--deadlines"></a>
 ### Nested Schema for `user_interaction.deadlines`
 
 Optional:
 
-- `enabled` (Boolean) Whether a Self Service update deadline is enforced (UI "Enable Self Service update deadline", under "Deadline and Grace Period"; UI default `true`).
-- `period` (Number) Deadline period in days (UI "Update Deadline"; default `7`).
+- `enabled` (Boolean) Whether a Self Service update deadline is enforced (UI "Enable Self Service update deadline", under "Deadline and Grace Period"; UI default `true`). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `period` (Number) Deadline period in days (UI "Update Deadline"; default `7`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 
 
 <a id="nestedatt--user_interaction--grace_period"></a>
@@ -238,9 +241,9 @@ Optional:
 
 Optional:
 
-- `duration` (Number) Grace period duration in minutes (UI default `15`).
-- `message` (String) Grace-period message shown to the user.
-- `notification_center_subject` (String) Notification Center subject for the grace-period message (UI default `Important`).
+- `duration` (Number) Grace period duration in minutes (UI default `15`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `message` (String) Grace-period message shown to the user. Omit to leave the current value untouched.
+- `notification_center_subject` (String) Notification Center subject for the grace-period message (UI default `Important`). Omit to leave the current value untouched.
 
 
 <a id="nestedatt--user_interaction--notifications"></a>
@@ -248,10 +251,10 @@ Optional:
 
 Optional:
 
-- `enabled` (Boolean) Whether notifications for the patch policy are shown in Notification Center (UI "Display notifications for the patch policy in Notification Center", under "Notifications and Reminders").
+- `enabled` (Boolean) Whether notifications for the patch policy are shown in Notification Center (UI "Display notifications for the patch policy in Notification Center", under "Notifications and Reminders"). Omit to leave the current value untouched; set `true`/`false` to change it.
 - `message` (String) Notification message body. Write-only in practice: Jamf Pro does not return it, so a configured value is preserved in state but never refreshed.
-- `reminders` (Attributes) Reminder cadence for the notifications. (see [below for nested schema](#nestedatt--user_interaction--notifications--reminders))
-- `subject` (String) Notification subject.
+- `reminders` (Attributes) Reminder cadence for the notifications. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--user_interaction--notifications--reminders))
+- `subject` (String) Notification subject. Omit to leave the current value untouched.
 - `type` (String) Notification type (e.g. `Self Service`). Write-only in practice: Jamf Pro does not return it.
 
 <a id="nestedatt--user_interaction--notifications--reminders"></a>
@@ -259,8 +262,8 @@ Optional:
 
 Optional:
 
-- `enabled` (Boolean) Whether reminders are shown.
-- `frequency` (Number) Reminder frequency in hours (UI default `24`).
+- `enabled` (Boolean) Whether reminders are shown. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `frequency` (Number) Reminder frequency in hours (UI default `24`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 
 
 
@@ -283,8 +286,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
-# Import by patch policy ID. NOTE: the optional scope and user_interaction blocks
-# are not reconstructed on import (no prior state); re-declare them in config
-# after importing.
+# Import an existing patch policy by its Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, including the scope and
+# the user_interaction block, so the first plan afterwards can propose removing
+# what your configuration does not declare. See the "Importing existing objects"
+# guide for what applying that plan does.
 terraform import jamfplatform_pro_patch_policy.example "12"
 ```

@@ -280,7 +280,7 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				MarkdownDescription: "**\"Custom group assignments\"** in the Jamf Security Cloud admin UI: " +
 					"per-group routing that overrides `routing` for the groups it names. A device group may " +
 					"appear in only one override, and unless `all_device_groups` is true it must also be in " +
-					"`device_group_ids`.",
+					"`device_group_ids`. Omitting the attribute clears the overrides.",
 				Optional: true,
 				Validators: []validator.List{
 					listvalidator.SizeAtLeast(minCollectionSize),
@@ -318,13 +318,16 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"managed_device": schema.SingleNestedAttribute{
 						MarkdownDescription: "**\"Access requires device to be managed\"** in the Jamf Security " +
 							"Cloud admin UI. Access is denied unless the device is enrolled in device " +
-							"management.",
+							"management. Omit the block to leave any existing values untouched (they are not " +
+							"cleared on update).",
 						Optional:   true,
 						Attributes: securityControlSchemaAttributes(),
 					},
 					"device_risk": schema.SingleNestedAttribute{
 						MarkdownDescription: "**\"Access requires device risk validation\"** in the Jamf " +
-							"Security Cloud admin UI. Access is denied to devices at or above a risk level.",
+							"Security Cloud admin UI. Access is denied to devices at or above a risk level. " +
+							"Omit the block to leave any existing values untouched (they are not cleared on " +
+							"update).",
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"enabled":                   securityEnabledAttribute(),
@@ -335,7 +338,8 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"jamf_trust": schema.SingleNestedAttribute{
 						MarkdownDescription: "**\"Access requires Jamf Trust to be enabled\"** in the Jamf " +
 							"Security Cloud admin UI. Access is denied unless the device is protecting its " +
-							"traffic through Jamf Trust.",
+							"traffic through Jamf Trust. Omit the block to leave any existing values " +
+							"untouched (they are not cleared on update).",
 						Optional:   true,
 						Attributes: securityControlSchemaAttributes(),
 					},

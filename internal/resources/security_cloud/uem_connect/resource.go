@@ -238,9 +238,12 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"Connector` integrations against zero live connectors, 88% of every integration on it.\n\n" +
 			"The connection is fixed once created: changing the vendor, the address or the way it authenticates " +
 			"replaces the integration, which briefly interrupts syncing.\n\n" +
-			"After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from " +
-			"the tenant even though your configuration may not declare them, and the plan shows you what to " +
-			"write in to keep them.\n\n" +
+			"After importing, run `terraform plan` before you apply: `user_data_field_mapping` and " +
+			"`group_membership_mapping` are captured from the tenant even where your configuration does not " +
+			"declare them, so the plan proposes removing both. That removal is real: Jamf Security Cloud " +
+			"writes the sync settings whole and resets whatever you leave out. Copy the values the plan " +
+			"shows you into your configuration to keep them. See the " +
+			"[Importing existing objects guide](../guides/importing).\n\n" +
 			"See the [Jamf Security Cloud guide](../guides/security-cloud) for how a Jamf Pro group is named in a " +
 			"membership mapping, why the order of the mappings decides which group a device joins, and what an " +
 			"import leaves you to reconcile." +

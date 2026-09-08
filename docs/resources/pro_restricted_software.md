@@ -108,12 +108,12 @@ Required:
 
 Optional:
 
-- `delete_application` (Boolean) **"Delete application"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time.
-- `display_message` (String) **"Message"** in the Jamf Pro admin UI. Message to display to users when the process is found. Defaults to an empty string.
-- `kill_process` (Boolean) **"Kill process"** in the Jamf Pro admin UI. Terminate the restricted process when found. Defaults to `false`.
-- `restrict_exact_process_name` (Boolean) **"Restrict exact process name"** in the Jamf Pro admin UI. Only restrict processes that match the exact process name. Defaults to `true`.
-- `send_email_notification_on_violation` (Boolean) **"Send email notification on violation"** in the Jamf Pro admin UI. When the process is found, send an email notification to Jamf Pro users with email notifications enabled (an SMTP server must be configured). Defaults to `false`.
-- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Use `-1` for "None".
+- `delete_application` (Boolean) **"Delete application"** in the Jamf Pro admin UI. Delete the application running the restricted process. Defaults to `false`. Requires `restrict_exact_process_name = true`: Jamf Pro identifies the application to delete from an exact process name, and clears this flag without one. The provider checks the pairing at plan time. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `display_message` (String) **"Message"** in the Jamf Pro admin UI. Message to display to users when the process is found. Defaults to an empty string. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `kill_process` (Boolean) **"Kill process"** in the Jamf Pro admin UI. Terminate the restricted process when found. Defaults to `false`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `restrict_exact_process_name` (Boolean) **"Restrict exact process name"** in the Jamf Pro admin UI. Only restrict processes that match the exact process name. Defaults to `true`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `send_email_notification_on_violation` (Boolean) **"Send email notification on violation"** in the Jamf Pro admin UI. When the process is found, send an email notification to Jamf Pro users with email notifications enabled (an SMTP server must be configured). Defaults to `false`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Omit to leave the current value untouched; there is no blank-clear, so set `-1` to remove the site.
 
 Read-Only:
 
@@ -174,5 +174,12 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing restricted software record by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing the
+# scope you did not declare. Applying that plan changes only the state file:
+# Jamf Pro keeps every value it holds there. See the "Importing existing
+# objects" guide.
 terraform import jamfplatform_pro_restricted_software.example "10"
 ```

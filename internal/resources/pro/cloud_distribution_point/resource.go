@@ -108,7 +108,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"master": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is the master (primary) distribution point.",
+				MarkdownDescription: "Whether this is the master (primary) distribution point. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -116,7 +116,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"username": schema.StringAttribute{
-				MarkdownDescription: "Connection username. Used by non-JCDS types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`); empty for `JAMF_CLOUD`.",
+				MarkdownDescription: "Connection username. Used by non-JCDS types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`); empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -130,7 +130,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				WriteOnly:           true,
 			},
 			"directory": schema.StringAttribute{
-				MarkdownDescription: "Directory / bucket path on the distribution point. Used by non-JCDS types.",
+				MarkdownDescription: "Directory / bucket path on the distribution point. Used by non-JCDS types. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -138,7 +138,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"upload_url": schema.StringAttribute{
-				MarkdownDescription: "Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.",
+				MarkdownDescription: "Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -146,7 +146,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"download_url": schema.StringAttribute{
-				MarkdownDescription: "Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.",
+				MarkdownDescription: "Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -161,7 +161,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"require_signed_urls": schema.BoolAttribute{
-				MarkdownDescription: "Whether downloads require AWS CloudFront signed URLs. Used by `AMAZON_S3`; enabling it makes `private_key` required.",
+				MarkdownDescription: "Whether downloads require AWS CloudFront signed URLs. Used by `AMAZON_S3`; enabling it makes `private_key` required. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -169,7 +169,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"key_pair_id": schema.StringAttribute{
-				MarkdownDescription: "AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled.",
+				MarkdownDescription: "AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -177,13 +177,13 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"private_key": schema.StringAttribute{
-				MarkdownDescription: "Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = \"AMAZON_S3\"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64(\"cloudfront-key.pem\")`.",
+				MarkdownDescription: "Base64-encoded AWS CloudFront private key (`.pem` or `.der`) used to sign URLs. Required when `cdn_type = \"AMAZON_S3\"` and `require_signed_urls = true`. `WriteOnly`: sent to Jamf Pro on writes but **never persisted in Terraform state**. Idiomatic usage: `private_key = filebase64(\"cloudfront-key.pem\")`. Omit to leave the stored key untouched.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"expiration_seconds": schema.Int64Attribute{
-				MarkdownDescription: "AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1.",
+				MarkdownDescription: "AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{
@@ -194,7 +194,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"secondary_auth_required": schema.BoolAttribute{
-				MarkdownDescription: "Whether secondary authentication is required for downloads.",
+				MarkdownDescription: "Whether secondary authentication is required for downloads. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -202,7 +202,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"secondary_auth_time_to_live": schema.Int64Attribute{
-				MarkdownDescription: "Secondary authentication token time-to-live in seconds. Must be at least 1.",
+				MarkdownDescription: "Secondary authentication token time-to-live in seconds. Must be at least 1. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{

@@ -142,5 +142,9 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Omit `wo_version` and the first apply after you import sends nothing, adopting
 # the certificate Jamf Pro already holds. Set it and Terraform re-sends the
 # certificate, which is what bumping it asks for.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_pki_digicert.example "24"
 ```

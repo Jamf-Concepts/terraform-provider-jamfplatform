@@ -105,7 +105,7 @@ Keep credentials out of these settings: the value is held in Terraform state and
 
 ### Optional
 
-- `description` (String) **"Description"** in the Jamf Account admin UI: what this policy is for.
+- `description` (String) **"Description"** in the Jamf Account admin UI: what this policy is for. Unlike most optional values in this provider, taking it out of your configuration clears the stored description rather than leaving it alone.
 - `publish` (Boolean) Whether to publish a new version after saving changes. Defaults to `true`, so an applied policy is always deployable. Publishing only happens when something actually changed; an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished changes exist.
 
 While this is enabled, a draft that already exists is published by the next apply, whether it was left behind by a publish that failed or saved in the Jamf Account admin UI. Such a plan shows `has_draft` and `published_version` as known after apply even when nothing else changed.

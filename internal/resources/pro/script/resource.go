@@ -97,7 +97,7 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. When omitted, Jamf Pro reports `-1` (no category).",
+				MarkdownDescription: "ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. Jamf Pro reports `-1` when the script has no category. Omit to leave the current value untouched; there is no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -137,7 +137,7 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"priority": schema.StringAttribute{
-				MarkdownDescription: "Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.",
+				MarkdownDescription: "Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{

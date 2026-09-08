@@ -90,7 +90,7 @@ func (r *MacAppResource) IdentitySchema(ctx context.Context, req resource.Identi
 // attribute descriptions.
 func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro App Store Mac app, the \"App Store App\" entry under the \"Mac Apps\" sidebar. `general.name`, `general.version`, `general.bundle_id` and `general.url` are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro App Store Mac app, the \"App Store App\" entry under the \"Mac Apps\" sidebar. `general.name`, `general.version`, `general.bundle_id` and `general.url` are required on create and stored verbatim: no App Store metadata is resolved from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations and exclusions because Jamf Pro silently drops them.\n\nUpdates are merged rather than replaced. Removing a whole optional block (`self_service` or `vpp`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID assigned by Jamf Pro.",
@@ -126,7 +126,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"is_free": optComputedBool("Whether the app is free. Server-defaults to false on create."),
+					"is_free": optComputedBool("Whether the app is free. Server-defaults to false on create. Omit to leave the current value untouched; set `true`/`false` to change it."),
 					"deployment_type": schema.StringAttribute{
 						// Optional+Computed and the server always echoes a value
 						// (defaults to "Make Available in Self Service"), so an
@@ -135,7 +135,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						// server's default trips the post-apply consistency check.
 						// UseNonNullStateForUnknown behaves like UseStateForUnknown
 						// once a value is present.
-						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service` on create.",
+						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service` on create. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -143,7 +143,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							stringvalidator.OneOf(deploymentTypeSelfService, deploymentTypeAutomatic),
 						},
 					},
-					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
+					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\". Omit to leave the current value untouched."),
 					"category_name": schema.StringAttribute{
 						// No UseStateForUnknown: category_name is derived from
 						// category_id, so it must go Unknown (not pin the stale
@@ -152,7 +152,7 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 					},
-					"site_id": optComputedString("Jamf Pro site ID scoping the app. Use `-1` for \"No site\"."),
+					"site_id": optComputedString("Jamf Pro site ID scoping the app. Use `-1` for \"No site\". Omit to leave the current value untouched."),
 					"site_name": schema.StringAttribute{
 						// No UseStateForUnknown: site_name is derived from site_id
 						// (same rationale as category_name above).
@@ -167,17 +167,17 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: false}),
 			},
 			"self_service": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`.",
+				MarkdownDescription: "Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"install_button_text":             optComputedString("Install-button label."),
-					"self_service_description":        optComputedString("Self Service description. Markdown supported."),
-					"force_users_to_view_description": optComputedBool("Force users to view the description before installing."),
-					"feature_on_main_page":            optComputedBool("Feature the app on the Self Service main page."),
-					"notification_enabled":            optComputedBool("Whether Self Service surfaces a notification when the app becomes available. Pair with `notification_method`."),
-					"notification_method":             optComputedString("Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled."),
-					"notification_subject":            optComputedString("Notification subject line."),
-					"notification_message":            optComputedString("Notification body text."),
+					"install_button_text":             optComputedString("Install-button label shown on the app's Self Service page. Omit to leave the current value untouched."),
+					"self_service_description":        optComputedString("Self Service description. Markdown supported. Omit to leave the current value untouched."),
+					"force_users_to_view_description": optComputedBool("Force users to view the description before installing. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"feature_on_main_page":            optComputedBool("Feature the app on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"notification_enabled":            optComputedBool("Whether Self Service surfaces a notification when the app becomes available. Pair with `notification_method`. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"notification_method":             optComputedString("Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled. Omit to leave the current value untouched."),
+					"notification_subject":            optComputedString("Notification subject line. Omit to leave the current value untouched."),
+					"notification_message":            optComputedString("Notification body text. Omit to leave the current value untouched."),
 					"self_service_icon": schema.SingleNestedAttribute{
 						MarkdownDescription: "Self Service icon. Set `id` to reference an already-uploaded icon; `uri` is returned by Jamf Pro. Uploading icon bytes inline is not supported, because Jamf Pro re-encodes PNGs and the result would diff forever. Open an issue if you need it.",
 						Optional:            true,
@@ -201,11 +201,11 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"vpp": schema.SingleNestedAttribute{
-				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, \"App is not available for device assignment\". The license counts are calculated by Jamf Pro.",
+				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title. Setting `assign_vpp_device_based_licenses = true` on a non-VPP app is rejected with error 409, \"App is not available for device assignment\". The license counts are calculated by Jamf Pro. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"assign_vpp_device_based_licenses": optComputedBool("Assign VPP device-based licenses."),
-					"vpp_admin_account_id":             optComputedString("VPP admin account ID. `-1` when the app is not VPP-backed."),
+					"assign_vpp_device_based_licenses": optComputedBool("Assign VPP device-based licenses. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"vpp_admin_account_id":             optComputedString("VPP admin account ID. `-1` when the app is not VPP-backed. Omit to leave the current value untouched."),
 					"total_vpp_licenses":               computedInt64("Total VPP licenses. Returned by Jamf Pro."),
 					"remaining_vpp_licenses":           computedInt64("Remaining VPP licenses. Returned by Jamf Pro."),
 					"used_vpp_licenses":                computedInt64("Used VPP licenses. Returned by Jamf Pro."),

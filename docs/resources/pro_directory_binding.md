@@ -149,15 +149,15 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `active_directory` (Attributes) Active Directory–specific configuration. May only be set when `type = "Active Directory"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--active_directory))
-- `admitmac` (Attributes) ADmitMac–specific configuration. May only be set when `type = "ADmitMac"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--admitmac))
-- `centrify` (Attributes) Centrify–specific configuration. May only be set when `type = "Centrify"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--centrify))
+- `active_directory` (Attributes) Active Directory–specific configuration. May only be set when `type = "Active Directory"`; setting it for any other type is a plan-time error. Omit the block to leave any existing values untouched (they are not cleared on update). When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--active_directory))
+- `admitmac` (Attributes) ADmitMac–specific configuration. May only be set when `type = "ADmitMac"`; setting it for any other type is a plan-time error. Omit the block to leave any existing values untouched (they are not cleared on update). When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--admitmac))
+- `centrify` (Attributes) Centrify–specific configuration. May only be set when `type = "Centrify"`; setting it for any other type is a plan-time error. Omit the block to leave any existing values untouched (they are not cleared on update). When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--centrify))
 - `computer_ou` (String) Computer object's organisational unit (OU) within the directory. Free text. The format is type-specific (e.g. an LDAP-style `OU=...` path for Active Directory).
 - `domain` (String) **"Domain Server"** in the Jamf Pro admin UI. The interpretation depends on `type`: DNS domain for Active Directory, LDAP host for Open Directory, and bind domain for PowerBroker, ADmitMac and Centrify.
-- `open_directory` (Attributes) Open Directory–specific configuration. May only be set when `type = "Open Directory"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--open_directory))
+- `open_directory` (Attributes) Open Directory–specific configuration. May only be set when `type = "Open Directory"`; setting it for any other type is a plan-time error. Omit the block to leave any existing values untouched (they are not cleared on update). When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied. (see [below for nested schema](#nestedatt--open_directory))
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly`: the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro also never returns the plaintext on read, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer. Bump it to trigger a new update carrying the current `password`.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving the attribute unset or unchanged leaves the stored password alone: the provider omits the password from the next update, so Jamf Pro retains the existing value.
-- `priority` (Number) Binding priority, in the range 1–10. Lower numbers run earlier when Jamf Pro evaluates multiple bindings. Omit it to let Jamf Pro assign the default.
+- `priority` (Number) Binding priority, in the range 1–10. Lower numbers run earlier when Jamf Pro evaluates multiple bindings. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `username` (String) **"Username"** in the Jamf Pro admin UI. The directory account that performs the bind. May be a domain account name, an LDAP distinguished name, or another type-specific identifier.
 
@@ -170,19 +170,19 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 
 Optional:
 
-- `admin_groups` (String) **"Allow administration by"** in the Jamf Pro admin UI. Comma-separated list of AD groups whose members are granted local admin rights on bound Macs.
-- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login.
-- `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI. Login shell assigned to bound directory users (e.g. `/bin/bash`).
-- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI.
-- `forest` (String) Active Directory forest. Free text; an empty value is preserved.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID.
-- `multiple_domains` (Boolean) **"Allow authentication from any domain in the forest"** in the Jamf Pro admin UI.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`).
-- `preferred_domain` (String) **"Preferred Domain Server"** in the Jamf Pro admin UI. Preferred AD domain controller hostname.
-- `require_confirmation` (Boolean) **"Require confirmation before creating a mobile account"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID.
-- `use_unc_path` (Boolean) **"Use UNC path from Active Directory to derive network home location"** in the Jamf Pro admin UI.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID.
+- `admin_groups` (String) **"Allow administration by"** in the Jamf Pro admin UI. Comma-separated list of AD groups whose members are granted local admin rights on bound Macs. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI. Login shell assigned to bound directory users (e.g. `/bin/bash`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `forest` (String) Active Directory forest. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `multiple_domains` (Boolean) **"Allow authentication from any domain in the forest"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `preferred_domain` (String) **"Preferred Domain Server"** in the Jamf Pro admin UI. Preferred AD domain controller hostname. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `require_confirmation` (Boolean) **"Require confirmation before creating a mobile account"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `use_unc_path` (Boolean) **"Use UNC path from Active Directory to derive network home location"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 
 <a id="nestedatt--admitmac"></a>
@@ -190,22 +190,22 @@ Optional:
 
 Optional:
 
-- `add_user_to_local` (Boolean) **"Add user to local administrators group"** in the Jamf Pro admin UI.
-- `admin_group` (String) **"Allow administration by"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs.
-- `cached_credentials` (Number) **"Cached credentials"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login.
-- `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID.
-- `groups_ou` (String) **"Groups OU"** in the Jamf Pro admin UI.
-- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `"Local"`). Free text.
-- `mount_network_home` (Boolean) **"Mount network home as sharepoint"** in the Jamf Pro admin UI.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`).
-- `place_home_folders` (String) **"Place home folders in"** in the Jamf Pro admin UI. Filesystem path under which local home folders are placed.
-- `printers_ou` (String) **"Printers OU"** in the Jamf Pro admin UI.
-- `require_confirmation` (Boolean) **"Require confirmation"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory.
-- `shared_folders_ou` (String) **"Shared Folders OU"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID.
-- `users_ou` (String) **"Users OU"** in the Jamf Pro admin UI.
+- `add_user_to_local` (Boolean) **"Add user to local administrators group"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `admin_group` (String) **"Allow administration by"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `cached_credentials` (Number) **"Cached credentials"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `groups_ou` (String) **"Groups OU"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `"Local"`). Free text. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `mount_network_home` (Boolean) **"Mount network home as sharepoint"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `place_home_folders` (String) **"Place home folders in"** in the Jamf Pro admin UI. Filesystem path under which local home folders are placed. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `printers_ou` (String) **"Printers OU"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `require_confirmation` (Boolean) **"Require confirmation"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `shared_folders_ou` (String) **"Shared Folders OU"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `users_ou` (String) **"Users OU"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 
 <a id="nestedatt--centrify"></a>
@@ -213,11 +213,11 @@ Optional:
 
 Optional:
 
-- `overwrite_existing` (Boolean) Overwrite an existing Centrify configuration on the target Mac.
-- `preferred_domain_server` (String) Preferred Centrify domain server hostname.
-- `update_pam` (Boolean) Update PAM configuration to integrate Centrify authentication.
-- `workstation_mode` (Boolean) Bind in Workstation mode (versus joined mode).
-- `zone` (String) Centrify zone name.
+- `overwrite_existing` (Boolean) Overwrite an existing Centrify configuration on the target Mac. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `preferred_domain_server` (String) Preferred Centrify domain server hostname. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `update_pam` (Boolean) Update PAM configuration to integrate Centrify authentication. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `workstation_mode` (Boolean) Bind in Workstation mode (versus joined mode). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `zone` (String) Centrify zone name. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 
 <a id="nestedatt--open_directory"></a>
@@ -225,10 +225,10 @@ Optional:
 
 Optional:
 
-- `encrypt_using_ssl` (Boolean) **"Encrypt using SSL"** in the Jamf Pro admin UI. Encrypt the LDAP connection to the directory.
-- `perform_secure_bind` (Boolean) **"Perform secure bind"** in the Jamf Pro admin UI. Use a secure (authenticated) bind operation.
-- `use_for_authentication` (Boolean) **"Use for Authentication"** in the Jamf Pro admin UI.
-- `use_for_contacts` (Boolean) **"Use for Contacts"** in the Jamf Pro admin UI.
+- `encrypt_using_ssl` (Boolean) **"Encrypt using SSL"** in the Jamf Pro admin UI. Encrypt the LDAP connection to the directory. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `perform_secure_bind` (Boolean) **"Perform secure bind"** in the Jamf Pro admin UI. Use a secure (authenticated) bind operation. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `use_for_authentication` (Boolean) **"Use for Authentication"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `use_for_contacts` (Boolean) **"Use for Contacts"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 
 <a id="nestedatt--timeouts"></a>

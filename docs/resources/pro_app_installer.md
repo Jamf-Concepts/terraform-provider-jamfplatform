@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_app_installer Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via app_title_name (list available titles with the jamfplatform_pro_app_installer_titles data source). update_behavior controls when updates apply: AUTOMATIC tracks the latest catalog version, MANUAL pins the deployment to the version current when you set it, reported in selected_version. Setting category_id, site_id, or smart_group_id to -1 means "none".
+  ~> Terraform writes notification_settings and self_service_settings whole. Jamf Pro resets a block you leave out of your configuration to its defaults, so you cannot co-manage an undeclared block in the Jamf Pro admin UI. This matters most straight after an import, where the first plan proposes removing both blocks and applying it does clear them. See the Importing existing objects guide ../guides/importing.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -14,6 +15,8 @@ description: |-
 # jamfplatform_pro_app_installer (Resource)
 
 Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). `update_behavior` controls when updates apply: `AUTOMATIC` tracks the latest catalog version, `MANUAL` pins the deployment to the version current when you set it, reported in `selected_version`. Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means "none".
+
+~> **Terraform writes `notification_settings` and `self_service_settings` whole.** Jamf Pro resets a block you leave out of your configuration to its defaults, so you cannot co-manage an undeclared block in the Jamf Pro admin UI. This matters most straight after an import, where the first plan proposes removing both blocks and applying it does clear them. See the [Importing existing objects guide](../guides/importing).
 
 **Required Jamf permissions**
 
@@ -86,15 +89,15 @@ resource "jamfplatform_pro_app_installer" "self_service" {
 
 ### Optional
 
-- `category_id` (String) Jamf Pro category ID for the deployment. Use `-1` for no category.
-- `enabled` (Boolean) Whether the deployment is enabled. A deployment can only be enabled when `smart_group_id` is set to a real smart group (not `-1`).
-- `install_predefined_config_profiles` (Boolean) Whether Jamf Pro installs the title's predefined configuration profiles alongside the app.
+- `category_id` (String) Jamf Pro category ID for the deployment. Omit to leave the current value untouched; set `-1` to clear it.
+- `enabled` (Boolean) Whether the deployment is enabled. A deployment can only be enabled when `smart_group_id` is set to a real smart group (not `-1`). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `install_predefined_config_profiles` (Boolean) Whether Jamf Pro installs the title's predefined configuration profiles alongside the app. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `notification_settings` (Attributes) End-user notification presentation (the "End user experience" tab). Supply the block to manage notifications; omit it to leave the Jamf Pro defaults in place. Each field is independent: omit a field to keep its Jamf Pro default. Message fields must not be blank, and the interval and delay values must be positive, when set. (see [below for nested schema](#nestedatt--notification_settings))
-- `self_service_settings` (Attributes) Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Every field is replaced on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment. (see [below for nested schema](#nestedatt--self_service_settings))
-- `site_id` (String) Jamf Pro site ID scoping the deployment. Use `-1` for no site.
-- `smart_group_id` (String) Smart computer group ID scoping the deployment. Use `-1` for no smart group.
+- `self_service_settings` (Attributes) Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Terraform replaces every field on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment. (see [below for nested schema](#nestedatt--self_service_settings))
+- `site_id` (String) Jamf Pro site ID scoping the deployment. Omit to leave the current value untouched; set `-1` to clear it.
+- `smart_group_id` (String) Smart computer group ID scoping the deployment. Omit to leave the current value untouched; set `-1` to clear it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `trigger_admin_notifications` (Boolean) Whether Jamf Pro logs event notifications for this app (raising administrator notifications). Defaults to off on create.
+- `trigger_admin_notifications` (Boolean) Whether Jamf Pro logs event notifications for this app (raising administrator notifications). Defaults to off on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 ### Read-Only
 
@@ -164,5 +167,19 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing App Installer deployment by its Jamf Pro ID.
+#
+# WARNING: read the first plan after this import before you apply it.
+#
+# Import records the Self Service and notification settings Jamf Pro reports,
+# even where your configuration declares none, so the plan proposes removing
+# them. On this resource that removal is real. Terraform writes both blocks
+# whole, so Jamf Pro resets whatever you leave out of your configuration, and
+# the description, deadline and notification messages you never declared are
+# gone after the apply.
+#
+# Declare what you want to keep before applying. Copy the values out of the plan
+# output into your configuration and plan again. See the "Importing existing
+# objects" guide.
 terraform import jamfplatform_pro_app_installer.example "177"
 ```

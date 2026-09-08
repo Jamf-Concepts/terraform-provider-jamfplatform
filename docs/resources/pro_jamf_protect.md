@@ -61,7 +61,7 @@ resource "jamfplatform_pro_jamf_protect" "example" {
 
 ### Optional
 
-- `auto_install` (Boolean) **"Automatically deploy the Jamf Protect PKG with plans"** in the Jamf Pro admin UI. Server default `false`. The only field that can change without re-registering.
+- `auto_install` (Boolean) **"Automatically deploy the Jamf Protect PKG with plans"** in the Jamf Pro admin UI. Server default `false`. The only field that can change without re-registering. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

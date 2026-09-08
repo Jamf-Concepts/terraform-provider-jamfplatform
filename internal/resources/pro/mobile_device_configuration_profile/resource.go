@@ -106,10 +106,10 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"description": optComputedString(
-						"Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset.",
+						"Free-text description of the profile. It doubles as the Self Service description, because Jamf Pro stores one for both. To set those separately, use the profile's Options and Self Service tabs and leave this attribute unset. Omit to leave the current value untouched.",
 					),
 					"level": schema.StringAttribute{
-						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
+						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -118,7 +118,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"distribution_method": schema.StringAttribute{
-						MarkdownDescription: "How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually.",
+						MarkdownDescription: "How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -127,13 +127,13 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"redeploy_on_update": schema.StringAttribute{
-						MarkdownDescription: "Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default.",
+						MarkdownDescription: "Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only: once you set it, later refreshes will not snap it back to a default. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"redeploy_days_before_certificate_expires": schema.Int64Attribute{
-						MarkdownDescription: "Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment.",
+						MarkdownDescription: "Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
@@ -149,7 +149,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Validators:          []validator.String{validators.PlistDocument()},
 					},
 					"category_id": schema.StringAttribute{
-						MarkdownDescription: "Jamf Pro category ID. Use `-1` (default) for \"no category\".",
+						MarkdownDescription: "Jamf Pro category ID. Use `-1` (default) for \"no category\". Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -161,7 +161,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Computed:            true,
 					},
 					"site_id": schema.StringAttribute{
-						MarkdownDescription: "Jamf Pro site ID. Use `-1` (default) for \"no site\".",
+						MarkdownDescription: "Jamf Pro site ID. Use `-1` (default) for \"no site\". Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -180,12 +180,12 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 				Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: true}),
 			},
 			"self_service": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service integration. Only meaningful when `general.distribution_method = \"Make Available in Self Service\"`.",
+				MarkdownDescription: "Self Service integration. Only meaningful when `general.distribution_method = \"Make Available in Self Service\"`. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"feature_on_main_page": optComputedBool("Feature the profile on the Self Service main page."),
+					"feature_on_main_page": optComputedBool("Feature the profile on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it."),
 					"removal_disallowed": schema.StringAttribute{
-						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.",
+						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -199,7 +199,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						Sensitive:           true,
 					},
 					"categories": schema.ListNestedAttribute{
-						MarkdownDescription: "Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's \"Display in\" tick; Jamf Pro keeps no undisplayed state and offers no per-category \"Feature in\" control for mobile profiles, so neither is exposed here.",
+						MarkdownDescription: "Categories under which the profile appears in Self Service. Listing a category displays the profile in it, matching the admin UI's \"Display in\" tick; Jamf Pro keeps no undisplayed state and offers no per-category \"Feature in\" control for mobile profiles, so neither is exposed here. Declaring one or more entries replaces the stored list. An empty list reads as an omission. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{

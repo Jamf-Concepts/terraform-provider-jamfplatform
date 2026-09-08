@@ -121,13 +121,13 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"author": optComputedString("Ebook author."),
+					"author": optComputedString("Ebook author. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
 					"deployment_type": schema.StringAttribute{
 						// Optional+Computed and the server always echoes a value,
 						// so an unset deployment_type must stay Unknown on create
 						// rather than copying the null prior state — otherwise the
 						// server's default trips the post-apply consistency check.
-						MarkdownDescription: "Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`.",
+						MarkdownDescription: "Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -135,13 +135,13 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 							stringvalidator.OneOf(deploymentTypeSelfService, deploymentTypeAutomatic),
 						},
 					},
-					"deploy_as_managed": optComputedBool("Make the ebook managed when possible (UI \"Make eBook managed when possible\")."),
-					"free":              optComputedBool("Whether the ebook is free."),
+					"deploy_as_managed": optComputedBool("Make the ebook managed when possible (UI \"Make eBook managed when possible\"). Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"free":              optComputedBool("Whether the ebook is free. Omit to leave the current value untouched; set `true`/`false` to change it."),
 					"file_type": optComputedString(
-						"File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing.",
+						"File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 					),
-					"version":     optComputedString("Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook."),
-					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
+					"version":     optComputedString("Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"category_id": optComputedString("Jamf Pro category ID. Omit to leave the current value untouched; set `-1` to clear the category."),
 					"category_name": schema.StringAttribute{
 						// No UseStateForUnknown: category_name is derived from
 						// category_id, so it must go Unknown (not pin the stale
@@ -149,7 +149,7 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 					},
-					"site_id": optComputedString("Jamf Pro site ID scoping the ebook. Use `-1` for \"No site\"."),
+					"site_id": optComputedString("Jamf Pro site ID scoping the ebook. Omit to leave the current value untouched; set `-1` to clear the site."),
 					"site_name": schema.StringAttribute{
 						// No UseStateForUnknown: site_name is derived from site_id.
 						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
@@ -163,26 +163,26 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				Attributes:          ebookScopeAttributes(),
 			},
 			"self_service": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`.",
+				MarkdownDescription: "Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"display_name":                    optComputedString("Self Service display name (UI \"Self Service Display Name\", in-house ebooks)."),
-					"install_button_text":             optComputedString("Install-button label (UI \"Button Name\", macOS only)."),
-					"self_service_description":        optComputedString("Self Service description. Markdown supported."),
-					"force_users_to_view_description": optComputedBool("Force users to view the description before installing (macOS only)."),
-					"feature_on_main_page":            optComputedBool("Feature the ebook on the Self Service main page."),
-					"notification_enabled":            optComputedBool("Whether Self Service surfaces a notification when the ebook becomes available (macOS only). Pair with `notification_method`."),
-					"notification_method":             optComputedString("Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled."),
-					"notification_subject":            optComputedString("Notification subject line."),
-					"notification_message":            optComputedString("Notification body text."),
-					"icon_id":                         optComputedString("Self Service icon ID. Reference an already-uploaded icon (e.g. `jamfplatform_pro_icon.<x>.id`); App-Store ebooks auto-populate it from the store artwork. Uploading icon bytes inline is not supported."),
+					"display_name":                    optComputedString("Self Service display name (UI \"Self Service Display Name\", in-house ebooks). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"install_button_text":             optComputedString("Install-button label (UI \"Button Name\", macOS only). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"self_service_description":        optComputedString("Self Service description. Markdown supported. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"force_users_to_view_description": optComputedBool("Force users to view the description before installing (macOS only). Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"feature_on_main_page":            optComputedBool("Feature the ebook on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"notification_enabled":            optComputedBool("Whether Self Service surfaces a notification when the ebook becomes available (macOS only). Pair with `notification_method`. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"notification_method":             optComputedString("Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"notification_subject":            optComputedString("Notification subject line. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"notification_message":            optComputedString("Notification body text. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
+					"icon_id":                         optComputedString("Self Service icon ID. Reference an already-uploaded icon (e.g. `jamfplatform_pro_icon.<x>.id`); App-Store ebooks auto-populate it from the store artwork. Uploading icon bytes inline is not supported. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."),
 					"icon_uri": schema.StringAttribute{
 						// Derived from icon_id; plain Computed (no UseStateForUnknown).
 						MarkdownDescription: "Self Service icon URI. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 					},
 					"categories": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of Self Service categories the ebook appears under (macOS and iOS app only). Each item identifies the category by `id`; `name` is returned by Jamf Pro.",
+						MarkdownDescription: "Set of Self Service categories the ebook appears under (macOS and iOS app only). Each item identifies the category by `id`; `name` is returned by Jamf Pro. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -283,17 +283,17 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 
 	return map[string]schema.Attribute{
 		"targets": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes).",
+			MarkdownDescription: "Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). Omit the block to leave any existing values untouched (they are not cleared on update).",
 			Optional:            true,
 			Attributes:          targets,
 		},
 		"limitations": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects.",
+			MarkdownDescription: "Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. Omit the block to leave any existing values untouched (they are not cleared on update).",
 			Optional:            true,
 			Attributes:          limitations,
 		},
 		"exclusions": schema.SingleNestedAttribute{
-			MarkdownDescription: "Scope exclusions remove items that would otherwise be included by targets or limitations.",
+			MarkdownDescription: "Scope exclusions remove items that would otherwise be included by targets or limitations. Omit the block to leave any existing values untouched (they are not cleared on update).",
 			Optional:            true,
 			Attributes:          exclusions,
 		},

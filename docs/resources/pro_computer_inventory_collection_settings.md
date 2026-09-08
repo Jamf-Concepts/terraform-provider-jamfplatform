@@ -60,22 +60,22 @@ resource "jamfplatform_pro_computer_inventory_collection_settings" "this" {
 
 ### Optional
 
-- `allow_jamf_binary_user_and_location_changes` (Boolean) Allow local administrators to use the jamf binary recon verb to change User and Location inventory information in Jamf Pro (Advanced).
+- `allow_jamf_binary_user_and_location_changes` (Boolean) Allow local administrators to use the jamf binary recon verb to change User and Location inventory information in Jamf Pro (Advanced). Omit to leave the current value untouched; set `true`/`false` to change it.
 - `application_search_paths` (Set of String) Custom application search paths used when collecting applications (Software → Applications → Custom Search Paths). Built-in paths such as `/Applications/` and `/System/Applications/` are managed by Jamf Pro and are not included here. Changing an entry replaces it, because Jamf Pro cannot update a path in place. Omit the attribute to leave the tenant's custom paths unmanaged; set it to `[]` to remove all custom application paths.
-- `collect_active_services` (Boolean) Collect active services.
-- `collect_application_usage_information` (Boolean) Collect Application Usage Information.
-- `collect_available_software_updates` (Boolean) Collect available software updates.
-- `collect_local_user_accounts` (Boolean) Collect local user accounts.
-- `collect_package_receipts` (Boolean) Collect package receipts.
-- `collect_printers` (Boolean) Collect printers.
-- `collect_synced_mobile_device_backup_dates` (Boolean) Collect last backup date/time for managed mobile devices that are synced to computers.
-- `collect_unmanaged_certificates` (Boolean) Collect unmanaged certificates.
-- `collect_user_and_location_from_directory_service` (Boolean) Collect user and location information from Directory Service.
-- `include_hidden_accounts` (Boolean) Include hidden accounts when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`.
-- `include_home_directory_sizes` (Boolean) Include home directory sizes when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`.
-- `monitor_beacon_regions` (Boolean) Monitor Beacon regions.
+- `collect_active_services` (Boolean) Collect active services. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_application_usage_information` (Boolean) Collect Application Usage Information. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_available_software_updates` (Boolean) Collect available software updates. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_local_user_accounts` (Boolean) Collect local user accounts. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_package_receipts` (Boolean) Collect package receipts. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_printers` (Boolean) Collect printers. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_synced_mobile_device_backup_dates` (Boolean) Collect last backup date/time for managed mobile devices that are synced to computers. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_unmanaged_certificates` (Boolean) Collect unmanaged certificates. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `collect_user_and_location_from_directory_service` (Boolean) Collect user and location information from Directory Service. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `include_hidden_accounts` (Boolean) Include hidden accounts when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `include_home_directory_sizes` (Boolean) Include home directory sizes when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `monitor_beacon_regions` (Boolean) Monitor Beacon regions. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `use_unix_user_paths` (Boolean) Enable inventory collection of applications in user (UNIX) home-directory paths.
+- `use_unix_user_paths` (Boolean) Enable inventory collection of applications in user (UNIX) home-directory paths. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 ### Read-Only
 

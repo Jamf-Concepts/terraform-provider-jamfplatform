@@ -15,11 +15,15 @@ import (
 // Optional+Computed attribute would surface as HTTP 500. helpers.OptionalStringPointer
 // nils both Null *and* Unknown; see STYLE_GUIDE.md §Server-derived computed fields.
 //
-// Pro PUT semantics: a field omitted from the request body is treated as a clear
-// (not "preserve"). When a user removes a previously-set Optional value from
-// config, plan becomes Null, this builder sends nil, and the server clears the
-// field. TestAccResource_ProScript_Basic Step 2 exercises this by dropping
-// `info`, `notes`, `os_requirements`, and `parameter_4` between steps.
+// The endpoint replaces the whole record, so a field missing from the body
+// would be reset — but no user-settable attribute can reach this builder as
+// Null on an update. Every one is Optional+Computed with UseStateForUnknown, so
+// dropping it from configuration yields an Unknown that the plan modifier fills
+// from prior state; the resulting known value is re-emitted and the stored value
+// survives. TestAccResource_ProScript_SplitOwnership asserts that contract. Null
+// reaches the builder only on Create, where there is no prior value to preserve.
+// An explicit "" is a known value, so it arrives as a pointer to the empty
+// string and clears the field — except on `categoryId`, which rejects it.
 func buildScriptInput(plan ScriptResourceModel) *pro.Script {
 	return &pro.Script{
 		Name:           plan.Name.ValueString(),

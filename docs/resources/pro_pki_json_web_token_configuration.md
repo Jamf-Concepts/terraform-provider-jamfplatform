@@ -55,10 +55,10 @@ variable "jwt_encryption_key" {
 
 ### Optional
 
-- `enabled` (Boolean) Whether the JSON Web Token configuration is active. Defaults to `true`.
+- `enabled` (Boolean) Whether the JSON Web Token configuration is active. Defaults to `true` on create. Omit to leave the current value untouched on update; set `true`/`false` to change it.
 - `encryption_key_wo_version` (Number) Rotation trigger for the `WriteOnly` `encryption_key_wo`. Bump this integer to force an update that re-sends `encryption_key_wo`. Initial create should set `encryption_key_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored key alone": the provider omits the key from the next update, so Jamf Pro retains the existing value.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `token_expiry` (Number) **"Token Expiry"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. When unset, Jamf Pro's stored default applies.
+- `token_expiry` (Number) **"Token Expiry"** in the Jamf Pro admin UI. Minutes an issued token remains valid, 1–120. Omit to leave the current value untouched on update; an integer has no blank-clear, so set a concrete value to change it.
 
 ### Read-Only
 

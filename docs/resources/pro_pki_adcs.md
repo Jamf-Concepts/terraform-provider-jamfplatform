@@ -211,5 +211,9 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # you configure always differs from the empty one in state. Re-sending costs
 # you nothing: Jamf Pro replaces the stored certificate with an identical copy
 # and the serial number stays the same.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_pki_adcs.inbound "25"
 ```

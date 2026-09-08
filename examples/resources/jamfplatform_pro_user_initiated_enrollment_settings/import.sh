@@ -14,4 +14,8 @@
 # a certificate, turn off the toggle that governs it,
 # `signing_mdm_profile_enabled` or `sign_quickadd_package`. Declare a block
 # holding a keystore and the first apply after you import uploads that keystore.
+#
+# For the rest of what an import records, and why the first plan afterwards can
+# propose removing blocks you never wrote, see the "Importing existing objects"
+# guide.
 terraform import jamfplatform_pro_user_initiated_enrollment_settings.this singleton

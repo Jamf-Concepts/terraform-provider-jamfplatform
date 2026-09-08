@@ -80,18 +80,43 @@ var (
 	allMembershipLocations = []string{membershipGroupObject, membershipUserObject}
 )
 
+// preserveOnOmitString, preserveOnOmitBool, preserveOnOmitInteger,
+// preserveOnOmitEnum and preserveOnOmitBlock are the house sentences every
+// preserve-on-omit description ends with, per STYLE_GUIDE.md §Full-replace
+// endpoints & shared backing stores ("Description convention"). The classic
+// /ldapservers update merges field by field (see crud.go), so omitting an
+// attribute — or a whole optional block — leaves the stored Jamf Pro value
+// alone. The wording differs by type because only a string has a blank that
+// clears.
+const (
+	preserveOnOmitString  = "Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."
+	preserveOnOmitBool    = "Omit to leave the current value untouched; set `true`/`false` to change it."
+	preserveOnOmitInteger = "Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."
+	preserveOnOmitEnum    = "Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it."
+	preserveOnOmitBlock   = "Omit the block to leave any existing values untouched (they are not cleared on update)."
+)
+
 // optString is an Optional+Computed schema.StringAttribute with the canonical
-// UseStateForUnknown plan modifier. Used for connection / mapping fields the
-// Jamf Pro server populates with a default when omitted: Optional+Computed
-// keeps the server value out of the diff, and UseStateForUnknown keeps the
-// prior state value across refreshes so omitted fields do not flap.
+// UseStateForUnknown plan modifier and preserveOnOmitString appended to the
+// description. Used for connection / mapping fields the Jamf Pro server
+// populates with a default when omitted: Optional+Computed keeps the server
+// value out of the diff, and UseStateForUnknown keeps the prior state value
+// across refreshes so omitted fields do not flap.
 //
 // Consequence (documented per advisor): because omitted fields fall back to
 // the prior state value, deleting an HCL line for a mapping field does not
-// clear it on the server — consistent with Classic's partial-merge PUT.
+// clear it on the server — consistent with Classic's partial-merge PUT, and
+// what the appended sentence tells the user.
 func optString(desc string) schema.StringAttribute {
+	return optStringPreserving(desc, preserveOnOmitString)
+}
+
+// optStringPreserving is optString with the closing preserve-on-omit sentence
+// chosen by the caller, for a field whose blank means something other than
+// "clear it".
+func optStringPreserving(desc, preserve string) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " " + preserve,
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.String{
@@ -100,11 +125,20 @@ func optString(desc string) schema.StringAttribute {
 	}
 }
 
-// optStringOneOf is optString constrained to a fixed set of wire values. The
-// OneOf blocks server-normalised input from reaching apply (which would throw
-// "inconsistent result after apply" because the planned value is known).
+// optStringOneOf is optString constrained to a fixed set of wire values, and
+// closing on preserveOnOmitEnum rather than the string sentence — an enum has
+// no blank to clear with. The OneOf blocks server-normalised input from
+// reaching apply (which would throw "inconsistent result after apply" because
+// the planned value is known).
 func optStringOneOf(desc string, vals []string) schema.StringAttribute {
-	a := optString(desc)
+	return optStringOneOfPreserving(desc, vals, preserveOnOmitEnum)
+}
+
+// optStringOneOfPreserving is optStringOneOf with a caller-chosen
+// preserve-on-omit sentence, for an enum that does accept the blank as one of
+// its values (referral_response).
+func optStringOneOfPreserving(desc string, vals []string, preserve string) schema.StringAttribute {
+	a := optStringPreserving(desc, preserve)
 	a.Validators = []validator.String{stringvalidator.OneOf(vals...)}
 	return a
 }
@@ -132,10 +166,11 @@ func reqStringOneOf(desc string, vals []string) schema.StringAttribute {
 	}
 }
 
-// optBool is the bool counterpart of optString.
+// optBool is the bool counterpart of optString, closing on
+// preserveOnOmitBool.
 func optBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " " + preserveOnOmitBool,
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.Bool{
@@ -144,10 +179,11 @@ func optBool(desc string) schema.BoolAttribute {
 	}
 }
 
-// optInt64 is the int64 counterpart of optString.
+// optInt64 is the int64 counterpart of optString, closing on
+// preserveOnOmitInteger.
 func optInt64(desc string) schema.Int64Attribute {
 	return schema.Int64Attribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " " + preserveOnOmitInteger,
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.Int64{

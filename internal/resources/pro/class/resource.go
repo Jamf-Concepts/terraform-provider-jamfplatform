@@ -94,7 +94,7 @@ func (r *ClassResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Free-text description for the class.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Free-text description for the class. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
