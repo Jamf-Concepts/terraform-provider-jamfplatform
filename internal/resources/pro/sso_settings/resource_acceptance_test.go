@@ -184,6 +184,96 @@ func TestAccResource_ProSsoSettings_OIDC_Baseline(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProSsoSettings_CreateAdoptsTheTenantsSettings pins #405. The
+// PUT replaces the whole configuration and an omitted field arrives as null,
+// which resets it — wire-probed 2026-09-08 on this very field. Update was hidden
+// from that by UseStateForUnknown, but a first apply has no prior state, so
+// every setting the configuration did not declare was wiped from a tenant that
+// was already configured. Create now reads the settings and merges the plan over
+// them.
+//
+// The field is set out of band first, because the point is a value Terraform has
+// never held. oidcEnabledConfig does not declare
+// username_attribute_claim_mapping, so a create that resets it is visible both
+// in state and on the tenant. A t.Cleanup puts the tenant's original settings
+// back whichever way the test ends.
+func TestAccResource_ProSsoSettings_CreateAdoptsTheTenantsSettings(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	setUsernameClaimMappingOutOfBand(t, "USERNAME")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSsoStillEnabledAfterDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: oidcEnabledConfig,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_sso_settings.test", "oidc_settings.username_attribute_claim_mapping", "USERNAME"),
+					checkUsernameClaimMapping(t, "USERNAME"),
+				),
+			},
+		},
+	})
+}
+
+// setUsernameClaimMappingOutOfBand writes the OIDC username claim mapping the
+// way an administrator would, and registers the restore of the tenant's
+// original settings. It fails the test if the write did not take, since a value
+// that never landed would let the adoption test pass without proving anything.
+func setUsernameClaimMappingOutOfBand(t *testing.T, want string) {
+	t.Helper()
+	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	ctx := context.Background()
+
+	before, err := c.GetSsoSettingsV3(ctx)
+	if err != nil {
+		t.Fatalf("reading the tenant's SSO settings: %v", err)
+	}
+	if before == nil {
+		t.Fatal("reading the tenant's SSO settings: no settings returned")
+	}
+
+	restore := *before
+	t.Cleanup(func() {
+		if _, err := c.UpdateSsoSettingsV3(context.Background(), &restore); err != nil {
+			t.Logf("restoring the tenant's SSO settings: %v", err)
+		}
+	})
+
+	edited := *before
+	edited.OidcSettings.UsernameAttributeClaimMapping = &want
+	if _, err := c.UpdateSsoSettingsV3(ctx, &edited); err != nil {
+		t.Fatalf("setting the username claim mapping outside Terraform: %v", err)
+	}
+
+	after, err := c.GetSsoSettingsV3(ctx)
+	if err != nil {
+		t.Fatalf("re-reading the tenant's SSO settings: %v", err)
+	}
+	if after.OidcSettings.UsernameAttributeClaimMapping == nil || *after.OidcSettings.UsernameAttributeClaimMapping != want {
+		t.Fatalf("the out-of-band write did not take: username claim mapping is %v, want %q", after.OidcSettings.UsernameAttributeClaimMapping, want)
+	}
+}
+
+// checkUsernameClaimMapping asserts the tenant still reports the given OIDC
+// username claim mapping.
+func checkUsernameClaimMapping(t *testing.T, want string) resource.TestCheckFunc {
+	return func(_ *terraform.State) error {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		got, err := c.GetSsoSettingsV3(context.Background())
+		if err != nil {
+			return fmt.Errorf("reading SSO settings: %w", err)
+		}
+		if got.OidcSettings.UsernameAttributeClaimMapping == nil {
+			return fmt.Errorf("username claim mapping was cleared; want %q", want)
+		}
+		if *got.OidcSettings.UsernameAttributeClaimMapping != want {
+			return fmt.Errorf("username claim mapping = %q, want %q", *got.OidcSettings.UsernameAttributeClaimMapping, want)
+		}
+		return nil
+	}
+}
+
 // TestAccResource_ProSsoSettings_OIDC_WithSAML_URL configures the hybrid
 // OIDC_WITH_SAML mode with metadata_source = URL. Gated by
 // JAMFPLATFORM_ACC_PRO_SSO_IDP_URL. Returns to OIDC at the end so subsequent

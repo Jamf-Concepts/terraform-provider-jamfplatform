@@ -32,6 +32,12 @@ import (
 // Create handles initial provisioning. Settings PUT first (no /v3/sso Create
 // endpoint), then the embedded signing certificate sub-block. Read-back
 // captures authoritative state.
+//
+// The PUT is preceded by a read, because an SSO configuration always pre-exists
+// and "create" is really adoption: the live settings are the merge base every
+// setting the configuration leaves out takes its value from, so the first apply
+// keeps what it was not asked to change (#405). Failing to read it is fatal —
+// applying without the base is exactly the clobber this closes.
 func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
@@ -58,7 +64,13 @@ func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateReq
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	if !applySettings(createCtx, r.client, plan, &resp.Diagnostics) {
+	current, err := r.client.GetSsoSettingsV3(createCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", err.Error())
+		return
+	}
+
+	if !applySettings(createCtx, r.client, plan, current, &resp.Diagnostics) {
 		return
 	}
 
@@ -123,6 +135,13 @@ func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest
 }
 
 // Update reconciles settings + cert state.
+//
+// Like Create it reads the settings before writing them. UseStateForUnknown
+// already carries an omitted Optional+Computed attribute's prior value into the
+// plan, but the resource also carries Optional-only fields — inside
+// enrollment_sso_config, and the SAML metadata file — which plan as null when
+// the configuration omits them, and null resets. The read is what keeps those
+// from being cleared by an apply that never mentioned them (#405).
 func (r *SsoSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
@@ -145,7 +164,13 @@ func (r *SsoSettingsResource) Update(ctx context.Context, req resource.UpdateReq
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if !applySettings(updateCtx, r.client, plan, &resp.Diagnostics) {
+	current, err := r.client.GetSsoSettingsV3(updateCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", err.Error())
+		return
+	}
+
+	if !applySettings(updateCtx, r.client, plan, current, &resp.Diagnostics) {
 		return
 	}
 
@@ -178,19 +203,21 @@ func (r *SsoSettingsResource) Delete(ctx context.Context, _ resource.DeleteReque
 	tflog.Trace(ctx, "removing Jamf Pro SSO settings from Terraform state (no remote delete; SSO configuration retained on tenant)")
 }
 
-// applySettings PUTs the /v3/sso payload built from plan. Returns false if a
-// diagnostic was emitted.
+// applySettings PUTs the /v3/sso payload built from plan, merged over current.
+// Returns false if a diagnostic was emitted.
+//
+// current is the tenant's live settings, read by the caller before this runs.
+// There is no separate create endpoint, so both paths land on the same PUT and
+// both need the same merge base — see buildSsoSettingsInput.
 //
 // The SDK's SamlSettings type emits JSON `null` for nil pointer fields
-// (omitempty was removed for SSO body types so the wire form distinguishes
-// "field absent" from "field reset to null"). Jamf Pro's SAML validator
-// requires unset optional fields to arrive as explicit `null` on a FILE-
-// mode PUT — omitted fields trip the tenant's "keep existing value"
-// path and the cached URL-mode bytes clash with the FILE-mode body.
-// Sending the plan-derived body directly (nil → null) matches the Jamf
-// Pro admin UI shape exactly.
-func applySettings(ctx context.Context, client *pro.Client, plan SsoSettingsResourceModel, diags *diag.Diagnostics) bool {
-	body, d := buildSsoSettingsInput(ctx, plan)
+// (omitempty was removed for SSO body types so a field can be reset rather than
+// only omitted). Nulls are not a way to leave a field alone: an absent key and
+// an explicit null both reset the field to its default, wire-probed 2026-09-08.
+// What they are for is the FILE/URL mutex, where the cached bytes of the mode
+// the tenant is leaving have to be actively cleared or they clash with the body.
+func applySettings(ctx context.Context, client *pro.Client, plan SsoSettingsResourceModel, current *pro.SsoSettingsV3, diags *diag.Diagnostics) bool {
+	body, d := buildSsoSettingsInput(ctx, plan, current)
 	diags.Append(d...)
 	if diags.HasError() {
 		return false
