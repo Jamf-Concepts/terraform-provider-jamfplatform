@@ -84,10 +84,9 @@ the harmless one above. The outcome does not.
 On these two, declare what you want to keep before you apply. Each says so in its own Import
 section too.
 
-`jamfplatform_pro_patch_software_title` was a third until recently. Importing a title and applying
-the settle plan without declaring `version_packages` unassigned every package on it, which left a
-patch policy targeting that title with nothing to deploy. An import now records no
-`version_packages` at all, so there is no removal to propose and nothing to lose.
+An import of `jamfplatform_pro_patch_software_title` records no `version_packages`, so that
+attribute never appears in the settle plan at all. Terraform manages only the versions you declare,
+and every other package on the title stays assigned.
 
 ## Seeing what an import will hold
 
