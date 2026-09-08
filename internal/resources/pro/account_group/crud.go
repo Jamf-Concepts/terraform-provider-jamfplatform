@@ -8,7 +8,7 @@
 //   proclassic.GetAccountGroupByName    (data source name lookup)
 //   proclassic.UpdateAccountGroupByID   (PUT, 201 empty body; a sent <privileges> replaces the whole grid — merged client-side)
 //   proclassic.DeleteAccountGroupByID
-//   proclassic.ListAccounts             (list-resource enumeration; privilege-catalog discovery in ModifyPlan)
+//   proclassic.ListAccounts             (list-resource enumeration; privilege-catalog discovery in ModifyPlan and on a first-hydration Read)
 //
 // Write semantics: the PUT merges field by field; an omitted <ldap_server>
 // keeps the stored server and <ldap_server><id>-1</id></ldap_server> clears it
@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -162,27 +163,10 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	// A preset privilege_set ("Auditor", "Administrator") is expanded by Jamf Pro
-	// into a full privilege list on read, and that list can name privileges the
-	// same tenant will not grant — "Read Knobs" on an 11.x tenant. Adopting them
-	// verbatim on first hydration hands ModifyPlan's own Validate a config it
-	// refuses, so an imported group produces a plan that cannot run. Drop them
-	// here: the write path would have ignored them anyway, so the filtered set is
-	// what the tenant actually stores. Discovery is best-effort — a failure leaves
-	// the grid as read rather than emptying it.
-	if firstHydration && state.Privileges != nil && !state.Privileges.IsEmpty() {
-		if catalog, err := accountprivileges.Discover(readCtx, r.client); err != nil {
-			tflog.Warn(ctx, "Could not discover the privilege catalog while importing an account group; privileges were adopted unfiltered", map[string]any{
-				"id":    state.ID.ValueString(),
-				"error": err.Error(),
-			})
-		} else {
-			filtered, d := accountprivileges.FilterToCatalog(readCtx, state.Privileges, catalog)
-			resp.Diagnostics.Append(d...)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-			state.Privileges = &filtered
+	if firstHydration {
+		resp.Diagnostics.Append(r.hydratePrivileges(readCtx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	}
 
@@ -191,6 +175,52 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// hydratePrivileges reduces a freshly hydrated privilege grid to the part of it
+// Terraform can manage. It is called only on a first hydration — an import or a
+// config generation — where there is no prior configuration to preserve.
+//
+// A group on a preset privilege_set keeps no privileges block at all. Jamf Pro
+// expands one into a full grid on read (89 object privileges and 46 settings
+// privileges for "Auditor" on an 11.x tenant) and no write can change it:
+// buildAccountGroupInput omits the element for a preset set, and a grid sent
+// alongside one is discarded — see customPrivilegeSet. Adopting the expansion
+// would put roughly 135 server-derived privileges under Terraform management
+// that no plan can ever converge, because adding a grantable privilege to the
+// adopted block sends nothing and the next Read intersects the addition away
+// against the untouched server grid.
+//
+// A Custom grid is adopted, but only the privileges the tenant will actually
+// grant. The stored grid can name one it refuses — "Read Knobs" on an 11.x
+// tenant — and ModifyPlan's own Validate refuses it in turn, so an unfiltered
+// adoption hands the practitioner a configuration that cannot plan. Discovery
+// is best-effort: a failure leaves the grid as read rather than emptying it.
+func (r *AccountGroupResource) hydratePrivileges(ctx context.Context, state *AccountGroupResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if !customPrivilegeSet(state.PrivilegeSet) {
+		state.Privileges = nil
+		return diags
+	}
+	if state.Privileges == nil || state.Privileges.IsEmpty() {
+		return diags
+	}
+
+	catalog, err := accountprivileges.Discover(ctx, r.client)
+	if err != nil {
+		tflog.Warn(ctx, "Could not discover the privilege catalog while importing an account group; privileges were adopted unfiltered", map[string]any{
+			"id":    state.ID.ValueString(),
+			"error": err.Error(),
+		})
+		return diags
+	}
+	filtered, d := accountprivileges.FilterToCatalog(ctx, state.Privileges, catalog)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	state.Privileges = &filtered
+	return diags
 }
 
 // Update updates a Jamf Pro account group. When the plan declares privileges
