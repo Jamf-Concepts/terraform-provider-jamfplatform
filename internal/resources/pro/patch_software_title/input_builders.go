@@ -102,6 +102,11 @@ func refIDPtr(v types.String) *string {
 // key that was in prior state but has been dropped from the plan is an explicit
 // unassign, so it is removed from the union; every other live key is carried
 // across untouched.
+//
+// That reading of priorKeys rests on an invariant the read path has to keep:
+// every key in state is a key the configuration declared. A Read that hydrated
+// undeclared assignments into state would turn each of them into an unassign on
+// the first apply, which is #403 — see managedVersionPackages.
 func unionVersionPackages(live, planPackages map[string]string, priorKeys []string) map[string]string {
 	union := make(map[string]string, len(live)+len(planPackages))
 	maps.Copy(union, live)
