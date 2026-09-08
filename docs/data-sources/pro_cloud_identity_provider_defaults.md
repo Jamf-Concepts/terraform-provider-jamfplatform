@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_cloud_identity_provider_defaults Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Attribute mappings and connection settings Jamf Pro pre-fills when an administrator adds a cloud identity provider, for Microsoft Entra ID and for Google Secure LDAP. Takes no arguments, and reports both whatever the tenant has configured. Use it to seed a jamfplatform_pro_cloud_identity_provider mappings block, which owns every field in it once declared.
+  Attribute mappings and connection settings Jamf Pro pre-fills when an administrator adds a cloud identity provider, for Microsoft Entra ID and for Google Secure LDAP. Jamf Pro reports both whether or not the tenant has a connection of either kind, so there is nothing to select. Use it to seed a jamfplatform_pro_cloud_identity_provider mappings block, which owns every field in it once declared.
   Required Jamf permissions
   Jamf lists this under Platform environment scope (preferred for new integrations) or Tenant scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_cloud_identity_provider_defaults (Data Source)
 
-Attribute mappings and connection settings Jamf Pro pre-fills when an administrator adds a cloud identity provider, for Microsoft Entra ID and for Google Secure LDAP. Takes no arguments, and reports both whatever the tenant has configured. Use it to seed a `jamfplatform_pro_cloud_identity_provider` mappings block, which owns every field in it once declared.
+Attribute mappings and connection settings Jamf Pro pre-fills when an administrator adds a cloud identity provider, for Microsoft Entra ID and for Google Secure LDAP. Jamf Pro reports both whether or not the tenant has a connection of either kind, so there is nothing to select. Use it to seed a `jamfplatform_pro_cloud_identity_provider` mappings block, which owns every field in it once declared.
 
 **Required Jamf permissions**
 
@@ -27,12 +27,12 @@ Jamf lists this under **Platform environment** scope (preferred for new integrat
 
 ```terraform
 # The attribute mappings and connection settings Jamf Pro pre-fills when an
-# administrator adds a cloud identity provider. Takes no arguments, and reports
-# both products whatever the tenant has configured.
+# administrator adds a cloud identity provider. Both products are reported
+# whether or not the tenant has a connection of either kind.
 data "jamfplatform_pro_cloud_identity_provider_defaults" "jamf" {}
 
 # Seeding an Entra ID connection. A declared mappings block owns all eleven
-# fields, so starting from the defaults beats transcribing them.
+# fields, so start from the defaults rather than transcribing them.
 resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   display_name  = "Entra ID"
   provider_name = "ENTRA_ID"
@@ -43,9 +43,9 @@ resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   }
 }
 
-# Google Secure LDAP takes the defaults one field at a time, because two of them
-# cannot be copied: the domain is yours to supply, and additional_search_base has
-# to be a distinguished name, which the empty default is not.
+# Google Secure LDAP takes the defaults one field at a time. Two of them cannot
+# be copied: the domain is yours to supply, and additional_search_base has to be
+# a distinguished name, which the empty default is not.
 resource "jamfplatform_pro_cloud_identity_provider" "google" {
   display_name  = "Google Workspace"
   provider_name = "GOOGLE"
@@ -67,7 +67,7 @@ resource "jamfplatform_pro_cloud_identity_provider" "google" {
   }
 }
 
-# What Jamf Pro would map a username to on each side.
+# The directory attribute Jamf Pro maps a username from, on each side.
 output "entra_default_username_mapping" {
   value = data.jamfplatform_pro_cloud_identity_provider_defaults.jamf.entra_id.mappings.user_name
 }
@@ -108,7 +108,7 @@ Optional:
 
 Read-Only:
 
-- `mappings` (Attributes) Default Entra ID attribute mappings. Nine carry a directory attribute name. `building` and `room` come back empty, which is what a connection created without a mappings block stores. (see [below for nested schema](#nestedatt--entra_id--mappings))
+- `mappings` (Attributes) Default Entra ID attribute mappings. `building` and `room` come back empty; the other nine name a directory attribute. (see [below for nested schema](#nestedatt--entra_id--mappings))
 - `membership_calculation_optimization_enabled` (Boolean) Whether membership-calculation optimization is enabled.
 - `search_timeout` (Number) Search timeout in seconds.
 - `transitive_directory_membership_enabled` (Boolean) Whether transitive directory membership is enabled.
@@ -140,8 +140,8 @@ Read-Only:
 
 Read-Only:
 
-- `mappings` (Attributes) Default Google LDAP attribute mappings. `user_mappings.additional_search_base` comes back empty, and Jamf Pro rejects an empty value for it on a write, so supply a distinguished name there rather than copying the default. (see [below for nested schema](#nestedatt--google--mappings))
-- `server` (Attributes) Default Google LDAP connection settings. The domain and the certificate keystore are absent because Jamf Pro reports no default for either. (see [below for nested schema](#nestedatt--google--server))
+- `mappings` (Attributes) Default Google LDAP attribute mappings. `user_mappings.additional_search_base` reads as null: Jamf Pro pre-fills an empty value and then rejects an empty value on a write, so supply a distinguished name of your own. (see [below for nested schema](#nestedatt--google--mappings))
+- `server` (Attributes) Default Google LDAP connection settings. Jamf Pro pre-fills no domain and no certificate keystore, so neither appears here. (see [below for nested schema](#nestedatt--google--server))
 
 <a id="nestedatt--google--mappings"></a>
 ### Nested Schema for `google.mappings`
@@ -160,10 +160,10 @@ Read-Only:
 - `group_id` (String) Attribute mapped to group ID.
 - `group_name` (String) Attribute mapped to group name.
 - `group_uuid` (String) Attribute mapped to group UUID.
-- `object_class_limitation` (String) How the object classes are matched.
-- `object_classes` (String) Group object classes.
-- `search_base` (String) Group search base.
-- `search_scope` (String) Group search scope.
+- `object_class_limitation` (String) Object-class limitation (e.g. `ANY_OBJECT_CLASSES`).
+- `object_classes` (String) Object classes (e.g. `groupOfNames`).
+- `search_base` (String) Group search base (e.g. `ou=Groups`).
+- `search_scope` (String) Group search scope (e.g. `ALL_SUBTREES`).
 
 
 <a id="nestedatt--google--mappings--membership_mappings"></a>
@@ -179,18 +179,18 @@ Read-Only:
 
 Read-Only:
 
-- `additional_search_base` (String) Additional user search base.
+- `additional_search_base` (String) Additional user search base. Jamf Pro pre-fills an empty value and rejects one on a write, so this reads as null.
 - `building` (String) Attribute mapped to building.
 - `department` (String) Attribute mapped to department.
 - `email_address` (String) Attribute mapped to email address.
-- `object_class_limitation` (String) How the object classes are matched.
-- `object_classes` (String) User object classes.
+- `object_class_limitation` (String) Object-class limitation (e.g. `ANY_OBJECT_CLASSES`).
+- `object_classes` (String) Object classes (e.g. `inetOrgPerson`).
 - `phone` (String) Attribute mapped to phone.
 - `position` (String) Attribute mapped to position.
 - `real_name` (String) Attribute mapped to real name.
 - `room` (String) Attribute mapped to room.
-- `search_base` (String) User search base.
-- `search_scope` (String) User search scope.
+- `search_base` (String) User search base (e.g. `ou=Users`).
+- `search_scope` (String) User search scope (e.g. `ALL_SUBTREES`).
 - `user_id` (String) Attribute mapped to user ID.
 - `user_uuid` (String) Attribute mapped to user UUID.
 - `username` (String) Attribute mapped to username.
@@ -203,7 +203,7 @@ Read-Only:
 Read-Only:
 
 - `connection_timeout` (Number) Connection timeout in seconds.
-- `connection_type` (String) Connection type.
+- `connection_type` (String) Connection type (e.g. `LDAPS`).
 - `membership_calculation_optimization_enabled` (Boolean) Whether membership-calculation optimization is enabled.
 - `port` (Number) LDAPS port.
 - `search_timeout` (Number) Search timeout in seconds.

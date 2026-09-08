@@ -71,7 +71,7 @@ func (d *CloudIdentityProviderDefaultsDataSource) Metadata(ctx context.Context, 
 func (d *CloudIdentityProviderDefaultsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Attribute mappings and connection settings Jamf Pro pre-fills when an administrator adds a cloud identity provider, for Microsoft Entra ID and for Google Secure LDAP. " +
-			"Takes no arguments, and reports both whatever the tenant has configured. " +
+			"Jamf Pro reports both whether or not the tenant has a connection of either kind, so there is nothing to select. " +
 			"Use it to seed a `jamfplatform_pro_cloud_identity_provider` mappings block, which owns every field in it once declared." + defaultsDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"entra_id": schema.SingleNestedAttribute{
@@ -85,7 +85,7 @@ func (d *CloudIdentityProviderDefaultsDataSource) Schema(ctx context.Context, re
 					"transitive_directory_membership_enabled":     computedBool("Whether transitive directory membership is enabled."),
 					"membership_calculation_optimization_enabled": computedBool("Whether membership-calculation optimization is enabled."),
 					"mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Default Entra ID attribute mappings. Nine carry a directory attribute name. `building` and `room` come back empty, which is what a connection created without a mappings block stores.",
+						MarkdownDescription: "Default Entra ID attribute mappings. `building` and `room` come back empty; the other nine name a directory attribute.",
 						Computed:            true,
 						Attributes: map[string]schema.Attribute{
 							"user_id":    computedString("Attribute mapped to user ID."),
@@ -109,12 +109,12 @@ func (d *CloudIdentityProviderDefaultsDataSource) Schema(ctx context.Context, re
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
 					"server": schema.SingleNestedAttribute{
-						MarkdownDescription: "Default Google LDAP connection settings. The domain and the certificate keystore are absent because Jamf Pro reports no default for either.",
+						MarkdownDescription: "Default Google LDAP connection settings. Jamf Pro pre-fills no domain and no certificate keystore, so neither appears here.",
 						Computed:            true,
 						Attributes: map[string]schema.Attribute{
 							"server_url":         computedString("Google Secure LDAP hostname."),
 							"port":               computedInt64("LDAPS port."),
-							"connection_type":    computedString("Connection type."),
+							"connection_type":    computedString("Connection type (e.g. `LDAPS`)."),
 							"connection_timeout": computedInt64("Connection timeout in seconds."),
 							"search_timeout":     computedInt64("Search timeout in seconds."),
 							"use_wildcards":      computedBool("Whether searches use wildcards."),
@@ -122,18 +122,18 @@ func (d *CloudIdentityProviderDefaultsDataSource) Schema(ctx context.Context, re
 						},
 					},
 					"mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "Default Google LDAP attribute mappings. `user_mappings.additional_search_base` comes back empty, and Jamf Pro rejects an empty value for it on a write, so supply a distinguished name there rather than copying the default.",
+						MarkdownDescription: "Default Google LDAP attribute mappings. `user_mappings.additional_search_base` reads as null: Jamf Pro pre-fills an empty value and then rejects an empty value on a write, so supply a distinguished name of your own.",
 						Computed:            true,
 						Attributes: map[string]schema.Attribute{
 							"user_mappings": schema.SingleNestedAttribute{
 								MarkdownDescription: "Default user attribute mappings.",
 								Computed:            true,
 								Attributes: map[string]schema.Attribute{
-									"object_class_limitation": computedString("How the object classes are matched."),
-									"object_classes":          computedString("User object classes."),
-									"search_base":             computedString("User search base."),
-									"search_scope":            computedString("User search scope."),
-									"additional_search_base":  computedString("Additional user search base."),
+									"object_class_limitation": computedString("Object-class limitation (e.g. `ANY_OBJECT_CLASSES`)."),
+									"object_classes":          computedString("Object classes (e.g. `inetOrgPerson`)."),
+									"search_base":             computedString("User search base (e.g. `ou=Users`)."),
+									"search_scope":            computedString("User search scope (e.g. `ALL_SUBTREES`)."),
+									"additional_search_base":  computedString("Additional user search base. Jamf Pro pre-fills an empty value and rejects one on a write, so this reads as null."),
 									"user_id":                 computedString("Attribute mapped to user ID."),
 									"username":                computedString("Attribute mapped to username."),
 									"real_name":               computedString("Attribute mapped to real name."),
@@ -150,10 +150,10 @@ func (d *CloudIdentityProviderDefaultsDataSource) Schema(ctx context.Context, re
 								MarkdownDescription: "Default group attribute mappings.",
 								Computed:            true,
 								Attributes: map[string]schema.Attribute{
-									"object_class_limitation": computedString("How the object classes are matched."),
-									"object_classes":          computedString("Group object classes."),
-									"search_base":             computedString("Group search base."),
-									"search_scope":            computedString("Group search scope."),
+									"object_class_limitation": computedString("Object-class limitation (e.g. `ANY_OBJECT_CLASSES`)."),
+									"object_classes":          computedString("Object classes (e.g. `groupOfNames`)."),
+									"search_base":             computedString("Group search base (e.g. `ou=Groups`)."),
+									"search_scope":            computedString("Group search scope (e.g. `ALL_SUBTREES`)."),
 									"group_id":                computedString("Attribute mapped to group ID."),
 									"group_name":              computedString("Attribute mapped to group name."),
 									"group_uuid":              computedString("Attribute mapped to group UUID."),

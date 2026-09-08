@@ -1,10 +1,10 @@
 # The attribute mappings and connection settings Jamf Pro pre-fills when an
-# administrator adds a cloud identity provider. Takes no arguments, and reports
-# both products whatever the tenant has configured.
+# administrator adds a cloud identity provider. Both products are reported
+# whether or not the tenant has a connection of either kind.
 data "jamfplatform_pro_cloud_identity_provider_defaults" "jamf" {}
 
 # Seeding an Entra ID connection. A declared mappings block owns all eleven
-# fields, so starting from the defaults beats transcribing them.
+# fields, so start from the defaults rather than transcribing them.
 resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   display_name  = "Entra ID"
   provider_name = "ENTRA_ID"
@@ -15,9 +15,9 @@ resource "jamfplatform_pro_cloud_identity_provider" "entra" {
   }
 }
 
-# Google Secure LDAP takes the defaults one field at a time, because two of them
-# cannot be copied: the domain is yours to supply, and additional_search_base has
-# to be a distinguished name, which the empty default is not.
+# Google Secure LDAP takes the defaults one field at a time. Two of them cannot
+# be copied: the domain is yours to supply, and additional_search_base has to be
+# a distinguished name, which the empty default is not.
 resource "jamfplatform_pro_cloud_identity_provider" "google" {
   display_name  = "Google Workspace"
   provider_name = "GOOGLE"
@@ -39,7 +39,7 @@ resource "jamfplatform_pro_cloud_identity_provider" "google" {
   }
 }
 
-# What Jamf Pro would map a username to on each side.
+# The directory attribute Jamf Pro maps a username from, on each side.
 output "entra_default_username_mapping" {
   value = data.jamfplatform_pro_cloud_identity_provider_defaults.jamf.entra_id.mappings.user_name
 }
