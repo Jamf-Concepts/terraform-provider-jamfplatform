@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/accountprivileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -114,6 +115,25 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 		maxResults = int64(len(items))
 	}
 
+	// Jamf Pro expands a preset privilege_set ("Auditor", "Administrator") into a
+	// full privilege list, and that list can name privileges the same tenant will
+	// not grant. Generating them verbatim writes config the resource's own
+	// ModifyPlan validator refuses, so the tenant's grantable catalog is
+	// discovered once here and every hydrated grid is filtered through it.
+	// Best-effort: a discovery failure leaves the grids as read rather than
+	// emptying them.
+	var catalog *accountprivileges.Catalog
+	if req.IncludeResource {
+		discovered, err := accountprivileges.Discover(ctx, r.client)
+		if err != nil {
+			tflog.Warn(ctx, "Could not discover the privilege catalog; account group privileges are generated unfiltered", map[string]any{
+				"error": err.Error(),
+			})
+		} else {
+			catalog = discovered
+		}
+	}
+
 	results := make([]list.ListResult, 0, maxResults)
 	for _, g := range items {
 		if int64(len(results)) >= maxResults {
@@ -145,6 +165,11 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 				Timeouts: helpers.NewResourceTimeoutsNullValue(accountGroupTimeoutAttributeTypes),
 			}
 			result.Diagnostics.Append(assignAccountGroupResourceModel(ctx, &state, got, true)...)
+			if catalog != nil && state.Privileges != nil && !state.Privileges.IsEmpty() {
+				filtered, d := accountprivileges.FilterToCatalog(ctx, state.Privileges, catalog)
+				result.Diagnostics.Append(d...)
+				state.Privileges = &filtered
+			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

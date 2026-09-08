@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/accountprivileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -159,6 +160,30 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 	resp.Diagnostics.Append(assignAccountGroupResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// A preset privilege_set ("Auditor", "Administrator") is expanded by Jamf Pro
+	// into a full privilege list on read, and that list can name privileges the
+	// same tenant will not grant — "Read Knobs" on an 11.x tenant. Adopting them
+	// verbatim on first hydration hands ModifyPlan's own Validate a config it
+	// refuses, so an imported group produces a plan that cannot run. Drop them
+	// here: the write path would have ignored them anyway, so the filtered set is
+	// what the tenant actually stores. Discovery is best-effort — a failure leaves
+	// the grid as read rather than emptying it.
+	if firstHydration && state.Privileges != nil && !state.Privileges.IsEmpty() {
+		if catalog, err := accountprivileges.Discover(readCtx, r.client); err != nil {
+			tflog.Warn(ctx, "Could not discover the privilege catalog while importing an account group; privileges were adopted unfiltered", map[string]any{
+				"id":    state.ID.ValueString(),
+				"error": err.Error(),
+			})
+		} else {
+			filtered, d := accountprivileges.FilterToCatalog(readCtx, state.Privileges, catalog)
+			resp.Diagnostics.Append(d...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			state.Privileges = &filtered
+		}
 	}
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, accountGroupIdentityModel{ID: state.ID})...)

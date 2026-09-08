@@ -149,6 +149,15 @@ data "jamfplatform_pro_account_group" "by_name" {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_account_group.by_name", "id", "jamfplatform_pro_account_group.auditor", "id"),
 				),
 			},
+			// A preset privilege_set is where the read commits privileges the
+			// tenant will not grant. Jamf Pro expands "Auditor" into a full
+			// privilege list, and on an 11.x tenant that list names "Read Knobs",
+			// which the same tenant refuses — so the generated configuration was
+			// rejected by this resource's own ModifyPlan validator and the plan
+			// could not run. GenerateConfigStep requires the generated
+			// configuration to plan as a no-op import, which is exactly that
+			// failure.
+			testhelpers.GenerateConfigStep("jamfplatform_pro_account_group.auditor"),
 		},
 	})
 }
