@@ -418,7 +418,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						},
 						"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox \"Permanently delete home directory\"."),
 						"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
-						"home":                              optComputedString("Home directory path."),
+						"home":                              optComputedString("Home directory path. **Required when `action = \"Create\"`**: Jamf Pro refuses a create-account entry without one, answering `409 Problem with create account fields` and naming no field, so the provider checks for it when you plan."),
 						"hint":                              optComputedString("Password hint."),
 						"picture":                           optComputedString("Account picture path."),
 						"admin":                             optComputedBool("Whether the account is an admin."),
@@ -625,6 +625,7 @@ func (r *PolicyResource) ImportState(ctx context.Context, req resource.ImportSta
 func (r *PolicyResource) ConfigValidators(context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		retryRequiresOncePerComputerValidator{},
+		createAccountRequiresHomeValidator{},
 	}
 }
 

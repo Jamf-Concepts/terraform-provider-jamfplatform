@@ -95,7 +95,8 @@ resource "jamfplatform_pro_policy" "options" {
   }
 
   # Options ▸ Local Accounts. `password` is WriteOnly. Rotate it by bumping
-  # `password_wo_version`.
+  # `password_wo_version`. `home` is mandatory for a "Create" action — Jamf Pro
+  # rejects the policy without it and names no field in the error.
   local_accounts = [
     {
       action              = "Create"
@@ -104,6 +105,7 @@ resource "jamfplatform_pro_policy" "options" {
       password            = "Sup3rS3cret!"
       password_wo_version = 1
       admin               = true
+      home                = "/Users/tf-admin"
     },
   ]
 

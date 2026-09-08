@@ -283,3 +283,71 @@ func addRetryFrequencyError(resp *resource.ValidateConfigResponse, attr, frequen
 func isStringSet(s types.String) bool {
 	return !s.IsNull() && !s.IsUnknown() && s.ValueString() != ""
 }
+
+// createAccountRequiresHomeValidator enforces local_accounts[].home whenever the
+// entry's action is "Create".
+//
+// Jamf Pro refuses a create-account entry with no home directory — wire-probed
+// 2026-09-08 against /JSSResource/policies/id/0, which answers `409 Problem with
+// create account fields` and names nothing. Adding `home` alone turns the same
+// request into a 201, with username, realname, password and admin unchanged. The
+// message is identical whatever else the entry carries, so a plan-time check is
+// the only way the practitioner learns which field is missing.
+type createAccountRequiresHomeValidator struct{}
+
+// Description returns a plain-text description of the validator.
+func (createAccountRequiresHomeValidator) Description(context.Context) string {
+	return `local_accounts entries with action = "Create" require home`
+}
+
+// MarkdownDescription returns the markdown description.
+func (v createAccountRequiresHomeValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateResource implements the plan-time check.
+//
+// As on retryRequiresOncePerComputerValidator, attributes are read one at a time:
+// a policy configuration routinely carries unknown nested values, and Config.Get
+// over the whole model fails outright on those, disabling every validator here.
+func (createAccountRequiresHomeValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var accounts types.List
+	if diags := req.Config.GetAttribute(ctx, path.Root("local_accounts"), &accounts); diags.HasError() {
+		return
+	}
+	if accounts.IsNull() || accounts.IsUnknown() {
+		return
+	}
+
+	for i := range accounts.Elements() {
+		element := path.Root("local_accounts").AtListIndex(i)
+
+		var action types.String
+		if diags := req.Config.GetAttribute(ctx, element.AtName("action"), &action); diags.HasError() {
+			continue
+		}
+		if !isStringSet(action) || action.ValueString() != accountActionCreate {
+			continue
+		}
+
+		var home types.String
+		if diags := req.Config.GetAttribute(ctx, element.AtName("home"), &home); diags.HasError() {
+			continue
+		}
+		if home.IsUnknown() || isStringSet(home) {
+			continue
+		}
+
+		resp.Diagnostics.AddAttributeError(
+			element.AtName("home"),
+			"home required for a Create account action",
+			`This local_accounts entry has action = "Create", which Jamf Pro will not accept without `+
+				"`home`. It answers `409 Problem with create account fields` and names no field. Set "+
+				"`home` to the account's home directory path (e.g. \"/Users/<username>\").",
+		)
+	}
+}
+
+// accountActionCreate is the local_accounts action Jamf Pro gates on `home`,
+// aliased from the SDK enum so the two cannot drift.
+const accountActionCreate = string(proclassic.PolicyAccountMaintenanceAccountsAccountItemActionCreate)

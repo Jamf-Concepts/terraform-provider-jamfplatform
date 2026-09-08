@@ -3314,3 +3314,70 @@ func TestAccResource_ProPolicy_OmittedBlocksRetained(t *testing.T) {
 		},
 	})
 }
+
+// TestAccPolicyResource_CreateAccountRequiresHome exercises the validator that
+// replaces Jamf Pro's opaque refusal of a create-account entry with no home
+// directory.
+//
+// Jamf Pro answers `409 Problem with create account fields` and names nothing —
+// the same message it gives for several unrelated problems — so the failure was
+// unattributable until the field was isolated by probe (adding `home` alone
+// turns the identical request into a 201). Like the date-format rejections
+// above, this fails at plan time with no API round-trip.
+func TestAccPolicyResource_CreateAccountRequiresHome(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-acct-home-" + suffix
+
+	withoutHome := fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+
+  local_accounts = [
+    {
+      action              = "Create"
+      username            = "tf-acc-admin"
+      realname            = "TF Acc Admin"
+      password            = "Sup3rS3cret!"
+      password_wo_version = 1
+      admin               = true
+    },
+  ]
+}
+`, name)
+
+	// A non-Create action needs no home, so the same shape must pass validation.
+	resetWithoutHome := fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+
+  local_accounts = [
+    {
+      action              = "Reset"
+      username            = "tf-acc-admin"
+      password            = "Sup3rS3cret!"
+      password_wo_version = 1
+    },
+  ]
+}
+`, name)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      withoutHome,
+				ExpectError: regexp.MustCompile(`home required for a Create account action`),
+			},
+			{
+				Config:             resetWithoutHome,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}

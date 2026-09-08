@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -218,5 +219,131 @@ func TestDeferral_NoneForbidsCompanion(t *testing.T) {
 	)
 	if out := runDeferralValidator(cfg, types.StringValue("none")); len(out) == 0 {
 		t.Error("none + deferral_until_utc set must error")
+	}
+}
+
+// localAccountsSchema is the resource schema restricted to the two attributes
+// createAccountRequiresHomeValidator reads, in the same spirit as uiObjType
+// above: the validator reads attribute by attribute, so a minimal schema
+// exercises it exactly as the full one would.
+func localAccountsSchema() schema.Schema {
+	return schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"local_accounts": schema.ListNestedAttribute{
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"action": schema.StringAttribute{Optional: true},
+						"home":   schema.StringAttribute{Optional: true},
+					},
+				},
+			},
+		},
+	}
+}
+
+// localAccountsConfig builds a config holding one local_accounts entry per
+// (action, home) pair. A nil home is the attribute left out.
+func localAccountsConfig(ctx context.Context, t *testing.T, entries [][2]*string) tfsdk.Config {
+	t.Helper()
+	s := localAccountsSchema()
+	elementType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"action": tftypes.String,
+		"home":   tftypes.String,
+	}}
+	elements := make([]tftypes.Value, 0, len(entries))
+	for _, entry := range entries {
+		value := func(in *string) tftypes.Value {
+			if in == nil {
+				return tftypes.NewValue(tftypes.String, nil)
+			}
+			return tftypes.NewValue(tftypes.String, *in)
+		}
+		elements = append(elements, tftypes.NewValue(elementType, map[string]tftypes.Value{
+			"action": value(entry[0]),
+			"home":   value(entry[1]),
+		}))
+	}
+	raw := tftypes.NewValue(s.Type().TerraformType(ctx).(tftypes.Object), map[string]tftypes.Value{
+		"local_accounts": tftypes.NewValue(tftypes.List{ElementType: elementType}, elements),
+	})
+	return tfsdk.Config{Schema: s, Raw: raw}
+}
+
+func strptr(in string) *string { return &in }
+
+// TestCreateAccountRequiresHome pins the plan-time replacement for Jamf Pro's
+// `409 Problem with create account fields`, which names no field.
+func TestCreateAccountRequiresHome(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name      string
+		entries   [][2]*string
+		wantError bool
+	}{
+		{
+			name:      "create without home is refused",
+			entries:   [][2]*string{{strptr("Create"), nil}},
+			wantError: true,
+		},
+		{
+			name:    "create with home is accepted",
+			entries: [][2]*string{{strptr("Create"), strptr("/Users/svc")}},
+		},
+		{
+			name:    "a non-create action needs no home",
+			entries: [][2]*string{{strptr("Reset"), nil}},
+		},
+		{
+			name:    "an entry with no action at all is left alone",
+			entries: [][2]*string{{nil, nil}},
+		},
+		{
+			// The validator reads each element, so a good entry must not mask a
+			// bad one sitting behind it in the list.
+			name:      "a later create without home is still refused",
+			entries:   [][2]*string{{strptr("Reset"), nil}, {strptr("Create"), nil}},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := resource.ValidateConfigRequest{Config: localAccountsConfig(ctx, t, tc.entries)}
+			resp := resource.ValidateConfigResponse{}
+			createAccountRequiresHomeValidator{}.ValidateResource(ctx, req, &resp)
+
+			if got := resp.Diagnostics.HasError(); got != tc.wantError {
+				t.Fatalf("HasError() = %v, want %v (diags: %v)", got, tc.wantError, resp.Diagnostics)
+			}
+			if !tc.wantError {
+				return
+			}
+			if got := resp.Diagnostics.Errors()[0].Summary(); got != "home required for a Create account action" {
+				t.Errorf("summary = %q", got)
+			}
+		})
+	}
+}
+
+// TestCreateAccountRequiresHome_NoAccountsIsFine is the control: the validator
+// must not fire on a policy that declares no local accounts at all.
+func TestCreateAccountRequiresHome_NoAccountsIsFine(t *testing.T) {
+	ctx := context.Background()
+	s := localAccountsSchema()
+	raw := tftypes.NewValue(s.Type().TerraformType(ctx).(tftypes.Object), map[string]tftypes.Value{
+		"local_accounts": tftypes.NewValue(tftypes.List{ElementType: tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+			"action": tftypes.String,
+			"home":   tftypes.String,
+		}}}, nil),
+	})
+
+	resp := resource.ValidateConfigResponse{}
+	createAccountRequiresHomeValidator{}.ValidateResource(ctx,
+		resource.ValidateConfigRequest{Config: tfsdk.Config{Schema: s, Raw: raw}}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("no local accounts must not error: %v", resp.Diagnostics)
 	}
 }
