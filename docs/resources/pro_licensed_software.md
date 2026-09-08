@@ -84,14 +84,14 @@ resource "jamfplatform_pro_licensed_software" "example" {
 
 ### Optional
 
-- `exclude_titles_purchased_from_app_store` (Boolean) **"Exclude titles purchased from the App Store"** in the Jamf Pro admin UI. Do not count copies of the title purchased from the Mac App Store against the licence count. Defaults to `false`.
+- `exclude_titles_purchased_from_app_store` (Boolean) **"Exclude titles purchased from the App Store"** in the Jamf Pro admin UI. Do not count copies of the title purchased from the Mac App Store against the licence count. Jamf Pro defaults it to `false` on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `licenses` (Attributes List) **"Licenses"** tab in the Jamf Pro admin UI. Ordered list of licence entries matched by position, so keep their ordering stable across changes. Omit the attribute to leave any existing licences unmanaged (Jamf Pro keeps them); set it to `[]` to clear all licences; otherwise the list fully replaces what is stored. (see [below for nested schema](#nestedatt--licenses))
-- `notes` (String) **"Notes"** in the Jamf Pro admin UI. Notes about the licensed software record.
+- `notes` (String) **"Notes"** in the Jamf Pro admin UI. Notes about the licensed software record. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `platform` (String) **"Platform"** in the Jamf Pro admin UI. Platform the software is for. One of `Any`, `Mac`, or `Windows`. Defaults to `Any`.
-- `publisher` (String) **"Publisher"** in the Jamf Pro admin UI. Name of the licensed software publisher.
-- `remove_titles_from_inventory_reports` (Boolean) **"Remove titles from inventory reports"** in the Jamf Pro admin UI. Exclude the matched titles from inventory reports if they are specified in software definitions. Defaults to `false`.
-- `send_email_on_violation` (Boolean) **"Send email notification on violation"** in the Jamf Pro admin UI. Email Jamf Pro users with notifications enabled when the licence count is exceeded (an SMTP server must be configured). Defaults to `false`.
-- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Use `-1` for "None" (the default).
+- `publisher` (String) **"Publisher"** in the Jamf Pro admin UI. Name of the licensed software publisher. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `remove_titles_from_inventory_reports` (Boolean) **"Remove titles from inventory reports"** in the Jamf Pro admin UI. Exclude the matched titles from inventory reports if they are specified in software definitions. Jamf Pro defaults it to `false` on create. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `send_email_on_violation` (Boolean) **"Send email notification on violation"** in the Jamf Pro admin UI. Email Jamf Pro users with notifications enabled when the licence count is exceeded (an SMTP server must be configured). Jamf Pro defaults it to `false` on create. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `site_id` (String) **"Site"** in the Jamf Pro admin UI. Jamf Pro site ID scoping the record. Jamf Pro defaults it to `-1` ("None") on create. Omit to leave the current value untouched; set `-1` to clear the site.
 - `software_definitions` (Attributes List) **"Software Definitions"** tab in the Jamf Pro admin UI. Ordered list of definitions used to match installed software, matched by position, so keep their ordering stable across changes. Omit the attribute to leave any existing definitions unmanaged (Jamf Pro keeps them); set it to `[]` to clear all definitions; otherwise the list fully replaces what is stored. Legacy font and plug-in definitions are not supported. (see [below for nested schema](#nestedatt--software_definitions))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -199,5 +199,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing licensed software record by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_licensed_software.example "65"
 ```

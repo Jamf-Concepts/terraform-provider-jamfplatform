@@ -133,7 +133,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"principal": schema.BoolAttribute{
-				MarkdownDescription: "Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time. Designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one.",
+				MarkdownDescription: "Whether this is the principal distribution point (the **Use as principal distribution point** option). Only one distribution point can be the principal at a time. Designating a second one moves the designation, silently clearing it from the previous principal. If two distribution points both set `principal = true`, the one that loses the designation will show a persistent diff; set it on exactly one. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -141,7 +141,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"backup_distribution_point_id": schema.StringAttribute{
-				MarkdownDescription: "Failover distribution point (the **Failover distribution point** option). Set to `-1` for none, `-2` for the Jamf Cloud distribution point, or the ID of another file share distribution point, which you can reference with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`.",
+				MarkdownDescription: "Failover distribution point (the **Failover distribution point** option). Set it to `-2` for the Jamf Cloud distribution point, or to the ID of another file share distribution point, which you can reference with `jamfplatform_pro_file_share_distribution_point.other.id`. If the referenced distribution point is deleted, this resets to `-1`. Omit to leave the current value untouched; set `-1` to clear the failover.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -149,7 +149,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"enable_load_balancing": schema.BoolAttribute{
-				MarkdownDescription: "Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point. Load sharing does not apply when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`).",
+				MarkdownDescription: "Whether to randomly distribute the load between this distribution point and its failover (the **Enable randomized load sharing** option). Only valid when `backup_distribution_point_id` points at another file share distribution point. Load sharing does not apply when the failover is none (`-1`) or the Jamf Cloud distribution point (`-2`). Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -157,7 +157,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"share_name": schema.StringAttribute{
-				MarkdownDescription: "Name of the file share (the **Share name** field). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.",
+				MarkdownDescription: "Name of the file share (the **Share name** field). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -165,7 +165,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"port": schema.Int64Attribute{
-				MarkdownDescription: "Port used for file sharing (the **Port** field; typically 548 for AFP, 445 for SMB).",
+				MarkdownDescription: "Port used for file sharing (the **Port** field; typically 548 for AFP, 445 for SMB). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -173,7 +173,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"workgroup": schema.StringAttribute{
-				MarkdownDescription: "Workgroup or domain for the file share (the **Workgroup or domain** field). Applies to SMB shares.",
+				MarkdownDescription: "Workgroup or domain for the file share (the **Workgroup or domain** field). Applies to SMB shares. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -181,7 +181,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"read_write_username": schema.StringAttribute{
-				MarkdownDescription: "Username for the read/write account (the **Read/Write Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.",
+				MarkdownDescription: "Username for the read/write account (the **Read/Write Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -199,7 +199,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				Optional:            true,
 			},
 			"read_only_username": schema.StringAttribute{
-				MarkdownDescription: "Username for the read-only account (the **Read-only Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`.",
+				MarkdownDescription: "Username for the read-only account (the **Read-only Account** username). Required by Jamf Pro when `file_sharing_connection_type` is `AFP` or `SMB`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -217,7 +217,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				Optional:            true,
 			},
 			"https_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether packages may be downloaded over HTTPS (the **Use HTTPS downloads** option).",
+				MarkdownDescription: "Whether packages may be downloaded over HTTPS (the **Use HTTPS downloads** option). Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -225,7 +225,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"https_port": schema.Int64Attribute{
-				MarkdownDescription: "Port used for HTTPS downloads (the **Port** field on the HTTPS tab; typically 443). Required by Jamf Pro when `https_enabled` is `true`.",
+				MarkdownDescription: "Port used for HTTPS downloads (the **Port** field on the HTTPS tab; typically 443). Required by Jamf Pro when `https_enabled` is `true`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -233,7 +233,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"https_context": schema.StringAttribute{
-				MarkdownDescription: "Context path appended to the server for HTTPS downloads (the **Context** field).",
+				MarkdownDescription: "Context path appended to the server for HTTPS downloads (the **Context** field). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -241,7 +241,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"https_security_type": schema.StringAttribute{
-				MarkdownDescription: "Authentication type for HTTPS downloads (the **Authentication type** field). One of `USERNAME_PASSWORD` or `NONE`. When `USERNAME_PASSWORD`, Jamf Pro requires `https_username` and `https_password`.",
+				MarkdownDescription: "Authentication type for HTTPS downloads (the **Authentication type** field). One of `USERNAME_PASSWORD` or `NONE`. When `USERNAME_PASSWORD`, Jamf Pro requires `https_username` and `https_password`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -252,7 +252,7 @@ func (r *FileShareDistributionPointResource) Schema(ctx context.Context, req res
 				},
 			},
 			"https_username": schema.StringAttribute{
-				MarkdownDescription: "Username for the HTTPS account (the **HTTPS Account** username). Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`.",
+				MarkdownDescription: "Username for the HTTPS account (the **HTTPS Account** username). Required by Jamf Pro when `https_security_type` is `USERNAME_PASSWORD`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

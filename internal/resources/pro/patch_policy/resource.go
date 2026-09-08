@@ -104,7 +104,8 @@ func (r *PatchPolicyResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.\n\n" +
-			"The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`) and **User Interaction** (`user_interaction`). Five **General**-tab fields are read-only, because Jamf Pro derives them from the selected `target_version`'s patch definition: `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps`." + resourcePrivileges,
+			"The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`) and **User Interaction** (`user_interaction`). Five **General**-tab fields are read-only, because Jamf Pro derives them from the selected `target_version`'s patch definition: `release_date`, `incremental_update`, `reboot`, `minimum_os` and `kill_apps`.\n\n" +
+			"Updates are merged rather than replaced. Removing a whole optional block (`scope` or `user_interaction`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch policy ID assigned by Jamf Pro.",
@@ -123,7 +124,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether the patch policy is enabled. A policy can be enabled only when its scope resolves to at least one in-site smart group. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -134,20 +135,20 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"distribution_method": schema.StringAttribute{
-				MarkdownDescription: "How the patch is delivered. `selfservice` is the admin UI's \"Make Available in Self Service\", and `prompt` is \"Install Automatically\". Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "How the patch is delivered. `selfservice` is the admin UI's \"Make Available in Self Service\", and `prompt` is \"Install Automatically\". Jamf Pro applies its own default on create. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(distributionMethods...)},
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"allow_downgrade": schema.BoolAttribute{
-				MarkdownDescription: "**\"Allow downgrade\"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "**\"Allow downgrade\"** in the Jamf Pro admin UI. Allow installing the target version even when a newer version is present. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"patch_unknown": schema.BoolAttribute{
-				MarkdownDescription: "**\"Patch Unknown Version\"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "**\"Patch Unknown Version\"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -252,39 +253,39 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				// Unknown-decode at apply (feedback_optional_computed_nested_object).
 				// Read is state-gated, so an undeclared block stays null and the
 				// server defaults are not surfaced — same tradeoff as scope.
-				MarkdownDescription: "User interaction, the \"User Interaction\" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block.",
+				MarkdownDescription: "User interaction, the \"User Interaction\" tab in the Jamf Pro admin UI. Controls the Self Service description, button text and icon, plus the deferral notifications, deadlines and grace period. Jamf Pro applies full defaults on create when the block, or a nested field, is omitted; those defaults are not surfaced in state unless you declare the block. To clear a stored value, null the individual field rather than deleting the block. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"install_button_text": schema.StringAttribute{
-						MarkdownDescription: "Text on the Self Service install button (UI \"Button Name\", under \"Display in Self Service\"). Defaults to `Update`.",
+						MarkdownDescription: "Text on the Self Service install button (UI \"Button Name\", under \"Display in Self Service\"). Defaults to `Update`. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"self_service_description": schema.StringAttribute{
-						MarkdownDescription: "Description shown in Self Service (UI \"Description\").",
+						MarkdownDescription: "Description shown in Self Service (UI \"Description\"). Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"self_service_icon_id": schema.StringAttribute{
-						MarkdownDescription: "Jamf Pro icon ID shown in Self Service (UI \"Icon\").",
+						MarkdownDescription: "Jamf Pro icon ID shown in Self Service (UI \"Icon\"). Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 					},
 					"notifications": schema.SingleNestedAttribute{
-						MarkdownDescription: "Notifications shown to the user before the deadline.",
+						MarkdownDescription: "Notifications shown to the user before the deadline. Omit the block to leave any existing values untouched (they are not cleared on update).",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Whether notifications for the patch policy are shown in Notification Center (UI \"Display notifications for the patch policy in Notification Center\", under \"Notifications and Reminders\").",
+								MarkdownDescription: "Whether notifications for the patch policy are shown in Notification Center (UI \"Display notifications for the patch policy in Notification Center\", under \"Notifications and Reminders\"). Omit to leave the current value untouched; set `true`/`false` to change it.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 							},
 							"subject": schema.StringAttribute{
-								MarkdownDescription: "Notification subject.",
+								MarkdownDescription: "Notification subject. Omit to leave the current value untouched.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -309,17 +310,17 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 								Optional:            true,
 							},
 							"reminders": schema.SingleNestedAttribute{
-								MarkdownDescription: "Reminder cadence for the notifications.",
+								MarkdownDescription: "Reminder cadence for the notifications. Omit the block to leave any existing values untouched (they are not cleared on update).",
 								Optional:            true,
 								Attributes: map[string]schema.Attribute{
 									"enabled": schema.BoolAttribute{
-										MarkdownDescription: "Whether reminders are shown.",
+										MarkdownDescription: "Whether reminders are shown. Omit to leave the current value untouched; set `true`/`false` to change it.",
 										Optional:            true,
 										Computed:            true,
 										PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 									},
 									"frequency": schema.Int64Attribute{
-										MarkdownDescription: "Reminder frequency in hours (UI default `24`).",
+										MarkdownDescription: "Reminder frequency in hours (UI default `24`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 										Optional:            true,
 										Computed:            true,
 										PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},
@@ -329,17 +330,17 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"deadlines": schema.SingleNestedAttribute{
-						MarkdownDescription: "Install deadline after which the patch is enforced.",
+						MarkdownDescription: "Install deadline after which the patch is enforced. Omit the block to leave any existing values untouched (they are not cleared on update).",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Whether a Self Service update deadline is enforced (UI \"Enable Self Service update deadline\", under \"Deadline and Grace Period\"; UI default `true`).",
+								MarkdownDescription: "Whether a Self Service update deadline is enforced (UI \"Enable Self Service update deadline\", under \"Deadline and Grace Period\"; UI default `true`). Omit to leave the current value untouched; set `true`/`false` to change it.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 							},
 							"period": schema.Int64Attribute{
-								MarkdownDescription: "Deadline period in days (UI \"Update Deadline\"; default `7`).",
+								MarkdownDescription: "Deadline period in days (UI \"Update Deadline\"; default `7`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},
@@ -347,23 +348,23 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"grace_period": schema.SingleNestedAttribute{
-						MarkdownDescription: "Grace period granted to a user who is actively running a to-be-killed application at install time.",
+						MarkdownDescription: "Grace period granted to a user who is actively running a to-be-killed application at install time. Omit the block to leave any existing values untouched (they are not cleared on update).",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"duration": schema.Int64Attribute{
-								MarkdownDescription: "Grace period duration in minutes (UI default `15`).",
+								MarkdownDescription: "Grace period duration in minutes (UI default `15`). Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},
 							},
 							"notification_center_subject": schema.StringAttribute{
-								MarkdownDescription: "Notification Center subject for the grace-period message (UI default `Important`).",
+								MarkdownDescription: "Notification Center subject for the grace-period message (UI default `Important`). Omit to leave the current value untouched.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 							},
 							"message": schema.StringAttribute{
-								MarkdownDescription: "Grace-period message shown to the user.",
+								MarkdownDescription: "Grace-period message shown to the user. Omit to leave the current value untouched.",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},

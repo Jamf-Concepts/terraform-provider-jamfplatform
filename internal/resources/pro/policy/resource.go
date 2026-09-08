@@ -93,7 +93,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             2,
-		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled**. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead." + resourcePrivileges,
+		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled**. Both are obsolete in Jamf Pro, superseded by MDM-driven app installs, OS update scheduling and the patch-management surface. To drive OS or app updates from Terraform, reach for the patch / DDM resources instead.\n\nUpdates are merged rather than replaced. Removing a whole optional block (`scope`, `self_service`, `packages`, `scripts`, `printers`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`, `user_interaction` or `disk_encryption`) from your configuration does not clear it: Jamf Pro keeps the values you set previously. To clear a block, null its individual fields instead of deleting the block." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID assigned by Jamf Pro.",
@@ -116,17 +116,17 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
-					"enabled":                       optComputedBool("Whether the policy is enabled."),
-					"trigger":                       optComputedString("Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.)."),
-					"trigger_checkin":               optComputedBool("Fire on managed check-in."),
-					"trigger_enrollment_complete":   optComputedBool("Fire when device enrollment completes."),
-					"trigger_login":                 optComputedBool("Fire on user login."),
-					"trigger_network_state_changed": optComputedBool("Fire when the device's network state changes."),
-					"trigger_startup":               optComputedBool("Fire on device startup."),
-					"trigger_other":                 optComputedString("Custom event name to trigger the policy."),
-					"frequency":                     optComputedString("How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`."),
+					"enabled":                       optComputedBool("Whether the policy is enabled. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger":                       optComputedString("Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.). Omit to leave the current value untouched."),
+					"trigger_checkin":               optComputedBool("Fire on managed check-in. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger_enrollment_complete":   optComputedBool("Fire when device enrollment completes. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger_login":                 optComputedBool("Fire on user login. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger_network_state_changed": optComputedBool("Fire when the device's network state changes. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger_startup":               optComputedBool("Fire on device startup. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"trigger_other":                 optComputedString("Custom event name to trigger the policy. Omit to leave the current value untouched."),
+					"frequency":                     optComputedString("How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it."),
 					"retry_event": schema.StringAttribute{
-						MarkdownDescription: "When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency.",
+						MarkdownDescription: "When to retry a failed run: `none`, `trigger` (the policy's own trigger), or `check-in`. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -134,13 +134,13 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							stringvalidator.OneOf(proclassic.PolicyPostGeneralRetryEventValues()...),
 						},
 					},
-					"retry_attempts":                  optComputedInt("Maximum number of retry attempts; `-1` means no retries. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency."),
-					"notify_on_each_failed_retry":     optComputedBool("Notify the administrator on each failed retry. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency."),
-					"limit_to_jamf_pro_assigned_user": optComputedBool("Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user."),
-					"target_drive":                    optComputedString("Drive target (e.g. `/`)."),
-					"offline":                         optComputedBool("Allow execution while the device is offline."),
+					"retry_attempts":                  optComputedInt("Maximum number of retry attempts; `-1` means no retries. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."),
+					"notify_on_each_failed_retry":     optComputedBool("Notify the administrator on each failed retry. Requires `frequency = \"Once per computer\"`. Jamf Pro clears a policy's retry configuration under any other frequency. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"limit_to_jamf_pro_assigned_user": optComputedBool("Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"target_drive":                    optComputedString("Drive target (e.g. `/`). Omit to leave the current value untouched."),
+					"offline":                         optComputedBool("Allow execution while the device is offline. Omit to leave the current value untouched; set `true`/`false` to change it."),
 					"network_requirements": schema.StringAttribute{
-						MarkdownDescription: "Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts the policy to a wired connection. Shown in the admin UI as Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements. Also drives the read-only `network_limitations.minimum_network_connection`.",
+						MarkdownDescription: "Network connection the policy requires. `Any` places no requirement; `Ethernet` restricts the policy to a wired connection. Shown in the admin UI as Options ▸ General ▸ Client-Side Limitations ▸ Network Requirements. Also drives the read-only `network_limitations.minimum_network_connection`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -148,14 +148,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							stringvalidator.OneOf(proclassic.PolicyPostGeneralNetworkRequirementsValues()...),
 						},
 					},
-					"category_id": optComputedString("Jamf Pro category ID. Use `-1` to clear."),
+					"category_id": optComputedString("Jamf Pro category ID. Use `-1` to clear. Omit to leave the current value untouched."),
 					"category_name": schema.StringAttribute{
 						// No UseStateForUnknown: derived from the mutable category_id, so it
 						// must go Unknown when category_id changes. See STYLE_GUIDE §886.
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 					},
-					"site_id": optComputedString("Jamf Pro site ID scoping the policy. Use `-1` for \"no site\"."),
+					"site_id": optComputedString("Jamf Pro site ID scoping the policy. Use `-1` for \"no site\". Omit to leave the current value untouched."),
 					"site_name": schema.StringAttribute{
 						// No UseStateForUnknown: derived from the mutable site_id, so it
 						// must go Unknown when site_id changes. See STYLE_GUIDE §886.
@@ -236,19 +236,19 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: true}),
 			},
 			"self_service": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available.",
+				MarkdownDescription: "Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"use_for_self_service":          optComputedBool("Expose the policy in Self Service."),
-					"self_service_display_name":     optComputedString("Self Service display name (defaults to the policy name)."),
-					"install_button_text":           optComputedString("Install-button label. Defaults to `Install`."),
-					"reinstall_button_text":         optComputedString("Re-install-button label. Defaults to `Reinstall`."),
-					"self_service_description":      optComputedString("Self Service description. Markdown supported."),
-					"ensure_users_view_description": optComputedBool("Force users to view the description before installing."),
-					"include_in_featured_category":  optComputedBool("Feature the policy on the Self Service main page."),
-					"display_notifications":         optComputedBool("Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target."),
+					"use_for_self_service":          optComputedBool("Expose the policy in Self Service. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"self_service_display_name":     optComputedString("Self Service display name (defaults to the policy name). Omit to leave the current value untouched."),
+					"install_button_text":           optComputedString("Install-button label. Defaults to `Install`. Omit to leave the current value untouched."),
+					"reinstall_button_text":         optComputedString("Re-install-button label. Defaults to `Reinstall`. Omit to leave the current value untouched."),
+					"self_service_description":      optComputedString("Self Service description. Markdown supported. Omit to leave the current value untouched."),
+					"ensure_users_view_description": optComputedBool("Force users to view the description before installing. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"include_in_featured_category":  optComputedBool("Feature the policy on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"display_notifications":         optComputedBool("Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target. Omit to leave the current value untouched; set `true`/`false` to change it."),
 					"notification_location": schema.StringAttribute{
-						MarkdownDescription: "Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.",
+						MarkdownDescription: "Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -256,8 +256,8 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							stringvalidator.OneOf("Self Service", "Self Service and Notification Center"),
 						},
 					},
-					"notification_subject": optComputedString("Notification subject line."),
-					"notification_message": optComputedString("Notification body text."),
+					"notification_subject": optComputedString("Notification subject line. Omit to leave the current value untouched."),
+					"notification_message": optComputedString("Notification body text. Omit to leave the current value untouched."),
 					"self_service_icon": schema.SingleNestedAttribute{
 						MarkdownDescription: "Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported. Open an issue if you need it.",
 						Optional:            true,
@@ -268,7 +268,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						},
 					},
 					"categories": schema.SetNestedAttribute{
-						MarkdownDescription: "Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel \"Display in\" / \"Feature in\" columns. A policy may appear in multiple categories.",
+						MarkdownDescription: "Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel \"Display in\" / \"Feature in\" columns. A policy may appear in multiple categories. Declaring one or more entries replaces the stored list. An empty list reads as an omission. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -289,11 +289,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"packages": schema.SingleNestedAttribute{
-				MarkdownDescription: "Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section.",
+				MarkdownDescription: "Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"distribution_point": schema.StringAttribute{
-						MarkdownDescription: "Name of the file share distribution point the policy uses. Omit to inherit the tenant default.",
+						MarkdownDescription: "Name of the file share distribution point the policy uses. On create Jamf Pro falls back to the tenant default. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -301,7 +301,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						},
 					},
 					"packages": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`.",
+						MarkdownDescription: "Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -317,11 +317,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"scripts": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scripts to run as part of the policy.",
+				MarkdownDescription: "Scripts to run as part of the policy. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"scripts": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of script assignments. `priority` is one of `Before`, `After`, `At Reboot`.",
+						MarkdownDescription: "Set of script assignments. `priority` is one of `Before`, `After`, `At Reboot`. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -342,11 +342,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"printers": schema.SingleNestedAttribute{
-				MarkdownDescription: "Printers to install or remove.",
+				MarkdownDescription: "Printers to install or remove. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"printers": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of printer assignments.",
+						MarkdownDescription: "Set of printer assignments. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -368,11 +368,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"dock_items": schema.SingleNestedAttribute{
-				MarkdownDescription: "Dock items to add or remove.",
+				MarkdownDescription: "Dock items to add or remove. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"dock_items": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of dock item assignments.",
+						MarkdownDescription: "Set of dock item assignments. Omit to leave any existing entries untouched; they are not cleared on update.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -391,7 +391,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			// <account_maintenance> object — the input/state builders join
 			// these four fields on write and split them on read.
 			"local_accounts": schema.ListNestedAttribute{
-				MarkdownDescription: "Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute: sent to Jamf Pro on writes, never persisted in state. Pair it with `password_wo_version` to rotate. Modelled as a List rather than a Set so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username`, and the order has no semantic effect.",
+				MarkdownDescription: "Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute: sent to Jamf Pro on writes, never persisted in state. Pair it with `password_wo_version` to rotate. Modelled as a List rather than a Set so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username`, and the order has no semantic effect. Omit to leave any existing entries untouched; they are not cleared on update.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -428,10 +428,10 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"management_account": schema.SingleNestedAttribute{
-				MarkdownDescription: "Management account configuration (admin UI: Options ▸ Management Accounts).",
+				MarkdownDescription: "Management account configuration (admin UI: Options ▸ Management Accounts). Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
+					"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it."),
 					"managed_password": schema.StringAttribute{
 						MarkdownDescription: "Plaintext managed password. `WriteOnly`: sent to Jamf Pro on writes, **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
 						Optional:            true,
@@ -445,7 +445,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"directory_bindings": schema.SetNestedAttribute{
-				MarkdownDescription: "Directory binding assignments (admin UI: Options ▸ Directory Bindings).",
+				MarkdownDescription: "Directory binding assignments (admin UI: Options ▸ Directory Bindings). Omit to leave any existing entries untouched; they are not cleared on update.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -455,7 +455,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"efi_password": schema.SingleNestedAttribute{
-				MarkdownDescription: "Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password).",
+				MarkdownDescription: "Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password). Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"of_mode": schema.StringAttribute{
@@ -480,13 +480,13 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"restart_options": schema.SingleNestedAttribute{
-				MarkdownDescription: "Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section.",
+				MarkdownDescription: "Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"message":      optComputedString("Reboot prompt message."),
-					"startup_disk": optComputedString("Startup disk label."),
+					"message":      optComputedString("Reboot prompt message. Omit to leave the current value untouched."),
+					"startup_disk": optComputedString("Startup disk label. Omit to leave the current value untouched."),
 					"specify_startup": schema.StringAttribute{
-						MarkdownDescription: "Reboot-method discriminator. Empty string is the default: a standard reboot with no explicit method. `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The admin UI surfaces a separate \"KEXT PATH\" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not exposed here.",
+						MarkdownDescription: "Reboot-method discriminator. Empty string is the default: a standard reboot with no explicit method. `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The admin UI surfaces a separate \"KEXT PATH\" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not exposed here. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -494,43 +494,43 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							stringvalidator.OneOf("", "Standard Restart", "MDM Restart with Kernel Cache Rebuild"),
 						},
 					},
-					"no_user_logged_in":              optComputedString("Action when no user is logged in."),
-					"user_logged_in":                 optComputedString("Action when a user is logged in."),
-					"delay_minutes":                  optComputedInt("Minutes to wait before forcing reboot. Mirrors the admin UI \"Delay\" input."),
-					"start_reboot_timer_immediately": optComputedBool("Start the reboot countdown immediately."),
-					"file_vault_2_reboot":            optComputedBool("Trigger a FileVault 2 reboot."),
+					"no_user_logged_in":              optComputedString("Action when no user is logged in. Omit to leave the current value untouched."),
+					"user_logged_in":                 optComputedString("Action when a user is logged in. Omit to leave the current value untouched."),
+					"delay_minutes":                  optComputedInt("Minutes to wait before forcing reboot. Mirrors the admin UI \"Delay\" input. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."),
+					"start_reboot_timer_immediately": optComputedBool("Start the reboot countdown immediately. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"file_vault_2_reboot":            optComputedBool("Trigger a FileVault 2 reboot. Omit to leave the current value untouched; set `true`/`false` to change it."),
 				},
 			},
 			"maintenance": schema.SingleNestedAttribute{
-				MarkdownDescription: "Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels.",
+				MarkdownDescription: "Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"update_inventory":        optComputedBool("Update inventory."),
-					"reset_computer_names":    optComputedBool("Reset computer names."),
-					"install_cached_packages": optComputedBool("Install cached packages."),
-					"fix_disk_permissions":    optComputedBool("Fix disk permissions."),
-					"fix_byhost_files":        optComputedBool("Fix ByHost files."),
-					"flush_system_caches":     optComputedBool("Flush system caches."),
-					"flush_user_caches":       optComputedBool("Flush user caches."),
-					"verify_startup_disk":     optComputedBool("Verify startup disk."),
+					"update_inventory":        optComputedBool("Update inventory. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"reset_computer_names":    optComputedBool("Reset computer names. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"install_cached_packages": optComputedBool("Install cached packages. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"fix_disk_permissions":    optComputedBool("Fix disk permissions. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"fix_byhost_files":        optComputedBool("Fix ByHost files. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"flush_system_caches":     optComputedBool("Flush system caches. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"flush_user_caches":       optComputedBool("Flush user caches. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"verify_startup_disk":     optComputedBool("Verify startup disk. Omit to leave the current value untouched; set `true`/`false` to change it."),
 				},
 			},
 			"files_and_processes": schema.SingleNestedAttribute{
-				MarkdownDescription: "File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels.",
+				MarkdownDescription: "File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"search_by_path":         optComputedString("Path to search for. Mirrors the admin UI \"Search for File by Path\" input."),
-					"delete_file_if_found":   optComputedBool("Delete files matching the search criteria if found."),
-					"search_by_filename":     optComputedString("File name to search for. Mirrors the admin UI \"Search for File by Filename\" input."),
-					"update_locate_database": optComputedBool("Update the locate database before searching."),
-					"search_by_spotlight":    optComputedString("Spotlight query. Mirrors the admin UI \"Search for File Using Spotlight\" input."),
-					"search_for_process":     optComputedString("Process name to search for."),
-					"kill_process_if_found":  optComputedBool("Kill processes matching the search if found."),
-					"execute_command":        optComputedString("Command to execute. Mirrors the admin UI \"Execute Command\" input."),
+					"search_by_path":         optComputedString("Path to search for. Mirrors the admin UI \"Search for File by Path\" input. Omit to leave the current value untouched."),
+					"delete_file_if_found":   optComputedBool("Delete files matching the search criteria if found. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"search_by_filename":     optComputedString("File name to search for. Mirrors the admin UI \"Search for File by Filename\" input. Omit to leave the current value untouched."),
+					"update_locate_database": optComputedBool("Update the locate database before searching. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"search_by_spotlight":    optComputedString("Spotlight query. Mirrors the admin UI \"Search for File Using Spotlight\" input. Omit to leave the current value untouched."),
+					"search_for_process":     optComputedString("Process name to search for. Omit to leave the current value untouched."),
+					"kill_process_if_found":  optComputedBool("Kill processes matching the search if found. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"execute_command":        optComputedString("Command to execute. Mirrors the admin UI \"Execute Command\" input. Omit to leave the current value untouched."),
 				},
 			},
 			"user_interaction": schema.SingleNestedAttribute{
-				MarkdownDescription: "User interaction prompts shown around policy execution. The \"Deferral Type\" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Switching between deferral types is an in-place change.",
+				MarkdownDescription: "User interaction prompts shown around policy execution. The \"Deferral Type\" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Switching between deferral types is an in-place change. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"start_message": optComputedString("Message displayed before the policy runs. Mirrors the admin UI \"Start Message\" input."),
@@ -571,14 +571,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"disk_encryption": schema.SingleNestedAttribute{
-				MarkdownDescription: "Disk encryption configuration to apply.",
+				MarkdownDescription: "Disk encryption configuration to apply. Omit the block to leave any existing values untouched (they are not cleared on update).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"action":                           optComputedString("Disk encryption action (`apply`, `remediate`, `none`)."),
-					"disk_encryption_configuration_id": optComputedInt("Disk encryption configuration ID to apply."),
-					"auth_restart":                     optComputedBool("Use authenticated restart."),
-					"remediate_key_type":               optComputedString("Key type for remediation (`Individual`, `Institutional`, `Individual And Institutional`)."),
-					"remediate_disk_encryption_configuration_id": optComputedInt("Disk encryption configuration ID used to remediate."),
+					"action":                           optComputedString("Disk encryption action (`apply`, `remediate`, `none`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it."),
+					"disk_encryption_configuration_id": optComputedInt("Disk encryption configuration ID to apply. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."),
+					"auth_restart":                     optComputedBool("Use authenticated restart. Omit to leave the current value untouched; set `true`/`false` to change it."),
+					"remediate_key_type":               optComputedString("Key type for remediation (`Individual`, `Institutional`, `Individual And Institutional`). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it."),
+					"remediate_disk_encryption_configuration_id": optComputedInt("Disk encryption configuration ID used to remediate. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."),
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

@@ -239,7 +239,9 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"internet gateway must leave this unset.\n\n" +
 					"The accepted addresses are fixed per egress region and are the ones the admin UI lists when " +
 					"you pick the region. The provider does not check them at plan time because the accepted set " +
-					"is not published anywhere it can read.",
+					"is not published anywhere it can read.\n\n" +
+					"Taking the attribute out of your configuration clears the addresses on the next update " +
+					"rather than leaving them alone.",
 				Optional:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{

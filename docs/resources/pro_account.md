@@ -98,16 +98,16 @@ variable "sam_password" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `access_status` (String) Account status (UI "Access Status"). One of `Enabled` or `Disabled`.
+- `access_status` (String) Account status (UI "Access Status"). One of `Enabled` or `Disabled`. Omit to leave the current value untouched; set `Enabled` or `Disabled` to change it.
 - `account_type` (String) Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable, so changing it forces the account to be replaced.
-- `email_address` (String) Email address (UI "Email Address"). Must be unique across accounts; Jamf Pro rejects a duplicate on create.
-- `force_password_change` (Boolean) Whether the user must change their password at next login (UI "Force change at next login").
-- `full_name` (String) Full name (UI "Full Name").
-- `ldap_server_id` (Number) ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account.
+- `email_address` (String) Email address (UI "Email Address"). Must be unique across accounts; Jamf Pro rejects a duplicate on create. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `force_password_change` (Boolean) Whether the user must change their password at next login (UI "Force change at next login"). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `full_name` (String) Full name (UI "Full Name"). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `ldap_server_id` (Number) ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 - `password` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext account password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value and bump `password_wo_version`.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Set to `1` on create; bump it (any change) to force a base-field update that re-sends `password`. Unset/unchanged means "leave the stored password alone".
-- `privileges` (Attributes) Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. (see [below for nested schema](#nestedatt--privileges))
-- `site_id` (Number) Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`.
+- `privileges` (Attributes) Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. Omit a category to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them. (see [below for nested schema](#nestedatt--privileges))
+- `site_id` (Number) Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -148,5 +148,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing Jamf Pro user account by its numeric ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_account.example "175"
 ```

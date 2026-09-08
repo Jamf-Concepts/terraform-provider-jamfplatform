@@ -91,7 +91,7 @@ output "vpp_invitation_usages" {
 
 Requires the referenced VPP location to have automatic registration enabled (`auto_register_managed_users = true` on `jamfplatform_pro_volume_purchasing_location`); otherwise Jamf Pro rejects `true` with "not enabled on Vpp Location". Set to `false` for locations without it.
 - `message` (String) Body of the invitation email. Use `%@` where the registration URL should be inserted. Required (and only used) when `distribution_method` is `Send emails`.
-- `require_login` (Boolean) Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`.
+- `require_login` (Boolean) Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`. Omit to leave the current value untouched; set `true`/`false` to change it.
 - `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and updates preserve whatever is configured outside Terraform. (see [below for nested schema](#nestedatt--scope))
 - `sender_email_address` (String) Sender email address for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
 - `sender_name` (String) Sender display name for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
@@ -175,5 +175,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing volume purchasing invitation by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_vpp_invitation.self_service "2"
 ```

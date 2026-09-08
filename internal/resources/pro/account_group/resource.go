@@ -108,7 +108,7 @@ func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRe
 				},
 			},
 			"site_id": schema.Int64Attribute{
-				MarkdownDescription: "ID of the site this group is scoped to. `-1` means no site (the default). Only meaningful when `access_level` is `Site Access`.",
+				MarkdownDescription: "ID of the site this group is scoped to. `-1` means no site (the default). Only meaningful when `access_level` is `Site Access`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},

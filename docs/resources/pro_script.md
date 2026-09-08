@@ -66,7 +66,7 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 
 ### Optional
 
-- `category_id` (String) ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. When omitted, Jamf Pro reports `-1` (no category).
+- `category_id` (String) ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. Jamf Pro reports `-1` when the script has no category. Omit to leave the current value untouched; there is no blank-clear, so set a concrete value to change it.
 - `info` (String) Informational text shown to end users (e.g. in Self Service) describing the script. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `notes` (String) Administrator-only notes about the script. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `os_requirements` (String) Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
@@ -78,7 +78,7 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 - `parameter_7` (String) Label for script parameter slot 7. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `parameter_8` (String) Label for script parameter slot 8. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `parameter_9` (String) Label for script parameter slot 9. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
-- `priority` (String) Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.
+- `priority` (String) Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 - `script_contents` (String) Script contents as plain text (shell, Python, and so on). Omit to leave the existing contents untouched: Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI. Set to `""` to clear. A declared value is owned by Terraform and reverts out-of-band edits.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

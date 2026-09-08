@@ -71,10 +71,10 @@ output "enrollment_attachments" {
 
 ### Optional
 
-- `description` (String) Description shown on the enrollment profile's General tab.
-- `location` (Attributes) User and Location Information for devices enrolled with this profile. (see [below for nested schema](#nestedatt--location))
-- `purchasing` (Attributes) Purchasing Information for devices enrolled with this profile. (see [below for nested schema](#nestedatt--purchasing))
-- `site_id` (String) ID of the site mobile devices enrolled with this profile are added to. Defaults to `-1` (no site).
+- `description` (String) Description shown on the enrollment profile's General tab. Omit it and Jamf Pro clears the stored description.
+- `location` (Attributes) User and Location Information for devices enrolled with this profile. The fields inside it behave the other way round, so read each one before relying on it. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--location))
+- `purchasing` (Attributes) Purchasing Information for devices enrolled with this profile. The string fields inside it behave the other way round, so read each one before relying on it. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--purchasing))
+- `site_id` (String) ID of the site mobile devices enrolled with this profile are added to. Defaults to `-1` (no site). Omit to leave the current value untouched.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -90,14 +90,14 @@ output "enrollment_attachments" {
 
 Optional:
 
-- `building` (String) Building.
-- `department` (String) Department.
-- `email_address` (String) Email address.
-- `phone_number` (String) Phone number.
-- `position` (String) Position.
-- `real_name` (String) Full name.
-- `room` (String) Room.
-- `username` (String) Username.
+- `building` (String) Building name, matching an existing Jamf Pro building. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `department` (String) Department name, matching an existing Jamf Pro department. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `email_address` (String) Email address of the user. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `phone_number` (String) Phone number of the user. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `position` (String) Job title, shown under `Position` in the admin UI. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `real_name` (String) Full name of the user. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `room` (String) Room. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `username` (String) Username stamped on each enrolled device. Omit it inside a declared block and Jamf Pro clears the stored value.
 
 
 <a id="nestedatt--purchasing"></a>
@@ -105,18 +105,18 @@ Optional:
 
 Optional:
 
-- `applecare_id` (String) AppleCare ID.
-- `is_leased` (Boolean) Whether the device is leased. Defaults to false.
-- `is_purchased` (Boolean) Whether the device is purchased. Defaults to true.
-- `lease_expires` (String) Lease expiration date (YYYY-MM-DD).
-- `life_expectancy` (Number) Life expectancy in years.
-- `po_date` (String) Purchase order date (YYYY-MM-DD).
-- `po_number` (String) Purchase order number.
-- `purchase_price` (String) Purchase price.
-- `purchasing_account` (String) Purchasing account.
-- `purchasing_contact` (String) Purchasing contact.
-- `vendor` (String) Vendor.
-- `warranty_expires` (String) Warranty expiration date (YYYY-MM-DD).
+- `applecare_id` (String) AppleCare ID. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `is_leased` (Boolean) Whether the device is leased. Defaults to false. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `is_purchased` (Boolean) Whether the device is purchased. Defaults to true. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `lease_expires` (String) Lease expiration date, as `YYYY-MM-DD`. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `life_expectancy` (Number) Life expectancy in years. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `po_date` (String) Purchase order date, as `YYYY-MM-DD`. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `po_number` (String) Purchase order number. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `purchase_price` (String) Purchase price. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `purchasing_account` (String) Purchasing account. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `purchasing_contact` (String) Purchasing contact. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `vendor` (String) Vendor the device was bought from. Omit it inside a declared block and Jamf Pro clears the stored value.
+- `warranty_expires` (String) Warranty expiration date, as `YYYY-MM-DD`. Omit it inside a declared block and Jamf Pro clears the stored value.
 
 Read-Only:
 
@@ -158,5 +158,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing mobile device enrollment profile by its numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, including the location
+# and purchasing blocks, so the first plan afterwards can propose removing what
+# your configuration does not declare. See the "Importing existing objects"
+# guide for what applying that plan does.
 terraform import jamfplatform_pro_mobile_device_enrollment_profile.configurator "61"
 ```

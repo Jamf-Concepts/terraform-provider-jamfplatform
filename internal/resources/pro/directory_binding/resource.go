@@ -102,7 +102,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"priority": schema.Int64Attribute{
-				MarkdownDescription: "Binding priority, in the range 1–10. Lower numbers run earlier when Jamf Pro evaluates multiple bindings. Omit it to let Jamf Pro assign the default.",
+				MarkdownDescription: "Binding priority, in the range 1–10. Lower numbers run earlier when Jamf Pro evaluates multiple bindings. " + preserveOnOmitInteger,
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{
@@ -143,10 +143,10 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"active_directory": schema.SingleNestedAttribute{
-				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
+				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. " + preserveOnOmitBlock + " When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"forest":                     optString("Active Directory forest. Free text; an empty value is preserved."),
+					"forest":                     optString("Active Directory forest."),
 					"create_mobile_account":      optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login."),
 					"require_confirmation":       optBool("**\"Require confirmation before creating a mobile account\"** in the Jamf Pro admin UI."),
 					"force_local_home_directory": optBool("**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI."),
@@ -163,7 +163,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"open_directory": schema.SingleNestedAttribute{
-				MarkdownDescription: "Open Directory–specific configuration. May only be set when `type = \"Open Directory\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
+				MarkdownDescription: "Open Directory–specific configuration. May only be set when `type = \"Open Directory\"`; setting it for any other type is a plan-time error. " + preserveOnOmitBlock + " When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"encrypt_using_ssl":      optBool("**\"Encrypt using SSL\"** in the Jamf Pro admin UI. Encrypt the LDAP connection to the directory."),
@@ -174,7 +174,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"admitmac": schema.SingleNestedAttribute{
-				MarkdownDescription: "ADmitMac–specific configuration. May only be set when `type = \"ADmitMac\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
+				MarkdownDescription: "ADmitMac–specific configuration. May only be set when `type = \"ADmitMac\"`; setting it for any other type is a plan-time error. " + preserveOnOmitBlock + " When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"require_confirmation":       optBool("**\"Require confirmation\"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory."),
@@ -188,7 +188,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID."),
 					"admin_group":                optString("**\"Allow administration by\"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs."),
 					"cached_credentials": schema.Int64Attribute{
-						MarkdownDescription: "**\"Cached credentials\"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login.",
+						MarkdownDescription: "**\"Cached credentials\"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login. " + preserveOnOmitInteger,
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -204,7 +204,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 			},
 
 			"centrify": schema.SingleNestedAttribute{
-				MarkdownDescription: "Centrify–specific configuration. May only be set when `type = \"Centrify\"`; setting it for any other type is a plan-time error. When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
+				MarkdownDescription: "Centrify–specific configuration. May only be set when `type = \"Centrify\"`; setting it for any other type is a plan-time error. " + preserveOnOmitBlock + " When you supply the block, Jamf Pro applies a default for any inner field you omit, and Terraform records the value it applied.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"workstation_mode":        optBool("Bind in Workstation mode (versus joined mode)."),
@@ -250,9 +250,25 @@ func (r *DirectoryBindingResource) ImportState(ctx context.Context, req resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
+// preserveOnOmitString, preserveOnOmitBool, preserveOnOmitInteger and
+// preserveOnOmitBlock are the house sentences every preserve-on-omit
+// description ends with, per STYLE_GUIDE.md §Full-replace endpoints & shared
+// backing stores ("Description convention"). The classic /directorybindings
+// update merges field by field (see crud.go), so omitting an attribute — or a
+// whole per-type block — leaves the stored Jamf Pro value alone. The wording
+// differs by type because only a string has a blank that clears.
+const (
+	preserveOnOmitString  = "Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it."
+	preserveOnOmitBool    = "Omit to leave the current value untouched; set `true`/`false` to change it."
+	preserveOnOmitInteger = "Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it."
+	preserveOnOmitBlock   = "Omit the block to leave any existing values untouched (they are not cleared on update)."
+)
+
 // optString is a tiny shorthand for an Optional+Computed schema.StringAttribute
 // with the canonical UseStateForUnknown plan modifier and a
-// MarkdownDescription. The nested per-type blocks have many fields and
+// MarkdownDescription, to which it appends preserveOnOmitString — every field
+// built through it reaches the wire as a drop-on-null pointer, so omitting it
+// preserves the stored value. The nested per-type blocks have many fields and
 // repeating the full struct literal made the schema unreadable.
 //
 // Why Optional+Computed: the Jamf Pro server populates every per-type
@@ -265,7 +281,7 @@ func (r *DirectoryBindingResource) ImportState(ctx context.Context, req resource
 // every refresh as a transient diff. Used only inside this file.
 func optString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " " + preserveOnOmitString,
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.String{
@@ -275,10 +291,11 @@ func optString(desc string) schema.StringAttribute {
 }
 
 // optBool is the bool counterpart of optString — same Optional+Computed
-// + UseStateForUnknown rationale, same scope.
+// + UseStateForUnknown rationale, same scope, with preserveOnOmitBool
+// appended instead.
 func optBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
-		MarkdownDescription: desc,
+		MarkdownDescription: desc + " " + preserveOnOmitBool,
 		Optional:            true,
 		Computed:            true,
 		PlanModifiers: []planmodifier.Bool{

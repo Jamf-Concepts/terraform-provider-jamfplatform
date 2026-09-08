@@ -94,16 +94,16 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 					"display_name":        reqString("**\"Display Name\"** in the Jamf Pro admin UI. Display name for the LDAP server. Must not be empty."),
 					"directory_service":   reqStringOneOf("**\"Directory Service\"** in the Jamf Pro admin UI. The directory product. Valid values: `\"Active Directory\"` (UI \"Microsoft's Active Directory\"), `\"Open Directory\"` (UI \"Apple's Open Directory\"), `\"eDirectory\"` (UI \"Novell's eDirectory\"), `\"Custom\"` (UI \"Configure Manually\").", allServerTypes),
 					"hostname":            reqString("**\"Server and Port\"** (host) in the Jamf Pro admin UI. Hostname or IP address of the LDAP server."),
-					"port":                optInt64("**\"Server and Port\"** (port) in the Jamf Pro admin UI. Defaults to 389 (or 636 for LDAPS) when omitted."),
+					"port":                optInt64("**\"Server and Port\"** (port) in the Jamf Pro admin UI. Jamf Pro defaults it to 389 (or 636 for LDAPS) on create."),
 					"use_ssl":             optBool("**\"Use SSL\"** in the Jamf Pro admin UI. Connect to the LDAP server over SSL/LDAPS."),
 					"authentication_type": optStringOneOf("**\"Authentication Type\"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind: omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.", allAuthenticationTypes),
 
 					"account": schema.SingleNestedAttribute{
-						MarkdownDescription: "**\"LDAP Server Account\"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. To fully remove a bind account from an existing server, recreate the server.",
+						MarkdownDescription: "**\"LDAP Server Account\"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. " + preserveOnOmitBlock + " To fully remove a bind account from an existing server, recreate the server.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"distinguished_username": schema.StringAttribute{
-								MarkdownDescription: "**\"Distinguished Username\"** in the Jamf Pro admin UI. Distinguished name of the bind account (e.g. `CN=svc,CN=Users,DC=example,DC=com`) or another type-specific identifier.",
+								MarkdownDescription: "**\"Distinguished Username\"** in the Jamf Pro admin UI. Distinguished name of the bind account (e.g. `CN=svc,CN=Users,DC=example,DC=com`) or another type-specific identifier. " + preserveOnOmitString,
 								Optional:            true,
 							},
 							"password": schema.StringAttribute{
@@ -119,10 +119,10 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 						},
 					},
 
-					"connection_timeout": optInt64("**\"Connection Timeout\"** in the Jamf Pro admin UI. Seconds to wait before cancelling a connection attempt. Defaults to 15 when omitted."),
-					"search_timeout":     optInt64("**\"Search Timeout\"** in the Jamf Pro admin UI. Seconds to wait before cancelling a search request. Defaults to 60 when omitted."),
-					"referral_response":  optStringOneOf("**\"Referral Response\"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `\"\"` (use default from LDAP service), `follow`, `ignore`.", allReferralResponses),
-					"use_wildcards":      optBool("**\"Use Wildcards When Searching\"** in the Jamf Pro admin UI. Allow partial matches in directory searches. Defaults to true when omitted."),
+					"connection_timeout": optInt64("**\"Connection Timeout\"** in the Jamf Pro admin UI. Seconds to wait before cancelling a connection attempt. Jamf Pro defaults it to 15 on create."),
+					"search_timeout":     optInt64("**\"Search Timeout\"** in the Jamf Pro admin UI. Seconds to wait before cancelling a search request. Jamf Pro defaults it to 60 on create."),
+					"referral_response":  optStringOneOfPreserving("**\"Referral Response\"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `\"\"` (use default from LDAP service), `follow`, `ignore`.", allReferralResponses, "Omit to leave the current value untouched; set `\"\"` to fall back to the LDAP service default."),
+					"use_wildcards":      optBool("**\"Use Wildcards When Searching\"** in the Jamf Pro admin UI. Allow partial matches in directory searches. Jamf Pro defaults it to true on create."),
 
 					"is_enabled":        computedBool("Whether the LDAP server connection is enabled. Returned by Jamf Pro; not user-settable."),
 					"migrated_to_id":    computedInt64("ID of the Cloud Identity Provider this server was migrated to, or 0 if not migrated. Returned by Jamf Pro; not user-settable."),
@@ -135,7 +135,7 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"user_mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "**User Mappings** sub-tab. Maps directory attributes onto Jamf Pro user fields.",
+						MarkdownDescription: "**User Mappings** sub-tab. Maps directory attributes onto Jamf Pro user fields. " + preserveOnOmitBlock,
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"object_class_limitation": optStringOneOf("**\"Object Class Limitation\"** in the Jamf Pro admin UI. `any` (\"Any ObjectClass Values\") or `all` (\"All ObjectClass Values\").", allObjectClassLimits),
@@ -156,7 +156,7 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 						},
 					},
 					"user_group_mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "**User Group Mappings** sub-tab. Maps directory attributes onto Jamf Pro user-group fields.",
+						MarkdownDescription: "**User Group Mappings** sub-tab. Maps directory attributes onto Jamf Pro user-group fields. " + preserveOnOmitBlock,
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"object_class_limitation": optStringOneOf("**\"Object Class Limitation\"** in the Jamf Pro admin UI. `any` or `all`.", allObjectClassLimits),
@@ -169,7 +169,7 @@ func (r *LdapServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 						},
 					},
 					"user_group_membership_mappings": schema.SingleNestedAttribute{
-						MarkdownDescription: "**User Group Membership Mappings** sub-tab. Controls how directory group membership is resolved. All fields are optional; the set you populate depends on `membership_location`.",
+						MarkdownDescription: "**User Group Membership Mappings** sub-tab. Controls how directory group membership is resolved. All fields are optional; the set you populate depends on `membership_location`. " + preserveOnOmitBlock,
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"membership_location":                 optStringOneOf("**\"Membership Location\"** in the Jamf Pro admin UI. Where group memberships are stored: `group object` or `user object`. The admin UI's \"Other\" choice corresponds to one of these two values combined with the object-class, search, username, and group-id fields below.", allMembershipLocations),

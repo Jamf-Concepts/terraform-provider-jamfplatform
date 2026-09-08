@@ -137,14 +137,14 @@ Required:
 
 Optional:
 
-- `account` (Attributes) **"LDAP Server Account"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. To fully remove a bind account from an existing server, recreate the server. (see [below for nested schema](#nestedatt--connection_settings--account))
-- `authentication_type` (String) **"Authentication Type"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind: omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`.
-- `connection_timeout` (Number) **"Connection Timeout"** in the Jamf Pro admin UI. Seconds to wait before cancelling a connection attempt. Defaults to 15 when omitted.
-- `port` (Number) **"Server and Port"** (port) in the Jamf Pro admin UI. Defaults to 389 (or 636 for LDAPS) when omitted.
-- `referral_response` (String) **"Referral Response"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `""` (use default from LDAP service), `follow`, `ignore`.
-- `search_timeout` (Number) **"Search Timeout"** in the Jamf Pro admin UI. Seconds to wait before cancelling a search request. Defaults to 60 when omitted.
-- `use_ssl` (Boolean) **"Use SSL"** in the Jamf Pro admin UI. Connect to the LDAP server over SSL/LDAPS.
-- `use_wildcards` (Boolean) **"Use Wildcards When Searching"** in the Jamf Pro admin UI. Allow partial matches in directory searches. Defaults to true when omitted.
+- `account` (Attributes) **"LDAP Server Account"** in the Jamf Pro admin UI. Lookup/bind account credentials. Required when `authentication_type` is anything other than `none`; omit entirely for anonymous binds. Omit the block to leave any existing values untouched (they are not cleared on update). To fully remove a bind account from an existing server, recreate the server. (see [below for nested schema](#nestedatt--connection_settings--account))
+- `authentication_type` (String) **"Authentication Type"** in the Jamf Pro admin UI. Bind authentication mechanism. Valid values (case-sensitive): `none` (anonymous bind: omit the `account` block), `simple`, `CRAM-MD5`, `DIGEST-MD5`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `connection_timeout` (Number) **"Connection Timeout"** in the Jamf Pro admin UI. Seconds to wait before cancelling a connection attempt. Jamf Pro defaults it to 15 on create. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `port` (Number) **"Server and Port"** (port) in the Jamf Pro admin UI. Jamf Pro defaults it to 389 (or 636 for LDAPS) on create. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `referral_response` (String) **"Referral Response"** in the Jamf Pro admin UI. Action when an LDAP referral is received. Valid values (lower-case): `""` (use default from LDAP service), `follow`, `ignore`. Omit to leave the current value untouched; set `""` to fall back to the LDAP service default.
+- `search_timeout` (Number) **"Search Timeout"** in the Jamf Pro admin UI. Seconds to wait before cancelling a search request. Jamf Pro defaults it to 60 on create. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
+- `use_ssl` (Boolean) **"Use SSL"** in the Jamf Pro admin UI. Connect to the LDAP server over SSL/LDAPS. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `use_wildcards` (Boolean) **"Use Wildcards When Searching"** in the Jamf Pro admin UI. Allow partial matches in directory searches. Jamf Pro defaults it to true on create. Omit to leave the current value untouched; set `true`/`false` to change it.
 
 Read-Only:
 
@@ -157,7 +157,7 @@ Read-Only:
 
 Optional:
 
-- `distinguished_username` (String) **"Distinguished Username"** in the Jamf Pro admin UI. Distinguished name of the bind account (e.g. `CN=svc,CN=Users,DC=example,DC=com`) or another type-specific identifier.
+- `distinguished_username` (String) **"Distinguished Username"** in the Jamf Pro admin UI. Distinguished name of the bind account (e.g. `CN=svc,CN=Users,DC=example,DC=com`) or another type-specific identifier. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly`: sent to Jamf Pro on writes, never persisted in Terraform state. Jamf Pro never returns the plaintext on read, so rotation is driven by the companion `password_wo_version` integer.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force the next update to re-send `password`. Set `password_wo_version = 1` on create. Leaving it unset or unchanged signals "leave the stored password alone": the provider omits the password from the next update, so Jamf Pro retains the existing value.
 
@@ -168,22 +168,22 @@ Optional:
 
 Optional:
 
-- `user_group_mappings` (Attributes) **User Group Mappings** sub-tab. Maps directory attributes onto Jamf Pro user-group fields. (see [below for nested schema](#nestedatt--mappings_for_users--user_group_mappings))
-- `user_group_membership_mappings` (Attributes) **User Group Membership Mappings** sub-tab. Controls how directory group membership is resolved. All fields are optional; the set you populate depends on `membership_location`. (see [below for nested schema](#nestedatt--mappings_for_users--user_group_membership_mappings))
-- `user_mappings` (Attributes) **User Mappings** sub-tab. Maps directory attributes onto Jamf Pro user fields. (see [below for nested schema](#nestedatt--mappings_for_users--user_mappings))
+- `user_group_mappings` (Attributes) **User Group Mappings** sub-tab. Maps directory attributes onto Jamf Pro user-group fields. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--mappings_for_users--user_group_mappings))
+- `user_group_membership_mappings` (Attributes) **User Group Membership Mappings** sub-tab. Controls how directory group membership is resolved. All fields are optional; the set you populate depends on `membership_location`. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--mappings_for_users--user_group_membership_mappings))
+- `user_mappings` (Attributes) **User Mappings** sub-tab. Maps directory attributes onto Jamf Pro user fields. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--mappings_for_users--user_mappings))
 
 <a id="nestedatt--mappings_for_users--user_group_mappings"></a>
 ### Nested Schema for `mappings_for_users.user_group_mappings`
 
 Optional:
 
-- `group_id` (String) **"Group ID"** mapping.
-- `group_name` (String) **"Group Name"** mapping (e.g. `sAMAccountName`).
-- `group_uuid` (String) **"Group UUID"** mapping (e.g. `objectGUID`).
-- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI. `any` or `all`.
-- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI. Comma-separated object classes (e.g. `group`).
-- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI. Distinguished name of the group search base.
-- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI. `All Subtrees` or `First Level Only`.
+- `group_id` (String) **"Group ID"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `group_name` (String) **"Group Name"** mapping (e.g. `sAMAccountName`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `group_uuid` (String) **"Group UUID"** mapping (e.g. `objectGUID`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI. `any` or `all`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI. Comma-separated object classes (e.g. `group`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI. Distinguished name of the group search base. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI. `All Subtrees` or `First Level Only`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
 
 
 <a id="nestedatt--mappings_for_users--user_group_membership_mappings"></a>
@@ -191,22 +191,22 @@ Optional:
 
 Optional:
 
-- `append_to_username` (String) **"Append to Username When Searching"** in the Jamf Pro admin UI.
-- `group_id_mapping` (String) **"Group ID Mapping"** in the Jamf Pro admin UI (Other mode).
-- `group_membership_mapping` (String) **"Group Membership Mapping"** in the Jamf Pro admin UI (User Object mode). Directory attribute mapping a user to their groups (e.g. `memberOf`).
-- `map_user_membership_use_dn` (Boolean) **"Use distinguished name of user groups when searching"** in the Jamf Pro admin UI (User Object mode).
-- `member_user_mapping` (String) **"Member User Mapping"** in the Jamf Pro admin UI (Group Object mode). Directory attribute mapping member users to a group (e.g. `member`).
-- `membership_calculation_optimization` (Boolean) **"Membership calculation optimization"** in the Jamf Pro admin UI.
-- `membership_location` (String) **"Membership Location"** in the Jamf Pro admin UI. Where group memberships are stored: `group object` or `user object`. The admin UI's "Other" choice corresponds to one of these two values combined with the object-class, search, username, and group-id fields below.
-- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI (Other mode). `any` or `all`.
-- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI (Other mode).
-- `recursive_lookups` (Boolean) **"Use recursive group searches"** in the Jamf Pro admin UI.
-- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI (Other mode).
-- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI (Other mode). `All Subtrees` or `First Level Only`.
-- `use_dn` (Boolean) **"Use distinguished name of member user when searching"** in the Jamf Pro admin UI.
-- `use_ldap_compare` (Boolean) **"Use the LDAP compare operation when searching"** in the Jamf Pro admin UI.
-- `use_member_field_for_select_queries` (Boolean) **"Use the 'member' field for select membership queries"** in the Jamf Pro admin UI (User Object mode). The `member` field must be present on the LDAP group object for the query to succeed; enabling this improves performance of some membership queries.
-- `username_mapping` (String) **"Username Mapping"** in the Jamf Pro admin UI (Other mode).
+- `append_to_username` (String) **"Append to Username When Searching"** in the Jamf Pro admin UI. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `group_id_mapping` (String) **"Group ID Mapping"** in the Jamf Pro admin UI (Other mode). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `group_membership_mapping` (String) **"Group Membership Mapping"** in the Jamf Pro admin UI (User Object mode). Directory attribute mapping a user to their groups (e.g. `memberOf`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `map_user_membership_use_dn` (Boolean) **"Use distinguished name of user groups when searching"** in the Jamf Pro admin UI (User Object mode). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `member_user_mapping` (String) **"Member User Mapping"** in the Jamf Pro admin UI (Group Object mode). Directory attribute mapping member users to a group (e.g. `member`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `membership_calculation_optimization` (Boolean) **"Membership calculation optimization"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `membership_location` (String) **"Membership Location"** in the Jamf Pro admin UI. Where group memberships are stored: `group object` or `user object`. The admin UI's "Other" choice corresponds to one of these two values combined with the object-class, search, username, and group-id fields below. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI (Other mode). `any` or `all`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI (Other mode). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `recursive_lookups` (Boolean) **"Use recursive group searches"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI (Other mode). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI (Other mode). `All Subtrees` or `First Level Only`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `use_dn` (Boolean) **"Use distinguished name of member user when searching"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `use_ldap_compare` (Boolean) **"Use the LDAP compare operation when searching"** in the Jamf Pro admin UI. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `use_member_field_for_select_queries` (Boolean) **"Use the 'member' field for select membership queries"** in the Jamf Pro admin UI (User Object mode). The `member` field must be present on the LDAP group object for the query to succeed; enabling this improves performance of some membership queries. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `username_mapping` (String) **"Username Mapping"** in the Jamf Pro admin UI (Other mode). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 
 <a id="nestedatt--mappings_for_users--user_mappings"></a>
@@ -214,21 +214,21 @@ Optional:
 
 Optional:
 
-- `append_to_email_results` (String) **"Append to Email Results"** in the Jamf Pro admin UI. Text appended to email lookups (e.g. `@mycompany.com`).
-- `building` (String) **"Building"** mapping.
-- `department` (String) **"Department"** mapping.
-- `email_address` (String) **"Email Address"** mapping.
-- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI. `any` ("Any ObjectClass Values") or `all` ("All ObjectClass Values").
-- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI. Comma-separated object classes to limit results to (e.g. `organizationalPerson`).
-- `phone` (String) **"Phone"** mapping.
-- `position` (String) **"Position"** mapping.
-- `real_name` (String) **"Real Name"** mapping.
-- `room` (String) **"Room"** mapping.
-- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI. Distinguished name of the user search base.
-- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI. `All Subtrees` or `First Level Only`.
-- `user_id` (String) **"User ID"** mapping. Directory attribute mapped to the Jamf Pro user ID.
-- `user_uuid` (String) **"User UUID"** mapping (e.g. `objectGUID`).
-- `username` (String) **"Username"** mapping. Directory attribute mapped to the Jamf Pro username.
+- `append_to_email_results` (String) **"Append to Email Results"** in the Jamf Pro admin UI. Text appended to email lookups (e.g. `@mycompany.com`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `building` (String) **"Building"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `department` (String) **"Department"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `email_address` (String) **"Email Address"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `object_class_limitation` (String) **"Object Class Limitation"** in the Jamf Pro admin UI. `any` ("Any ObjectClass Values") or `all` ("All ObjectClass Values"). Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `object_classes` (String) **"Object Class(es)"** in the Jamf Pro admin UI. Comma-separated object classes to limit results to (e.g. `organizationalPerson`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `phone` (String) **"Phone"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `position` (String) **"Position"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `real_name` (String) **"Real Name"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `room` (String) **"Room"** mapping. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `search_base` (String) **"Search Base"** in the Jamf Pro admin UI. Distinguished name of the user search base. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `search_scope` (String) **"Search Scope"** in the Jamf Pro admin UI. `All Subtrees` or `First Level Only`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `user_id` (String) **"User ID"** mapping. Directory attribute mapped to the Jamf Pro user ID. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `user_uuid` (String) **"User UUID"** mapping (e.g. `objectGUID`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `username` (String) **"Username"** mapping. Directory attribute mapped to the Jamf Pro username. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 
 

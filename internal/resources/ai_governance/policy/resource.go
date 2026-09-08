@@ -154,8 +154,10 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Account admin UI: what this policy is for.",
-				Optional:            true,
+				MarkdownDescription: "**\"Description\"** in the Jamf Account admin UI: what this policy is for. " +
+					"Unlike most optional values in this provider, taking it out of your configuration clears " +
+					"the stored description rather than leaving it alone.",
+				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(maxDescriptionLength),
 				},

@@ -115,7 +115,7 @@ func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaReq
 				Required:            true,
 			},
 			"auto_install": schema.BoolAttribute{
-				MarkdownDescription: "**\"Automatically deploy the Jamf Protect PKG with plans\"** in the Jamf Pro admin UI. Server default `false`. The only field that can change without re-registering.",
+				MarkdownDescription: "**\"Automatically deploy the Jamf Protect PKG with plans\"** in the Jamf Pro admin UI. Server default `false`. The only field that can change without re-registering. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

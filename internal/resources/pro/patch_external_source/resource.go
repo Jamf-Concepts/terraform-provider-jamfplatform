@@ -91,7 +91,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the patch external source is enabled. Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether the patch external source is enabled. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -113,7 +113,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"ssl_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether the source is contacted over SSL (UI \"Use SSL\"). Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether the source is contacted over SSL (UI \"Use SSL\"). Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -121,7 +121,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"certificate_validation_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI \"Validate Software Title Definitions\"); unsigned definitions are not downloaded. Jamf Pro applies its own default when omitted.",
+				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI \"Validate Software Title Definitions\"); unsigned definitions are not downloaded. Jamf Pro applies its own default on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

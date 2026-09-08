@@ -80,8 +80,8 @@ func (r *SsoSettingsResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). One record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
-			"### Manage SSO all-or-nothing\n\n" +
-			"This resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.\n\n" +
+			"### Declare every option on the first apply\n\n" +
+			"This resource owns the entire SSO configuration as one unit, and the first apply writes it from your configuration alone: Terraform writes an option you leave out as its Jamf Pro default rather than adopting the tenant's value. Import the tenant's existing settings, or declare every option you want to keep, before applying. Once Terraform holds a value, omitting the attribute leaves that value untouched, so manage SSO entirely through Terraform rather than partly here and partly in the admin console.\n\n" +
 			"### Cross-field requirements\n\n" +
 			"All of these are enforced at plan time.\n\n" +
 			"- `configuration_type = \"SAML\"` requires the `saml_settings` block.\n" +
@@ -108,13 +108,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 
 			"sso_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether SSO is enabled on the tenant.",
+				MarkdownDescription: "Whether SSO is enabled on the tenant. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"sso_bypass_allowed": schema.BoolAttribute{
-				MarkdownDescription: "Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.",
+				MarkdownDescription: "Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -123,7 +123,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"sso_for_enrollment_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.",
+				MarkdownDescription: "Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -132,7 +132,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"sso_for_macos_self_service_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.",
+				MarkdownDescription: "Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -141,7 +141,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"enrollment_sso_for_account_driven_enrollment_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant.",
+				MarkdownDescription: "Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -150,7 +150,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"group_enrollment_access_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.",
+				MarkdownDescription: "Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -185,13 +185,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"jamf_id_authentication_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Allow Jamf ID authentication alongside the configured OIDC provider. Jamf Pro applies its default when omitted.",
+						MarkdownDescription: "Allow Jamf ID authentication alongside the configured OIDC provider. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 					},
 					"username_attribute_claim_mapping": schema.StringAttribute{
-						MarkdownDescription: "OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Jamf Pro applies its default when omitted.",
+						MarkdownDescription: "OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -207,7 +207,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"idp_provider_type": schema.StringAttribute{
-						MarkdownDescription: "SAML IdP type. One of `ADFS`, `OKTA`, `GOOGLE`, `SHIBBOLETH`, `ONELOGIN`, `PING`, `CENTRIFY`, `AZURE`, or `OTHER`. When `OTHER`, `other_provider_type_name` must also be set.",
+						MarkdownDescription: "SAML IdP type. One of `ADFS`, `OKTA`, `GOOGLE`, `SHIBBOLETH`, `ONELOGIN`, `PING`, `CENTRIFY`, `AZURE`, or `OTHER`. When `OTHER`, `other_provider_type_name` must also be set. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -217,13 +217,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"other_provider_type_name": schema.StringAttribute{
-						MarkdownDescription: "Display name for the IdP when `idp_provider_type = \"OTHER\"`.",
+						MarkdownDescription: "Display name for the IdP when `idp_provider_type = \"OTHER\"`. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"entity_id": schema.StringAttribute{
-						MarkdownDescription: "SAML EntityID. Required (non-empty) when `configuration_type` includes SAML.",
+						MarkdownDescription: "SAML EntityID. Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -232,7 +232,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"metadata_source": schema.StringAttribute{
-						MarkdownDescription: "How Jamf Pro obtains IdP SAML metadata. `URL` (Jamf Pro fetches metadata from `idp_url`) or `FILE` (raw base64 supplied in `federation_metadata_file`). The two branches are mutually exclusive.",
+						MarkdownDescription: "How Jamf Pro obtains IdP SAML metadata. `URL` (Jamf Pro fetches metadata from `idp_url`) or `FILE` (raw base64 supplied in `federation_metadata_file`). The two branches are mutually exclusive. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -242,7 +242,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"idp_url": schema.StringAttribute{
-						MarkdownDescription: "URL Jamf Pro fetches IdP metadata from. Required when `metadata_source = \"URL\"`. Jamf Pro performs a live HTTP fetch when the resource is applied; the URL is not pre-validated for syntax or reachability by the provider.",
+						MarkdownDescription: "URL Jamf Pro fetches IdP metadata from. Required when `metadata_source = \"URL\"`. Jamf Pro performs a live HTTP fetch when the resource is applied; the URL is not pre-validated for syntax or reachability by the provider. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -253,13 +253,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						Sensitive:           true,
 					},
 					"metadata_file_name": schema.StringAttribute{
-						MarkdownDescription: "Display filename for the uploaded metadata. Required when `metadata_source = \"FILE\"`; must be omitted when `metadata_source = \"URL\"`.",
+						MarkdownDescription: "Display filename for the uploaded metadata. Required when `metadata_source = \"FILE\"`; must be omitted when `metadata_source = \"URL\"`. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"session_timeout": schema.Int64Attribute{
-						MarkdownDescription: "SAML session timeout in minutes. Upper bound: 35,791,393. Stored value is preserved even when `token_expiration_disabled = true`.",
+						MarkdownDescription: "SAML session timeout in minutes. Upper bound: 35,791,393. Jamf Pro keeps the stored value even when `token_expiration_disabled = true`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
@@ -268,13 +268,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"token_expiration_disabled": schema.BoolAttribute{
-						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.",
+						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` on the first apply. Jamf Pro requires an explicit boolean here, so the provider always sends one on update. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 					},
 					"user_mapping": schema.StringAttribute{
-						MarkdownDescription: "How SAML attributes map to Jamf Pro users. One of `USERNAME` or `EMAIL`.",
+						MarkdownDescription: "How SAML attributes map to Jamf Pro users. One of `USERNAME` or `EMAIL`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -283,7 +283,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"user_attribute_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted. Jamf Pro requires an explicit boolean here, so the provider always sends one on update.",
+						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` on the first apply. Jamf Pro requires an explicit boolean here, so the provider always sends one on update. Omit to leave the current value untouched; set `true`/`false` to change it.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -292,13 +292,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"user_attribute_name": schema.StringAttribute{
-						MarkdownDescription: "Name of the SAML attribute carrying the username. Required when `user_attribute_enabled = true`.",
+						MarkdownDescription: "Name of the SAML attribute carrying the username. Required when `user_attribute_enabled = true`. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"group_attribute_name": schema.StringAttribute{
-						MarkdownDescription: "SAML attribute carrying group claims (e.g. `http://schemas.xmlsoap.org/claims/Group`). Required (non-empty) when `configuration_type` includes SAML.",
+						MarkdownDescription: "SAML attribute carrying group claims (e.g. `http://schemas.xmlsoap.org/claims/Group`). Required (non-empty) when `configuration_type` includes SAML. Omit to leave the current value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -307,7 +307,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"group_rdn_key": schema.StringAttribute{
-						MarkdownDescription: "Optional RDN token (e.g. `CN`, `DC`, `OU`) used when parsing group claims that arrive as full distinguished names.",
+						MarkdownDescription: "Optional RDN token (e.g. `CN`, `DC`, `OU`) used when parsing group claims that arrive as full distinguished names. Unlike its siblings this value is always written, empty when unset, so the first apply clears whatever token the tenant already had; setting `\"\"` clears it too. Once Terraform holds a value, omitting the attribute leaves that value untouched.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},

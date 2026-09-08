@@ -23,9 +23,11 @@
 //     dropped on write (never echoed back) — not modeled.
 //   - The classic PUT is a partial-merge at sub-block granularity: omitting a
 //     sub-block retains the server's copy; sending an EMPTY element clears it.
-//     buildLicensedSoftwareInput therefore always emits <software_definitions>
-//     and <licenses> (empty when the list is empty) so element removals
-//     propagate and Terraform's declarative state stays authoritative.
+//     buildLicensedSoftwareInput turns that into three-way opt-out semantics
+//     for software_definitions and licenses: it emits a wrapper only when the
+//     plan declares that list, so an omitted list stays unmanaged, a declared
+//     [] lands as an empty element and clears, and a declared list replaces
+//     what is stored.
 //   - The server pads unset optional strings with "" and unset numbers with 0,
 //     and echoes a default <purchasing> block on every licence; state_builders
 //     normalises "" / 0-sentinel back to null and suppresses unmanaged

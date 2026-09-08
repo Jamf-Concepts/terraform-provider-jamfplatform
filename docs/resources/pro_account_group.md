@@ -89,8 +89,8 @@ resource "jamfplatform_pro_account_group" "managed_members" {
 
 - `ldap_server_id` (Number) ID of the LDAP / cloud-identity-provider server backing this group, for directory-sourced membership. Omit for a Jamf-Pro-local group.
 - `members` (Set of Number) Account IDs that are members of this group. This is the authoritative side of admin-account-to-group membership (the account resource cannot read its own group membership back from Jamf Pro). For an LDAP-backed group, membership is directory-sourced; leave unset to let the directory manage it. Leave unset to not manage membership; set to `[]` to clear it.
-- `privileges` (Attributes) Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. (see [below for nested schema](#nestedatt--privileges))
-- `site_id` (Number) ID of the site this group is scoped to. `-1` means no site (the default). Only meaningful when `access_level` is `Site Access`.
+- `privileges` (Attributes) Custom privilege grid. Only applied when `privilege_set` is `Custom`. Jamf Pro silently adds dependency privileges and silently ignores unrecognised ones; the provider reconciles server-added extras out of state and validates declared privileges at plan time against the tenant's Administrator catalog. Omit a category to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them. (see [below for nested schema](#nestedatt--privileges))
+- `site_id` (Number) ID of the site this group is scoped to. `-1` means no site (the default). Only meaningful when `access_level` is `Site Access`. Omit to leave the current value untouched; an integer has no blank-clear, so set a concrete value to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -133,5 +133,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
+# Import an existing Jamf Pro account group by its numeric ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_account_group.example "8"
 ```

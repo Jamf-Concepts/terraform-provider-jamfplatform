@@ -136,7 +136,7 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed:            true,
 			},
 			"members": schema.SetAttribute{
-				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"`: Jamf Pro resolves smart-group membership from `criteria`.",
+				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Forbidden when `group_type = \"smart\"`: Jamf Pro resolves smart-group membership from `criteria`. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Set{

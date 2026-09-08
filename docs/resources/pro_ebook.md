@@ -80,7 +80,7 @@ resource "jamfplatform_pro_ebook" "swift_intro" {
 ### Optional
 
 - `scope` (Attributes) Ebook scope: the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned. Declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform, and updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets. (see [below for nested schema](#nestedatt--scope))
-- `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
+- `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -97,14 +97,14 @@ Required:
 
 Optional:
 
-- `author` (String) Ebook author.
-- `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
-- `deploy_as_managed` (Boolean) Make the ebook managed when possible (UI "Make eBook managed when possible").
-- `deployment_type` (String) Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`.
-- `file_type` (String) File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing.
-- `free` (Boolean) Whether the ebook is free.
-- `site_id` (String) Jamf Pro site ID scoping the ebook. Use `-1` for "No site".
-- `version` (String) Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook.
+- `author` (String) Ebook author. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `category_id` (String) Jamf Pro category ID. Omit to leave the current value untouched; set `-1` to clear the category.
+- `deploy_as_managed` (Boolean) Make the ebook managed when possible (UI "Make eBook managed when possible"). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `deployment_type` (String) Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Omit to leave the current value untouched; an enum has no blank-clear, so set a concrete value to change it.
+- `file_type` (String) File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`). For an App Store ebook, leave it unset: Jamf Pro resolves it from the Apple Books URL and returns it. No strict value validation is applied, because Jamf Pro canonicalises the casing. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `free` (Boolean) Whether the ebook is free. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `site_id` (String) Jamf Pro site ID scoping the ebook. Omit to leave the current value untouched; set `-1` to clear the site.
+- `version` (String) Ebook version. User-set for an in-house ebook; returned by Jamf Pro for an App Store ebook. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 Read-Only:
 
@@ -118,9 +118,9 @@ Read-Only:
 
 Optional:
 
-- `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `targets` (Attributes) Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). (see [below for nested schema](#nestedatt--scope--targets))
+- `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--scope--exclusions))
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--scope--limitations))
+- `targets` (Attributes) Scope targets: the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). Omit the block to leave any existing values untouched (they are not cleared on update). (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -175,17 +175,17 @@ Optional:
 
 Optional:
 
-- `categories` (Attributes Set) Set of Self Service categories the ebook appears under (macOS and iOS app only). Each item identifies the category by `id`; `name` is returned by Jamf Pro. (see [below for nested schema](#nestedatt--self_service--categories))
-- `display_name` (String) Self Service display name (UI "Self Service Display Name", in-house ebooks).
-- `feature_on_main_page` (Boolean) Feature the ebook on the Self Service main page.
-- `force_users_to_view_description` (Boolean) Force users to view the description before installing (macOS only).
-- `icon_id` (String) Self Service icon ID. Reference an already-uploaded icon (e.g. `jamfplatform_pro_icon.<x>.id`); App-Store ebooks auto-populate it from the store artwork. Uploading icon bytes inline is not supported.
-- `install_button_text` (String) Install-button label (UI "Button Name", macOS only).
-- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the ebook becomes available (macOS only). Pair with `notification_method`.
-- `notification_message` (String) Notification body text.
-- `notification_method` (String) Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled.
-- `notification_subject` (String) Notification subject line.
-- `self_service_description` (String) Self Service description. Markdown supported.
+- `categories` (Attributes Set) Set of Self Service categories the ebook appears under (macOS and iOS app only). Each item identifies the category by `id`; `name` is returned by Jamf Pro. Omit to leave any existing entries untouched; they are not cleared on update. (see [below for nested schema](#nestedatt--self_service--categories))
+- `display_name` (String) Self Service display name (UI "Self Service Display Name", in-house ebooks). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `feature_on_main_page` (Boolean) Feature the ebook on the Self Service main page. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `force_users_to_view_description` (Boolean) Force users to view the description before installing (macOS only). Omit to leave the current value untouched; set `true`/`false` to change it.
+- `icon_id` (String) Self Service icon ID. Reference an already-uploaded icon (e.g. `jamfplatform_pro_icon.<x>.id`); App-Store ebooks auto-populate it from the store artwork. Uploading icon bytes inline is not supported. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `install_button_text` (String) Install-button label (UI "Button Name", macOS only). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the ebook becomes available (macOS only). Pair with `notification_method`. Omit to leave the current value untouched; set `true`/`false` to change it.
+- `notification_message` (String) Notification body text. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `notification_method` (String) Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `notification_subject` (String) Notification subject line. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `self_service_description` (String) Self Service description. Markdown supported. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 Read-Only:
 
@@ -227,5 +227,10 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # SPDX-License-Identifier: MPL-2.0
 
 # Jamf Pro ebooks are imported by their numeric Jamf Pro ID.
+#
+# Import records every optional block Jamf Pro reports, not only the blocks your
+# configuration declares, so the first plan afterwards can propose removing what
+# you did not declare. See the "Importing existing objects" guide for what
+# applying that plan does.
 terraform import jamfplatform_pro_ebook.field_guide 79
 ```

@@ -89,7 +89,12 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). " +
 			"`update_behavior` controls when updates apply: `AUTOMATIC` tracks the latest catalog version, `MANUAL` pins the deployment to the version current when you set it, reported in `selected_version`. " +
-			"Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means \"none\"." + resourcePrivileges,
+			"Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means \"none\".\n\n" +
+			"~> **Terraform writes `notification_settings` and `self_service_settings` whole.** Jamf Pro " +
+			"resets a block you leave out of your configuration to its defaults, so you cannot co-manage " +
+			"an undeclared block in the Jamf Pro admin UI. This matters most straight after an import, " +
+			"where the first plan proposes removing both blocks and applying it does clear them. " +
+			"See the [Importing existing objects guide](../guides/importing)." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Deployment ID assigned by Jamf Pro.",
@@ -107,7 +112,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				// set to a real group (not -1). Not validated at plan time because
 				// smart_group_id is Computed and reads back Unknown when omitted;
 				// the server enforces it with a clear error.
-				MarkdownDescription: "Whether the deployment is enabled. A deployment can only be enabled when `smart_group_id` is set to a real smart group (not `-1`).",
+				MarkdownDescription: "Whether the deployment is enabled. A deployment can only be enabled when `smart_group_id` is set to a real smart group (not `-1`). Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -179,31 +184,31 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				Computed:            true,
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro category ID for the deployment. Use `-1` for no category.",
+				MarkdownDescription: "Jamf Pro category ID for the deployment. Omit to leave the current value untouched; set `-1` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro site ID scoping the deployment. Use `-1` for no site.",
+				MarkdownDescription: "Jamf Pro site ID scoping the deployment. Omit to leave the current value untouched; set `-1` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"smart_group_id": schema.StringAttribute{
-				MarkdownDescription: "Smart computer group ID scoping the deployment. Use `-1` for no smart group.",
+				MarkdownDescription: "Smart computer group ID scoping the deployment. Omit to leave the current value untouched; set `-1` to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"install_predefined_config_profiles": schema.BoolAttribute{
-				MarkdownDescription: "Whether Jamf Pro installs the title's predefined configuration profiles alongside the app.",
+				MarkdownDescription: "Whether Jamf Pro installs the title's predefined configuration profiles alongside the app. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"trigger_admin_notifications": schema.BoolAttribute{
-				MarkdownDescription: "Whether Jamf Pro logs event notifications for this app (raising administrator notifications). Defaults to off on create.",
+				MarkdownDescription: "Whether Jamf Pro logs event notifications for this app (raising administrator notifications). Defaults to off on create. Omit to leave the current value untouched; set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -253,7 +258,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 				},
 			},
 			"self_service_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Every field is replaced on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment.",
+				MarkdownDescription: "Self Service presentation. Supply the block to manage how the deployment appears in Self Service; omit it to leave the Jamf Pro defaults in place. Terraform replaces every field on each apply, so set all the fields you care about. Jamf Pro accepts a Self Service block even for an `INSTALL_AUTOMATICALLY` deployment.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"description": schema.StringAttribute{

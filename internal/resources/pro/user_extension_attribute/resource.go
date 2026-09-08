@@ -95,7 +95,7 @@ func (r *UserExtensionAttributeResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Remove the attribute to clear the stored text on the next update.",
 				Optional:            true,
 			},
 			"data_type": schema.StringAttribute{
@@ -113,7 +113,7 @@ func (r *UserExtensionAttributeResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"popup_menu_choices": schema.ListAttribute{
-				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. Ordered list of choices presented for a pop-up menu attribute. Valid only when `input_type = \"Pop-up Menu\"` (optional even then).",
+				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. Ordered list of choices presented for a pop-up menu attribute. Valid only when `input_type = \"Pop-up Menu\"` (optional even then). Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them.",
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
