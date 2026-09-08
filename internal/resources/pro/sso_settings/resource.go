@@ -162,6 +162,8 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 			"group_enrollment_access_name": schema.StringAttribute{
 				MarkdownDescription: "Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`. Omit to leave any existing value untouched; set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
 			"configuration_type": schema.StringAttribute{
