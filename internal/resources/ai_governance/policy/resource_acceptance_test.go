@@ -114,6 +114,15 @@ func TestAccResource_AIGovernancePolicy_Basic(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
+			// The ImportState step above passes the flat `id =` form, which
+			// arrives with state already populated. GenerateConfigStep uses
+			// ImportBlockWithResourceIdentity — the form
+			// `terraform query -generate-config-out` emits — which leaves prior
+			// state null, sends this Read down readIdentity, and used to write a
+			// state the framework refused outright: "Value Conversion Error ...
+			// Path: timeouts", taking the whole plan down. Nothing else in this
+			// suite reaches that branch.
+			testhelpers.GenerateConfigStep(policyResource),
 		},
 	})
 }

@@ -659,3 +659,47 @@ func TestPublishFailureIsRetriedByTheNextPlan(t *testing.T) {
 		t.Errorf("published_version = %d, want 1 — the retry mints the first version", got)
 	}
 }
+
+// TestRead_IdentityImportKeepsTimeoutsTyped pins the typing of the model this Read builds when it
+// has no prior state to decode. An `identity = { id = ... }` import block — the form
+// `terraform query -generate-config-out` writes, so the form every generated config is imported
+// with — leaves req.State.Raw null, and readIdentity constructs the model from the identity alone.
+// A zero timeouts.Value carries an object type with no attributes, and the framework then refuses
+// the state this Read writes with a "Value Conversion Error" naming timeouts.Type, taking the whole
+// plan down with it.
+func TestRead_IdentityImportKeepsTimeoutsTyped(t *testing.T) {
+	ctx := context.Background()
+	stub := &policyStub{name: "unit-test-policy"}
+	r := &PolicyResource{client: stub.client(t)}
+
+	policySchema, identity := policySchemas(ctx, t)
+	identityType := identity.Schema.Type().TerraformType(ctx).(tftypes.Object)
+	identity.Raw = tftypes.NewValue(identityType, map[string]tftypes.Value{
+		"id": tftypes.NewValue(tftypes.String, stubPolicyID),
+	})
+
+	nullPriorState := tfsdk.State{
+		Schema: policySchema,
+		Raw:    tftypes.NewValue(policySchema.Type().TerraformType(ctx), nil),
+	}
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: policySchema},
+		Identity: &identity,
+	}
+	r.Read(ctx, resource.ReadRequest{State: nullPriorState, Identity: &identity}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("reading a policy addressed only by identity: %v", resp.Diagnostics.Errors())
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("the policy must be written to state")
+	}
+
+	var state policyModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the state: %v", diags)
+	}
+	if got := len(state.Timeouts.AttributeTypes(ctx)); got != 4 {
+		t.Errorf("timeouts carries %d attribute types, want the schema's 4", got)
+	}
+}

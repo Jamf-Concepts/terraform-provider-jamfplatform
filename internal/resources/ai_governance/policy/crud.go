@@ -315,6 +315,13 @@ func (r *PolicyResource) hydrate(ctx context.Context, model *policyModel, id str
 
 // readIdentity fills the model's ID from the resource identity, for a refresh Terraform issues with
 // no prior state — an import addressed by identity rather than by the passthrough import ID.
+//
+// It also gives Timeouts the schema's typed null. The model starts as a zero value here rather than
+// being decoded from state, and a zero timeouts.Value carries an object type with NO attributes, so
+// the state this Read goes on to write would be refused with a "Value Conversion Error" naming
+// timeouts.Type. That is what an `identity = { id = ... }` import block hits — the form
+// `terraform query -generate-config-out` writes — while the `id = ...` form arrives with state
+// already populated and never reaches this branch.
 func readIdentity(ctx context.Context, identity *tfsdk.ResourceIdentity, state *policyModel, diags *diag.Diagnostics) bool {
 	if identity == nil {
 		diags.AddError(
@@ -337,5 +344,6 @@ func readIdentity(ctx context.Context, identity *tfsdk.ResourceIdentity, state *
 		return false
 	}
 	state.ID = model.ID
+	state.Timeouts = helpers.NewResourceTimeoutsNullValue(policyTimeoutAttributeTypes)
 	return true
 }
