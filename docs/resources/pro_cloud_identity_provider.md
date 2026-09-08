@@ -108,7 +108,7 @@ Required:
 Optional:
 
 - `enabled` (Boolean) Whether the Entra ID connection is enabled. Defaults to `true`.
-- `mappings` (Attributes) Entra ID attribute mappings. Omit the block to let Jamf Pro generate defaults, or supply it to override them. (see [below for nested schema](#nestedatt--entra_id--mappings))
+- `mappings` (Attributes) Entra ID attribute mappings. Omit the block to leave the connection's current mappings untouched. Jamf Pro supplies no defaults here, so a connection created without the block has all eleven mappings empty. Declare it and Terraform owns every field: a field you leave out inside the block clears that mapping. (see [below for nested schema](#nestedatt--entra_id--mappings))
 - `membership_calculation_optimization_enabled` (Boolean) Whether membership-calculation optimization is enabled. Defaults to `false`.
 - `search_timeout` (Number) Search timeout in seconds. Defaults to `30`.
 - `transitive_directory_membership_enabled` (Boolean) Whether transitive directory membership is enabled. Defaults to `false`.
