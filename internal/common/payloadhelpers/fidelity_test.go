@@ -4,7 +4,13 @@
 package payloadhelpers
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"strings"
 	"testing"
 )
@@ -298,5 +304,233 @@ func TestPayloadFidelityErrorDetail_ReorderAloneIsNotReported(t *testing.T) {
 			t.Logf("unexpected finding: %s (present=%v)", f.path, f.present)
 		}
 		t.Errorf("a reorder with no value change must produce no findings, got %d", len(findings))
+	}
+}
+
+// fidelitySolidPNG is a decodable single-colour PNG, the smallest icon this
+// package's comparison can tell apart from another: two solid icons of
+// different colours are far past iconMeanDeltaTolerance however Jamf Pro
+// rescales them.
+func fidelitySolidPNG(t *testing.T, c color.RGBA) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	draw.Draw(img, img.Bounds(), &image.Uniform{C: c}, image.Point{}, draw.Src)
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encoding icon: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// fidelityWebClipProfile wraps one web clip entry carrying the supplied icon, plus any
+// extra PayloadContent entries given verbatim.
+func fidelityWebClipProfile(icon []byte, extraEntries string) []byte {
+	return []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.webClip.managed</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>Label</key><string>Handbook</string>
+<key>URL</key><string>https://example.com/handbook</string>
+<key>Icon</key><data>` + base64.StdEncoding.EncodeToString(icon) + `</data>
+</dict>` + extraEntries + `
+</array>
+</dict></plist>`)
+}
+
+// removalPasswordEntry is the PayloadContent entry Jamf Pro materialises when
+// the resource sets self_service.authorization_password — nothing the operator
+// authored, so it is dropped from the stored side before the diff.
+const removalPasswordEntry = `
+<dict>
+<key>PayloadType</key><string>com.apple.profileRemovalPassword</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>RemovalPassword</key><string>secret</string>
+</dict>`
+
+// TestDiffPayloadTrees_InjectedEntryDoesNotHideTheRealFinding pins the fix for
+// the length-mismatch shortcut. A server-injected entry makes the stored
+// PayloadContent one longer than the authored one, and the array branch of
+// diffNonStringLeaves reports a length mismatch *without recursing* — so it
+// replaced the attribution rather than adding to it, and a genuinely diverging
+// icon on the same profile was never named.
+func TestDiffPayloadTrees_InjectedEntryDoesNotHideTheRealFinding(t *testing.T) {
+	authored := fidelityWebClipProfile(fidelitySolidPNG(t, color.RGBA{R: 0, G: 0, B: 0, A: 255}), "")
+	stored := fidelityWebClipProfile(fidelitySolidPNG(t, color.RGBA{R: 255, G: 255, B: 255, A: 255}), removalPasswordEntry)
+
+	equal, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("comparing payloads: %v", err)
+	}
+	if equal {
+		t.Fatal("fixture does not diverge under the equality check, so the differ has nothing to attribute")
+	}
+
+	got := PayloadFidelityErrorDetail(authored, stored, FidelityPhaseCreate)
+	mustContain(t, got, "PayloadContent[0].Icon")
+	mustContain(t, got, "stored as a different picture")
+	mustNotContain(t, got, "a list of 1 item")
+	mustNotContain(t, got, "a list of 2 items")
+	mustNotContain(t, got, "RemovalPassword")
+}
+
+// TestDiffPayloadTrees_InjectedEntryAloneIsNotReported is the other half: the
+// injected entry is the *only* difference, so the diff must be silent — the
+// filter has to match MaskPayload's exactly or the two disagree.
+func TestDiffPayloadTrees_InjectedEntryAloneIsNotReported(t *testing.T) {
+	icon := fidelitySolidPNG(t, color.RGBA{R: 12, G: 34, B: 56, A: 255})
+	authored := fidelityWebClipProfile(icon, "")
+	stored := fidelityWebClipProfile(icon, removalPasswordEntry)
+
+	findings, ok := diffPayloadStrings(authored, stored)
+	if !ok {
+		t.Fatal("pair did not parse")
+	}
+	if len(findings) != 0 {
+		for _, f := range findings {
+			t.Logf("unexpected finding: %s (present=%v)", f.path, f.present)
+		}
+		t.Errorf("an injected entry with no value change must produce no findings, got %d", len(findings))
+	}
+}
+
+// dictVersusScalar authors a dictionary of non-string leaves where the stored
+// side holds a scalar. Non-string deliberately: a string leaf inside the
+// authored dict would be caught by the flatten pass, which is not the branch
+// under test.
+const (
+	dictVersusScalarAuthored = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>Extras</key><dict><key>Count</key><integer>1</integer></dict>
+</dict></plist>`
+
+	dictVersusScalarStored = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>Extras</key><integer>1</integer>
+</dict></plist>`
+)
+
+// TestDiffPayloadTrees_DictAgainstNonDictIsBlamed covers the branch that used
+// to return nil for a whole subtree: LenientEqualPlist fails a dictionary
+// facing a non-dictionary outright, and the array branch beside it already
+// reported its own type mismatch, so the two disagreed with each other and the
+// failure fell through to the unattributed text.
+func TestDiffPayloadTrees_DictAgainstNonDictIsBlamed(t *testing.T) {
+	authored, stored := []byte(dictVersusScalarAuthored), []byte(dictVersusScalarStored)
+
+	equal, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("comparing payloads: %v", err)
+	}
+	if equal {
+		t.Fatal("fixture does not diverge under the equality check, so the differ has nothing to attribute")
+	}
+
+	got := PayloadFidelityErrorDetail(authored, stored, FidelityPhaseCreate)
+	mustContain(t, got, "Extras")
+	mustContain(t, got, "a dictionary of 1 key")
+	mustNotContain(t, got, "could not attribute the difference")
+}
+
+// fidelityMCXProfile wraps one "Application & Custom Settings" entry whose inner
+// preference dictionary holds only booleans — no string leaf, so the flatten
+// pass cannot attribute anything here and the MCX rule is the only thing that
+// can.
+func fidelityMCXProfile(preferences string) []byte {
+	return []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>` + preferences + `
+</dict>
+</array>
+</dict></plist>`)
+}
+
+func fidelityMCXPreferences(settings string) string {
+	return `
+<key>PayloadContent</key><dict>
+<key>com.example.browser</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>` + settings + `</dict>
+</dict></array>
+</dict>
+</dict>`
+}
+
+// TestDiffPayloadTrees_MCXPreferencesDroppedWholesaleIsBlamed is the second
+// half of issue #418: LenientEqualPlist's MCX branch fails on the *presence*
+// of the inner PayloadContent, precisely because a one-sided vendor preference
+// key is real drift, while the differ's intersection walk skipped the key
+// entirely and left the diagnostic listing line feeds and ampersands the
+// payload does not contain.
+func TestDiffPayloadTrees_MCXPreferencesDroppedWholesaleIsBlamed(t *testing.T) {
+	authored := fidelityMCXProfile(fidelityMCXPreferences(`<key>SafeBrowsingEnabled</key><true/>`))
+	stored := fidelityMCXProfile("")
+
+	equal, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("comparing payloads: %v", err)
+	}
+	if equal {
+		t.Fatal("fixture does not diverge under the equality check, so the differ has nothing to attribute")
+	}
+
+	got := PayloadFidelityErrorDetail(authored, stored, FidelityPhaseCreate)
+	mustContain(t, got, "PayloadContent[0].PayloadContent")
+	mustContain(t, got, "not stored at all")
+	mustNotContain(t, got, "could not attribute the difference")
+}
+
+// TestDiffPayloadTrees_MCXPreferenceKeyDroppedIsBlamed covers the same rule one
+// level down. plisthelpers.Equal requires matching keysets at every depth of
+// the preference subtree, so a single key Jamf Pro did not store fails the
+// comparison — and an intersection walk steps straight over it.
+func TestDiffPayloadTrees_MCXPreferenceKeyDroppedIsBlamed(t *testing.T) {
+	authored := fidelityMCXProfile(fidelityMCXPreferences(`<key>SafeBrowsingEnabled</key><true/><key>PasswordManagerEnabled</key><false/>`))
+	stored := fidelityMCXProfile(fidelityMCXPreferences(`<key>SafeBrowsingEnabled</key><true/>`))
+
+	equal, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("comparing payloads: %v", err)
+	}
+	if equal {
+		t.Fatal("fixture does not diverge under the equality check, so the differ has nothing to attribute")
+	}
+
+	got := PayloadFidelityErrorDetail(authored, stored, FidelityPhaseCreate)
+	mustContain(t, got, "mcx_preference_settings.PasswordManagerEnabled")
+	mustContain(t, got, "not stored at all")
+	mustNotContain(t, got, "could not attribute the difference")
+}
+
+// TestDiffPayloadTrees_MCXPreferencesUnchangedAreSilent guards the other
+// direction: an identical preference subtree must produce nothing, so the new
+// rule cannot invent drift on every MCX payload in the corpus.
+func TestDiffPayloadTrees_MCXPreferencesUnchangedAreSilent(t *testing.T) {
+	prefs := fidelityMCXPreferences(`<key>SafeBrowsingEnabled</key><true/>`)
+	findings, ok := diffPayloadStrings(fidelityMCXProfile(prefs), fidelityMCXProfile(prefs))
+	if !ok {
+		t.Fatal("pair did not parse")
+	}
+	if len(findings) != 0 {
+		for _, f := range findings {
+			t.Logf("unexpected finding: %s (present=%v)", f.path, f.present)
+		}
+		t.Errorf("an unchanged MCX payload must produce no findings, got %d", len(findings))
 	}
 }

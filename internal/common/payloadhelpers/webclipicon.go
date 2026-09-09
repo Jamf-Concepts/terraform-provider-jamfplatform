@@ -74,17 +74,37 @@ const (
 	// change, so it does not need retuning for a slightly different resampler
 	// on either side.
 	//
-	// Trade-off: an icon edited into a near-identical variant out of band —
-	// a few pixels, an imperceptible colour shift — reads as unchanged. That
-	// buys tolerance of a re-render no client can reproduce, and it costs
-	// nothing in the common direction: an icon changed in the *configuration*
-	// changes the payloads string itself, which Terraform diffs directly.
+	// Sensitivity floor, and it is a real one: a localized edit is averaged
+	// over the whole iconGrid x iconGrid grid, so a change confined to a few
+	// percent of the icon's area reads as unchanged. Measured on a 64x64 icon
+	// by replicating this algorithm exactly, an opaque badge painted over the
+	// bottom-right corner scores a mean delta of 2.0 at 1/8 x 1/8 of the side
+	// (1.6% of the area), 3.1 at 1/6 x 1/6 (2.8%) and 8.0 at 1/4 x 1/4 (6.2%);
+	// a global +20 shift on one channel across the whole icon scores 3.9. So
+	// the first two of those are inside the tolerance and the provider calls
+	// them the same picture. Raising the tolerance is not the answer — the
+	// observed re-render noise runs to 2.38, which leaves no room above it —
+	// and catching a corner badge would take a different comparison, not a
+	// different threshold.
+	//
+	// Trade-off: the tolerance governs the comparisons where one side is a
+	// server response — the post-write verification of what Jamf Pro stored,
+	// and the plan-time two-way fallback that compares a planned payload
+	// against the last state read back from the server. A near-identical
+	// out-of-band edit to the icon therefore reads as unchanged in those
+	// comparisons. That buys tolerance of a re-render no client can reproduce,
+	// which is the only way an icon can round-trip at all.
 	iconMeanDeltaTolerance = 8.0
 
 	// iconMaxDimension bounds what is decoded. An icon is at most a few hundred
-	// pixels square; anything larger is either a mistake or a decompression
-	// bomb, and is left to the byte comparison rather than expanded in memory.
-	iconMaxDimension = 4096
+	// pixels square — Jamf Pro stores 180px on the longest side, and Apple's
+	// own icon guidance stays far below this cap — so anything larger is
+	// either a mistake or a decompression bomb, and is left to the byte
+	// comparison rather than expanded in memory. The cap is deliberately close
+	// to the observed forms: every comparison walks the decoded image pixel by
+	// pixel on a plan-time path, so the ceiling is a megapixel budget as much
+	// as a safety bound.
+	iconMaxDimension = 1024
 )
 
 // iconsEquivalent reports whether a stored web clip icon is Jamf Pro's
@@ -92,16 +112,18 @@ const (
 // fixed grid, then compared with a tolerance — see the wire law above for why
 // neither a byte comparison nor a reproduction of the re-render can work.
 //
-// It answers false whenever it cannot tell: either side undecodable, absurdly
-// large, or empty. That keeps the failure direction safe — an unrecognisable
-// icon surfaces as a verification failure the operator is told about, rather
-// than being waved through as equivalent.
+// Byte-identical sides are equal unconditionally, including two empty blobs:
+// nothing was re-rendered, so there is nothing to report. Beyond that it
+// answers false whenever it cannot tell — either side undecodable, absurdly
+// large, or empty while the other is not. That keeps the failure direction
+// safe: an unrecognisable icon surfaces as a verification failure the operator
+// is told about, rather than being waved through as equivalent.
 func iconsEquivalent(authored, stored []byte) bool {
-	if len(authored) == 0 || len(stored) == 0 {
-		return false
-	}
 	if bytes.Equal(authored, stored) {
 		return true
+	}
+	if len(authored) == 0 || len(stored) == 0 {
+		return false
 	}
 	a, ok := normaliseIcon(authored)
 	if !ok {

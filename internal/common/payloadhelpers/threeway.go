@@ -63,14 +63,14 @@ const (
 // fresh imports and pre-three-way-tracking resources have no private
 // state to compare against.
 func ThreeWayCompare(planInput, lastInput, lastCanonical, serverNow []byte) (ThreeWayDecision, error) {
-	userChanged, err := payloadsStrictlyDiffer(planInput, lastInput)
+	userChanged, err := payloadsStrictlyDiffer(planInput, lastInput, false)
 	if err != nil {
 		return 0, fmt.Errorf("comparing plan input to last-applied input: %w", err)
 	}
 	if userChanged {
 		return DecisionApply, nil
 	}
-	adminDrift, err := payloadsStrictlyDiffer(lastCanonical, serverNow)
+	adminDrift, err := payloadsStrictlyDiffer(lastCanonical, serverNow, true)
 	if err != nil {
 		return 0, fmt.Errorf("comparing last-applied canonical to current server: %w", err)
 	}
@@ -90,7 +90,15 @@ func ThreeWayCompare(planInput, lastInput, lastCanonical, serverNow []byte) (Thr
 // server-canonical post-Apply). Cross-layer comparisons — the legacy
 // "plan input vs current server" path — must continue to use
 // PayloadsSemanticallyEqual's intersection semantics.
-func payloadsStrictlyDiffer(a, b []byte) (bool, error) {
+//
+// tolerateIconRerender must be true only where one side of the comparison is
+// a server response, because the tolerance it enables (see structuralEqual)
+// exists solely to absorb Jamf Pro's re-render of a stored web clip icon.
+// Passing it for a comparison of two user-authored payloads would make a real
+// icon edit — one whose two icons happen to normalise within the tolerance —
+// compare equal, so ThreeWayCompare would decide NoOp, the plan modifier would
+// rewrite plan back to state, and the edit could never be applied or reported.
+func payloadsStrictlyDiffer(a, b []byte, tolerateIconRerender bool) (bool, error) {
 	ma, err := MaskPayload(a)
 	if err != nil {
 		return false, fmt.Errorf("masking left side: %w", err)
@@ -99,7 +107,7 @@ func payloadsStrictlyDiffer(a, b []byte) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("masking right side: %w", err)
 	}
-	return !structuralEqual(ma, mb), nil
+	return !structuralEqual(ma, mb, tolerateIconRerender), nil
 }
 
 // PayloadsStructurallyEqual returns true when the two payloads compare
@@ -109,8 +117,12 @@ func payloadsStrictlyDiffer(a, b []byte) (bool, error) {
 // (from private state) against the current server response distinguishes
 // admin-side UI edits (strict-differ) from steady-state refreshes
 // (strict-equal).
+//
+// Both operands are server responses, so this comparison tolerates the web
+// clip icon re-render — without it every refresh of an icon-bearing profile
+// reports drift nobody caused (issue #418).
 func PayloadsStructurallyEqual(a, b []byte) (bool, error) {
-	differ, err := payloadsStrictlyDiffer(a, b)
+	differ, err := payloadsStrictlyDiffer(a, b, true)
 	if err != nil {
 		return false, err
 	}
@@ -125,12 +137,22 @@ func PayloadsStructurallyEqual(a, b []byte) (bool, error) {
 // numericEqual handles the int64/uint64/int trio howett.net/plist emits
 // depending on sign.
 //
-// The one leaf not compared strictly is a com.apple.webClip.managed entry's
-// Icon, which goes through iconsEquivalent: Jamf Pro re-renders every icon it
-// stores, so a byte comparison here reports drift on every plan and refresh of
-// an icon-bearing profile (issue #418). The keyset is still compared strictly,
-// and every other leaf still compares byte-for-byte. See webclipicon.go.
-func structuralEqual(a, b any) bool {
+// The one leaf that can be compared leniently is a com.apple.webClip.managed
+// entry's Icon, which goes through iconsEquivalent when tolerateIconRerender is
+// set: Jamf Pro re-renders every icon it stores, so a byte comparison reports
+// drift on every plan and refresh of an icon-bearing profile (issue #418). The
+// keyset is still compared strictly, and every other leaf still compares
+// byte-for-byte. See webclipicon.go.
+//
+// tolerateIconRerender is set only where one operand is a server response —
+// ThreeWayCompare's drift arm (lastCanonical vs serverNow) and
+// PayloadsStructurallyEqual. It is deliberately NOT set for ThreeWayCompare's
+// user arm (planInput vs lastInput): both of those are user HCL, neither has
+// ever been near Jamf Pro's renderer, so any difference between them is an
+// authored edit and tolerating it would discard the edit silently. The flag
+// therefore has to be carried down through the map and slice branches rather
+// than read from a package-level setting.
+func structuralEqual(a, b any, tolerateIconRerender bool) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -146,7 +168,7 @@ func structuralEqual(a, b any) bool {
 			if !exists {
 				return false
 			}
-			if isWebClipIcon(payloadType, k) {
+			if tolerateIconRerender && isWebClipIcon(payloadType, k) {
 				authored, stored, isData := iconBlobs(va, vb)
 				if isData {
 					if !iconsEquivalent(authored, stored) {
@@ -155,7 +177,7 @@ func structuralEqual(a, b any) bool {
 					continue
 				}
 			}
-			if !structuralEqual(va, vb) {
+			if !structuralEqual(va, vb, tolerateIconRerender) {
 				return false
 			}
 		}
@@ -165,7 +187,9 @@ func structuralEqual(a, b any) bool {
 		if !ok {
 			return false
 		}
-		return slices.EqualFunc(av, bv, structuralEqual)
+		return slices.EqualFunc(av, bv, func(x, y any) bool {
+			return structuralEqual(x, y, tolerateIconRerender)
+		})
 	case []uint8:
 		bv, ok := b.([]uint8)
 		if !ok {

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
@@ -95,6 +96,61 @@ func TestIconsEquivalent_ToleranceHeadroom(t *testing.T) {
 	}
 }
 
+// TestIconsEquivalent_PinsTheTolerance calibrates the threshold from the third
+// direction the fixture pair cannot reach. The two fixtures pin re-render noise
+// from below and a wholly different icon from above, which between them leave
+// the tolerance free to be raised several-fold without failing anything. A
+// synthetic badge painted over a known fraction of the icon supplies a
+// measurement in the gap: the smaller one is inside the tolerance and is the
+// sensitivity floor this comparison honestly has, the larger one is outside it
+// and must stay outside, so doubling iconMeanDeltaTolerance fails here.
+func TestIconsEquivalent_PinsTheTolerance(t *testing.T) {
+	const size = 240
+	base := gradient(size, size)
+	badged := func(denominator int) image.Image {
+		out := image.NewRGBA(base.Bounds())
+		draw.Draw(out, out.Bounds(), base, image.Point{}, draw.Src)
+		side := size / denominator
+		draw.Draw(out, image.Rect(size-side, size-side, size, size), image.NewUniform(color.RGBA{R: 255, A: 255}), image.Point{}, draw.Src)
+		return out
+	}
+	encode := func(img image.Image) []byte {
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	norm := func(blob []byte) []float64 {
+		v, ok := normaliseIcon(blob)
+		if !ok {
+			t.Fatal("synthetic icon did not normalise")
+		}
+		return v
+	}
+	basePNG := encode(base)
+	for _, tc := range []struct {
+		name             string
+		denominator      int
+		low, high        float64
+		wantedEquivalent bool
+	}{
+		{"badge over 2.8% of the area reads as unchanged", 6, 2.0, 3.0, true},
+		{"badge over 11.1% of the area reads as changed", 3, 9.5, 13.0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			edited := encode(badged(tc.denominator))
+			got := meanChannelDelta(norm(basePNG), norm(edited))
+			if got < tc.low || got > tc.high {
+				t.Errorf("mean delta %.2f is outside the pinned band [%.2f, %.2f]; the grid or the box filter changed", got, tc.low, tc.high)
+			}
+			if iconsEquivalent(basePNG, edited) != tc.wantedEquivalent {
+				t.Errorf("mean delta %.2f against tolerance %.2f: equivalent = %t, want %t", got, iconMeanDeltaTolerance, !tc.wantedEquivalent, tc.wantedEquivalent)
+			}
+		})
+	}
+}
+
 func TestIconsEquivalent_UndecodableAndEmpty(t *testing.T) {
 	real := icon(t, renderedA)
 	notAnImage := []byte("this is not an image at all, not even close")
@@ -114,10 +170,16 @@ func TestIconsEquivalent_UndecodableAndEmpty(t *testing.T) {
 			}
 		})
 	}
-	// Two identical undecodable blobs are the one exception: nothing was
-	// re-rendered, so there is no difference to report.
+	// Byte-identical sides are the one exception, empty ones included: nothing
+	// was re-rendered, so there is no difference to report.
 	if !iconsEquivalent(notAnImage, notAnImage) {
 		t.Error("byte-identical blobs must compare equal without being decoded")
+	}
+	if !iconsEquivalent(nil, nil) {
+		t.Error("two absent icons must compare equal")
+	}
+	if !iconsEquivalent([]byte{}, []byte{}) {
+		t.Error("two empty icon blobs must compare equal")
 	}
 }
 
