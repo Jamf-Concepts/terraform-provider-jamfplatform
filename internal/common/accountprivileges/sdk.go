@@ -239,3 +239,51 @@ func CategorizedSets(catalog map[string][]string) (map[string]types.Set, types.S
 	diags.Append(d...)
 	return sets, allSet, diags
 }
+
+// FilterToCatalog drops from every populated category any privilege the tenant's
+// Administrator grid does not offer, returning the filtered model.
+//
+// It exists for the import path. Jamf Pro expands a preset privilege_set
+// ("Auditor", "Administrator") into a full privilege list on read, and that list
+// can contain privileges the same tenant will not grant — "Read Knobs" is one on
+// an 11.x tenant. Adopting them verbatim writes a state (and, through
+// `-generate-config-out`, a configuration) that Validate then refuses, so an
+// import of a preset-set group produces a plan that cannot run. Filtering makes
+// the adopted set what the tenant would actually store, which is also what the
+// next Read will report.
+//
+// A nil catalog means discovery failed; the model is returned unchanged rather
+// than silently emptied.
+func FilterToCatalog(ctx context.Context, m *Model, catalog *Catalog) (Model, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var out Model
+	if m == nil {
+		return out, diags
+	}
+	if catalog == nil {
+		return *m, diags
+	}
+
+	for _, c := range Categories {
+		sp := m.setPtr(c.WireKey)
+		if sp.IsNull() || sp.IsUnknown() {
+			*out.setPtr(c.WireKey) = *sp
+			continue
+		}
+		declared, d := declaredStrings(ctx, *sp)
+		diags.Append(d...)
+		if diags.HasError() {
+			return out, diags
+		}
+		kept := make([]string, 0, len(declared))
+		for _, v := range declared {
+			if catalog.Contains(v) {
+				kept = append(kept, v)
+			}
+		}
+		set, d := NewStringSet(kept)
+		diags.Append(d...)
+		*out.setPtr(c.WireKey) = set
+	}
+	return out, diags
+}

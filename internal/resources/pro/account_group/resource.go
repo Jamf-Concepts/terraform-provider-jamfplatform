@@ -159,9 +159,16 @@ func (r *AccountGroupResource) ImportState(ctx context.Context, req resource.Imp
 // ModifyPlan validates declared privileges at plan time against the tenant's
 // privilege catalog (discovered from an Administrator account/group). Jamf Pro
 // silently ignores unrecognised privileges, so without this a typo would surface
-// as a perpetual diff. Skipped on destroy and when the privileges block is
-// absent. On discovery failure a loud warning is emitted (validation skipped)
-// rather than blocking the plan.
+// as a perpetual diff. On discovery failure a loud warning is emitted
+// (validation skipped) rather than blocking the plan.
+//
+// Skipped on destroy, when the privileges block is absent, and when
+// privilege_set is not Custom — the same rule managesPrivileges applies to the
+// write. A preset set never puts the grid on the wire, and one sent alongside a
+// preset set is discarded (see customPrivilegeSet for the 2026-09-08 wire
+// evidence), so refusing a privilege there would block a plan over a value Jamf
+// Pro was never going to read. jamfplatform_pro_account gates its own ModifyPlan
+// the same way.
 func (r *AccountGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() || r.client == nil {
 		return
@@ -169,6 +176,9 @@ func (r *AccountGroupResource) ModifyPlan(ctx context.Context, req resource.Modi
 	var plan AccountGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() || plan.Privileges == nil || plan.Privileges.IsEmpty() {
+		return
+	}
+	if !customPrivilegeSet(plan.PrivilegeSet) {
 		return
 	}
 

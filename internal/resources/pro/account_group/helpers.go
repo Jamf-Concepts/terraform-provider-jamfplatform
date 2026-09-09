@@ -4,6 +4,7 @@
 package account_group
 
 import (
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -32,4 +33,18 @@ func ldapServerIDForWrite(value types.Int64) *int {
 		return new(ldapServerNone)
 	}
 	return helpers.OptionalInt64Pointer(value)
+}
+
+// customPrivilegeSet reports whether the group's privilege_set is the one Jamf
+// Pro honours a declared privilege grid for. A preset set ("Administrator",
+// "Auditor", "Enrollment Only") expands into a server-owned grid that no write
+// can change: the classic endpoint discards a <privileges> element sent
+// alongside a preset set, wire-verified 2026-09-08 on Jamf Pro 11.x, where a
+// create carrying privilege_set = "Auditor" and a one-entry jss_objects grid
+// read back the full preset expansion instead — 89 object privileges and 46
+// settings privileges. That is why the write path omits the element
+// (managesPrivileges), why neither hydration path adopts the expansion, and why
+// ModifyPlan does not validate a grid it cannot send.
+func customPrivilegeSet(privilegeSet types.String) bool {
+	return privilegeSet.ValueString() == proclassic.GroupPrivilegeSetCustom
 }

@@ -419,3 +419,81 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+// TestFilterToCatalog covers the import repair for a preset privilege_set. Jamf
+// Pro expands "Auditor" into a privilege list that can name privileges the same
+// tenant will not grant, and adopting one hands the resource's own Validate a
+// config it refuses — so an imported group would produce a plan that cannot run.
+func TestFilterToCatalog(t *testing.T) {
+	ctx := context.Background()
+	catalog := &Catalog{valid: map[string]struct{}{
+		"Read Computers":   {},
+		"Read Cache":       {},
+		"Read SMTP Server": {},
+	}}
+
+	var m Model
+	objects, diags := NewStringSet([]string{"Read Computers", "Read Knobs"})
+	if diags.HasError() {
+		t.Fatalf("building the objects set: %v", diags)
+	}
+	settings, diags := NewStringSet([]string{"Read Cache", "Read SMTP Server"})
+	if diags.HasError() {
+		t.Fatalf("building the settings set: %v", diags)
+	}
+	*m.setPtr("jss_objects") = objects
+	*m.setPtr("jss_settings") = settings
+
+	out, diags := FilterToCatalog(ctx, &m, catalog)
+	if diags.HasError() {
+		t.Fatalf("FilterToCatalog: %v", diags)
+	}
+
+	got, d := declaredStrings(ctx, *out.setPtr("jss_objects"))
+	if d.HasError() {
+		t.Fatalf("reading back the objects set: %v", d)
+	}
+	if !reflect.DeepEqual(got, []string{"Read Computers"}) {
+		t.Errorf("jss_objects = %v, want the ungrantable privilege dropped", got)
+	}
+
+	kept, d := declaredStrings(ctx, *out.setPtr("jss_settings"))
+	if d.HasError() {
+		t.Fatalf("reading back the settings set: %v", d)
+	}
+	sort.Strings(kept)
+	if !reflect.DeepEqual(kept, []string{"Read Cache", "Read SMTP Server"}) {
+		t.Errorf("jss_settings = %v, want both grantable privileges kept", kept)
+	}
+
+	// An untouched category stays null rather than becoming an empty set, which
+	// is what "this category is unmanaged" means everywhere else here.
+	if !out.setPtr("jss_actions").IsNull() {
+		t.Errorf("jss_actions = %v, want null", *out.setPtr("jss_actions"))
+	}
+}
+
+// TestFilterToCatalog_NilCatalogKeepsEverything pins the discovery-failure path:
+// the grid is left as read rather than silently emptied.
+func TestFilterToCatalog_NilCatalogKeepsEverything(t *testing.T) {
+	ctx := context.Background()
+	var m Model
+	objects, diags := NewStringSet([]string{"Read Computers", "Read Knobs"})
+	if diags.HasError() {
+		t.Fatalf("building the objects set: %v", diags)
+	}
+	*m.setPtr("jss_objects") = objects
+
+	out, diags := FilterToCatalog(ctx, &m, nil)
+	if diags.HasError() {
+		t.Fatalf("FilterToCatalog: %v", diags)
+	}
+	got, d := declaredStrings(ctx, *out.setPtr("jss_objects"))
+	if d.HasError() {
+		t.Fatalf("reading back the objects set: %v", d)
+	}
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, []string{"Read Computers", "Read Knobs"}) {
+		t.Errorf("jss_objects = %v, want the unfiltered set", got)
+	}
+}

@@ -71,9 +71,9 @@ func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel,
 }
 
 // managesPrivileges reports whether the plan will send a <privileges> element:
-// the group is Custom and the block is present with at least one declared
-// category. When false the element is omitted and the server keeps its grid,
-// which is the one retention the wire does provide.
+// the group is Custom (see customPrivilegeSet) and the block is present with at
+// least one declared category. When false the element is omitted and the server
+// keeps its grid, which is the one retention the wire does provide.
 func managesPrivileges(plan AccountGroupResourceModel) bool {
-	return plan.PrivilegeSet.ValueString() == proclassic.GroupPrivilegeSetCustom && plan.Privileges != nil && !plan.Privileges.IsEmpty()
+	return customPrivilegeSet(plan.PrivilegeSet) && plan.Privileges != nil && !plan.Privileges.IsEmpty()
 }
