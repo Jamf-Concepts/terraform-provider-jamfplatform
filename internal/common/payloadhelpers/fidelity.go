@@ -4,8 +4,10 @@
 package payloadhelpers
 
 import (
+	"bytes"
 	"fmt"
 	"html"
+	"image"
 	"maps"
 	"slices"
 	"strings"
@@ -41,15 +43,24 @@ const (
 	classEntityLayer                      // extra entity layer around "&" or "<" (PI-827)
 	classAstral                           // non-BMP characters replaced, or the enclosing dict dropped
 	classDropped                          // value absent from the stored payload
+	classIcon                             // a web clip icon that is not a re-render of the authored one
 	classOther                            // unexplained
 )
 
+// fidelityFinding is one diverging value: its plist path, the wire law that
+// explains it, and both forms so the diagnostic can quote them.
+//
+// described marks a finding whose two sides are already summaries rather than
+// the values themselves (a data blob, a list, a dictionary). Those are printed
+// as they stand: excerpting a summary around its first differing character
+// quotes half a sentence and reads as corruption.
 type fidelityFinding struct {
-	path     string
-	class    fidelityClass
-	authored string
-	stored   string
-	present  bool
+	path      string
+	class     fidelityClass
+	authored  string
+	stored    string
+	present   bool
+	described bool
 }
 
 // PayloadFidelityErrorDetail builds the diagnostic detail for a read-back
@@ -86,9 +97,13 @@ func formatFidelityFindings(findings []fidelityFinding, phase FidelityPhase) str
 	}
 	for _, f := range shown {
 		fmt.Fprintf(&b, "\n  - %s\n", wrapIndented(f.path+" — "+remedyFor(f.class), "    "))
-		fmt.Fprintf(&b, "    %s: %s\n", suppliedLabel, excerpt(f.authored, f.stored))
+		authored, stored := excerpt(f.authored, f.stored), excerpt(f.stored, f.authored)
+		if f.described {
+			authored, stored = f.authored, f.stored
+		}
+		fmt.Fprintf(&b, "    %s: %s\n", suppliedLabel, authored)
 		if f.present {
-			fmt.Fprintf(&b, "    %s: %s\n", storedLabel, excerpt(f.stored, f.authored))
+			fmt.Fprintf(&b, "    %s: %s\n", storedLabel, stored)
 		} else {
 			fmt.Fprintf(&b, "    %s: (nothing — the value is absent)\n", storedLabel)
 		}
@@ -135,6 +150,12 @@ func remedyFor(c fidelityClass) string {
 			"macOS itself handles these correctly, so this is a Jamf Pro limitation with no client-side workaround — remove them from the value."
 	case classDropped:
 		return "not stored at all."
+	case classIcon:
+		return "stored as a different picture. Jamf Pro rescales a web clip icon to 180 pixels on its longest side and re-encodes it as a PNG, " +
+			"and the provider allows for that, so the difference here is in the image itself. " +
+			"Either Jamf Pro could not read the icon and stored a placeholder in its place (it reads PNG, JPEG and GIF), " +
+			"or someone replaced the icon in the Jamf Pro admin UI. " +
+			"Supply an icon Jamf Pro can read, or copy the stored icon back into the payload."
 	default:
 		return "stored with different content, for a reason the provider does not recognise. Compare the two forms below."
 	}
@@ -193,11 +214,20 @@ func diffPayloadStrings(authored, stored []byte) ([]fidelityFinding, bool) {
 // builds in memory (see importgate.go) using exactly the comparison, mask and
 // classifier the post-write checks use — the two can therefore never disagree
 // about whether a given value survives a write.
+//
+// The string leaves are walked first and the non-string ones appended after,
+// because the string classes carry a specific remedy and so should lead.
+// Walking the non-string leaves at all is what keeps a difference in a data
+// blob, a boolean or a number from producing an unattributed failure: the whole
+// tree can compare unequal while the string pass finds nothing, which is
+// exactly how a re-rendered web clip icon used to surface (issue #418).
 func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding {
+	aligned := alignPayloadContentOrder(authoredTree, dropInjectedPayloadEntries(storedTree))
+
 	authoredFlat := map[string]string{}
 	storedFlat := map[string]string{}
 	flattenStringLeaves("", authoredTree, authoredFlat)
-	flattenStringLeaves("", alignPayloadContentOrder(authoredTree, storedTree), storedFlat)
+	flattenStringLeaves("", aligned, storedFlat)
 
 	findings := make([]fidelityFinding, 0, 4)
 	for _, path := range sortedKeys(authoredFlat) {
@@ -217,7 +247,229 @@ func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding
 			present:  present,
 		})
 	}
+	findings = append(findings, diffNonStringLeaves("", "", authoredTree, aligned)...)
 	return findings
+}
+
+// diffNonStringLeaves walks both trees in parallel and reports every non-string
+// leaf that would make LenientEqualPlist answer false: intersection semantics
+// (a key on only one side is Jamf Pro's own injection or the user's omission,
+// neither of which is a fidelity failure), the same numeric leniency, and the
+// same web clip icon equivalence. Strings are skipped — the flatten-based pass
+// above owns those, and it classifies them.
+//
+// Intersection semantics hold for ordinary dict keys — a key on only one side
+// is Jamf Pro's own injection or the operator's omission, neither of which is a
+// fidelity failure — with the one exception LenientEqualPlist itself carves
+// out: an MCX entry's inner PayloadContent, handled by diffMCXPreferences. A
+// dict on the authored side facing a non-dict on the stored side is likewise
+// blamed rather than skipped, because the equality check fails the whole tree
+// on it.
+//
+// payloadType is the PayloadType of the enclosing payload entry, threaded down
+// so the icon exception can be applied to exactly the leaf it belongs to.
+func diffNonStringLeaves(path, payloadType string, authored, stored any) []fidelityFinding {
+	switch av := authored.(type) {
+	case string:
+		return nil
+
+	case map[string]any:
+		bv, ok := stored.(map[string]any)
+		if !ok {
+			return []fidelityFinding{describedFinding(path, classOther, authored, stored)}
+		}
+		ownType, _ := av["PayloadType"].(string)
+		entryType := payloadType
+		if ownType != "" {
+			entryType = ownType
+		}
+		_, isMCX := mcxLikePayloadTypes[ownType]
+		var out []fidelityFinding
+		if isMCX {
+			out = append(out, diffMCXPreferences(path, av, bv)...)
+		}
+		for _, k := range slices.Sorted(maps.Keys(av)) {
+			vb, exists := bv[k]
+			if !exists || maskedLeafPath(k) {
+				continue
+			}
+			if isMCX && k == "PayloadContent" {
+				continue
+			}
+			out = append(out, diffNonStringLeaves(path+"."+k, entryType, av[k], vb)...)
+		}
+		return out
+
+	case []any:
+		bv, ok := stored.([]any)
+		if !ok || len(av) != len(bv) {
+			return []fidelityFinding{describedFinding(path, classOther, authored, stored)}
+		}
+		var out []fidelityFinding
+		for i := range av {
+			out = append(out, diffNonStringLeaves(fmt.Sprintf("%s[%d]", path, i), payloadType, av[i], bv[i])...)
+		}
+		return out
+
+	default:
+		if leafEquivalent(payloadType, lastPathKey(path), authored, stored) {
+			return nil
+		}
+		return []fidelityFinding{describedFinding(path, leafClass(payloadType, lastPathKey(path)), authored, stored)}
+	}
+}
+
+// diffMCXPreferences reports the divergences LenientEqualPlist's MCX branch
+// fails on but an intersection walk cannot see. That branch treats an
+// "Application & Custom Settings" entry's inner PayloadContent — opaque vendor
+// preference data Jamf Pro only transports — strictly: the key has to be
+// present on both sides or neither, and when both carry it the subtree goes
+// through plisthelpers.Equal, which requires matching keysets at every depth.
+// A one-sided key there is real drift, and it is exactly what a walk skipping
+// keys the stored side lacks steps over, leaving the whole failure
+// unattributed (issue #418).
+//
+// Value differences at keys both sides carry are deliberately left to the
+// string pass and the ordinary non-string walk, which already name them with a
+// classified remedy — naming them a second time here would push the real
+// finding past maxReportedFindings.
+func diffMCXPreferences(path string, authored, stored map[string]any) []fidelityFinding {
+	ai, aHas := authored["PayloadContent"]
+	bi, bHas := stored["PayloadContent"]
+	switch {
+	case aHas && !bHas:
+		return []fidelityFinding{describedFinding(path+".PayloadContent", classDropped, ai, nil)}
+	case bHas && !aHas:
+		return []fidelityFinding{describedFinding(path+".PayloadContent", classOther, nil, bi)}
+	case !aHas:
+		return nil
+	}
+	if plisthelpers.Equal(ai, bi) {
+		return nil
+	}
+	return oneSidedPreferenceKeys(path+".PayloadContent", ai, bi)
+}
+
+// oneSidedPreferenceKeys walks a vendor preference subtree both ways and names
+// every key that exists on one side only, in either direction: a key the
+// operator authored and Jamf Pro did not store, and a key Jamf Pro holds that
+// the configuration never wrote. Both fail the strict compare, so both have to
+// be nameable. Arrays are walked only over their common prefix — a length
+// mismatch is already reported by the caller's own array branch.
+func oneSidedPreferenceKeys(path string, authored, stored any) []fidelityFinding {
+	switch av := authored.(type) {
+	case map[string]any:
+		bv, ok := stored.(map[string]any)
+		if !ok {
+			return nil
+		}
+		var out []fidelityFinding
+		for _, k := range slices.Sorted(maps.Keys(av)) {
+			if vb, exists := bv[k]; exists {
+				out = append(out, oneSidedPreferenceKeys(path+"."+k, av[k], vb)...)
+				continue
+			}
+			out = append(out, describedFinding(path+"."+k, classDropped, av[k], nil))
+		}
+		for _, k := range slices.Sorted(maps.Keys(bv)) {
+			if _, exists := av[k]; !exists {
+				out = append(out, describedFinding(path+"."+k, classOther, nil, bv[k]))
+			}
+		}
+		return out
+
+	case []any:
+		bv, ok := stored.([]any)
+		if !ok {
+			return nil
+		}
+		var out []fidelityFinding
+		for i := range min(len(av), len(bv)) {
+			out = append(out, oneSidedPreferenceKeys(fmt.Sprintf("%s[%d]", path, i), av[i], bv[i])...)
+		}
+		return out
+
+	default:
+		return nil
+	}
+}
+
+// describedFinding builds a finding whose two sides are summaries rather than
+// the values themselves (see fidelityFinding.described), which is every
+// non-string leaf and every whole subtree this walk can blame.
+func describedFinding(path string, class fidelityClass, authored, stored any) fidelityFinding {
+	return fidelityFinding{
+		path:      strings.TrimPrefix(path, "."),
+		class:     class,
+		authored:  describeLeaf(authored),
+		stored:    describeLeaf(stored),
+		present:   stored != nil,
+		described: true,
+	}
+}
+
+// leafEquivalent applies the comparison LenientEqualPlist would to one scalar
+// leaf, including the web clip icon exception, so the differ can never name a
+// leaf the equality check was happy with.
+func leafEquivalent(payloadType, key string, authored, stored any) bool {
+	if isWebClipIcon(payloadType, key) {
+		if a, s, ok := iconBlobs(authored, stored); ok {
+			return iconsEquivalent(a, s)
+		}
+	}
+	return LenientEqualPlist(authored, stored)
+}
+
+// leafClass names the icon case specifically; every other non-string leaf gets
+// the generic class, because Jamf Pro has no known transform on one.
+func leafClass(payloadType, key string) fidelityClass {
+	if isWebClipIcon(payloadType, key) {
+		return classIcon
+	}
+	return classOther
+}
+
+// describeLeaf renders a non-string leaf for the diagnostic. A data blob is
+// summarised rather than dumped: an icon is tens of kilobytes of base64 and
+// quoting it would bury the finding.
+func describeLeaf(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "(nothing)"
+	case []byte:
+		if cfg, format, err := image.DecodeConfig(bytes.NewReader(t)); err == nil {
+			return fmt.Sprintf("%d bytes of data (%s image, %dx%d)", len(t), strings.ToUpper(format), cfg.Width, cfg.Height)
+		}
+		return fmt.Sprintf("%d bytes of data (not a readable image)", len(t))
+	case []any:
+		return fmt.Sprintf("a list of %s", plural(len(t), "item", "items"))
+	case map[string]any:
+		return fmt.Sprintf("a dictionary of %s", plural(len(t), "key", "keys"))
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// plural renders a count with the right noun form, so a summary reads as a
+// sentence rather than carrying an "(s)".
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, one)
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+// lastPathKey is the final dict key in a flattened path, ignoring any array
+// index that follows it.
+func lastPathKey(path string) string {
+	key := path
+	if i := strings.LastIndexByte(key, '.'); i >= 0 {
+		key = key[i+1:]
+	}
+	if i := strings.IndexByte(key, '['); i >= 0 {
+		key = key[:i]
+	}
+	return key
 }
 
 // alignPayloadContentOrder returns storedTree with its top-level PayloadContent
@@ -278,6 +530,44 @@ func alignPayloadContentOrder(authoredTree, storedTree map[string]any) map[strin
 	out := make(map[string]any, len(storedTree))
 	maps.Copy(out, storedTree)
 	out["PayloadContent"] = aligned
+	return out
+}
+
+// dropInjectedPayloadEntries returns tree with every top-level PayloadContent
+// entry Jamf Pro injects as a side-effect of a classic-API field removed,
+// mirroring the filter MaskPayload applies (see serverInjectedPayloadTypes) so
+// the differ and the equality check cannot disagree about which entries exist.
+//
+// Without it the array lengths differ by one and the array branch of
+// diffNonStringLeaves reports a bare length mismatch *instead of* recursing, so
+// the one real defect below is never named: a profile setting
+// self_service.authorization_password materialises a
+// com.apple.profileRemovalPassword entry, and a genuinely diverging web clip
+// icon on the same profile came out as "a list of 1 item" against "a list of 2
+// items" with no mention of the icon.
+//
+// The filtered tree feeds the string pass too, which is correct — an injected
+// entry's string leaves were never authored, so no finding can belong to them.
+// The returned tree shares everything except the PayloadContent slice with
+// tree, and tree itself is returned unchanged when nothing is dropped.
+func dropInjectedPayloadEntries(tree map[string]any) map[string]any {
+	entries, ok := tree["PayloadContent"].([]any)
+	if !ok {
+		return tree
+	}
+	kept := make([]any, 0, len(entries))
+	for _, entry := range entries {
+		if _, injected := serverInjectedPayloadTypes[payloadTypeOf(entry)]; injected {
+			continue
+		}
+		kept = append(kept, entry)
+	}
+	if len(kept) == len(entries) {
+		return tree
+	}
+	out := make(map[string]any, len(tree))
+	maps.Copy(out, tree)
+	out["PayloadContent"] = kept
 	return out
 }
 

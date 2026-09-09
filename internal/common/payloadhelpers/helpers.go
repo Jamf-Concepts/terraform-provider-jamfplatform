@@ -32,6 +32,18 @@ import (
 //   - user omits the key → only server side has it → intersection drops it → no spurious diff.
 //   - user authors the key → both sides have it → compared → drift detected if the user later edits.
 //
+// `data_files` is in this list for a stronger reason than one-sidedness. It is
+// Jamf Pro's handle for a web clip's stored icon, it appears only on the stored
+// side, and the intersection compare would ignore it there — but the strict
+// comparator behind `ThreeWayCompare` and `PayloadsStructurallyEqual` requires
+// matching keysets and values, and those two compare *two server payloads*
+// (the one stashed at apply against the one read back now) to tell an
+// admin-side edit from a steady refresh. Wire-probed 2026-09-09 against Jamf
+// Pro 11.3x: two consecutive reads of one unchanged profile return different
+// `data_files` values, so without the mask every refresh of an icon-bearing
+// profile reports drift that nobody caused, and the plan never settles
+// (issue #418). Mobile-device profiles emit it; macOS profiles do not.
+//
 // `PayloadOrganization` is in this list — wire-confirmed 2026-05-26 that
 // Jamf Pro Classic always overwrites the field with "JAMF Software" on
 // both top-level and per-PayloadContent slots, regardless of the
@@ -55,6 +67,7 @@ var (
 		"PayloadIdentifier":   {}, // server may assign on create
 		"PayloadUUID":         {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
 		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
+		"data_files":          {}, // handle for a web clip's stored icon, reissued on every read
 	}
 	// serverInjectedPayloadTypes are PayloadContent[i].PayloadType values Jamf
 	// Pro inserts into the mobileconfig as a side-effect of a *different*
@@ -344,6 +357,12 @@ func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
 // MCX entry depth still use intersection so per-payload metadata defaults
 // Jamf injects (e.g. PayloadEnabled) keep tolerating one-sided presence.
 //
+// Second exception: the Icon of a com.apple.webClip.managed entry is compared
+// through iconsEquivalent rather than byte-for-byte, because Jamf Pro always
+// re-renders it and no client can reproduce the result — see the wire law in
+// webclipicon.go. This is the only data blob so treated; certificates, fonts
+// and VPN secrets are stored verbatim and still compare exactly.
+//
 // Intersection compare elsewhere remains the documented trade-off: it
 // keeps the corpus quiet on Jamf's many conditional-default injections
 // (top-level `PayloadRemovalDisallowed`, per-payload `PayloadEnabled`,
@@ -358,8 +377,9 @@ func LenientEqualPlist(a, b any) bool {
 		if !ok {
 			return false
 		}
-		if pt, _ := av["PayloadType"].(string); pt != "" {
-			if _, isMCX := mcxLikePayloadTypes[pt]; isMCX {
+		payloadType, _ := av["PayloadType"].(string)
+		if payloadType != "" {
+			if _, isMCX := mcxLikePayloadTypes[payloadType]; isMCX {
 				ai, aHas := av["PayloadContent"]
 				bi, bHas := bv["PayloadContent"]
 				if aHas != bHas {
@@ -382,10 +402,21 @@ func LenientEqualPlist(a, b any) bool {
 			}
 		}
 		for k, va := range av {
-			if vb, exists := bv[k]; exists {
-				if !LenientEqualPlist(va, vb) {
-					return false
+			vb, exists := bv[k]
+			if !exists {
+				continue
+			}
+			if isWebClipIcon(payloadType, k) {
+				authored, stored, ok := iconBlobs(va, vb)
+				if ok {
+					if !iconsEquivalent(authored, stored) {
+						return false
+					}
+					continue
 				}
+			}
+			if !LenientEqualPlist(va, vb) {
+				return false
 			}
 		}
 		return true
