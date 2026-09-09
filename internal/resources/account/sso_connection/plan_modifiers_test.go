@@ -437,3 +437,47 @@ func TestModifyPlan_AnUnknownInsideANestedBlockReplacesNothing(t *testing.T) {
 		t.Errorf("RequiresReplace = %v, want no replacement while the block holds an unresolved reference", resp.RequiresReplace)
 	}
 }
+
+// TestAttributeMapReindentingIsNotAReplacement pins the fix for the most
+// destructive defect this resource had: because every changed configurable
+// attribute here forces replacement, and attribute_map was compared with
+// reflect.DeepEqual over the raw strings, importing a connection and applying
+// the configuration `-generate-config-out` produced destroyed and recreated a
+// live SSO connection over JSON whitespace. Observed on a real org-scoped
+// estate: "attribute_map = jsonencode( # whitespace changes force replacement".
+func TestAttributeMapReindentingIsNotAReplacement(t *testing.T) {
+	// The same map, as Jamf Account returns it and as jsonencode re-emits it.
+	fromJamf := types.StringValue(`{"mapping_mode":"use_map","userinfo_scope":"openid email"}`)
+	reEmitted := types.StringValue("{\n  \"userinfo_scope\": \"openid email\",\n  \"mapping_mode\": \"use_map\"\n}")
+
+	if planValueDiffers(jsonComparable(reEmitted), jsonComparable(fromJamf)) {
+		t.Error("reindenting and reordering attribute_map must not read as a change")
+	}
+
+	// A real change still is one.
+	changed := types.StringValue(`{"mapping_mode":"bind_all"}`)
+	if !planValueDiffers(jsonComparable(changed), jsonComparable(fromJamf)) {
+		t.Error("a different mapping_mode must still read as a change")
+	}
+}
+
+// TestJsonComparablePassesThroughWhatItCannotParse keeps the normalisation out
+// of the way of the other rules: an unknown value must stay recognisable as
+// unknown for planValueDiffers' own exemption, and a non-JSON value is the
+// validator's business rather than this comparison's.
+func TestJsonComparablePassesThroughWhatItCannotParse(t *testing.T) {
+	for name, value := range map[string]types.String{
+		"unknown":  types.StringUnknown(),
+		"null":     types.StringNull(),
+		"not json": types.StringValue("mapping_mode=bind_all"),
+	} {
+		if got := jsonComparable(value); got != value {
+			t.Errorf("%s: jsonComparable returned %v, want the value unchanged", name, got)
+		}
+	}
+
+	// And the unknown exemption still holds through the wrapper.
+	if planValueDiffers(jsonComparable(types.StringUnknown()), jsonComparable(types.StringValue(`{"a":1}`))) {
+		t.Error("an unknown planned value must not read as a change")
+	}
+}

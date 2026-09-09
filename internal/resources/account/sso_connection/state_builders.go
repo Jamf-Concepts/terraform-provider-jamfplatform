@@ -454,15 +454,65 @@ func buildEntraStateModel(options *account.EntraOptions) *EntraSettingsModel {
 		SetEmailsVerified: boolOrNull(options.SetEmailsVerified),
 		EnableUsersAPI:    boolOrNull(options.EnableUsersApi),
 		UseWSFed:          boolOrNull(options.UseWsfed),
-		GroupsScope:       stringOrNull(options.GroupsScope),
 		BasicProfile:      boolOrNull(options.BasicProfile),
 	}
 	if options.ExtOptions != nil {
 		out.ExtendedProfile = boolOrNull(options.ExtOptions.ExtendedProfile)
 		out.GetUserGroups = boolOrNull(options.ExtOptions.Groups)
+	}
+
+	// The two group options are gated on get_user_groups, the way pkce and
+	// auth_method are gated on connection_type: rule 14
+	// (validateEntraGroupOptions) refuses both when groups are off, so adopting
+	// what Jamf returned would commit a value this resource's own validator
+	// rejects — and `-generate-config-out` would then write a configuration that
+	// cannot plan. Same defect class as the seven in issue #379.
+	//
+	// The two are gated differently because their schemas differ.
+	// `groups_scope` is Optional only, so a null is safe: a configuration that
+	// sets it under groups-off fails at plan and this Read never has to
+	// reconcile with it. `include_nested_groups` is Optional+Computed with
+	// UseNonNullStateForUnknown, where a null would fight the plan modifier, so
+	// it settles to false — which the validator accepts, and which is what Jamf
+	// actually does with nested groups when group membership is off.
+	switch groupMembership(options.ExtOptions) {
+	case groupsOn:
+		out.GroupsScope = stringOrNull(options.GroupsScope)
 		out.IncludeNestedGroups = boolOrNull(options.ExtOptions.NestedGroups)
+	case groupsOff:
+		out.GroupsScope = types.StringNull()
+		out.IncludeNestedGroups = types.BoolValue(false)
+	default: // groupsUnreported
+		// Jamf sent no group settings at all. include_nested_groups stays empty
+		// rather than guessing at false — TestBuildEntraStateModel_WithoutTheNestedOptions
+		// pins that — while groups_scope is still dropped, because the validator
+		// reads an absent get_user_groups as off and would refuse it.
+		out.GroupsScope = types.StringNull()
 	}
 	return out
+}
+
+// groupMembershipState is whether an Entra connection reads group membership,
+// which is what makes groups_scope and include_nested_groups meaningful.
+type groupMembershipState int
+
+const (
+	// groupsUnreported means Jamf returned no group settings for the connection,
+	// which is distinct from returning them switched off.
+	groupsUnreported groupMembershipState = iota
+	groupsOff
+	groupsOn
+)
+
+// groupMembership classifies the group switch on an Entra read.
+func groupMembership(ext *account.EntraExtendedOptions) groupMembershipState {
+	if ext == nil || ext.Groups == nil {
+		return groupsUnreported
+	}
+	if *ext.Groups {
+		return groupsOn
+	}
+	return groupsOff
 }
 
 // buildOktaStateModel fills the Okta block from a read.
