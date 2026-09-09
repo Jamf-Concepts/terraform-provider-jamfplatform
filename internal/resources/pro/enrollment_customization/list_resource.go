@@ -29,6 +29,10 @@ import (
 // enough for tenants with hundreds of customizations.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item pane hydration issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &EnrollmentCustomizationListResource{}
 	_ list.ListResourceWithConfigure = &EnrollmentCustomizationListResource{}
@@ -140,14 +144,26 @@ func (r *EnrollmentCustomizationListResource) List(ctx context.Context, req list
 		}
 
 		if req.IncludeResource {
-			// IncludeResource targets the resource schema. The list endpoint
-			// only carries the parent record; panes stay null in the result
-			// state — admins who need pane-level detail should follow up with
-			// a singular resource read by ID.
+			// The list endpoint carries only the parent record. Leaving the
+			// panes null makes `terraform query -generate-config-out` write a
+			// customization with no text, LDAP or SSO panes, and applying that
+			// config back would delete the ones it has — so hydrate them with
+			// the same helper Read uses. Only the panes need fetching; the
+			// parent is already in hand.
 			state := EnrollmentCustomizationResourceModel{
 				Timeouts: helpers.NewResourceTimeoutsNullValue(enrollmentCustomizationTimeoutAttributeTypes),
 			}
 			assignParentToResource(&state, &item)
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			err := hydratePanels(itemCtx, r.client, &state)
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping enrollment customization from generated config after pane read failure", map[string]any{
+					"id":    state.ID.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

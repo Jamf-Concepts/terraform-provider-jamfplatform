@@ -344,6 +344,14 @@ func TestAccListResource_ProAdvancedUserSearch_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// criteria is NOT in the /advancedusersearches summary row,
+							// which carries id and name only. Asserting name alone is
+							// what let a list resource emitting null criteria pass:
+							// `terraform query -generate-config-out` then wrote a search
+							// with no criteria, and applying it back deleted the real
+							// ones. This pins the per-item GET.
+							{Path: tfjsonpath.New("criteria").AtSliceIndex(0).AtMapKey("name"), KnownValue: knownvalue.StringExact("Full Name")},
+							{Path: tfjsonpath.New("criteria").AtSliceIndex(0).AtMapKey("value"), KnownValue: knownvalue.StringExact("a")},
 						},
 					),
 				},

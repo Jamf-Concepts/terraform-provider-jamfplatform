@@ -40,6 +40,9 @@ var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSource
 // resource (list_resource.go) calls.
 var listResourceSDKMethods = []string{
 	"ListMobileDeviceProvisioningProfiles",
+	// The per-item hydration GET the list resource issues when
+	// IncludeResource asks for full resource state.
+	"GetMobileDeviceProvisioningProfileByID",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown

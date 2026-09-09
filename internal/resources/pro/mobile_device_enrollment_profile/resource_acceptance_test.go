@@ -25,7 +25,12 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck/queryfilter"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
@@ -453,6 +458,87 @@ func TestAccResource_ProMobileDeviceEnrollmentProfile_OmittedBlocksRetained(t *t
 					resource.TestCheckNoResourceAttr(resAddr, "purchasing.vendor"),
 					mdepRetainedOnServer(t, name, ""),
 				),
+			},
+		},
+	})
+}
+
+// TestAccListResource_ProMobileDeviceEnrollmentProfile_HydratesBeyondTheSummaryRow
+// pins that a list result carries the attributes the
+// /mobiledeviceenrollmentprofiles summary row does not.
+//
+// The summary carries id, name and invitation. The list resource used to emit
+// nulls for description and for the whole location and purchasing blocks, which
+// no query test caught because there was no query test at all — but
+// `terraform query -generate-config-out` wrote a profile without them, and
+// applying that configuration back cleared them on the tenant.
+//
+// This asserts fields that can only have come from the per-item GET. It belongs
+// here rather than on testhelpers.GenerateConfigStep, which adopts through the
+// singular read and never touches the list resource.
+func TestAccListResource_ProMobileDeviceEnrollmentProfile_HydratesBeyondTheSummaryRow(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-mdep-list-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEnrollmentProfileDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_mobile_device_enrollment_profile" "test" {
+						name        = %q
+						description = "list hydration fixture"
+
+						location = {
+							username  = "tf-acc-mdep-list-user"
+							real_name = "TF Acc List User"
+							room      = "101"
+						}
+
+						purchasing = {
+							is_purchased    = true
+							vendor          = "Apple"
+							life_expectancy = 3
+						}
+					}
+				`, name),
+				Check: resource.TestCheckResourceAttrSet(resAddr, "id"),
+			},
+			{
+				Query: true,
+				Config: fmt.Sprintf(`
+					provider "jamfplatform" {}
+
+					list "jamfplatform_pro_mobile_device_enrollment_profile" "test" {
+						provider         = jamfplatform
+						include_resource = true
+
+						config {
+							filter = {
+								name_substring = %q
+							}
+						}
+					}
+				`, name),
+				QueryResultChecks: []querycheck.QueryResultCheck{
+					querycheck.ExpectLength("jamfplatform_pro_mobile_device_enrollment_profile.test", 1),
+					querycheck.ExpectResourceKnownValues(
+						"jamfplatform_pro_mobile_device_enrollment_profile.test",
+						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
+						[]querycheck.KnownValueCheck{
+							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// Not in the summary row: these are the fix.
+							{Path: tfjsonpath.New("description"), KnownValue: knownvalue.StringExact("list hydration fixture")},
+							{Path: tfjsonpath.New("location").AtMapKey("real_name"), KnownValue: knownvalue.StringExact("TF Acc List User")},
+							{Path: tfjsonpath.New("purchasing").AtMapKey("vendor"), KnownValue: knownvalue.StringExact("Apple")},
+						},
+					),
+				},
 			},
 		},
 	})

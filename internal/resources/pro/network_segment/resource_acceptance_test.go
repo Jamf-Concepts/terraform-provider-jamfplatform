@@ -333,3 +333,72 @@ func TestAccListResource_ProNetworkSegment_Basic(t *testing.T) {
 		},
 	})
 }
+
+// TestAccListResource_ProNetworkSegment_HydratesBeyondTheSummaryRow pins that a
+// list result carries the attributes the /networksegments summary row does not.
+//
+// The summary carries id, name, starting_address and ending_address only, and
+// the list resource used to emit nulls for everything else. That is invisible to
+// a query test asserting only summary fields — which is what
+// TestAccListResource_ProNetworkSegment_Basic does, and why it passed
+// throughout — but it is not invisible to `terraform query
+// -generate-config-out`: the generated configuration carried no building,
+// department or override flags, and applying it back would have cleared them.
+//
+// So this asserts a field that can only have come from the per-item GET. It
+// belongs here rather than on testhelpers.GenerateConfigStep, which adopts
+// through the singular read and never touches the list resource at all.
+func TestAccListResource_ProNetworkSegment_HydratesBeyondTheSummaryRow(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-ns-hydrate-" + suffix
+	buildingName := "tf-acc-ns-hydrate-building-" + suffix
+	departmentName := "tf-acc-ns-hydrate-department-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckNetworkSegmentDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: networkSegmentConfigAllFields(name, buildingName, departmentName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_network_segment.test", "building", buildingName),
+				),
+			},
+			{
+				Query: true,
+				Config: fmt.Sprintf(`
+					provider "jamfplatform" {}
+
+					list "jamfplatform_pro_network_segment" "test" {
+						provider         = jamfplatform
+						include_resource = true
+
+						config {
+							filter = {
+								name_substring = %q
+							}
+						}
+					}
+				`, name),
+				QueryResultChecks: []querycheck.QueryResultCheck{
+					querycheck.ExpectLength("jamfplatform_pro_network_segment.test", 1),
+					querycheck.ExpectResourceKnownValues(
+						"jamfplatform_pro_network_segment.test",
+						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
+						[]querycheck.KnownValueCheck{
+							// Not in the summary row: these are the fix.
+							{Path: tfjsonpath.New("building"), KnownValue: knownvalue.StringExact(buildingName)},
+							{Path: tfjsonpath.New("department"), KnownValue: knownvalue.StringExact(departmentName)},
+							{Path: tfjsonpath.New("override_buildings"), KnownValue: knownvalue.Bool(true)},
+							{Path: tfjsonpath.New("override_departments"), KnownValue: knownvalue.Bool(true)},
+						},
+					),
+				},
+			},
+		},
+	})
+}

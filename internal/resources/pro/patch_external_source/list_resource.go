@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -24,6 +23,10 @@ import (
 // /patchexternalsources endpoint. The list resource schema does not expose a
 // user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &PatchExternalSourceListResource{}
 var _ list.ListResourceWithConfigure = &PatchExternalSourceListResource{}
@@ -140,18 +143,25 @@ func (r *PatchExternalSourceListResource) List(ctx context.Context, req list.Lis
 		}
 
 		if req.IncludeResource {
-			// The list endpoint exposes only id+name; the remaining attributes
-			// are left null (see method doc).
-			state := PatchExternalSourceResourceModel{
-				ID:                           id,
-				Name:                         helpers.StringPointerValueOrNull(s.Name),
-				Enabled:                      types.BoolNull(),
-				HostName:                     types.StringNull(),
-				Port:                         types.Int64Null(),
-				SslEnabled:                   types.BoolNull(),
-				CertificateValidationEnabled: types.BoolNull(),
-				Timeouts:                     helpers.NewResourceTimeoutsNullValue(patchExternalSourceTimeoutAttributeTypes),
+			// The list endpoint exposes only id+name, and host_name is Required
+			// on the resource schema — a list result carrying null for it
+			// generates config the provider then refuses to plan. Follow up with
+			// a singular GET and hydrate from the state builder Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetPatchExternalSourceByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping patch external source from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := PatchExternalSourceResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(patchExternalSourceTimeoutAttributeTypes),
+			}
+			assignPatchExternalSourceResourceModel(&state, full)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

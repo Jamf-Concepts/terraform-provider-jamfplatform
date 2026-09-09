@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -23,6 +22,10 @@ import (
 // defaultListTimeout caps how long the list operation waits on the classic
 // /advancedusersearches endpoint.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &AdvancedUserSearchListResource{}
 var _ list.ListResourceWithConfigure = &AdvancedUserSearchListResource{}
@@ -36,8 +39,8 @@ func NewAdvancedUserSearchListResource() list.ListResource {
 // AdvancedUserSearchListResource implements Terraform query list support.
 // Classic /advancedusersearches has no RSQL — the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter after the full list is
-// fetched. List items carry only id and name on the wire; every other resource
-// attribute is set to null on list results.
+// fetched. List items carry only id and name on the wire, so IncludeResource
+// hydrates each record with a singular GET.
 type AdvancedUserSearchListResource struct {
 	client *proclassic.Client
 }
@@ -137,16 +140,30 @@ func (r *AdvancedUserSearchListResource) List(ctx context.Context, req list.List
 		}
 
 		if req.IncludeResource {
-			// List response carries id and name only. Every other Optional/Computed
-			// attribute is null on list results.
+			// The /advancedusersearches list response carries id and name only. A list
+			// result with null criteria makes `terraform query
+			// -generate-config-out` write a search with no criteria at all, and
+			// applying that config back would delete the ones the search
+			// actually has — so follow up with a singular GET and hydrate from
+			// the same state builder Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetAdvancedUserSearchByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping advanced user search from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := AdvancedUserSearchResourceModel{
-				ID:            id,
-				Name:          helpers.StringPointerValueOrNull(s.Name),
-				SiteID:        types.StringNull(),
-				SiteName:      types.StringNull(),
-				Criteria:      nil,
-				DisplayFields: types.SetNull(types.StringType),
-				Timeouts:      helpers.NewResourceTimeoutsNullValue(advancedUserSearchTimeoutAttributeTypes),
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(advancedUserSearchTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignAdvancedUserSearchResourceModel(itemCtx, &state, full)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

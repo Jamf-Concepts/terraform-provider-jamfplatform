@@ -525,7 +525,16 @@ func TestAccListResource_ProLicensedSoftware(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_licensed_software" "src" {
-						name = %q
+						name      = %q
+						publisher = "Acme Corp"
+
+						software_definitions = [
+							{
+								name         = "Acme Editor"
+								version      = "2.0"
+								compare_type = "is"
+							},
+						]
 					}
 				`, name),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -555,6 +564,16 @@ func TestAccListResource_ProLicensedSoftware(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							// Neither publisher nor software_definitions is in the
+							// /licensedsoftware summary row, which carries id and name
+							// only. Asserting name alone is what let a list resource
+							// emitting nulls for the rest pass, while
+							// `terraform query -generate-config-out` wrote a title with
+							// no definitions and no licences — and applying that back
+							// stripped both. This pins the per-item GET.
+							{Path: tfjsonpath.New("publisher"), KnownValue: knownvalue.StringExact("Acme Corp")},
+							{Path: tfjsonpath.New("software_definitions").AtSliceIndex(0).AtMapKey("name"), KnownValue: knownvalue.StringExact("Acme Editor")},
+							{Path: tfjsonpath.New("software_definitions").AtSliceIndex(0).AtMapKey("version"), KnownValue: knownvalue.StringExact("2.0")},
 						},
 					),
 				},

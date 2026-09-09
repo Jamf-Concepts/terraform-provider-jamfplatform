@@ -46,7 +46,7 @@ func TestAssignNetworkSegmentResourceModel_PopulatesFields(t *testing.T) {
 		URL:                 &url,
 	}
 
-	assignNetworkSegmentResourceModel(&state, api)
+	assignNetworkSegmentResourceModel(&state, api, false)
 
 	if state.ID.ValueString() != "42" {
 		t.Errorf("expected ID 42, got %q", state.ID.ValueString())
@@ -81,7 +81,7 @@ func TestAssignNetworkSegmentResourceModel_PreservesIDWhenAPINil(t *testing.T) {
 	state := NetworkSegmentResourceModel{ID: types.StringValue("9")}
 	api := &proclassic.NetworkSegment{ID: nil}
 
-	assignNetworkSegmentResourceModel(&state, api)
+	assignNetworkSegmentResourceModel(&state, api, false)
 
 	if state.ID.ValueString() != "9" {
 		t.Errorf("expected state.ID preserved as %q, got %q", "9", state.ID.ValueString())
@@ -93,7 +93,7 @@ func TestAssignNetworkSegmentResourceModel_NilAPIIsNoop(t *testing.T) {
 		ID:   types.StringValue("7"),
 		Name: types.StringValue("Keep"),
 	}
-	assignNetworkSegmentResourceModel(&state, nil)
+	assignNetworkSegmentResourceModel(&state, nil, false)
 	if state.ID.ValueString() != "7" || state.Name.ValueString() != "Keep" {
 		t.Errorf("expected state unchanged, got id=%q name=%q", state.ID.ValueString(), state.Name.ValueString())
 	}
@@ -108,7 +108,7 @@ func TestAssignNetworkSegmentResourceModel_OptionalReconcileKeepsNullWhenUnmanag
 	}
 	api := &proclassic.NetworkSegment{Building: nil, OverrideBuildings: nil}
 
-	assignNetworkSegmentResourceModel(&state, api)
+	assignNetworkSegmentResourceModel(&state, api, false)
 
 	if !state.Building.IsNull() {
 		t.Errorf("expected Building to remain null, got %q", state.Building.ValueString())
@@ -170,5 +170,41 @@ func TestAssignNetworkSegmentDataSourceModel_NilAPIIsNoop(t *testing.T) {
 	assignNetworkSegmentDataSourceModel(&state, nil)
 	if state.ID.ValueString() != "preset" || state.Name.ValueString() != "preset" {
 		t.Errorf("expected state unchanged on nil API")
+	}
+}
+
+// TestAssignNetworkSegmentResourceModel_AdoptsOverridesForConfigGeneration pins
+// the adopt switch. A CRUD read must leave an Optional+Computed flag the
+// practitioner never authored null, so a refresh does not snap it to the server
+// default; config generation has no plan to reconcile against, so the server
+// value has to survive. Reconciling on both paths is what left
+// override_buildings and override_departments null on every generated network
+// segment even though /networksegments returns them.
+func TestAssignNetworkSegmentResourceModel_AdoptsOverridesForConfigGeneration(t *testing.T) {
+	on := true
+	name, building, department := "HQ", "HQ Building", "IT"
+	wire := &proclassic.NetworkSegment{
+		Name:                &name,
+		Building:            &building,
+		Department:          &department,
+		OverrideBuildings:   &on,
+		OverrideDepartments: &on,
+	}
+
+	// Config generation: a fresh model, so the wire value is authoritative.
+	var generated NetworkSegmentResourceModel
+	assignNetworkSegmentResourceModel(&generated, wire, true)
+	if generated.OverrideBuildings.IsNull() || !generated.OverrideBuildings.ValueBool() {
+		t.Errorf("override_buildings = %s, want the wire value adopted", generated.OverrideBuildings)
+	}
+	if generated.OverrideDepartments.IsNull() || !generated.OverrideDepartments.ValueBool() {
+		t.Errorf("override_departments = %s, want the wire value adopted", generated.OverrideDepartments)
+	}
+
+	// A CRUD read against state that never authored them keeps them null.
+	var refreshed NetworkSegmentResourceModel
+	assignNetworkSegmentResourceModel(&refreshed, wire, false)
+	if !refreshed.OverrideBuildings.IsNull() {
+		t.Errorf("override_buildings = %s, want null on a refresh that never authored it", refreshed.OverrideBuildings)
 	}
 }

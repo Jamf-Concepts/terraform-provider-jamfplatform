@@ -67,7 +67,7 @@ func (r *NetworkSegmentResource) Create(ctx context.Context, req resource.Create
 		resp.Diagnostics.AddError("Error reading created Jamf Pro network segment", err.Error())
 		return
 	}
-	assignNetworkSegmentResourceModel(&plan, got)
+	assignNetworkSegmentResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, networkSegmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -140,7 +140,7 @@ func (r *NetworkSegmentResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	assignNetworkSegmentResourceModel(&state, got)
+	assignNetworkSegmentResourceModel(&state, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, networkSegmentIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -176,7 +176,7 @@ func (r *NetworkSegmentResource) Update(ctx context.Context, req resource.Update
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro network segment", err.Error())
 		return
 	}
-	assignNetworkSegmentResourceModel(&plan, got)
+	assignNetworkSegmentResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, networkSegmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

@@ -23,6 +23,10 @@ import (
 
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &EnrollmentProfileListResource{}
 var _ list.ListResourceWithConfigure = &EnrollmentProfileListResource{}
 
@@ -116,17 +120,30 @@ func (r *EnrollmentProfileListResource) List(ctx context.Context, req list.ListR
 		}
 
 		if req.IncludeResource {
+			// The list response carries id, name and invitation only. A list
+			// result with null description and no location or purchasing block
+			// makes `terraform query -generate-config-out` write a profile
+			// without them, and applying that config back would clear them — so
+			// follow up with a singular GET and hydrate from the same state
+			// builder Read uses. The hydrating flag is true for the same reason
+			// it is on an import: the incoming model is unpopulated, so the
+			// wire-present optional blocks are the ones to adopt.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetMobileDeviceEnrollmentProfileByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping mobile device enrollment profile from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := EnrollmentProfileResourceModel{
 				ID:          id,
-				Name:        helpers.StringPointerValueOrNull(p.Name),
-				Description: types.StringNull(),
-				SiteID:      types.StringNull(),
-				SiteName:    types.StringNull(),
-				Invitation:  bigIntStringOrNull(p.Invitation),
-				UUID:        types.StringNull(),
 				Attachments: emptyAttachments,
 				Timeouts:    helpers.NewResourceTimeoutsNullValue(enrollmentProfileTimeoutAttributeTypes),
 			}
+			assignEnrollmentProfileResourceModel(&state, full, true)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

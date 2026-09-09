@@ -43,6 +43,9 @@ var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSource
 // listResourceSDKMethods lists the SDK methods the list resource calls.
 var listResourceSDKMethods = []string{
 	"ListPatchExternalSources",
+	// The per-item hydration GET the list resource issues when
+	// IncludeResource asks for full resource state.
+	"GetPatchExternalSourceByID",
 }
 
 // listResourcePrivileges is the rendered "Required Jamf permissions" Markdown

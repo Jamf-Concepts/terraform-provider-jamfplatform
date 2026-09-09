@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -23,6 +22,10 @@ import (
 // defaultListTimeout caps how long the list operation will wait on the classic
 // endpoint. The list resource schema does not expose a user-overridable timeout.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &ProvisioningProfileListResource{}
 var _ list.ListResourceWithConfigure = &ProvisioningProfileListResource{}
@@ -129,18 +132,27 @@ func (r *ProvisioningProfileListResource) List(ctx context.Context, req list.Lis
 		}
 
 		if req.IncludeResource {
-			state := ProvisioningProfileResourceModel{
-				ID:                  id,
-				Name:                helpers.StringPointerValueOrNull(p.Name),
-				DisplayName:         helpers.StringPointerValueOrNull(p.DisplayName),
-				ProfileData:         types.StringNull(),
-				UUID:                helpers.StringPointerValueOrNull(p.UUID),
-				CreationDateUTC:     types.StringNull(),
-				CreationDateEpoch:   types.StringNull(),
-				ExpirationDateUTC:   types.StringNull(),
-				ExpirationDateEpoch: types.StringNull(),
-				Timeouts:            helpers.NewResourceTimeoutsNullValue(provisioningProfileTimeoutAttributeTypes),
+			// The list response omits profile_data, and leaving it null is worse
+			// here than on a plain optional attribute: profile_data is
+			// RequiresReplace, so a generated config without it plans a
+			// destroy-and-recreate of an imported profile rather than a no-op.
+			// The singular GET returns it, so hydrate from the same state builder
+			// Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetMobileDeviceProvisioningProfileByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping mobile device provisioning profile from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := ProvisioningProfileResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(provisioningProfileTimeoutAttributeTypes),
+			}
+			assignProvisioningProfileResourceModel(&state, full)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

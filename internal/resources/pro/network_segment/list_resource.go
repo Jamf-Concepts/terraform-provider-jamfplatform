@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -24,6 +23,10 @@ import (
 // /networksegments endpoint. The list resource schema does not expose a user-
 // overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource asks for full resource state.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &NetworkSegmentListResource{}
 var _ list.ListResourceWithConfigure = &NetworkSegmentListResource{}
@@ -37,8 +40,8 @@ func NewNetworkSegmentListResource() list.ListResource {
 // network segments. Classic /networksegments accepts no query parameters, so the
 // optional `filter` block is applied client-side via filters.ApplyClassicFilter
 // after the full list is fetched. The list-item type carries only id, name,
-// starting_address, and ending_address — every other resource attribute is set to
-// null on list results.
+// starting_address, and ending_address, so IncludeResource hydrates each record
+// with a singular GET rather than emitting nulls for the rest.
 type NetworkSegmentListResource struct {
 	client *proclassic.Client
 }
@@ -133,23 +136,27 @@ func (r *NetworkSegmentListResource) List(ctx context.Context, req list.ListRequ
 		}
 
 		if req.IncludeResource {
-			// List endpoint returns only id, name, starting_address, ending_address.
-			// Every other Optional/Computed attribute is null on a list result.
-			state := NetworkSegmentResourceModel{
-				ID:                  id,
-				Name:                helpers.StringPointerValueOrNull(s.Name),
-				StartingAddress:     helpers.StringPointerValueOrNull(s.StartingAddress),
-				EndingAddress:       helpers.StringPointerValueOrNull(s.EndingAddress),
-				Building:            types.StringNull(),
-				Department:          types.StringNull(),
-				OverrideBuildings:   types.BoolNull(),
-				OverrideDepartments: types.BoolNull(),
-				DistributionPoint:   types.StringNull(),
-				DistributionServer:  types.StringNull(),
-				SwuServer:           types.StringNull(),
-				URL:                 types.StringNull(),
-				Timeouts:            helpers.NewResourceTimeoutsNullValue(networkSegmentTimeoutAttributeTypes),
+			// The /networksegments list response carries only id, name,
+			// starting_address and ending_address. Emitting nulls for the rest
+			// makes `terraform query -generate-config-out` write a network
+			// segment with no building, department or override flags, and
+			// applying that config back would clear them — so follow up with a
+			// singular GET and hydrate from the same state builder Read uses.
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetNetworkSegmentByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping network segment from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := NetworkSegmentResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(networkSegmentTimeoutAttributeTypes),
+			}
+			assignNetworkSegmentResourceModel(&state, full, true)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
