@@ -11,8 +11,10 @@
 package mobile_device_configuration_profile_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -1636,6 +1639,196 @@ func TestAccResource_MobileDeviceConfigurationProfile_OmittedBlocksRetained(t *t
 					resource.TestCheckNoResourceAttr(addr, "scope.targets.mobile_device_group_ids.#"),
 					omitRetainedOnServer(t, f),
 				),
+			},
+		},
+	})
+}
+
+// ── Web clip icons (issue #418) ───────────────────────────────────────────────
+
+// webClipIconFixture is the sample icon embedded in
+// profile_webclip_icon.mobileconfig: a 64x64 PNG, deliberately not the 180px
+// form Jamf Pro stores, so every one of these tests exercises the re-render.
+const (
+	webClipIconFixture          = "webclip_icon.png"
+	webClipIconAlternateFixture = "webclip_icon_alternate.png"
+	webClipProfileFixture       = "profile_webclip_icon.mobileconfig"
+)
+
+// iconDataBlock matches the <data> element holding the web clip's icon, so a
+// test can swap the picture without maintaining a second copy of the payload.
+var iconDataBlock = regexp.MustCompile(`(?s)(<key>Icon</key>\s*<data>)(.*?)(</data>)`)
+
+// replaceIcon swaps the payload's icon for the named fixture, base64-encoded
+// and line-wrapped the way a plist writer emits it.
+func replaceIcon(t *testing.T, payload, fixture string) string {
+	t.Helper()
+	raw, err := os.ReadFile(testdataFile(t, fixture))
+	if err != nil {
+		t.Fatalf("reading icon fixture %q: %v", fixture, err)
+	}
+	encoded := base64.StdEncoding.EncodeToString(raw)
+	var b strings.Builder
+	for i := 0; i < len(encoded); i += 68 {
+		b.WriteString("\n\t\t\t")
+		b.WriteString(encoded[i:min(i+68, len(encoded))])
+	}
+	b.WriteString("\n\t\t\t")
+	out := iconDataBlock.ReplaceAllString(payload, "${1}"+b.String()+"${3}")
+	if out == payload {
+		t.Fatalf("payload does not carry an <key>Icon</key> data block to replace")
+	}
+	return out
+}
+
+// TestAccFixtureWebClipIconMatchesItsSource keeps the two fixtures honest: the
+// icon embedded in the profile must be the sample .png beside it, so a
+// regenerated icon cannot silently disagree with the payload that carries it.
+// Talks to nothing.
+func TestAccFixtureWebClipIconMatchesItsSource(t *testing.T) {
+	payload := readFixture(t, webClipProfileFixture)
+	tree, _, err := plisthelpers.ParsePlist([]byte(payload))
+	if err != nil {
+		t.Fatalf("parsing %s: %v", webClipProfileFixture, err)
+	}
+	entries, ok := tree["PayloadContent"].([]any)
+	if !ok || len(entries) == 0 {
+		t.Fatalf("%s has no PayloadContent entries", webClipProfileFixture)
+	}
+	entry, ok := entries[0].(map[string]any)
+	if !ok {
+		t.Fatalf("%s PayloadContent[0] is not a dictionary", webClipProfileFixture)
+	}
+	embedded, ok := entry["Icon"].([]byte)
+	if !ok {
+		t.Fatalf("%s PayloadContent[0] carries no Icon data blob", webClipProfileFixture)
+	}
+	source, err := os.ReadFile(testdataFile(t, webClipIconFixture))
+	if err != nil {
+		t.Fatalf("reading %s: %v", webClipIconFixture, err)
+	}
+	if !bytes.Equal(embedded, source) {
+		t.Errorf("the icon embedded in %s (%d bytes) is not %s (%d bytes)",
+			webClipProfileFixture, len(embedded), webClipIconFixture, len(source))
+	}
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_WebClipIconSurvivesAWrite is
+// the regression for issue #418. Jamf Pro never stores a web clip icon as
+// submitted: it rescales it to 180px on the longest side and re-encodes it,
+// which used to fail the post-write payload verification and abort every write
+// to an icon-bearing profile — the create rolled back, and an update left the
+// profile changed in Jamf Pro with the error making the plan repeat forever.
+//
+// The three steps are the reported reproduction: create, then a change to a
+// field that has nothing to do with the payload, then the same configuration
+// again. All three must apply, and the third must plan empty — the icon
+// difference has to be tolerated on refresh as well as on write, or the plan
+// never settles.
+func TestAccResource_MobileDeviceConfigurationProfile_WebClipIconSurvivesAWrite(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-webclip-" + suffix
+	payload := freshPayload(t, webClipProfileFixture)
+	const addr = "jamfplatform_pro_mobile_device_configuration_profile.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configWithDescription(name, payload, "before"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "general.description", "before"),
+					// The authored bytes are kept: the icon Jamf Pro holds is its own
+					// re-render, and overwriting state with it would put a picture the
+					// configuration never wrote into the payload attribute.
+					resource.TestCheckResourceAttr(addr, "general.payloads", payload),
+				),
+			},
+			{
+				Config: configWithDescription(name, payload, "after"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "general.description", "after"),
+					resource.TestCheckResourceAttr(addr, "general.payloads", payload),
+				),
+			},
+			{
+				Config: configWithDescription(name, payload, "after"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(addr, plancheck.ResourceActionNoop),
+					},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_WebClipIconChangeApplies
+// covers the other direction: tolerating the re-render must not stop a genuine
+// icon change from being written. Swapping the icon changes the payloads string
+// itself, so Terraform plans it directly — the point of the test is that the
+// apply then succeeds and the new icon sticks, which it cannot do if the
+// comparison rejects Jamf Pro's re-render of the replacement.
+func TestAccResource_MobileDeviceConfigurationProfile_WebClipIconChangeApplies(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-webclip-swap-" + suffix
+	payload := freshPayload(t, webClipProfileFixture)
+	swapped := replaceIcon(t, payload, webClipIconAlternateFixture)
+	const addr = "jamfplatform_pro_mobile_device_configuration_profile.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{Config: configMinimal(name, payload)},
+			{
+				Config: configMinimal(name, swapped),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectNonEmptyPlan()},
+				},
+				Check: resource.TestCheckResourceAttr(addr, "general.payloads", swapped),
+			},
+			{
+				Config: configMinimal(name, swapped),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(addr, plancheck.ResourceActionNoop),
+					},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_WebClipIconNotAnImageIsReported
+// pins the failure direction. Jamf Pro substitutes a fixed placeholder image
+// for an icon it cannot decode, so the stored profile does not carry what was
+// authored — and the operator has to be told which value, by name. Before the
+// non-string leaves were diffed, a difference in a data blob produced no
+// findings at all and the diagnostic fell back to a list of causes about line
+// feeds and ampersands that could not apply.
+func TestAccResource_MobileDeviceConfigurationProfile_WebClipIconNotAnImageIsReported(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-webclip-bad-" + suffix
+	payload := freshPayload(t, webClipProfileFixture)
+	notAnImage := iconDataBlock.ReplaceAllString(payload,
+		"${1}"+base64.StdEncoding.EncodeToString([]byte("this is not an image at all"))+"${3}")
+	if notAnImage == payload {
+		t.Fatal("payload does not carry an <key>Icon</key> data block to replace")
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, notAnImage),
+				// The diagnostic wraps at roughly 80 columns, so match the path alone.
+				ExpectError: regexp.MustCompile(`PayloadContent\[0\]\.Icon`),
 			},
 		},
 	})

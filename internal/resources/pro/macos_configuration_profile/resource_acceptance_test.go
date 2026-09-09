@@ -12,6 +12,7 @@ package macos_configuration_profile_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -2117,4 +2119,76 @@ func TestAccResource_MacOSConfigurationProfile_OmittedBlocksRetained(t *testing.
 			},
 		},
 	})
+}
+
+// ── Web clip icons (issue #418) ───────────────────────────────────────────────
+
+// TestAccResource_MacOSConfigurationProfile_WebClipIconSurvivesAWrite mirrors
+// the mobile-device test of the same name. Jamf Pro re-renders a web clip icon
+// on this endpoint too — wire-probed 2026-09-09, a 64x64 PNG came back as a
+// 180x180 one — and the tolerance that makes that survive a write lives in
+// shared code (payloadhelpers.LenientEqualPlist), so both resources need the
+// regression, not just the one the bug was reported against.
+//
+// The steps are the reported reproduction: create, change a field unrelated to
+// the payload, then re-apply the same configuration and expect an empty plan.
+func TestAccResource_MacOSConfigurationProfile_WebClipIconSurvivesAWrite(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-webclip-" + suffix
+	payload := freshWebClipPayload(t)
+	const addr = "jamfplatform_pro_macos_configuration_profile.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configWithDescription(name, payload, "before"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "general.description", "before"),
+					resource.TestCheckResourceAttr(addr, "general.payloads", payload),
+				),
+			},
+			{
+				Config: configWithDescription(name, payload, "after"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "general.description", "after"),
+					resource.TestCheckResourceAttr(addr, "general.payloads", payload),
+				),
+			},
+			{
+				Config: configWithDescription(name, payload, "after"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(addr, plancheck.ResourceActionNoop),
+					},
+				},
+			},
+		},
+	})
+}
+
+// freshWebClipPayload reads the icon-bearing fixture and gives it fresh
+// top-level identifiers, so repeated runs do not collide on Jamf Pro's
+// duplicate-UUID check.
+func freshWebClipPayload(t *testing.T) string {
+	t.Helper()
+	raw := readFixture(t, "profile_webclip_icon.mobileconfig")
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatalf("generating UUID: %v", err)
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	uuid := fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+	out, err := payloadhelpers.InjectTopLevelIdentifierValues([]byte(raw), uuid, uuid)
+	if err != nil {
+		t.Fatalf("injecting identifiers: %v", err)
+	}
+	s := string(out)
+	if !strings.HasSuffix(s, "\n") {
+		s += "\n"
+	}
+	return s
 }

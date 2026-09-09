@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>FullScreen</key>
+			<false/>
+			<key>Icon</key>
+			<data>
+			iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAA8UlEQVR42u3b0Q3CMAyE
+			4RujkzExe5UBUFEr7Isd/5F4JbmvSKSJLT0cx+t9Vv4oelQPnAbSPfhfELuFf4Swa/hb
+			CLuH/4kwJfwlwmiAaeG/EAAAwDPh3WEFqBJ6FYaqBndBqHrwbAh1Cp+BoG7hoxHkDu/8
+			LgtA5kIdCKoa3jWHshbm/ncpBbBib2EFWLlzi54bgE7hM9YQBuB+lQVgBUCFn3/0WtTx
+			6UeuBwAAAAAAAAAAYCPEVhgAXoc5EAGAQ1GOxbkY4WqMy1GuxymQoESGIqlJZXLjCyUp
+			lQUAABomAKBpirY5GidpnaV5emb7/Ad2FEI7AEdRXQAAAABJRU5ErkJggg==
+			</data>
+			<key>IsRemovable</key>
+			<true/>
+			<key>Label</key>
+			<string>Jamf Sample Web Clip</string>
+			<key>PayloadDisplayName</key>
+			<string>Web Clip</string>
+			<key>PayloadIdentifier</key>
+			<string>com.jamf.terraform.acc.webclip.inner</string>
+			<key>PayloadType</key>
+			<string>com.apple.webClip.managed</string>
+			<key>PayloadUUID</key>
+			<string>4B1F0C6A-9D2E-4F13-8A57-1C0B7E5D3A21</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>URL</key>
+			<string>https://www.jamf.com/</string>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Web Clip with an icon</string>
+	<key>PayloadIdentifier</key>
+	<string>com.jamf.terraform.acc.webclip</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>4B1F0C6A-9D2E-4F13-8A57-1C0B7E5D3A20</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -6,7 +6,6 @@ package payloadhelpers
 import (
 	"bytes"
 	"fmt"
-	"maps"
 	"slices"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
@@ -125,6 +124,12 @@ func PayloadsStructurallyEqual(a, b []byte) (bool, error) {
 //
 // numericEqual handles the int64/uint64/int trio howett.net/plist emits
 // depending on sign.
+//
+// The one leaf not compared strictly is a com.apple.webClip.managed entry's
+// Icon, which goes through iconsEquivalent: Jamf Pro re-renders every icon it
+// stores, so a byte comparison here reports drift on every plan and refresh of
+// an icon-bearing profile (issue #418). The keyset is still compared strictly,
+// and every other leaf still compares byte-for-byte. See webclipicon.go.
 func structuralEqual(a, b any) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
@@ -132,10 +137,29 @@ func structuralEqual(a, b any) bool {
 	switch av := a.(type) {
 	case map[string]any:
 		bv, ok := b.(map[string]any)
-		if !ok {
+		if !ok || len(av) != len(bv) {
 			return false
 		}
-		return maps.EqualFunc(av, bv, structuralEqual)
+		payloadType, _ := av["PayloadType"].(string)
+		for k, va := range av {
+			vb, exists := bv[k]
+			if !exists {
+				return false
+			}
+			if isWebClipIcon(payloadType, k) {
+				authored, stored, isData := iconBlobs(va, vb)
+				if isData {
+					if !iconsEquivalent(authored, stored) {
+						return false
+					}
+					continue
+				}
+			}
+			if !structuralEqual(va, vb) {
+				return false
+			}
+		}
+		return true
 	case []any:
 		bv, ok := b.([]any)
 		if !ok {
