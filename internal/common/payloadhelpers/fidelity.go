@@ -47,16 +47,19 @@ const (
 	classOther                            // unexplained
 )
 
+// fidelityFinding is one diverging value: its plist path, the wire law that
+// explains it, and both forms so the diagnostic can quote them.
+//
+// described marks a finding whose two sides are already summaries rather than
+// the values themselves (a data blob, a list, a dictionary). Those are printed
+// as they stand: excerpting a summary around its first differing character
+// quotes half a sentence and reads as corruption.
 type fidelityFinding struct {
-	path     string
-	class    fidelityClass
-	authored string
-	stored   string
-	present  bool
-	// described marks a finding whose two sides are already summaries rather
-	// than the values themselves (a data blob, a list, a dictionary). Those are
-	// printed as they stand: excerpting a summary around its first differing
-	// character quotes half a sentence and reads as corruption.
+	path      string
+	class     fidelityClass
+	authored  string
+	stored    string
+	present   bool
 	described bool
 }
 
@@ -211,6 +214,13 @@ func diffPayloadStrings(authored, stored []byte) ([]fidelityFinding, bool) {
 // builds in memory (see importgate.go) using exactly the comparison, mask and
 // classifier the post-write checks use — the two can therefore never disagree
 // about whether a given value survives a write.
+//
+// The string leaves are walked first and the non-string ones appended after,
+// because the string classes carry a specific remedy and so should lead.
+// Walking the non-string leaves at all is what keeps a difference in a data
+// blob, a boolean or a number from producing an unattributed failure: the whole
+// tree can compare unequal while the string pass finds nothing, which is
+// exactly how a re-rendered web clip icon used to surface (issue #418).
 func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding {
 	aligned := alignPayloadContentOrder(authoredTree, dropInjectedPayloadEntries(storedTree))
 
@@ -237,12 +247,6 @@ func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding
 			present:  present,
 		})
 	}
-	// Non-string leaves are reported after the string ones: the string classes
-	// carry a specific remedy, so they lead. Reporting these at all is what
-	// keeps a difference in a data blob, a boolean or a number from producing an
-	// unattributed failure — the whole tree can compare unequal while the string
-	// pass finds nothing, which is exactly how a re-rendered web clip icon used
-	// to surface (issue #418).
 	findings = append(findings, diffNonStringLeaves("", "", authoredTree, aligned)...)
 	return findings
 }
