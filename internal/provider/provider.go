@@ -329,8 +329,6 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 }
 
 func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	resp.Diagnostics.AddWarning(namespaceMigrationSummary, namespaceMigrationDetail)
-
 	var data JamfPlatformProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
