@@ -17,13 +17,11 @@ Two things moved:
 
 If your plan is clean, you have nothing to do.
 
-## Why a finding is an error
+## Spell keys exactly as Apple does
 
-Nothing else reports it. Jamf Pro accepts a declaration carrying an invented key, a wrong-cased key, a value of the wrong type or a value outside Apple's declared range, saves it, and reports the blueprint as deployed. The blueprint editor then shows that declaration with the offending setting blank, and the device never receives it. A legacy payload behaves the same way for an unrecognised key.
+Case counts in a declaration, for both the key names and the declaration type. `AllowSiriAI` works. `allowsiriai` does not, and the plan names the spelling to use.
 
-Every layer you can see reports success. The save worked, the deploy worked, and the setting is not on the device. A warning would leave you holding a blueprint that reports success and does nothing, so the plan stops instead.
-
-Declaration key names are matched **case-sensitively**, and a wrong-cased key is discarded. Legacy configuration profile payloads behave the opposite way: Jamf Pro restores Apple's spelling without telling you, so a miscased key there shows up as a plan that never converges rather than as a setting that never applies. A spelling that worked in a profile is no evidence it will work in a declaration.
+Legacy configuration profile payloads are more forgiving about case, so a spelling that carried in a profile is no evidence it will carry in a declaration. Check it against Apple's schema when you move one across.
 
 ## The findings
 
