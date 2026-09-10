@@ -142,9 +142,9 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"`settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` " +
 			"against the schema the platform serves for the tool and `schema_version`.\n\nSettings are written " +
 			"whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being " +
-			"at the version last read. A policy something else changed in the meantime is reported rather than " +
-			"overwritten, and a new plan shows the change. A policy created before the platform kept that " +
-			"counter reports none, and is updated without the check. See the [AI Governance " +
+			"at the version last read. If something else changed the policy in the meantime, Jamf refuses the " +
+			"update and a new plan shows you the change. A policy Jamf created before it started keeping that " +
+			"counter has none, so Terraform updates it without the check. See the [AI Governance " +
 			"policies guide](../guides/ai-governance-policies) for where each tool's settings are " +
 			"documented." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{

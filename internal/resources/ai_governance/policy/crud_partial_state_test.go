@@ -860,7 +860,7 @@ func TestUpdate_VersionConflictIsReportedAndChangesNothing(t *testing.T) {
 		t.Errorf("summary %q does not say what was observed", summary)
 	}
 	detail := resp.Diagnostics.Errors()[0].Detail()
-	if !strings.Contains(detail, "Nothing has been changed") && !strings.Contains(detail, "nothing has been changed") {
+	if !strings.Contains(detail, "changed nothing") {
 		t.Errorf("detail %q does not say the apply left the policy alone", detail)
 	}
 	if !strings.Contains(detail, "settings_json") {

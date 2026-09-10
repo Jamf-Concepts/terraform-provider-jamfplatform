@@ -217,19 +217,19 @@ func readLockToken(ctx context.Context, r privateStateReader) (string, diag.Diag
 	if err := json.Unmarshal(raw, &token); err != nil {
 		diags.AddWarning(
 			"Unable to read the AI policy's recorded version",
-			"Terraform's private state for this policy holds a version the provider cannot decode: "+err.Error()+
-				". This update is sent without the concurrent-edit check, and the next read of the policy records "+
-				"a version the check can use again.",
+			"Terraform stored a version for this policy that the provider cannot decode: "+err.Error()+
+				". This update goes out without the concurrent-edit check. The next read of the policy records "+
+				"a version the check can use.",
 		)
 		return "", diags
 	}
 	if !lockTokenPattern.MatchString(token) {
 		diags.AddError(
 			"Unusable version recorded for the AI policy",
-			"Terraform's private state for this policy holds "+strconv.Quote(token)+" where the policy's version "+
-				"counter belongs, so the update has not been sent. A value Jamf reads as \"apply regardless of the "+
-				"version\" would replace whatever the policy now holds while reporting a successful apply. Refresh "+
-				"the policy with \"terraform apply -refresh-only\": the read records the version Jamf reports.",
+			"Terraform stored "+strconv.Quote(token)+" where this policy's version counter belongs, so the "+
+				"provider sent no update. Jamf reads \"*\" as \"apply regardless of the version\", which would "+
+				"overwrite whatever the policy now holds and still report success. Run "+
+				"\"terraform apply -refresh-only\" to record the version Jamf reports.",
 		)
 		return "", diags
 	}
@@ -295,9 +295,9 @@ func appendRecordFailure(diags *diag.Diagnostics, from diag.Diagnostics) {
 func appendLockTokenNotRecorded(diags *diag.Diagnostics) {
 	diags.AddWarning(
 		"Unable to record the AI policy's version",
-		"The version Jamf reports for this policy could not be kept, and it is what makes the next update "+
-			"conditional on nobody else having written the policy in the meantime. That update will be an "+
-			"unconditional write. A later refresh of the policy records the version again.",
+		"Terraform could not store the version Jamf reports for this policy, so the next update goes out "+
+			"unconditionally instead of checking that nobody else has written the policy. A later refresh "+
+			"records the version again.",
 	)
 }
 
@@ -312,10 +312,10 @@ func appendLockTokenNotRecorded(diags *diag.Diagnostics) {
 func appendUnconditionalUpdate(diags *diag.Diagnostics, id string) {
 	diags.AddWarning(
 		"AI policy updated without the concurrent-edit check",
-		"No usable version is recorded for policy "+id+", so this update could not be made conditional on the "+
-			"policy still holding the settings Terraform last read. Anything written to the policy since the last "+
-			"refresh has been replaced rather than reported. A policy created before the platform kept that "+
-			"counter reports none, which is the usual reason.",
+		"Terraform holds no usable version for policy "+id+", so this update could not check that the policy "+
+			"still held the settings Terraform last read. It has overwritten anything written to the policy "+
+			"since the last refresh. Jamf reports no counter for policies created before it started keeping "+
+			"one, which is the usual cause.",
 	)
 }
 
@@ -340,15 +340,12 @@ func appendUnconditionalUpdate(diags *diag.Diagnostics, id string) {
 func appendVersionConflict(diags *diag.Diagnostics, id string) {
 	diags.AddError(
 		"AI policy is not at the version Terraform last read",
-		"Policy "+id+" has moved on from the version Terraform recorded for it, so Jamf refused the update "+
-			"rather than applying it over the top, and nothing has been changed. Make a new plan: its refresh "+
-			"reads the policy as it now stands, and the plan then reports what this configuration would alter, "+
-			"including anything the other write introduced. Applying a saved plan file again is refused the same "+
-			"way, because the version recorded in the file is the one Jamf has already rejected. If a new plan is "+
-			"refused too, check whether two Terraform resources manage this policy: a duplicate import, a module "+
-			"instantiated twice, or one policy ID behind a count all give both resources the same version, and "+
-			"whichever updates second is refused. Terraform makes the update conditional because settings_json is "+
-			"written whole, and Jamf holds no merge for it, so an update built on a stale read replaces every "+
-			"setting another editor had made.",
+		"Policy "+id+" is no longer at the version Terraform recorded, so Jamf refused this update and changed "+
+			"nothing. Make a new plan: its refresh reads the policy as it now stands, and the plan shows you what "+
+			"this configuration would alter, including the other write. Applying the same saved plan file again "+
+			"fails the same way, because that file carries the version Jamf has already refused. If a new plan is "+
+			"refused too, check whether two Terraform resources manage this policy, through a duplicate import or "+
+			"a module or count block that names the same policy ID twice. Terraform checks the version because "+
+			"settings_json is written whole and Jamf holds no merge for it.",
 	)
 }
