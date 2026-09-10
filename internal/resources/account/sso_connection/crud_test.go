@@ -54,10 +54,9 @@ func newStubClient(t *testing.T, handle stubHandler) *account.Client {
 }
 
 // Fixtures below carry deliberately low-entropy, role-named values. A
-// realistic-looking client secret or identifier in a checked-in fixture trips the
-// repository's secret-scanning gate, which is the only workflow that runs on this
-// base branch, and an exemption file keys its fingerprints to the introducing
-// commit and breaks on the next rebase.
+// realistic-looking client secret or identifier in a checked-in fixture trips
+// GitHub's secret-scanning push protection, which rejects the push outright
+// rather than reporting a finding after the fact.
 const (
 	unitConnectionID   = "con_unittest0001"
 	unitConnectionName = "tfUnitOidc"
