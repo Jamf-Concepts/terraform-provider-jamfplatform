@@ -59,11 +59,26 @@ const (
 
 // Schema is the declared shape of one key's value.
 type Schema struct {
-	Type     Kind               `json:"type"`
-	Required bool               `json:"required,omitempty"`
-	Keys     map[string]*Schema `json:"keys,omitempty"`
-	Any      *Schema            `json:"any,omitempty"`
-	Item     *Schema            `json:"item,omitempty"`
+	Type     Kind     `json:"type"`
+	Required bool     `json:"required,omitempty"`
+	Enum     []any    `json:"enum,omitempty"`
+	Min      *float64 `json:"min,omitempty"`
+	Max      *float64 `json:"max,omitempty"`
+	// Refs names the upstream branches that declare this key. A key carried only by Apple's seed
+	// (pre-release) branch is valid — Jamf's services track seed — but a diagnostic can say so.
+	Refs []string           `json:"refs,omitempty"`
+	Keys map[string]*Schema `json:"keys,omitempty"`
+	Any  *Schema            `json:"any,omitempty"`
+	Item *Schema            `json:"item,omitempty"`
+}
+
+// SeedOnly reports whether a key is declared only on a pre-release branch, so a diagnostic about it
+// can name that as the likely reason the running Jamf tenant may or may not accept it yet.
+func (s *Schema) SeedOnly(releaseRef string) bool {
+	if s == nil || len(s.Refs) == 0 {
+		return false
+	}
+	return !slices.Contains(s.Refs, releaseRef)
 }
 
 // Payload is the declared shape of one payload type. Any is set when the payload accepts arbitrary
@@ -72,15 +87,30 @@ type Payload struct {
 	Title string             `json:"title,omitempty"`
 	Keys  map[string]*Schema `json:"keys"`
 	Any   *Schema            `json:"any,omitempty"`
+	// Refs names the upstream branches that declare this payload type.
+	Refs []string `json:"refs,omitempty"`
 }
 
-// Table is the generated schema table.
+// Table is the generated schema table. It is the union of several upstream branches — Apple's
+// release branch plus its newest seed (pre-release) branch — because Jamf's services validate
+// against seed, so a table built from release alone reports keys the Jamf UI already offers as
+// unknown. Commits records the revision each branch was read at; Refs lists them in read order,
+// the first being the release branch and the last the most forward-looking.
 type Table struct {
 	Source   string              `json:"source"`
-	Ref      string              `json:"ref"`
-	Commit   string              `json:"commit"`
+	Commits  map[string]string   `json:"commits"`
+	Refs     []string            `json:"refs"`
 	Release  string              `json:"release,omitempty"`
 	Payloads map[string]*Payload `json:"payloads"`
+}
+
+// ReleaseRef returns the branch the table treats as released, which is the first read. Callers use
+// it with Schema.SeedOnly to tell a long-standing key from a pre-release one.
+func (t *Table) ReleaseRef() string {
+	if len(t.Refs) == 0 {
+		return ""
+	}
+	return t.Refs[0]
 }
 
 // load decodes the embedded table once. A table that fails to decode yields an empty one rather than
@@ -101,10 +131,38 @@ var load = sync.OnceValue(func() *Table {
 })
 
 // Provenance returns the upstream commit and release the embedded table was generated from, for
-// diagnostics that need to say how current the schemas are.
+// diagnostics that need to say how current the schemas are. The commit reported is the one for the
+// release branch, since that is the revision an operator can most readily compare against.
 func Provenance() (commit, release string) {
 	table := load()
-	return table.Commit, table.Release
+	return table.Commits[table.ReleaseRef()], table.Release
+}
+
+// ProvenanceSummary renders the branches and commits the table was built from, e.g.
+// "release@67045e2fa06f + seed_OS_27_0@b0180185a5e4". Preferred over Provenance in a diagnostic:
+// Apple's commit subjects are terse internal labels ("Seed8"), which read as a typo when dropped
+// into a sentence, whereas a branch and commit are things an operator can look up.
+func ProvenanceSummary() string {
+	table := load()
+	parts := make([]string, 0, len(table.Refs))
+	for _, ref := range table.Refs {
+		commit := table.Commits[ref]
+		if len(commit) > 12 {
+			commit = commit[:12]
+		}
+		parts = append(parts, ref+"@"+commit)
+	}
+	return strings.Join(parts, " + ")
+}
+
+// Refs returns the upstream branches the embedded table unions, in read order.
+func Refs() []string {
+	return slices.Clone(load().Refs)
+}
+
+// ReleaseRef returns the branch the embedded table treats as released.
+func ReleaseRef() string {
+	return load().ReleaseRef()
 }
 
 // PayloadTypes returns every payload type in the table, sorted.
@@ -123,15 +181,14 @@ func Lookup(payloadType string) (*Payload, bool) {
 type ProblemKind int
 
 const (
-	// UnknownPayloadType means the payload type is absent from the table. Advisory: Jamf may support
-	// a payload type Apple does not document here.
+	// UnknownPayloadType means the payload type is absent from the table. Jamf refuses a payload
+	// type it does not recognise, so the write fails.
 	UnknownPayloadType ProblemKind = iota
 	// MiscasedPayloadType means the payload type matches a known one apart from case. Jamf matches
 	// the payload type case-sensitively and rejects the write, so this is not advisory.
 	MiscasedPayloadType
-	// UnknownKey means Apple does not define this key for this payload type. Advisory: a key added
-	// upstream after this snapshot looks the same. Jamf discards such a key silently, so the plan
-	// will never converge if the key really is unrecognised.
+	// UnknownKey means Apple does not define this key for this payload type. Jamf discards such a
+	// key silently, so the setting never applies and the plan never converges.
 	UnknownKey
 	// MiscasedKey means the key matches a declared key apart from case. Jamf stores it under Apple's
 	// spelling, so configuration and state can never agree until the case is fixed.
@@ -167,10 +224,15 @@ type Problem struct {
 	Canonical string
 }
 
-// Advisory reports whether a problem rests on the table being current, rather than on behaviour
-// Jamf was observed to enforce. Callers should surface an advisory problem as a warning and the rest
-// as errors.
-func (p Problem) Advisory() bool {
+// StaleTableSuspect reports whether a finding could be explained by the embedded table being older
+// than what Jamf accepts, rather than by a mistake in the configuration. Only the name-based
+// findings can be: a wrong value type or an out-of-range integer is wrong against any version of
+// the schema.
+//
+// It does not soften the finding — every finding is an error, because Jamf discards a key it does
+// not recognise and the payload silently never applies. What it changes is the diagnostic, which
+// names the snapshot and how to move past it when the snapshot could be the cause.
+func (p Problem) StaleTableSuspect() bool {
 	return p.Kind == UnknownPayloadType || p.Kind == UnknownKey
 }
 

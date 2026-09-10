@@ -48,8 +48,8 @@ func TestValidate_UnknownKey(t *testing.T) {
 	if problems[0].Kind != UnknownKey {
 		t.Errorf("expected UnknownKey, got %v", problems[0].Kind)
 	}
-	if !problems[0].Advisory() {
-		t.Error("expected an unknown key to be advisory — a key Apple added since this snapshot looks identical")
+	if !problems[0].StaleTableSuspect() {
+		t.Error("expected an unknown key to name the snapshot — a key Apple added since it looks identical to one that never existed")
 	}
 }
 
@@ -64,8 +64,8 @@ func TestValidate_MiscasedKey(t *testing.T) {
 	if problems[0].Canonical != "allowCamera" {
 		t.Errorf("expected Apple's spelling offered, got %q", problems[0].Canonical)
 	}
-	if problems[0].Advisory() {
-		t.Error("expected a miscased key not to be advisory — Jamf respells it, so the plan never converges")
+	if problems[0].StaleTableSuspect() {
+		t.Error("a miscased key matches a key the table already knows, so the snapshot cannot be the explanation")
 	}
 }
 
@@ -135,8 +135,8 @@ func TestValidate_UnknownPayloadType(t *testing.T) {
 	if len(problems) != 1 || problems[0].Kind != UnknownPayloadType {
 		t.Fatalf("expected UnknownPayloadType, got %v", problems)
 	}
-	if !problems[0].Advisory() {
-		t.Error("expected an unknown payload type to be advisory — Jamf may support a type Apple does not document")
+	if !problems[0].StaleTableSuspect() {
+		t.Error("expected an unknown payload type to name the snapshot — Apple may have published one since")
 	}
 	if problems[0].Path != "" {
 		t.Errorf("expected an empty path for a payload-level problem, got %q", problems[0].Path)
@@ -152,8 +152,8 @@ func TestValidate_MiscasedPayloadType(t *testing.T) {
 	if problems[0].Canonical != "com.apple.ManagedClient.preferences" {
 		t.Errorf("expected Apple's spelling offered, got %q", problems[0].Canonical)
 	}
-	if problems[0].Advisory() {
-		t.Error("expected a miscased payload type not to be advisory — Jamf rejects the write")
+	if problems[0].StaleTableSuspect() {
+		t.Error("a miscased payload type matches one the table already knows, so the snapshot cannot be the explanation")
 	}
 }
 
@@ -226,8 +226,8 @@ func TestValidate_IntegerOutOfJamfRange(t *testing.T) {
 	if problems[0].Kind != IntegerOutOfRange {
 		t.Errorf("expected IntegerOutOfRange, got %v", problems[0].Kind)
 	}
-	if problems[0].Advisory() {
-		t.Error("expected an out-of-range integer not to be advisory — Jamf rejects the write")
+	if problems[0].StaleTableSuspect() {
+		t.Error("an out-of-range integer is wrong against every version of the schema, so the snapshot cannot be the explanation")
 	}
 	if !strings.Contains(problems[0].Detail, "2147483648") {
 		t.Errorf("expected the offending value in the detail without exponent notation, got %q", problems[0].Detail)

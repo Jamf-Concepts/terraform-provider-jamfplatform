@@ -113,6 +113,10 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blue
 		r.collectSingleComponent(allComponents, diags, block.AIGovernance, "AI governance")
 	}
 
+	if block.AppleDeclarations != nil {
+		r.collectSingleComponent(allComponents, diags, block.AppleDeclarations, "apple declarations")
+	}
+
 	if block.AudioAccessorySettings != nil {
 		r.collectSingleComponent(allComponents, diags, block.AudioAccessorySettings, "audio accessory settings")
 	}

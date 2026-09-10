@@ -28,6 +28,7 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ddm.sw-updates":                  {},
 	"com.jamf.ddm.software-update-settings":    {},
 	"com.jamf.ddm-configuration-profile":       {},
+	"com.jamf.ddm-strict":                      {},
 }
 
 // legacyPayloadSettingsBehaviour documents how Jamf treats the settings written for a legacy payload,
@@ -40,6 +41,8 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 const legacyPayloadSettingsBehaviour = "The platform validates each payload against Apple's payload keys for its `payload_type`, " +
 	"and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, " +
 	"or a missing required key is reported before an apply rather than failing one. " +
+	"Each of those is an **error**: Jamf drops a key it does not recognise while reporting success, so a payload " +
+	"carrying one never applies. To skip the checks, move the payload to `raw_component`. " +
 	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
 	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
 	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +

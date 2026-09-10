@@ -21,31 +21,64 @@ generate:
 fmt:
 	gofmt -s -w -e main.go internal/ tools/ scripts/
 
-# apple-profiles regenerates the embedded Apple configuration profile schema table at
-# internal/common/appleprofiles/profiles.json from apple/device-management. It is deliberately NOT
-# part of `make generate`: it needs network access and a clone, and the upstream schemas only change
-# a few times a year, tracking Apple OS releases. Run it when Apple ships a release, review the diff,
-# and commit the regenerated table.
+# apple-schemas regenerates both embedded Apple schema tables from apple/device-management:
+# internal/common/appleprofiles/profiles.json (configuration profile payloads) and
+# internal/common/appledeclarations/declarations.json (declarative device management declarations,
+# plus the status-item vocabulary that status-subscriptions accepts). One clone, one generator and
+# one commit per branch, so the two tables can never be built from different upstream revisions —
+# a legacy payload and the declaration wrapping it are validated against the same snapshot.
 #
-# Override REF to pin a different upstream branch or tag:
-#   make apple-profiles REF=release
-REF ?= release
-apple-profiles:
+# It is deliberately NOT part of `make generate`: it needs network access and a clone. Review the
+# diff and commit the regenerated tables.
+#
+# Both tables are the UNION of the release branch and Apple's newest seed (pre-release) branch,
+# because Jamf's generative-declarations service tracks seed: as of 2026-09 seed_OS_27_0 carries 12
+# configuration declaration types and keys such as siri.settings.AllowSiriAI that release does not,
+# all of them already offered in the Jamf UI. A table built from release alone would report those as
+# unknown — and an unknown name is an error, not a warning, so that would block working configs.
+#
+# The seed branch is discovered rather than pinned, since its name moves with the OS
+# (seed_OS_27_0 -> seed_OS_28_0). If discovery finds nothing the target FAILS instead of quietly
+# building from release alone, which would turn every seed-only key into an error. Override to pin:
+#   make apple-schemas SEED_REF=seed_OS_27_0
+RELEASE_REF ?= release
+SEED_REF ?=
+apple-schemas:
 	@set -e; \
+	seed='$(SEED_REF)'; \
+	if [ -z "$$seed" ]; then \
+		echo "Discovering Apple's newest seed branch..."; \
+		seed="$$(git ls-remote --heads https://github.com/apple/device-management.git 'seed_OS_*' \
+			| sed 's#.*refs/heads/##' | sort -V | tail -1)"; \
+	fi; \
+	if [ -z "$$seed" ]; then \
+		echo "apple-schemas: no seed_OS_* branch found upstream." >&2; \
+		echo "  Apple may have changed the naming convention. Building from $(RELEASE_REF) alone" >&2; \
+		echo "  would report every seed-only key as unknown, which is now an error, so refusing." >&2; \
+		echo "  Investigate, then pin explicitly: make apple-schemas SEED_REF=<branch>" >&2; \
+		exit 1; \
+	fi; \
+	echo "Using seed branch $$seed"; \
 	work="$$(mktemp -d)"; \
 	trap 'rm -rf "$$work"' EXIT; \
-	echo "Cloning apple/device-management ($(REF))..."; \
-	git clone --depth 1 --branch '$(REF)' --filter=blob:none --sparse \
-		https://github.com/apple/device-management.git "$$work/src" >/dev/null 2>&1; \
-	git -C "$$work/src" sparse-checkout set mdm/profiles >/dev/null 2>&1; \
-	commit="$$(git -C "$$work/src" rev-parse HEAD)"; \
-	release="$$(git -C "$$work/src" log -1 --format=%s)"; \
+	for ref in '$(RELEASE_REF)' "$$seed"; do \
+		echo "Cloning apple/device-management ($$ref)..."; \
+		git clone --depth 1 --branch "$$ref" --filter=blob:none --sparse \
+			https://github.com/apple/device-management.git "$$work/$$ref" >/dev/null 2>&1; \
+		git -C "$$work/$$ref" sparse-checkout set mdm/profiles declarative >/dev/null 2>&1; \
+	done; \
 	cd tools && go run ./appleprofiles \
-		-source "$$work/src/mdm/profiles" \
-		-commit "$$commit" \
-		-release "$$release" \
-		-ref '$(REF)' \
-		-out ../internal/common/appleprofiles/profiles.json
+		-root '$(RELEASE_REF)'="$$work/$(RELEASE_REF)" \
+		-commit '$(RELEASE_REF)'="$$(git -C "$$work/$(RELEASE_REF)" rev-parse HEAD)" \
+		-root "$$seed=$$work/$$seed" \
+		-commit "$$seed=$$(git -C "$$work/$$seed" rev-parse HEAD)" \
+		-release "$$(git -C "$$work/$$seed" log -1 --format=%s)" \
+		-profiles-out ../internal/common/appleprofiles/profiles.json \
+		-declarations-out ../internal/common/appledeclarations/declarations.json
+
+# apple-profiles is the previous name of apple-schemas, kept so existing muscle memory and any
+# external reference keep working.
+apple-profiles: apple-schemas
 
 # permissions-map refreshes internal/common/permissions/permissions-map.md, the committed markdown
 # rendering of Jamf's "Jamf Pro permissions map" article. TestCatalogueMatchesThePublishedMap
@@ -148,4 +181,4 @@ acclanes-preview:
 	fi; \
 	go run -tags acclanes ./scripts/acclanes -scope "$$scope"
 
-.PHONY: fmt fix lint apple-profiles permissions-map test test-scripts testacc testacc-run testacc-changed acclanes-preview build install generate
+.PHONY: fmt fix lint apple-schemas apple-profiles permissions-map test test-scripts testacc testacc-run testacc-changed acclanes-preview build install generate

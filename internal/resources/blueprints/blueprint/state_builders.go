@@ -171,6 +171,10 @@ func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step bluepr
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components of a block from the
 // API response.
 func updateStronglyTypedComponentsFromAPI(diags *diag.Diagnostics, block *ComponentBlockModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
+	block.AppleDeclarations = buildTypedComponent[components.AppleDeclarationsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm-strict", func(raw json.RawMessage, target *components.AppleDeclarationsComponent) error {
+		return target.FromRawConfiguration(raw)
+	})
+
 	block.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(raw json.RawMessage, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})

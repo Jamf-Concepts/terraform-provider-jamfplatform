@@ -20,9 +20,12 @@ import (
 // a value of the wrong type or a missing required key fails the write outright, and a miscased key
 // is stored under Apple's spelling, leaving configuration and state permanently apart.
 //
-// A finding that rests on the embedded schemas being current is a warning, not an error — a key
-// Apple added after the snapshot is indistinguishable from one that never existed, and the provider
-// must not block a configuration that works. See internal/common/appleprofiles.
+// Every finding is an error. Jamf accepts a payload carrying an unrecognised key, reports success
+// and discards the key, so a warning would leave the operator with a payload that silently never
+// applies — the same reasoning as internal/common/appledeclarations, and the same escape hatch:
+// a payload that should not be checked belongs in raw_component. The embedded tables are refreshed
+// daily so that erroring on an unrecognised name cannot block a working configuration for long, and
+// a finding that the snapshot could explain says so and names it. See internal/common/appleprofiles.
 type legacyPayloadSchemaValidator struct{}
 
 // blockLegacyPayloadSchemaValidator validates a component block's typed legacy payload list, whose
@@ -119,8 +122,6 @@ func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings
 		return
 	}
 
-	_, release := appleprofiles.Provenance()
-
 	for _, problem := range problems {
 		target := settingsPath
 		summary := "Legacy payload setting does not match Apple's schema"
@@ -137,11 +138,12 @@ func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings
 		if problem.Path != "" {
 			detail = problem.Path + ": " + detail
 		}
-		detail += fmt.Sprintf(" (checked against Apple's schemas as of %s; run `make apple-profiles` if Apple has published newer ones)", release)
-
-		if problem.Advisory() {
-			diags.AddAttributeWarning(target, summary, detail)
-			continue
+		if problem.StaleTableSuspect() {
+			detail += fmt.Sprintf(
+				" The provider's schemas come from apple/device-management %s. If Apple has published this since,"+
+					" upgrade the provider; to deliver a payload without these checks, move it to raw_component.",
+				appleprofiles.ProvenanceSummary(),
+			)
 		}
 		diags.AddAttributeError(target, summary, detail)
 	}

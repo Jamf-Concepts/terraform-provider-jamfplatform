@@ -263,3 +263,117 @@ resource "jamfplatform_blueprints_blueprint" "ai_governance" {
     },
   ]
 }
+
+# "All Declarations" in the Jamf Pro blueprint editor. Payloads are checked against Apple's
+# schemas during `plan`, because Jamf accepts an unrecognised key and then discards it.
+resource "jamfplatform_blueprints_blueprint" "apple_declarations" {
+  name        = "Apple Declarations"
+  description = "Managed by Terraform"
+  deployed    = true
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "Siri and intelligence"
+      apple_declarations = {
+        declaration = [
+          {
+            channel = "SYSTEM"
+            type    = "com.apple.configuration.siri.settings"
+            payload = jsonencode({
+              Enabled                   = true
+              AllowUserGeneratedContent = false
+              AllowWhileLocked          = false
+              ForceProfanityFilter      = true
+            })
+          },
+          {
+            channel = "SYSTEM"
+            type    = "com.apple.configuration.intelligence.settings"
+            payload = jsonencode({
+              AllowGenmoji               = false
+              AllowImagePlayground       = false
+              AllowWritingTools          = true
+              ForceOnDeviceOnlyDictation = true
+            })
+          },
+        ]
+      }
+    },
+  ]
+}
+
+# `$PAYLOAD_n` names the n-th declaration in the same component, counting from 1, so order matters.
+resource "jamfplatform_blueprints_blueprint" "apple_declarations_with_asset" {
+  name        = "Managed Sudoers"
+  description = "Managed by Terraform"
+  deployed    = false
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "Sudoers configuration file"
+      apple_declarations = {
+        declaration = [
+          {
+            channel = "SYSTEM"
+            type    = "com.apple.asset.data"
+            payload = jsonencode({
+              Reference = {
+                DataURL        = "https://cdn.example.com/ddm/sudoers-config.zip"
+                ContentType    = "application/zip"
+                "Hash-SHA-256" = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+              }
+              Authentication = { Type = "MDM" }
+            })
+          },
+          {
+            channel = "SYSTEM"
+            type    = "com.apple.configuration.services.configuration-files"
+            payload = jsonencode({
+              ServiceType        = "com.apple.sudo"
+              DataAssetReference = "$PAYLOAD_1"
+            })
+          },
+        ]
+      }
+    },
+  ]
+}
+
+# `raw_component` skips the schema check. Use it for a key Apple has published but this provider
+# release has not embedded yet. Nest by JSON-encoding the map value.
+resource "jamfplatform_blueprints_blueprint" "unchecked_declaration" {
+  name        = "Early Adopters App Settings"
+  description = "Managed by Terraform"
+  deployed    = false
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "App Settings"
+      raw_component = [
+        {
+          identifier = "com.jamf.ddm-strict"
+          configuration = {
+            declarations = jsonencode([
+              {
+                channelType = "SYSTEM"
+                kind        = "CONFIGURATION"
+                type        = "com.apple.configuration.app.settings"
+                payload = {
+                  Allowed = {
+                    DeniedApps = ["com.apple.screenshots"]
+                  }
+                }
+              },
+            ])
+          }
+        },
+      ]
+    },
+  ]
+}

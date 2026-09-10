@@ -14,6 +14,12 @@ import (
 )
 
 // CustomDeclarationsComponent represents a strongly-typed custom DDM declarations component.
+//
+// Prefer apple_declarations: it carries the same declarations to the same devices, and Jamf renders
+// those as typed forms generated from Apple's schemas rather than as an opaque JSON blob. This
+// component's payloads are checked against Apple's schemas during plan for the same reason — the
+// platform validates none of it — and there is no switch to turn that off. A declaration that
+// should not be checked belongs in raw_component, which is the escape hatch.
 type CustomDeclarationsComponent struct {
 	Declarations []CustomDeclarationModel `tfsdk:"declaration"`
 }
