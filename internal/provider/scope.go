@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // resolveScope decides which request context the SDK client is built with, from

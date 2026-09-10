@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // titleName is a Jamf-published App Catalog title, chosen for the same reason as

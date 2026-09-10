@@ -85,7 +85,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // maxDomainLength bounds the domain name at the length a fully-qualified DNS name

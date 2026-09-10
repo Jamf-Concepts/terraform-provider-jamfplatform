@@ -253,7 +253,7 @@ A `Computed` attribute that the server populates **asynchronously** (e.g. `compu
 `terraform query -generate-config-out` and `terraform plan -generate-config-out` write state back
 out as configuration, so a `Read` that commits a value the resource's own schema or validators
 **refuse** produces a file that cannot be planned. [Issue
-#379](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues/379) collected seven
+#379](https://github.com/jamf/terraform-provider-jamfplatform/issues/379) collected seven
 of those across six resources, and none was reachable from an ordinary acceptance test: a step that
 applies a configuration and reads it back can only produce a state the configuration already
 described. The failures live in states the test never creates — a UEM connector authenticating as a

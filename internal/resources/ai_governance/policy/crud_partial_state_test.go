@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/aischemas"
 )
 
 // Fixture values the stub server reports and the plans below are built from.

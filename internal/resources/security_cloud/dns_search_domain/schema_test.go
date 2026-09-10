@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
 )
 
 func TestSearchDomainResource_Metadata(t *testing.T) {

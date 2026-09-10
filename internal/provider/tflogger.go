@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // Ensure TerraformLogger implements client.Logger interface

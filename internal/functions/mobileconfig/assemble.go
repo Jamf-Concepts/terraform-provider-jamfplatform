@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // int64 range expressed as float64 bounds for the whole-number heuristic.

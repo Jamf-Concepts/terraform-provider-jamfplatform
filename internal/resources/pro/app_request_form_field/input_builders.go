@@ -6,7 +6,7 @@ package app_request_form_field
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // buildAppRequestFormFieldInput converts the Terraform plan model into an SDK

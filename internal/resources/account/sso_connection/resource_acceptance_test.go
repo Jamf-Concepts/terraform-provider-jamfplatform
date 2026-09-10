@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // connectionResourceAddress is the address every test in this file uses for the

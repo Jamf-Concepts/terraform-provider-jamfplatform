@@ -8,11 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/appleprofiles"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/appleprofiles"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // legacyPayloadSchemaValidator checks each legacy payload against Apple's declared payload keys

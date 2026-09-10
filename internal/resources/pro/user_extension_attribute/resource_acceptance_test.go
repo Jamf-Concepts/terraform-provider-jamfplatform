@@ -23,8 +23,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 const ueaResource = "jamfplatform_pro_user_extension_attribute.test"

@@ -6,7 +6,7 @@ package allowed_file_extension
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // buildAllowedFileExtensionInput converts the Terraform plan model into an SDK

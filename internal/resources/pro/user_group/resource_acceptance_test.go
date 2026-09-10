@@ -25,9 +25,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_group"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/pro/user_group"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // testAccCheckUserGroupDestroy verifies user groups created during the test

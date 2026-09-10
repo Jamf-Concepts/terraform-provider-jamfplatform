@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // Every construct package renders its required Jamf permissions into its

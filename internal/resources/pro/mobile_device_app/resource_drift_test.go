@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // mobileAppDriftConfig declares the attributes the drift test mutates

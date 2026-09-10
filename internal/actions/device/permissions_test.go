@@ -11,7 +11,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // sdkCallRe extracts SDK client method calls on an action's typed client field

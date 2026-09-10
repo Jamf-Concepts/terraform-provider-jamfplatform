@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/payloadhelpers"
 )
 
 func TestMaskPayload_FullCorpus(t *testing.T) {

@@ -43,7 +43,7 @@ import (
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // minJamfProVersion is empty: these management commands ride continuously

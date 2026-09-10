@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // PolicyDataSource reads one AI Governance policy by ID.

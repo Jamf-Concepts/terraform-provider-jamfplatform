@@ -46,8 +46,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // Collection bounds enforced by Jamf Security Cloud. Wire-probed against

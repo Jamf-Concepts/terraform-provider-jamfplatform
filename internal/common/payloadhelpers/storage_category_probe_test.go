@@ -39,7 +39,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // probeKeys are the six values under test and the wire law each one checks.

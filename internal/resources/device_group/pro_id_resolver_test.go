@@ -13,8 +13,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // newProIDMockClient spins up a local HTTPS server that auto-serves OAuth tokens

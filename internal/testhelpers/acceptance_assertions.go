@@ -18,8 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/ldapgroups"
 )
 
 // A freshly-created LDAP server fixture is not queryable the instant the POST

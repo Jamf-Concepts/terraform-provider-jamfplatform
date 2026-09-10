@@ -64,9 +64,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // SearchDomainResource implements the Terraform resource for the Jamf Security

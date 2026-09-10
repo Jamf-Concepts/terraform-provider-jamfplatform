@@ -18,8 +18,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policy"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/pro/policy"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // TestAccPolicyResource_NoExecuteWindowEncoding goes round the provider and

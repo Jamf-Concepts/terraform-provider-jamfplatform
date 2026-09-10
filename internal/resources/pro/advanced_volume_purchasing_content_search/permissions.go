@@ -6,7 +6,7 @@ package advanced_volume_purchasing_content_search
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // resourceSDKMethods lists the SDK methods the advanced volume purchasing

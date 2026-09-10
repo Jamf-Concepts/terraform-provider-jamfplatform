@@ -6,7 +6,7 @@ package network_segment
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // assignNetworkSegmentResourceModel populates a resource model from a NetworkSegment

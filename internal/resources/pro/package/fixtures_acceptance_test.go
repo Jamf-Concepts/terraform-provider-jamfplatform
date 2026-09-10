@@ -17,7 +17,7 @@ import (
 	"sync"
 	"testing"
 
-	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/package"
+	pkg "github.com/jamf/terraform-provider-jamfplatform/internal/resources/pro/package"
 )
 
 // Local fixtures committed under internal/resources/pro/package/test_fixtures/.

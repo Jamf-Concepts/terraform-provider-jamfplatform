@@ -13,7 +13,7 @@ Thank you for your interest in contributing to the Terraform Provider for Jamf P
 
 ```bash
 # Clone the repository
-git clone https://github.com/Jamf-Concepts/terraform-provider-jamfplatform.git
+git clone https://github.com/jamf/terraform-provider-jamfplatform.git
 cd terraform-provider-jamfplatform
 
 # Install dependencies

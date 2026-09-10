@@ -6,7 +6,7 @@ package mobile_device_enrollment_profile
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // resourceSDKMethods lists the SDK methods the enrollment profile resource's

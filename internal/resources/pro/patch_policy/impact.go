@@ -6,10 +6,10 @@ package patch_policy
 import (
 	"context"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/impact"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // A patch policy carries a limited computer scope: no user-based categories,

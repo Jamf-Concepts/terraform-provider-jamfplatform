@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 // TestAccResource_ProUserGroup_JamfGroupMemberOf covers the Jamf Pro 11.29

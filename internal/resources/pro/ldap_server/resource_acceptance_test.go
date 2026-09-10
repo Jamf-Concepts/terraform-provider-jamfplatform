@@ -24,8 +24,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 const ldapServerResource = "jamfplatform_pro_ldap_server.test"
@@ -257,7 +257,7 @@ func TestAccResource_ProLdapServer_SimpleUpdate(t *testing.T) {
 }
 
 // TestAccResource_ProLdapServer_ReferralResponseExplicitDefault pins the
-// regression behind https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues/270:
+// regression behind https://github.com/jamf/terraform-provider-jamfplatform/issues/270:
 // `referral_response = ""` is the documented way to select "use default from
 // LDAP service," but Classic always echoes an empty <referral_response/> on
 // read regardless of what was configured. Before the fix, decoding that empty

@@ -6,7 +6,7 @@ package sso_domain
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // resourceSDKMethods lists the SDK methods the SSO domain resource's CRUD path

@@ -6,7 +6,7 @@ package self_service_branding_macos
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // buildSelfServiceBrandingMacosInput maps the Terraform plan into the SDK

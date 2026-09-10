@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/impact"
 )
 
 // A compliance benchmark targets device groups by their Platform identifier, the

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/impact"
 )
 
 // A class is a scopeable object, but it reaches devices differently from a group:

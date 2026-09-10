@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/provider"
 )
 
 // AccTestProtoV6ProviderFactories returns the provider factories for Terraform acceptance tests.

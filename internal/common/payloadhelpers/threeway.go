@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // ThreeWayDecision is the outcome of comparing a plan's payload to two

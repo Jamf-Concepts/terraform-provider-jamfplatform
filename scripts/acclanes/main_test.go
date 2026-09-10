@@ -21,7 +21,7 @@ const realTable = "../../" + defaultTablePath
 // module is this repo's module path. partition takes import paths and strips it,
 // so the tests feed the same full paths acctargets prints rather than the
 // relative form, and thereby exercise the stripping.
-const module = "github.com/Jamf-Concepts/terraform-provider-jamfplatform"
+const module = "github.com/jamf/terraform-provider-jamfplatform"
 
 func mustLoadReal(t *testing.T) laneTable {
 	t.Helper()

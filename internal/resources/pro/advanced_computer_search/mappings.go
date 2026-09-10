@@ -4,7 +4,7 @@
 package advanced_computer_search
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/criteria"
 )
 
 // ValidOperators is the criteria operator vocabulary accepted on advanced

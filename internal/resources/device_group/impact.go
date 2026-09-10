@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/impact"
 )
 
 // A device group is a scopeable object in Jamf Pro's terms: scope is based on it,

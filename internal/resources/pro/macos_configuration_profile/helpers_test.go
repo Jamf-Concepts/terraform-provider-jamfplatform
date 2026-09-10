@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/payloadhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // Each fixture is the original Definitions-API mobileconfig sent to the

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func sampleAPI() *proclassic.VppInvitation {

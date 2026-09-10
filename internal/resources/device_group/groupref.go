@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/criteria"
 )
 
 // groupRefWriteSendsID reports whether the device-groups write path must send the

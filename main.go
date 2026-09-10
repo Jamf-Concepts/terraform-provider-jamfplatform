@@ -8,8 +8,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/provider"
 )
 
 var (

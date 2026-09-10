@@ -8,7 +8,7 @@ package testhelpers
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers/accrequire"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/accrequire"
 )
 
 // The credential gate itself lives in internal/testhelpers/accrequire, a leaf

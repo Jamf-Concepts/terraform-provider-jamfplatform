@@ -15,7 +15,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers/accrequire"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/accrequire"
 )
 
 // The dependency index is the one part of impact reporting whose correctness

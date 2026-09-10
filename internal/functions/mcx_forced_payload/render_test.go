@@ -6,7 +6,7 @@ package mcx_forced_payload
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // navigate returns the mcx_preference_settings dict from a rendered payload,

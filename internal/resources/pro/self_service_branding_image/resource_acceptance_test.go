@@ -26,8 +26,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/files"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 const imageResourceAddress = "jamfplatform_pro_self_service_branding_image.test"
