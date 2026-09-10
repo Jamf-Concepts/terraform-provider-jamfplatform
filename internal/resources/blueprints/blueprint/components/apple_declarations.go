@@ -74,7 +74,7 @@ func AppleDeclarationsComponentSchema() map[string]schema.Attribute {
 					},
 					"type": schema.StringAttribute{
 						MarkdownDescription: "The Apple declaration type, for example `com.apple.configuration.passcode.settings`. " +
-							"Matched exactly: Jamf delivers nothing for a type spelled differently, including in case.",
+							"Matched exactly: Jamf Pro delivers nothing for a type spelled differently, including in case.",
 						Required: true,
 					},
 					"payload": schema.StringAttribute{
@@ -91,23 +91,24 @@ func AppleDeclarationsComponentSchema() map[string]schema.Attribute {
 // AppleDeclarationsBehaviour documents what the provider checks and why, appended to the payload
 // attribute description. It covers what an author cannot learn from a diagnostic: that the platform
 // itself validates none of this, so the check exists only during plan.
-const AppleDeclarationsBehaviour = " Jamf stores a payload without validating it and drops any key " +
-	"it does not recognise, so a misspelled key never reaches a device. The provider checks each " +
+const AppleDeclarationsBehaviour = " Jamf Pro stores a payload without validating it and drops any " +
+	"key it does not recognise, so a misspelled key never reaches a device. The provider checks each " +
 	"payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a " +
 	"wrong value type, a missing required key, a value outside a declared set, and a number outside " +
-	"a declared range. The schemas cover Apple's release and current seed branches and refresh " +
-	"daily, since Jamf offers a new key as soon as Apple publishes it. To skip the check, use " +
-	"`raw_component`."
+	"a declared range. The schemas cover Apple's release and current seed branches, so they include " +
+	"keys Apple has published but not yet released, and they are embedded in the provider release " +
+	"you have installed: a key newer than that release reads as unrecognised until you upgrade the " +
+	"provider. To skip the check, use `raw_component`."
 
 // GetIdentifier returns the component identifier.
 func (c *AppleDeclarationsComponent) GetIdentifier() string {
 	return appleDeclarationsIdentifier
 }
 
-// ToRawConfiguration converts the typed component to raw JSON configuration. Empty Declarations
-// marshals to `{}` so the canonical no-op shape matches what the platform stores; note the platform
-// refuses a configuration that is literally `{}` on create but accepts an empty declaration list,
-// which is what an empty component means here.
+// ToRawConfiguration converts the typed component to raw JSON configuration. An empty component
+// marshals to `{"declarations":[]}` and never to `{}`, because the platform refuses a configuration
+// that is literally `{}` on create but accepts an empty declaration list, which is what an empty
+// component means here.
 func (c *AppleDeclarationsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	declarations := make([]blueprints.CustomDeclaration, 0, len(c.Declarations))
 	for idx, declaration := range c.Declarations {

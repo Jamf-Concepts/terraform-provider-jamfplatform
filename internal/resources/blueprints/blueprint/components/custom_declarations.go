@@ -46,12 +46,14 @@ func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationChannelTypeSystem, blueprints.DeclarationChannelTypeUser)},
 					},
 					"kind": schema.StringAttribute{
-						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.",
-						Required:            true,
-						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationKindConfiguration, blueprints.DeclarationKindAsset)},
+						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`. " +
+							"An activation or management declaration cannot be expressed here: deliver one with " +
+							"`apple_declarations`, which derives the kind from the declaration type.",
+						Required:   true,
+						Validators: []validator.String{stringvalidator.OneOf(blueprints.DeclarationKindConfiguration, blueprints.DeclarationKindAsset)},
 					},
 					"payload": schema.StringAttribute{
-						MarkdownDescription: "JSON-encoded payload object for the declaration.",
+						MarkdownDescription: "JSON-encoded payload object for the declaration." + AppleDeclarationsBehaviour,
 						Required:            true,
 					},
 					"type": schema.StringAttribute{

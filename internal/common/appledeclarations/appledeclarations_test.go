@@ -112,6 +112,108 @@ func TestTableFloors(t *testing.T) {
 	}
 }
 
+// TestConstraintFloors extends the same reasoning as TestTableFloors to the columns that carry the
+// checks rather than the entries. Type counts alone cannot catch a generator that stops reading
+// Apple's `rangelist`, `range` or `required` annotations: every declaration type and key would
+// still be present, every table test above would still pass, and four of the ten findings would
+// silently stop firing. A parser that finds nothing reports perfect agreement, so the constraint
+// columns are asserted too.
+//
+// The floors sit well below what the table carries today (112 enums, 17 minima, 27 maxima, 173
+// required keys over 937 nodes at the time of writing), so an ordinary upstream refresh moving any
+// of them does not trip them; only a collapse does.
+func TestConstraintFloors(t *testing.T) {
+	var nodes, enums, minima, maxima, required int
+
+	var walk func(schema *Schema)
+	walk = func(schema *Schema) {
+		if schema == nil {
+			return
+		}
+		nodes++
+		if len(schema.Enum) > 0 {
+			enums++
+		}
+		if schema.Min != nil {
+			minima++
+		}
+		if schema.Max != nil {
+			maxima++
+		}
+		if schema.Required {
+			required++
+		}
+		for _, child := range schema.Keys {
+			walk(child)
+		}
+		walk(schema.Any)
+		walk(schema.Item)
+	}
+
+	for _, name := range DeclarationTypes() {
+		declaration, _ := Lookup(name)
+		for _, child := range declaration.Keys {
+			walk(child)
+		}
+		walk(declaration.Any)
+	}
+
+	for _, floor := range []struct {
+		column string
+		got    int
+		want   int
+		check  string
+	}{
+		{"schema nodes", nodes, 700, "the walk itself"},
+		{"enum constraints", enums, 80, "NotInEnum"},
+		{"declared minima", minima, 12, "OutOfRange"},
+		{"declared maxima", maxima, 20, "OutOfRange"},
+		{"required keys", required, 130, "MissingRequiredKey"},
+	} {
+		if floor.got < floor.want {
+			t.Errorf("table carries %d %s, want at least %d; %s would stop firing", floor.got, floor.column, floor.want, floor.check)
+		}
+	}
+}
+
+// TestValidateChecksNamedKeysBesideAWildcard covers a dictionary declaring both a wildcard and
+// named keys, which Apple does where a documented core sits alongside vendor extensions. The
+// wildcard must suppress only the unknown-key finding: an undeclared name is legal there, while a
+// declared one is still type-checked and a required one still required. The declaration table
+// carries no such node today, so the schema is built by hand rather than looked up — the shape is
+// the point, not the type it belongs to.
+func TestValidateChecksNamedKeysBesideAWildcard(t *testing.T) {
+	declared := &Schema{
+		Type: KindDictionary,
+		Any:  &Schema{Type: KindAny},
+		Keys: map[string]*Schema{
+			"Enabled":    {Type: KindBoolean},
+			"MandatedBy": {Type: KindString, Required: true},
+		},
+	}
+
+	var problems []Problem
+	validateDictionary(declared, map[string]any{
+		"Enabled":              "yes",
+		"vendor.private.token": "anything at all",
+	}, "", &problems)
+
+	kinds := map[ProblemKind]string{}
+	for _, problem := range problems {
+		kinds[problem.Kind] = problem.Path
+	}
+
+	if path, ok := kinds[UnknownKey]; ok {
+		t.Errorf("unknown key reported at %q beside a wildcard; a free-form name cannot be unknown", path)
+	}
+	if kinds[WrongType] != "Enabled" {
+		t.Errorf("no WrongType reported for Enabled; a named key beside a wildcard must still be type-checked (got %v)", problems)
+	}
+	if kinds[MissingRequiredKey] != "MandatedBy" {
+		t.Errorf("no MissingRequiredKey reported for MandatedBy; a wildcard does not excuse a declared requirement (got %v)", problems)
+	}
+}
+
 // TestKindForType covers the pairing rule, which needs no table because a declaration type's
 // prefix determines its kind.
 func TestKindForType(t *testing.T) {

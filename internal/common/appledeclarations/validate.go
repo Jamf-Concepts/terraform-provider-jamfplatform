@@ -161,11 +161,22 @@ func canonicalType(declarationType string) (string, bool) {
 	return "", false
 }
 
-// validateDictionary checks a dictionary value against its declared keys. A dictionary accepting
-// arbitrary key names is free-form and its contents are left alone, because Apple declares no
-// vocabulary to check them against.
+// validateDictionary checks a dictionary value against its declared keys.
+//
+// A dictionary accepting arbitrary key names is free-form, and a name it does not declare cannot be
+// unknown, because Apple publishes no vocabulary to check it against. But a wildcard and named keys
+// can be declared together — Apple does that where a dictionary carries a documented core plus
+// vendor extensions, com.apple.extensiblesso.ExtensionData being the clearest case — so the
+// wildcard suppresses only the unknown-key finding. Everything the schema does declare is still
+// type-checked, and a required key is still required. Returning early on the wildcard alone would
+// skip every named key beneath it.
+//
+// A name matching a declared key apart from case is still reported under a wildcard, because it is
+// stored as a distinct free-form key and the declared setting silently never applies — the failure
+// the check exists for.
 func validateDictionary(declared *Schema, value map[string]any, path string, problems *[]Problem) {
-	if declared.Any != nil {
+	freeForm := declared.Any != nil
+	if freeForm && len(declared.Keys) == 0 {
 		return
 	}
 
@@ -178,6 +189,9 @@ func validateDictionary(declared *Schema, value map[string]any, path string, pro
 		if !exact {
 			canonical, matched := index[strings.ToLower(name)]
 			if !matched {
+				if freeForm {
+					continue
+				}
 				*problems = append(*problems, Problem{
 					Kind: UnknownKey,
 					Path: child,
@@ -317,7 +331,7 @@ func checkRange(problems *[]Problem, declared *Schema, path string, number float
 		Path:     path,
 		SeedOnly: declared.SeedOnly(),
 		Detail: fmt.Sprintf(
-			"%s is outside the range Apple declares here (%s). Jamf stores an out-of-range value unchanged, so the device is what rejects it and the setting silently never applies.",
+			"%s is outside the range Apple declares here (%s). The platform stores an out-of-range value unchanged, so the device is what rejects it and the setting silently never applies.",
 			render(number), renderBounds(declared.Min, declared.Max),
 		),
 	})

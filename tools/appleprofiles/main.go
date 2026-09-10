@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,16 +86,22 @@ func parseSpec(raw []byte) (*specFile, error) {
 		Title:       scalar(field(root, "title")),
 		PayloadType: scalar(field(document(field(root, "payload")), "payloadtype")),
 	}
-	spec.PayloadKeys = parseKeys(field(root, "payloadkeys"), map[*yaml.Node]bool{})
+	spec.PayloadKeys = parseKeys(field(root, "payloadkeys"), map[*yaml.Node]bool{}, 0)
 	return spec, nil
 }
 
 // parseKeys converts a `payloadkeys` or `subkeys` sequence into spec keys. visiting holds the
 // sequence nodes currently on the stack, so a sequence that reaches itself through an alias is cut
 // rather than expanded forever; the affected key becomes a free-form dictionary.
-func parseKeys(seq *yaml.Node, visiting map[*yaml.Node]bool) []*specKey {
+//
+// depth bounds the walk as well, because visiting only cuts a sequence that reaches *itself*: a
+// sequence aliased twice from different points is a directed acyclic graph, and expanding one costs
+// 2^n. Upstream's anchors make that reachable — 25 doubling levels of aliases is 3 KB of YAML and
+// materialises tens of millions of spec keys. reduce records everything past maxDepth as free-form
+// anyway, so cutting the walk at the same bound discards nothing the table would have carried.
+func parseKeys(seq *yaml.Node, visiting map[*yaml.Node]bool, depth int) []*specKey {
 	seq = document(seq)
-	if seq == nil || seq.Kind != yaml.SequenceNode || visiting[seq] {
+	if seq == nil || seq.Kind != yaml.SequenceNode || visiting[seq] || depth >= maxDepth {
 		return nil
 	}
 	visiting[seq] = true
@@ -106,18 +113,31 @@ func parseKeys(seq *yaml.Node, visiting map[*yaml.Node]bool) []*specKey {
 		if item == nil || item.Kind != yaml.MappingNode {
 			continue
 		}
-		minimum, maximum := parseRange(field(item, "range"))
+		name := scalar(field(item, "key"))
+		minimum, maximum := parseRange(field(item, "range"), name)
 		keys = append(keys, &specKey{
-			Key:       scalar(field(item, "key")),
+			Key:       name,
 			Type:      scalar(field(item, "type")),
 			Presence:  scalar(field(item, "presence")),
-			Rangelist: parseRangelist(field(item, "rangelist")),
+			Rangelist: parseRangelist(field(item, "rangelist"), name),
 			Min:       minimum,
 			Max:       maximum,
-			Subkeys:   parseKeys(field(item, "subkeys"), visiting),
+			Subkeys:   parseKeys(field(item, "subkeys"), visiting, depth+1),
 		})
 	}
 	return keys
+}
+
+// warnOutput is where warnf writes. It is a variable so a test can capture what a regeneration
+// would have printed.
+var warnOutput io.Writer = os.Stderr
+
+// warnf records something a regeneration silently worked around — an upstream constraint in a shape
+// the generator cannot read, or two branches disagreeing about one. The generator fails soft in
+// every such case, since a schema change upstream must not break the build, and a soft failure that
+// says nothing is the one that ships a table quietly missing a constraint.
+func warnf(format string, args ...any) {
+	fmt.Fprintf(warnOutput, "appleprofiles: "+format+"\n", args...)
 }
 
 // document follows a document wrapper and resolves an alias to the node it points at, so callers
@@ -384,18 +404,18 @@ func mergeProfiles(generated *table, source, ref string) error {
 		entry.Refs = appendRef(entry.Refs, ref)
 
 		for name, keySchema := range dictionaryKeys(spec.PayloadKeys, 1) {
-			entry.Keys[name] = unionSchema(entry.Keys[name], keySchema, ref)
+			entry.Keys[name] = unionSchema(entry.Keys[name], keySchema, ref, payloadType+"."+name)
 		}
 		for _, key := range spec.PayloadKeys {
 			if key != nil && key.Key == wildcardKey {
 				wildcard := reduce(key, 1)
 				wildcard.Required = false
-				entry.Any = unionSchema(entry.Any, wildcard, ref)
+				entry.Any = unionSchema(entry.Any, wildcard, ref, payloadType+"."+wildcardKey)
 			}
 		}
 		for name, keySchema := range common {
 			if _, exists := entry.Keys[name]; !exists {
-				entry.Keys[name] = unionSchema(nil, keySchema, ref)
+				entry.Keys[name] = unionSchema(nil, keySchema, ref, payloadType+"."+name)
 			}
 		}
 	}

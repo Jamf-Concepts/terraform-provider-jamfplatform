@@ -292,7 +292,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		"apple_declarations": schema.SingleNestedAttribute{
 			MarkdownDescription: "**\"All Declarations\"** in the Jamf Pro blueprint editor. " +
 				"Delivers any Apple declarative device management declaration, and the provider checks each payload " +
-				"against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf " +
+				"against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro " +
 				"renders these as typed forms generated from Apple's schemas, where a custom declaration shows only " +
 				"an opaque JSON blob.",
 			Optional:   true,

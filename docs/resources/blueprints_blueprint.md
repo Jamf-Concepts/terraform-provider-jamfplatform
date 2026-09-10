@@ -372,7 +372,8 @@ resource "jamfplatform_blueprints_blueprint" "apple_declarations_with_asset" {
 }
 
 # `raw_component` skips the schema check. Use it for a key Apple has published but this provider
-# release has not embedded yet. Nest by JSON-encoding the map value.
+# release has not embedded yet. Nest by JSON-encoding the map value. The Apple schema validation
+# guide covers when the checks fire and what each finding means.
 resource "jamfplatform_blueprints_blueprint" "unchecked_declaration" {
   name        = "Early Adopters App Settings"
   description = "Managed by Terraform"
@@ -392,11 +393,57 @@ resource "jamfplatform_blueprints_blueprint" "unchecked_declaration" {
                 channelType = "SYSTEM"
                 kind        = "CONFIGURATION"
                 type        = "com.apple.configuration.app.settings"
+                # `payloadKey` is the 1-based position of this declaration within the request, and
+                # is what `$PAYLOAD_<n>` cross-references resolve against. Set it explicitly here:
+                # `raw_component` derives nothing, so a declaration without a key cannot be
+                # referenced by another.
+                payloadKey = 1
                 payload = {
                   Allowed = {
                     DeniedApps = ["com.apple.screenshots"]
                   }
                 }
+              },
+            ])
+          }
+        },
+      ]
+    },
+  ]
+}
+
+# A legacy configuration profile payload delivered through `raw_component`, which skips the Apple
+# schema check the `legacy_payloads` attribute applies. Use it for a payload key Apple has published
+# but this provider release has not embedded yet; the Apple schema validation guide walks the move
+# through in full.
+#
+# Every `legacy_payloads` entry in a block folds into one `com.jamf.ddm-configuration-profile`
+# component whose `payloadContent` is the array of payloads, so the move is per block rather than
+# per payload: an escaped block carries all of its payloads here, including the ones that validate.
+# `payloadIdentifier` is derived per payload type when the typed attribute builds the component, so
+# state one explicitly — any stable UUID will do, as long as it does not change between applies.
+resource "jamfplatform_blueprints_blueprint" "unchecked_legacy_payload" {
+  name        = "Safari Restrictions (unchecked)"
+  description = "Managed by Terraform"
+  deployed    = false
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "Safari Restrictions"
+      raw_component = [
+        {
+          identifier = "com.jamf.ddm-configuration-profile"
+          configuration = {
+            payloadDisplayName = "Safari Restrictions (unchecked)"
+            payloadContent = jsonencode([
+              {
+                payloadType       = "com.apple.applicationaccess"
+                payloadIdentifier = "1f9c07a4-3b7e-4c21-9f0d-7a5c8e2b6d41"
+
+                allowSafariHistoryClearing = false
+                allowSafariPrivateBrowsing = false
               },
             ])
           }
@@ -464,7 +511,7 @@ Optional:
 
 - `activation_conditions` (String) Optional activation condition expression that further restricts which scoped devices this block applies to; when omitted, this block applies to every device in the targeted device groups. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the syntax; the easiest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by Platform UUID, so ordinary interpolation keeps a condition in sync with a managed group, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`.
 - `ai_governance` (Attributes) AI Governance component. Delivers published AI policy versions, such as managed Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the [AI Governance policies guide](../guides/ai-governance-policies). (see [below for nested schema](#nestedatt--component_blocks--ai_governance))
-- `apple_declarations` (Attributes) **"All Declarations"** in the Jamf Pro blueprint editor. Delivers any Apple declarative device management declaration, and the provider checks each payload against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf renders these as typed forms generated from Apple's schemas, where a custom declaration shows only an opaque JSON blob. (see [below for nested schema](#nestedatt--component_blocks--apple_declarations))
+- `apple_declarations` (Attributes) **"All Declarations"** in the Jamf Pro blueprint editor. Delivers any Apple declarative device management declaration, and the provider checks each payload against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro renders these as typed forms generated from Apple's schemas, where a custom declaration shows only an opaque JSON blob. (see [below for nested schema](#nestedatt--component_blocks--apple_declarations))
 - `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--component_blocks--audio_accessory_settings))
 - `custom_declarations` (Attributes) **"Custom Declarations"** in the Jamf Pro blueprint editor. Manages custom declarative device management declarations with system or user channel types. Prefer `apple_declarations`, which delivers the same declarations and renders them as typed forms in Jamf Pro. (see [below for nested schema](#nestedatt--component_blocks--custom_declarations))
 - `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--component_blocks--disk_management_settings))
@@ -511,8 +558,8 @@ Optional:
 Required:
 
 - `channel` (String) The channel the declaration applies to. Valid values are `SYSTEM` (the device channel) and `USER`.
-- `payload` (String) The declaration's payload as a JSON object string, authored with `jsonencode(...)`. Keys are Apple's own, spelled as Apple declares them. Jamf stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches and refresh daily, since Jamf offers a new key as soon as Apple publishes it. To skip the check, use `raw_component`.
-- `type` (String) The Apple declaration type, for example `com.apple.configuration.passcode.settings`. Matched exactly: Jamf delivers nothing for a type spelled differently, including in case.
+- `payload` (String) The declaration's payload as a JSON object string, authored with `jsonencode(...)`. Keys are Apple's own, spelled as Apple declares them. Jamf Pro stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches, so they include keys Apple has published but not yet released, and they are embedded in the provider release you have installed: a key newer than that release reads as unrecognised until you upgrade the provider. To skip the check, use `raw_component`.
+- `type` (String) The Apple declaration type, for example `com.apple.configuration.passcode.settings`. Matched exactly: Jamf Pro delivers nothing for a type spelled differently, including in case.
 
 
 
@@ -542,8 +589,8 @@ Optional:
 Required:
 
 - `channel` (String) The channel type for the declaration. Valid values are `SYSTEM`, `USER`.
-- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.
-- `payload` (String) JSON-encoded payload object for the declaration.
+- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`. An activation or management declaration cannot be expressed here: deliver one with `apple_declarations`, which derives the kind from the declaration type.
+- `payload` (String) JSON-encoded payload object for the declaration. Jamf Pro stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches, so they include keys Apple has published but not yet released, and they are embedded in the provider release you have installed: a key newer than that release reads as unrecognised until you upgrade the provider. To skip the check, use `raw_component`.
 - `type` (String) The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).
 
 
@@ -566,7 +613,7 @@ Required:
 
 Optional:
 
-- `settings` (String) Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. The platform validates each payload against Apple's payload keys for its `payload_type`, and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, or a missing required key is reported before an apply rather than failing one. Each of those is an **error**: Jamf drops a key it does not recognise while reporting success, so a payload carrying one never applies. To skip the checks, move the payload to `raw_component`. Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, `payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. Values the platform treats as credentials (a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` and `OuterIdentity`) are returned redacted, and the provider keeps what you wrote so the plan still settles. an imported blueprint carries the redaction, because the real value cannot be read back.
+- `settings` (String) Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. The platform validates each payload against Apple's payload keys for its `payload_type`, and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, or a missing required key is reported before an apply rather than failing one. Each of those is an **error**: Jamf drops a key it does not recognise while reporting success, so a payload carrying one never applies. To skip the checks, move **every** legacy payload in the same block to a single `raw_component` with identifier `com.jamf.ddm-configuration-profile` — the platform stores a block's legacy payloads as one component, so a partial move would write that component twice and stop the payloads left behind from being reconciled against the platform. Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, `payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. Values the platform treats as credentials (a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` and `OuterIdentity`) are returned redacted, and the provider keeps what you wrote so the plan still settles. An imported blueprint carries the redaction, because the real value cannot be read back.
 
 
 <a id="nestedatt--component_blocks--math_settings"></a>
@@ -873,8 +920,8 @@ Optional:
 Required:
 
 - `channel` (String) The channel type for the declaration. Valid values are `SYSTEM`, `USER`.
-- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.
-- `payload` (String) JSON-encoded payload object for the declaration.
+- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`. An activation or management declaration cannot be expressed here: deliver one with `apple_declarations`, which derives the kind from the declaration type.
+- `payload` (String) JSON-encoded payload object for the declaration. Jamf Pro stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches, so they include keys Apple has published but not yet released, and they are embedded in the provider release you have installed: a key newer than that release reads as unrecognised until you upgrade the provider. To skip the check, use `raw_component`.
 - `type` (String) The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).
 
 

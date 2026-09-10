@@ -51,7 +51,8 @@ internal/
 │   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble
 ├── common/
 │   ├── aischemas/     # Vendor JSON Schema fetch/cache/validate for AI Governance policy settings
-│   ├── appleprofiles/ # Apple configuration profile schemas (generated table + plan-time payload validation)
+│   ├── appledeclarations/ # Apple declarative device management schemas (generated table + plan-time declaration validation; see §Apple declaration schemas)
+│   ├── appleprofiles/ # Apple configuration profile schemas (generated table + plan-time payload validation; see §Apple profile schemas)
 │   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
 │   ├── enumguard/     # Recurrence guard: no enum value or error code restated as a literal the SDK generates
@@ -132,23 +133,74 @@ in `jamfplatform-go-sdk` (capability and actions only, as a privilege oracle) an
 ## Apple profile schemas — one-paragraph orientation
 
 `internal/common/appleprofiles/` carries a generated table of Apple's configuration profile payload
-keys, built from the `mdm/profiles` directory of apple/device-management by `make apple-profiles`
-(never part of `make generate` — it needs a network clone, and upstream only moves a few times a
-year). Jamf's blueprints service validates a stored legacy payload against the same vocabulary, and
-wire probing established exactly how: an unknown **payload type** is rejected and matched
-case-sensitively; an unknown **key** is silently discarded; a key differing only in case is silently
-stored under Apple's spelling; a wrong value type or a missing required key fails the write; enum and
-range constraints are **not** enforced (`AlertType: 99` stores fine), so the table does not check
-them either. `appleprofiles.Validate` turns those rules into `Problem` values, and
-`Problem.Advisory()` says how far to trust each one — a name the table does not recognise is a
-warning, because a key Apple added after the snapshot looks identical to one that never existed;
-everything else is an error, because Jamf refuses the write. Descent stops at a free-form
-(wildcard) dictionary: everything under an MCX preference domain
-(`com.apple.ManagedClient.preferences`, the "Custom Settings" envelope) is passthrough, and Jamf
-stops validating there too. The blueprint resource wires this in through `validators.go` for both
+keys, built from the `mdm/profiles` directory of apple/device-management by `make apple-schemas`
+(never part of `make generate` — it needs a network clone; `make apple-profiles` survives as an
+alias for muscle memory). The table is the **union** of Apple's `release` branch and its newest
+`seed_OS_*` (pre-release) branch, because Jamf's generative-declarations service tracks seed and
+offers seed-only keys in the UI immediately, so a release-only table would reject configurations
+that work — which is why the target *fails* rather than quietly building from release alone when
+seed discovery finds nothing. Jamf's blueprints service validates a stored legacy payload against
+the same vocabulary, and wire probing established exactly how: an unknown **payload type** is
+rejected and matched case-sensitively; an unknown **key** is silently discarded; a key differing
+only in case is silently stored under Apple's spelling; a wrong value type or a missing required key
+fails the write; enum and range constraints are **not** enforced (`AlertType: 99` stores fine), so
+the table does not check them either. `appleprofiles.Validate` turns those rules into `Problem`
+values and **every one of them is an error** — the advisory tier is gone, because a discarded key
+produces a payload that reports success and never applies, and a warning left the operator with
+exactly that. What survives of the old split is a *diagnostic* distinction rather than a severity
+one: `Problem.StaleTableSuspect()` (formerly `Advisory()`) reports whether the finding could be
+explained by the embedded table being older than the tenant — the name-based findings plus
+`MissingRequiredKey`, since Apple relaxes `required` between revisions — and such a finding names
+the snapshot's branches and commits and points at the escape hatch. That escape hatch is **per
+block, not per payload**: `appendLegacyConfigProfile` folds every payload in a block into one
+`com.jamf.ddm-configuration-profile` component, so escaping one payload means moving all of the
+block's payloads to a single `raw_component`. Descent stops at a free-form (wildcard) dictionary:
+everything under an MCX preference domain (`com.apple.ManagedClient.preferences`, the "Custom
+Settings" envelope) is passthrough, and Jamf stops validating there too — but a wildcard declared
+*alongside* named keys suppresses only the unknown-key finding, so the named keys are still
+type-checked. The blueprint resource wires this in through `validators.go` for both
 `component_blocks[].legacy_payloads` and the deprecated top-level `legacy_payloads`. Freshness is a
-scheduled concern, not a plan-time one: `.github/workflows/apple-profiles.yml` regenerates monthly
-and opens a pull request, the same reviewable-PR pattern Dependabot uses here.
+scheduled concern, not a plan-time one: `.github/workflows/apple-schemas.yml` regenerates **daily**
+and opens a pull request, the same reviewable-PR pattern Dependabot uses here — daily rather than
+monthly because an unrecognised name is now an error, so a stale table blocks a working
+configuration instead of merely warning about one. User guidance is in
+`docs/guides/apple-schema-validation.md`.
+
+## Apple declaration schemas — one-paragraph orientation
+
+`internal/common/appledeclarations/` is the same shape for **declarative device management**: a
+generated table of Apple's declaration types, built from the `declarative` directory of
+apple/device-management by the same `make apple-schemas` run, so a legacy payload and the
+declaration wrapping it can never be validated against different upstream revisions. It is
+deliberately a sibling of `appleprofiles/` rather than an extension of it, because the two services
+behave *oppositely* on the case question and shared code would blur that. Jamf validates
+declarations not at all: wire probing on 2026-09-10 found the blueprints service returns `201` for
+an unknown declaration type, an invented key, a wrong-cased key, a wrong value type, an out-of-enum
+value, an out-of-range integer and a missing required key alike, a deploy of the same blueprint
+returns `202` and reports SUCCEEDED, and the Jamf Pro editor then renders the generated form with
+the offending key blank while the device never receives it. So `terraform plan` is the only place
+any of it is caught, and every finding is an **error** — there is no advisory tier and no provider
+switch to soften one; a declaration that should not be checked belongs in `raw_component`. Four
+rules came out of that probe and are easy to get wrong. Declaration key names are matched
+**CASE-SENSITIVELY, and a wrong-cased key is discarded** — the exact opposite of a configuration
+profile payload, where Jamf restores Apple's spelling, which is why the two packages must not share
+case handling. A declaration type is likewise case-sensitive, and a wrong-cased one renders no card
+at all. A value outside a declared `rangelist` is dropped, so an enum violation silently never
+applies, while a value outside a declared `range` is stored and rendered unchanged — the *device* is
+what rejects that one, which is why it is still an error rather than a note. And `kind` is accepted
+in any pairing with `type`, so the pairing is derived from the type's reverse-domain prefix rather
+than from a table; two of the four kinds it derives are a dated **gateway widening** recorded on
+`KindForType` in the shape `internal/providerdata/scopes.go` uses, because
+`blueprints.DeclarationKindValues()` declares only `CONFIGURATION` and `ASSET` while
+`POST /blueprints/v1/blueprints` accepted `ACTIVATION` and `MANAGEMENT` and stored both verbatim on
+the EU gateway, 2026-09-10 — and `enum_literals_test.go` is the tripwire for the day a spec ingest
+catches up. The blueprint resource wires this in through `declaration_validators.go` for both
+declaration-bearing components: `apple_declarations`, a list, so a finding lands on the exact element
+and `$PAYLOAD_n` cross-references are range-checked, and `custom_declarations`, a set, so a finding
+names the declaration type instead. What none of this can prove is that Jamf tracks the *same* seed
+branch the table unions — that is inferred from `siri.settings.AllowSiriAI` appearing in the Jamf
+picker while absent from release, so re-probe it first if false positives reappear for keys the UI
+offers. User guidance is in `docs/guides/apple-schema-validation.md`.
 
 ## Jamf Security Cloud resources — one-paragraph orientation
 
@@ -302,7 +354,7 @@ Jamf offers three scopes when an API integration is created, and the provider mi
 | `fix` | `go fix ./...` — rewrites deprecated API usages |
 | `lint` | `golangci-lint run` |
 | `generate` | Copyright headers + `terraform fmt examples/` + docs |
-| `apple-profiles` | Regenerate `internal/common/appleprofiles/profiles.json` from apple/device-management (network; not part of `generate`) |
+| `apple-schemas` | Regenerate both embedded Apple schema tables — `internal/common/appleprofiles/profiles.json` and `internal/common/appledeclarations/declarations.json` — from apple/device-management, unioning the `release` branch with the newest `seed_OS_*` branch (network; not part of `generate`; `apple-profiles` survives as an alias) |
 | `permissions-map` | Refetch `internal/common/permissions/permissions-map.md` from Jamf's permissions map article (network; not part of `generate`) |
 | `test` | Unit tests (excludes `acceptance` build tag) |
 | `test-scripts` | Unit tests for `scripts/acctargets` (behind the `acctargets` build tag, so `go test ./...` misses it) |

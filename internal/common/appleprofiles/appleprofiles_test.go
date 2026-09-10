@@ -100,6 +100,33 @@ func TestValidate_MissingRequiredKey(t *testing.T) {
 	if problems[0].Kind != MissingRequiredKey || problems[0].Path != "NotificationSettings" {
 		t.Errorf("expected the required top-level key reported, got %v", problems[0])
 	}
+	if !problems[0].StaleTableSuspect() {
+		t.Error("expected a missing required key to name the snapshot — Apple relaxes `required` between revisions, so the key may be optional on the tenant")
+	}
+}
+
+// TestStaleTableSuspect_PinsTheSet pins which findings a caller is told the snapshot could explain.
+// Every finding is an error either way, so the classification is only visible in the diagnostic
+// text: without this table, widening or narrowing the set changes what an operator is told with no
+// test failing.
+func TestStaleTableSuspect_PinsTheSet(t *testing.T) {
+	for _, tc := range []struct {
+		kind    ProblemKind
+		suspect bool
+		reason  string
+	}{
+		{UnknownPayloadType, true, "Apple may have published the type since the snapshot"},
+		{UnknownKey, true, "Apple may have published the key since the snapshot"},
+		{MissingRequiredKey, true, "Apple relaxes `required` between revisions"},
+		{MiscasedPayloadType, false, "the type matches one the table already carries"},
+		{MiscasedKey, false, "the key matches one the table already carries"},
+		{WrongType, false, "a wrong value type is wrong against every revision"},
+		{IntegerOutOfRange, false, "Jamf's 32-bit field is not Apple's constraint"},
+	} {
+		if got := (Problem{Kind: tc.kind}).StaleTableSuspect(); got != tc.suspect {
+			t.Errorf("kind %v: StaleTableSuspect() = %t, want %t — %s", tc.kind, got, tc.suspect, tc.reason)
+		}
+	}
 }
 
 func TestValidate_MissingRequiredKeyInsideArrayEntry(t *testing.T) {

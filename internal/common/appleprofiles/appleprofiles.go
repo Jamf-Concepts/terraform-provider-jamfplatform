@@ -15,13 +15,18 @@
 //   - a key that differs only in case is silently stored under Apple's spelling;
 //   - a key whose value has the wrong type, or a required key left out, fails the write.
 //
-// Enum and range constraints are deliberately not checked: Jamf accepts values outside them
-// (`AlertType: 99` stores fine), so enforcing them here would reject configurations that work.
+// The table carries the enum sets and numeric ranges Apple declares (Schema.Enum, Schema.Min,
+// Schema.Max), but Validate does not consult them: Jamf accepts values outside them (`AlertType: 99`
+// stores fine), so enforcing them would reject configurations that work. They are generated and
+// exported anyway because they are the data a future check would need, and because a diagnostic can
+// quote the declared set without rejecting a value that falls outside it. Wiring them into Validate
+// is a behaviour change that needs its own wire probing, not a refactor of this package.
 //
 // The table is a plan-time heuristic, not the authority — Jamf's own copy of Apple's schemas may lag
-// or lead this snapshot. Callers must weight the findings accordingly: Kind values that report an
-// unrecognised name are advisory, because a key Apple added after this snapshot would look
-// unrecognised while working perfectly; the rest describe writes Jamf actively refuses.
+// or lead this snapshot. Every finding is nevertheless an error, because each one describes a write
+// Jamf refuses or silently discards; what the snapshot's age changes is the diagnostic, not the
+// severity. Problem.StaleTableSuspect marks the findings a snapshot older than the tenant could
+// explain, so a caller can name the snapshot and offer the escape hatch.
 package appleprofiles
 
 import (
@@ -114,7 +119,12 @@ func (t *Table) ReleaseRef() string {
 }
 
 // load decodes the embedded table once. A table that fails to decode yields an empty one rather than
-// a panic: validation is an advisory aid, and losing it must never stop a plan.
+// a panic, but the degradation is not quiet: with no payload types in the table every payload
+// reports as UnknownPayloadType, which callers raise as an error, so an unreadable table fails every
+// plan that carries a legacy payload. That is deliberate — the alternative is passing a payload
+// Jamf would refuse — and it means a build shipping a corrupt profiles.json is loud rather than
+// silently unvalidated. `make apple-profiles` regenerates the file, and the package's own tests fail
+// on a table that decodes to nothing.
 var load = sync.OnceValue(func() *Table {
 	table := &Table{}
 	raw, err := embedded.ReadFile("profiles.json")
@@ -225,15 +235,23 @@ type Problem struct {
 }
 
 // StaleTableSuspect reports whether a finding could be explained by the embedded table being older
-// than what Jamf accepts, rather than by a mistake in the configuration. Only the name-based
-// findings can be: a wrong value type or an out-of-range integer is wrong against any version of
-// the schema.
+// than what Jamf accepts, rather than by a mistake in the configuration.
 //
-// It does not soften the finding — every finding is an error, because Jamf discards a key it does
-// not recognise and the payload silently never applies. What it changes is the diagnostic, which
-// names the snapshot and how to move past it when the snapshot could be the cause.
+// The name-based findings can be: a payload type or key Apple published after this snapshot looks
+// identical to one that never existed. MissingRequiredKey can be too, because Apple relaxes
+// `required` between revisions — a key mandatory in the snapshot may be optional on the tenant, so
+// the finding lands on a payload that writes cleanly. Were the enum and range data ever checked,
+// those would join it for the same reason: Apple widens enum sets and bounds.
+//
+// The rest cannot: a wrong value type or an integer outside the 32-bit field Jamf stores it in is
+// wrong against every revision of the schema, and a miscased name matches a name the table already
+// carries, so its age explains nothing.
+//
+// It does not soften the finding — every finding is an error, because Jamf refuses or silently
+// discards each of these writes. What it changes is the diagnostic, which names the snapshot and how
+// to move past it when the snapshot could be the cause.
 func (p Problem) StaleTableSuspect() bool {
-	return p.Kind == UnknownPayloadType || p.Kind == UnknownKey
+	return p.Kind == UnknownPayloadType || p.Kind == UnknownKey || p.Kind == MissingRequiredKey
 }
 
 // Validate checks one payload's settings against Apple's declared keys for its payload type,

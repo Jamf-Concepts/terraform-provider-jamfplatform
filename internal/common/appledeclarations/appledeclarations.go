@@ -62,6 +62,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 )
 
 //go:embed declarations.json
@@ -200,18 +202,40 @@ func Lookup(declarationType string) (*Declaration, bool) {
 	return declaration, ok
 }
 
+// The kinds a declaration type's reverse-domain prefix implies.
+//
+// kindConfiguration and kindAsset alias the SDK's generated enum. kindActivation and kindManagement
+// are a gateway widening: blueprints.DeclarationKindValues() declares only the first two, while
+// POST /blueprints/v1/blueprints on the EU gateway accepted `kind` values ACTIVATION and MANAGEMENT
+// on 2026-09-10 under an environment-scoped integration and read both back stored verbatim. So the
+// gap is spec-versus-gateway drift rather than a wire break, and the provider must go on deriving
+// all four — a declaration type under com.apple.activation. or com.apple.management. has no other
+// kind it could carry.
+//
+// The pattern is internal/providerdata/scopes.go's gatewayWidenings table, and so is the rule for
+// maintaining it: an entry is DELETED rather than edited once either half of its justification
+// goes. When a spec ingest promotes these two into DeclarationKindValues(), the enum guard in
+// enum_literals_test.go fails on the promotion, and the fix is to replace the literal with the new
+// constant and delete this paragraph — not to reword it.
+const (
+	kindConfiguration = blueprints.DeclarationKindConfiguration
+	kindAsset         = blueprints.DeclarationKindAsset
+	kindActivation    = "ACTIVATION"
+	kindManagement    = "MANAGEMENT"
+)
+
 // KindForType returns the kind the service expects alongside a declaration type, derived from its
 // reverse-domain prefix, or "" when the prefix is not one Apple defines.
 func KindForType(declarationType string) string {
 	switch {
 	case strings.HasPrefix(declarationType, "com.apple.configuration."):
-		return "CONFIGURATION"
+		return kindConfiguration
 	case strings.HasPrefix(declarationType, "com.apple.asset."):
-		return "ASSET"
+		return kindAsset
 	case strings.HasPrefix(declarationType, "com.apple.activation."):
-		return "ACTIVATION"
+		return kindActivation
 	case strings.HasPrefix(declarationType, "com.apple.management."):
-		return "MANAGEMENT"
+		return kindManagement
 	default:
 		return ""
 	}

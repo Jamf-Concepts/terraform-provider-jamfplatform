@@ -169,3 +169,56 @@ func TestBlueprintListResource_Metadata(t *testing.T) {
 		t.Errorf("expected type name %q, got %q", "jamfplatform_blueprints_blueprint", resp.TypeName)
 	}
 }
+
+// TestBlueprintResource_SchemaDeclarationValidators checks the schema wiring rather than the
+// validator's own behaviour. An unexported constructor that nothing references is legal Go, so
+// deleting a `Validators` line still compiles and still passes every behavioural test in this
+// package, while silently dropping the plan-time schema check from every declaration a blueprint
+// carries.
+func TestBlueprintResource_SchemaDeclarationValidators(t *testing.T) {
+	r := NewBlueprintResource()
+	var resp resource.SchemaResponse
+	r.(*BlueprintResource).Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
+	}
+
+	block, ok := resp.Schema.Attributes["component_blocks"].(resourceschema.ListNestedAttribute)
+	if !ok {
+		t.Fatal("component_blocks is missing or not a ListNestedAttribute")
+	}
+
+	cases := map[string]struct {
+		attributes  map[string]resourceschema.Attribute
+		name        string
+		wantOrdered bool
+	}{
+		"component_blocks[].apple_declarations":  {block.NestedObject.Attributes, "apple_declarations", true},
+		"component_blocks[].custom_declarations": {block.NestedObject.Attributes, "custom_declarations", false},
+		"custom_declarations":                    {resp.Schema.Attributes, "custom_declarations", false},
+	}
+
+	for label, tc := range cases {
+		t.Run(label, func(t *testing.T) {
+			attribute, ok := tc.attributes[tc.name].(resourceschema.SingleNestedAttribute)
+			if !ok {
+				t.Fatalf("%s is missing or not a SingleNestedAttribute", label)
+			}
+			found := false
+			for _, attached := range attribute.Validators {
+				declarations, ok := attached.(declarationSchemaValidator)
+				if !ok {
+					continue
+				}
+				found = true
+				if declarations.ordered != tc.wantOrdered {
+					t.Errorf("ordered = %v, want %v", declarations.ordered, tc.wantOrdered)
+				}
+			}
+			if !found {
+				t.Errorf("no declaration schema validator is attached to %s", label)
+			}
+		})
+	}
+}

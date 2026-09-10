@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -149,30 +150,44 @@ func mergeDeclaration(generated *declarationTable, path, ref string) error {
 	entry.Refs = appendRef(entry.Refs, ref)
 
 	for name, keySchema := range dictionaryKeys(spec.payloadKeys, 1) {
-		entry.Keys[name] = unionSchema(entry.Keys[name], keySchema, ref)
+		entry.Keys[name] = unionSchema(entry.Keys[name], keySchema, ref, declarationType+"."+name)
 	}
 	for _, key := range spec.payloadKeys {
 		if key != nil && key.Key == wildcardKey {
 			wildcard := reduce(key, 1)
 			wildcard.Required = false
-			entry.Any = unionSchema(entry.Any, wildcard, ref)
+			entry.Any = unionSchema(entry.Any, wildcard, ref, declarationType+"."+wildcardKey)
 		}
 	}
 	return nil
 }
 
 // unionSchema merges an incoming key schema into whatever an earlier branch produced, recording
-// every branch that declares it. When two branches disagree on a key's type the later branch wins,
-// because the branches are read oldest first and the newer definition is the one Jamf tracks; the
-// disagreement is preserved in Refs rather than silently collapsed.
-func unionSchema(existing, incoming *schema, ref string) *schema {
+// every branch that declares it.
+//
+// The vocabulary is the union of the branches, but a constraint survives only where every branch
+// declaring the key agrees. The union exists so a configuration written against release is not
+// rejected for a key Apple has since respelled; carrying the newest branch's constraints wholesale
+// would reintroduce that same failure from the other side, because upstream does tighten between
+// branches — it retypes keys, extends a rangelist and moves a bound. So Required is the
+// conjunction, a disagreement on Type widens to `any`, and an enum or a range widens to whichever
+// branch is more permissive. Apple's own answer to a key becoming one of several alternatives is to
+// demote it to `optional` (com.apple.configuration.legacy.ProfileURL, required until
+// ProfileAssetReference arrived beside it), so the conjunction is also what tracks upstream's intent
+// rather than merely being the safer of two rules.
+//
+// Every widening is reported: a widened key is the one place the table is deliberately looser than
+// either branch that produced it, and nothing downstream can tell that from a key Apple never
+// constrained.
+//
+// A key seen for the first time has its whole subtree stamped, not just its own node: a nested key
+// first seen on the release branch would otherwise carry no ref, and the next branch read would make
+// it look seed-only — reporting a long-standing key as pre-release.
+func unionSchema(existing, incoming *schema, ref, path string) *schema {
 	if incoming == nil {
 		return existing
 	}
 	if existing == nil {
-		// Stamp the whole subtree, not just this node: a nested key first seen on the release
-		// branch would otherwise carry no ref, and the next branch read would make it look
-		// seed-only — reporting a long-standing key as pre-release.
 		stampRefs(incoming, ref)
 		return incoming
 	}
@@ -180,8 +195,27 @@ func unionSchema(existing, incoming *schema, ref string) *schema {
 	merged := *incoming
 	merged.Refs = appendRef(existing.Refs, ref)
 
-	// A key required on one branch and optional on another is treated as required only if the
-	// newest branch says so, which `merged` already carries from incoming.
+	merged.Required = existing.Required && incoming.Required
+	if existing.Required != incoming.Required {
+		warnf("%s: required on one branch and optional on another; treating it as optional", path)
+	}
+
+	if existing.Type != incoming.Type {
+		warnf("%s: declared %s on one branch and %s on another; widening to %s", path, existing.Type, incoming.Type, typeAny)
+		merged.Type = typeAny
+	}
+
+	merged.Enum = unionEnum(existing.Enum, incoming.Enum)
+	if len(merged.Enum) != len(existing.Enum) || len(merged.Enum) != len(incoming.Enum) {
+		warnf("%s: the branches accept different value sets (%d and %d); accepting %d",
+			path, len(existing.Enum), len(incoming.Enum), len(merged.Enum))
+	}
+
+	merged.Min, merged.Max = widenBounds(existing, incoming)
+	if !sameBound(merged.Min, incoming.Min) || !sameBound(merged.Max, incoming.Max) {
+		warnf("%s: the branches bound this key differently; widening to %s to %s",
+			path, formatBound(merged.Min), formatBound(merged.Max))
+	}
 
 	if existing.Keys != nil || incoming.Keys != nil {
 		keys := make(map[string]*schema, len(existing.Keys)+len(incoming.Keys))
@@ -189,14 +223,72 @@ func unionSchema(existing, incoming *schema, ref string) *schema {
 			keys[name] = sub
 		}
 		for name, sub := range incoming.Keys {
-			keys[name] = unionSchema(existing.Keys[name], sub, ref)
+			keys[name] = unionSchema(existing.Keys[name], sub, ref, path+"."+name)
 		}
 		merged.Keys = keys
 	}
-	merged.Any = unionSchema(existing.Any, incoming.Any, ref)
-	merged.Item = unionSchema(existing.Item, incoming.Item, ref)
+	merged.Any = unionSchema(existing.Any, incoming.Any, ref, path+"."+wildcardKey)
+	merged.Item = unionSchema(existing.Item, incoming.Item, ref, path+"[]")
 
 	return &merged
+}
+
+// unionEnum returns the values both branches accept between them, in the order first seen. An
+// absent rangelist means the key is unconstrained, so a branch that declares none makes the union
+// unconstrained too: the alternative would let one branch's closed set reject a value the other
+// branch never restricted.
+func unionEnum(existing, incoming []any) []any {
+	if len(existing) == 0 || len(incoming) == 0 {
+		return nil
+	}
+
+	seen := make(map[any]bool, len(existing)+len(incoming))
+	union := make([]any, 0, len(existing)+len(incoming))
+	for _, values := range [][]any{existing, incoming} {
+		for _, value := range values {
+			if seen[value] {
+				continue
+			}
+			seen[value] = true
+			union = append(union, value)
+		}
+	}
+	return union
+}
+
+// widenBounds returns the loosest range the two branches allow between them: the lower minimum and
+// the higher maximum, and unbounded in either direction as soon as one branch leaves it unbounded.
+func widenBounds(existing, incoming *schema) (minimum, maximum *float64) {
+	if existing.Min != nil && incoming.Min != nil {
+		minimum = existing.Min
+		if *incoming.Min < *existing.Min {
+			minimum = incoming.Min
+		}
+	}
+	if existing.Max != nil && incoming.Max != nil {
+		maximum = existing.Max
+		if *incoming.Max > *existing.Max {
+			maximum = incoming.Max
+		}
+	}
+	return minimum, maximum
+}
+
+// sameBound reports whether two bounds constrain a key identically, counting two absent bounds as
+// the same.
+func sameBound(left, right *float64) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+// formatBound renders a bound for a report, naming an absent one rather than printing a pointer.
+func formatBound(bound *float64) string {
+	if bound == nil {
+		return "unbounded"
+	}
+	return strconv.FormatFloat(*bound, 'g', -1, 64)
 }
 
 // stampRefs records a branch against a schema and everything beneath it.
@@ -275,6 +367,6 @@ func parseDeclarationSpec(raw []byte) (*declSpec, error) {
 	return &declSpec{
 		title:           scalar(field(root, "title")),
 		declarationType: scalar(field(document(field(root, "payload")), "declarationtype")),
-		payloadKeys:     parseKeys(field(root, "payloadkeys"), map[*yaml.Node]bool{}),
+		payloadKeys:     parseKeys(field(root, "payloadkeys"), map[*yaml.Node]bool{}, 0),
 	}, nil
 }

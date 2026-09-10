@@ -121,6 +121,62 @@ func TestAccResource_Blueprint_AppleDeclarations(t *testing.T) {
 	})
 }
 
+// TestAccResource_Blueprint_AppleDeclarations_HTMLEscapedPayload pins that a payload carrying &, <
+// or > survives a real apply and then plans empty.
+//
+// Both Terraform's jsonencode() and Go's encoding/json HTML-escape those three characters, so the
+// value the provider reads back from the wire matches the one it planned. That agreement is load
+// bearing and non-obvious: payload is a plain string attribute, byte-compared with no semantic
+// equality, so making FromRawConfiguration emit unescaped output — which reads like a fix — breaks
+// the FIRST apply with "Provider produced inconsistent result after apply". This test was written
+// after that exact mistake was made and caught here. Every other fixture in this file is free of
+// those characters, so none of them covers it.
+//
+// The declaration type also gives the MANAGEMENT kind its only acceptance coverage. That kind is
+// absent from the SDK's DeclarationKindValues() and was wire-verified accepted on 2026-09-10.
+func TestAccResource_Blueprint_AppleDeclarations_HTMLEscapedPayload(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-apple-decl-esc-" + suffix
+
+	const escapedDeclaration = `[
+		{
+			channel = "SYSTEM"
+			type    = "com.apple.management.organization-info"
+			payload = jsonencode({
+				Name = "Example & Co <EMEA>"
+				URL  = "https://example.com/ddm?token=x&v=2&scope=a<b"
+			})
+		},
+	]`
+
+	resourceName := "jamfplatform_blueprints_blueprint.test_apple_decl"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// The apply is the assertion: a mismatched round trip fails here with
+				// "inconsistent result after apply" before any Check function runs.
+				Config: appleDeclarationsConfig("appledeclesc", name, escapedDeclaration),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.declaration.0.type",
+						"com.apple.management.organization-info"),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclesc", name, escapedDeclaration),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
 // TestAccResource_Blueprint_AppleDeclarations_SeedOnlyKeys pins that keys Apple publishes only on
 // its pre-release branch are accepted. This is the test that fails if the embedded table is ever
 // regenerated from Apple's release branch alone: AllowSiriAI and ForceReduceSensitiveContent are
