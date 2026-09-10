@@ -8,7 +8,7 @@ description: |-
 
 The provider carries Apple's own configuration profile and declarative device management schemas, generated from [apple/device-management](https://github.com/apple/device-management), and checks blueprint payloads against them during `terraform plan`.
 
-**This is a breaking change.** A configuration that planned cleanly on `v0.32.0` and earlier can now fail its plan. Nothing about what the provider sends changed, and no state is rewritten — only the plan outcome.
+**This is a breaking change.** A configuration that planned cleanly on `v0.32.0` and earlier can now fail its plan. The provider sends what it always sent, and rewrites no state. Only the plan outcome changes.
 
 Two things moved:
 
@@ -19,11 +19,11 @@ If your plan is clean, you have nothing to do.
 
 ## Why a finding is an error
 
-Nothing else reports it. Wire probing found that the blueprints service accepts a declaration carrying an invented key, a wrong-cased key, a value of the wrong type or a value outside Apple's declared range, answers `201`, and a deploy of the same blueprint answers `202` and reports SUCCEEDED. The Jamf Pro editor then renders the declaration with the offending setting blank, and the device never receives it. A legacy payload behaves the same way for an unrecognised key.
+Nothing else reports it. Jamf Pro accepts a declaration carrying an invented key, a wrong-cased key, a value of the wrong type or a value outside Apple's declared range, saves it, and reports the blueprint as deployed. The blueprint editor then shows that declaration with the offending setting blank, and the device never receives it. A legacy payload behaves the same way for an unrecognised key.
 
-So the failure is silent at every layer you can see: the API said yes, the deploy said yes, and the setting is not on the device. A warning would leave you with a blueprint that reports success and does nothing, which is why the plan stops instead.
+Every layer you can see reports success. The save worked, the deploy worked, and the setting is not on the device. A warning would leave you holding a blueprint that reports success and does nothing, so the plan stops instead.
 
-Declaration key names are matched **case-sensitively**, and a wrong-cased key is discarded. Legacy configuration profile payloads behave the opposite way: Jamf Pro silently restores Apple's spelling, which is why a miscased key there shows up as a plan that never converges rather than as a setting that never applies. Do not carry a spelling that worked in a profile into a declaration on the strength of that.
+Declaration key names are matched **case-sensitively**, and a wrong-cased key is discarded. Legacy configuration profile payloads behave the opposite way: Jamf Pro restores Apple's spelling without telling you, so a miscased key there shows up as a plan that never converges rather than as a setting that never applies. A spelling that worked in a profile is no evidence it will work in a declaration.
 
 ## The findings
 
@@ -32,24 +32,26 @@ Declaration key names are matched **case-sensitively**, and a wrong-cased key is
 | Unknown Apple declaration type / unrecognised legacy payload type | The name is absent from the embedded schemas | Yes |
 | Unknown key in payload | Apple declares no such key for this type | Yes |
 | Unknown status item | A status subscription names an item Apple does not publish | Yes |
-| Value not in enum | The value is outside the closed set Apple declares | Yes — Apple widens sets between revisions |
-| Value out of range | A number falls outside Apple's declared bounds | Yes — Apple widens bounds between revisions |
-| Missing required key | A key Apple marks required is absent | Yes — Apple relaxes `required` between revisions |
+| Value not in enum | The value is outside the closed set Apple declares | Yes. Apple widens sets between revisions |
+| Value out of range | A number falls outside Apple's declared bounds | Yes. Apple widens bounds between revisions |
+| Missing required key | A key Apple marks required is absent | Yes. Apple relaxes `required` between revisions |
 | Wrong value type | A string where a boolean is declared, and so on | No |
 | Miscased type or key name | The name matches a declared one apart from case | No |
 | Declaration kind does not match its type | `kind` disagrees with the declaration type's prefix | No |
 
 The right-hand column is the one to read first. A finding marked **Yes** says so in its own detail, names the upstream branches and commits the schemas came from, and points at the escape hatch. A finding marked **No** is wrong against every revision of Apple's schema that declares the name at all, so the provider's age cannot be the cause.
 
-The schemas are the union of Apple's `release` branch and its newest `seed_OS_*` (pre-release) branch, because Jamf's generative-declarations service tracks seed: keys and declaration types appear in the Jamf Pro editor while still pre-release. A finding about a pre-release part of the schema says so.
+The schemas are the union of Apple's `release` branch and its newest `seed_OS_*` (pre-release) branch, because Jamf Pro tracks seed: keys and declaration types show up in the blueprint editor while Apple still has them in pre-release. The diagnostic tells you when a finding comes from a pre-release part of the schema.
 
 ## A key the Jamf Pro editor offers, rejected by the plan
 
-Upgrade the provider. The schemas are **embedded in the provider binary and frozen at the release you have installed**, so there is no cache to clear and no attribute to set. Upstream is refreshed daily and released with the provider, so the window between Apple publishing a key and the provider carrying it is short, but it is not zero.
+Upgrade the provider. The schemas **ship inside the provider release you have installed**, so there is no cache to clear and no setting to change. Every release carries a fresh copy, which keeps the gap between Apple publishing a key and a release delivering it short. It is not zero.
 
-Until an upgrade is available, deliver the payload or declaration through `raw_component`, which is checked against nothing.
+Until an upgrade is available, deliver the payload or declaration through `raw_component`, which the provider does not check.
 
 ## Delivering a declaration unchecked
+
+`raw_component` passes your configuration to Jamf Pro as written, so nothing checks it. The keys below are Jamf's own names. Everywhere else the provider hands you attribute names matching the blueprint editor; here you write what Jamf stores.
 
 Move the declaration into `raw_component` under the identifier the typed component would have used, and JSON-encode the configuration:
 
@@ -83,7 +85,7 @@ Set `payloadKey` yourself. It is the 1-based position of the declaration within 
 
 ## Delivering a legacy configuration profile payload unchecked
 
-**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. Split them and the apply writes that component twice, and the payloads you left in `legacy_payloads` stop being reconciled against the server, so drift on those goes unreported.
+**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. Split them and the apply writes that component twice, and the provider stops reconciling the payloads you left in `legacy_payloads`, so it never reports drift on those again.
 
 Before:
 
@@ -141,16 +143,18 @@ component_blocks = [
 ]
 ```
 
-Three things to carry across correctly:
+Three things to carry across:
 
 - **Each payload's settings sit alongside `payloadType`**, not nested under a `settings` key. The typed attribute merges them in.
-- **`payloadIdentifier` is per payload and required.** The typed attribute derives one from the payload type; `raw_component` does not, so state one and do not change it between applies — Jamf Pro keys the stored payload on it.
+- **`payloadIdentifier` is per payload and required.** The typed attribute derives one from the payload type; `raw_component` does not, so state one and keep it stable between applies. Jamf Pro keys the stored payload on it.
 - **`payloadDisplayName` is per component.** The typed attribute uses the blueprint's own name.
 
 Moving a block to `raw_component` shows up in the plan as one component destroyed and another created. Read it before you apply.
 
 ## Further reading
 
-- [Apple's declarative device management schemas](https://github.com/apple/device-management/tree/release/declarative) — the source of every declaration finding.
-- [Apple's configuration profile schemas](https://github.com/apple/device-management/tree/release/mdm/profiles) — the source of every legacy payload finding.
-- [Blueprints Guide](https://learn.jamf.com/r/en-US/Jamf-Blueprints-Guide) — the capability itself.
+| To look up | Where |
+|---|---|
+| Every declaration type and key the provider checks | [Apple's declarative device management schemas](https://github.com/apple/device-management/tree/release/declarative) |
+| Every payload type and key the provider checks | [Apple's configuration profile schemas](https://github.com/apple/device-management/tree/release/mdm/profiles) |
+| Blueprints themselves | [Blueprints Guide](https://learn.jamf.com/r/en-US/Jamf-Blueprints-Guide) |
