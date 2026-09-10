@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf AI Governance policy, the managed configuration for one AI tool such as Claude Code, Claude Desktop or OpenAI Codex.
   A policy carries a draft and a history of published versions. Applying a change saves the draft and, unless publish is disabled, publishes it as a new version. Deploying a published version to devices is a separate step: add an AI Governance component to a blueprint and reference the policy's id and published_version. Nothing reaches a device until a blueprint that names the policy is deployed.
   The settings_json body is the tool vendor's own configuration format, checked during terraform plan against the schema the platform serves for the tool and schema_version.
-  Settings are written whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being at the version last read. A policy something else changed in the meantime is reported rather than overwritten, and re-running Terraform shows the change in the next plan. See the AI Governance policies guide ../guides/ai-governance-policies for where each tool's settings are documented.
+  Settings are written whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being at the version last read. A policy something else changed in the meantime is reported rather than overwritten, and a new plan shows the change. A policy created before the platform kept that counter reports none, and is updated without the check. See the AI Governance policies guide ../guides/ai-governance-policies for where each tool's settings are documented.
   Required Jamf permissions
   Jamf lists this under Platform environment scope. You choose an integration's scope when you create it in Jamf Account, and cannot change it afterwards. The provider names the scopes it accepts when you configure it, and for a few families that is wider than Jamf lists here. Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -22,7 +22,7 @@ A policy carries a draft and a history of published versions. Applying a change 
 
 The `settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` against the schema the platform serves for the tool and `schema_version`.
 
-Settings are written whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being at the version last read. A policy something else changed in the meantime is reported rather than overwritten, and re-running Terraform shows the change in the next plan. See the [AI Governance policies guide](../guides/ai-governance-policies) for where each tool's settings are documented.
+Settings are written whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being at the version last read. A policy something else changed in the meantime is reported rather than overwritten, and a new plan shows the change. A policy created before the platform kept that counter reports none, and is updated without the check. See the [AI Governance policies guide](../guides/ai-governance-policies) for where each tool's settings are documented.
 
 **Required Jamf permissions**
 

@@ -57,7 +57,8 @@ type policyStub struct {
 	// version is the optimistic-lock counter the read reports. Nil reports none, which is what a
 	// policy the platform created before the counter shipped answers with.
 	version *int64
-	// ifMatch records the precondition the last update carried, so a test can see what was sent.
+	// ifMatch records the precondition the last update carried, as a sentHeader, so a test can see
+	// what was sent and whether a header was sent at all.
 	ifMatch atomic.Value
 	// publishStatus is the HTTP status the publish answers with. Zero means 201.
 	publishStatus int
@@ -114,7 +115,8 @@ func (s *policyStub) serve(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost:
 		writeJSONBody(w, http.StatusCreated, map[string]any{"id": stubPolicyID})
 	case r.Method == http.MethodPatch:
-		s.ifMatch.Store(r.Header.Get("If-Match"))
+		values, present := r.Header["If-Match"]
+		s.ifMatch.Store(sentHeader{value: strings.Join(values, ", "), present: present})
 		if s.updateStatus != 0 {
 			writeAPIError(w, s.updateStatus, s.updateCode, "the update failed")
 			return
@@ -185,10 +187,19 @@ func (s *policyStub) detail() map[string]any {
 	return body
 }
 
-// sentIfMatch reports the precondition the last update carried, and whether one was seen at all.
-func (s *policyStub) sentIfMatch() (string, bool) {
-	value, ok := s.ifMatch.Load().(string)
-	return value, ok
+// sentHeader is one request header as the stub saw it. Presence is recorded separately from the
+// value because Header.Get answers the empty string for a header that was absent and for one that
+// arrived empty, and the two are different requests: an empty If-Match is a precondition the
+// platform validates, while an absent one is an unconditional update.
+type sentHeader struct {
+	value   string
+	present bool
+}
+
+// sentIfMatch reports the precondition the last update carried, and whether a PATCH arrived at all.
+func (s *policyStub) sentIfMatch() (sentHeader, bool) {
+	header, ok := s.ifMatch.Load().(sentHeader)
+	return header, ok
 }
 
 // writeJSONBody writes a JSON response body with the given status.
@@ -773,8 +784,8 @@ func TestHydrate_RecordsThePolicysVersionForTheNextUpdate(t *testing.T) {
 	if tokenDiags.HasError() {
 		t.Fatalf("reading the recorded token back: %v", tokenDiags)
 	}
-	if token != "7" {
-		t.Errorf("recorded precondition = %q, want %q — the next update would not be conditional", token, "7")
+	if token != `"7"` {
+		t.Errorf("recorded precondition = %q, want %q — the next update would not be conditional", token, `"7"`)
 	}
 }
 
@@ -787,7 +798,7 @@ func TestHydrate_ClearsTheTokenWhenThePolicyReportsNoVersion(t *testing.T) {
 	stub := &policyStub{}
 	r := &PolicyResource{client: stub.client(t)}
 	private := newRecordingPrivateState()
-	private.values[privateKeyVersion] = []byte(`"3"`)
+	private.values[privateKeyVersion] = []byte(`"\"3\""`)
 
 	var model policyModel
 	var diags diag.Diagnostics
@@ -845,8 +856,8 @@ func TestUpdate_VersionConflictIsReportedAndChangesNothing(t *testing.T) {
 	}
 
 	summary := resp.Diagnostics.Errors()[0].Summary()
-	if !strings.Contains(summary, "changed outside Terraform") {
-		t.Errorf("summary %q does not say the policy was changed by something else", summary)
+	if !strings.Contains(summary, "not at the version Terraform last read") {
+		t.Errorf("summary %q does not say what was observed", summary)
 	}
 	detail := resp.Diagnostics.Errors()[0].Detail()
 	if !strings.Contains(detail, "Nothing has been changed") && !strings.Contains(detail, "nothing has been changed") {
@@ -854,6 +865,11 @@ func TestUpdate_VersionConflictIsReportedAndChangesNothing(t *testing.T) {
 	}
 	if !strings.Contains(detail, "settings_json") {
 		t.Errorf("detail %q does not say why a stale write is worth refusing", detail)
+	}
+	for _, want := range []string{"Make a new plan", "saved plan file", "two Terraform resources"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail %q does not mention %q", detail, want)
+		}
 	}
 }
 
@@ -871,21 +887,26 @@ func TestUpdatePolicy_SendsThePreconditionAsAHeader(t *testing.T) {
 		SchemaVersion: stubSchemaVersion,
 		Settings:      json.RawMessage(stubSettings),
 	}
-	if err := api.UpdatePolicy(ctx, stubPolicyID, request, "7"); err != nil {
+	if err := api.UpdatePolicy(ctx, stubPolicyID, request, `"7"`); err != nil {
 		t.Fatalf("updating with a precondition: %v", err)
 	}
-	got, seen := stub.sentIfMatch()
-	if !seen {
+	got, patched := stub.sentIfMatch()
+	if !patched {
 		t.Fatal("the stub saw no update at all")
 	}
-	if got != "7" {
-		t.Errorf("If-Match = %q, want %q", got, "7")
+	if !got.present {
+		t.Fatal("the update carried no If-Match header")
+	}
+	if got.value != `"7"` {
+		t.Errorf("If-Match = %q, want %q", got.value, `"7"`)
 	}
 }
 
 // TestUpdatePolicy_OmitsThePreconditionWhenThereIsNone pins the other half: the empty string must
-// send no header at all, not an empty one. An empty If-Match is not the same as an absent one, and
-// the platform validates the header it is given.
+// send no header at all rather than an empty one, because the platform validates the header it is
+// given and an empty value is not a version. The assertion is on presence rather than on the value,
+// since a header that arrived empty and one that never arrived are the same value to Header.Get —
+// which is what would let the SDK's own emptiness guard be deleted unnoticed.
 func TestUpdatePolicy_OmitsThePreconditionWhenThereIsNone(t *testing.T) {
 	ctx := context.Background()
 	stub := &policyStub{}
@@ -898,11 +919,350 @@ func TestUpdatePolicy_OmitsThePreconditionWhenThereIsNone(t *testing.T) {
 	if err := api.UpdatePolicy(ctx, stubPolicyID, request, ""); err != nil {
 		t.Fatalf("updating without a precondition: %v", err)
 	}
-	got, seen := stub.sentIfMatch()
-	if !seen {
+	got, patched := stub.sentIfMatch()
+	if !patched {
 		t.Fatal("the stub saw no update at all")
 	}
-	if got != "" {
-		t.Errorf("If-Match = %q, want no header", got)
+	if got.present {
+		t.Errorf("If-Match arrived with value %q, want no header at all", got.value)
 	}
+}
+
+// refusingPrivateState is a private-state stand-in whose writes fail, standing in for the
+// framework's own error diagnostics — a reserved key, a value that is not valid JSON, or an
+// uninitialized surface.
+type refusingPrivateState struct {
+	*recordingPrivateState
+}
+
+// SetKey refuses the write the way the framework does, with an error diagnostic.
+func (p refusingPrivateState) SetKey(_ context.Context, _ string, _ []byte) diag.Diagnostics {
+	var diags diag.Diagnostics
+	diags.AddError("Private state refused the write", "the stand-in refuses every write")
+	return diags
+}
+
+// TestUpdate_SendsThePreconditionRecordedInPrivateState pins the wiring the whole feature rests on:
+// the version a previous read recorded reaches the update as its precondition. Nothing else can pin
+// it, because the framework populates the private state on a real operation only — so a unit test
+// supplies the stand-in PolicyResource.privateOverride exists for, and asserts the header on the
+// wire rather than the argument, which is where a precondition that never left is visible.
+func TestUpdate_SendsThePreconditionRecordedInPrivateState(t *testing.T) {
+	ctx := context.Background()
+	const renamed = "unit-test-policy-renamed"
+	version := int64(7)
+	stub := &policyStub{name: renamed, version: &version}
+	private := newRecordingPrivateState()
+	private.values[privateKeyVersion] = []byte(`"\"7\""`)
+	r := &PolicyResource{client: stub.client(t), privateOverride: private}
+
+	policySchema, identity := policySchemas(ctx, t)
+	plan := updatePlanRaw(ctx, policySchema, renamed)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: plan},
+		Config: tfsdk.Config{Schema: policySchema, Raw: plan},
+		State:  tfsdk.State{Schema: policySchema, Raw: prior},
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("updating a policy whose version is recorded: %v", resp.Diagnostics.Errors())
+	}
+	got, patched := stub.sentIfMatch()
+	if !patched {
+		t.Fatal("the stub saw no update at all")
+	}
+	if !got.present {
+		t.Fatal("the update carried no If-Match header, so it was unconditional")
+	}
+	if got.value != `"7"` {
+		t.Errorf("If-Match = %q, want %q", got.value, `"7"`)
+	}
+	for _, warning := range resp.Diagnostics.Warnings() {
+		if strings.Contains(warning.Summary(), "without the concurrent-edit check") {
+			t.Errorf("a conditional update reported itself as unprotected: %q", warning.Detail())
+		}
+	}
+}
+
+// TestUpdate_WarnsWhenNoVersionIsRecorded pins the other outcome, which is the majority case on any
+// estate with history: a policy the platform created before it kept the counter reports none, the
+// update goes out unconditional, and the platform answers 204. Nothing else records that, so the
+// warning is the only place an operator sees which of their policies the check does not cover.
+func TestUpdate_WarnsWhenNoVersionIsRecorded(t *testing.T) {
+	ctx := context.Background()
+	const renamed = "unit-test-policy-renamed"
+	stub := &policyStub{name: renamed}
+	r := &PolicyResource{client: stub.client(t), privateOverride: newRecordingPrivateState()}
+
+	policySchema, identity := policySchemas(ctx, t)
+	plan := updatePlanRaw(ctx, policySchema, renamed)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: plan},
+		Config: tfsdk.Config{Schema: policySchema, Raw: plan},
+		State:  tfsdk.State{Schema: policySchema, Raw: prior},
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("a policy with no recorded version must still update: %v", resp.Diagnostics.Errors())
+	}
+	if got, patched := stub.sentIfMatch(); !patched || got.present {
+		t.Errorf("If-Match presence = %v, want no header on an unconditional update", patched && got.present)
+	}
+	if !warningContains(resp.Diagnostics, "without the concurrent-edit check", stubPolicyID) {
+		t.Errorf("an unconditional update was not reported: %v", resp.Diagnostics.Warnings())
+	}
+}
+
+// TestUpdate_UndecodableVersionWarnsAndStillUpdates pins the strength of the milder token failure. A
+// value that is not valid JSON carries no version at all, so there is nothing to compare and the
+// update degrades to the unconditional write the resource performed before the key existed —
+// blocking the apply would cost the operator their change for a piece of bookkeeping.
+func TestUpdate_UndecodableVersionWarnsAndStillUpdates(t *testing.T) {
+	ctx := context.Background()
+	const renamed = "unit-test-policy-renamed"
+	stub := &policyStub{name: renamed}
+	private := newRecordingPrivateState()
+	private.values[privateKeyVersion] = []byte(`{`)
+	r := &PolicyResource{client: stub.client(t), privateOverride: private}
+
+	policySchema, identity := policySchemas(ctx, t)
+	plan := updatePlanRaw(ctx, policySchema, renamed)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: plan},
+		Config: tfsdk.Config{Schema: policySchema, Raw: plan},
+		State:  tfsdk.State{Schema: policySchema, Raw: prior},
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("an undecodable version must not block the apply: %v", resp.Diagnostics.Errors())
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("the updated policy must stay in state")
+	}
+	if !warningContains(resp.Diagnostics, "recorded version", "cannot decode") {
+		t.Errorf("the undecodable version was not reported: %v", resp.Diagnostics.Warnings())
+	}
+}
+
+// TestUpdate_RefusesAVersionThatWouldUpdateUnconditionally pins the one private-state value that
+// fails open. Jamf reads `*` as "apply regardless of the version", so a value spelled that way would
+// turn the check off and still report a successful apply, where every other unexpected spelling is
+// refused on the wire.
+func TestUpdate_RefusesAVersionThatWouldUpdateUnconditionally(t *testing.T) {
+	ctx := context.Background()
+	const renamed = "unit-test-policy-renamed"
+	stub := &policyStub{name: renamed}
+	private := newRecordingPrivateState()
+	private.values[privateKeyVersion] = []byte(`"*"`)
+	r := &PolicyResource{client: stub.client(t), privateOverride: private}
+
+	policySchema, identity := policySchemas(ctx, t)
+	plan := updatePlanRaw(ctx, policySchema, renamed)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: plan},
+		Config: tfsdk.Config{Schema: policySchema, Raw: plan},
+		State:  tfsdk.State{Schema: policySchema, Raw: prior},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a value that disables the check must be refused, not sent")
+	}
+	if _, patched := stub.sentIfMatch(); patched {
+		t.Error("the update was sent anyway, so the check was disabled and the apply reported success")
+	}
+	if !resp.State.Raw.Equal(prior) {
+		t.Errorf("state changed on an update that was never sent:\n got %s\nwant %s", resp.State.Raw, prior)
+	}
+}
+
+// TestReadLockToken_AcceptsTheEntityTagFormsAndRefusesTheRest pins the vocabulary either side of
+// that error, since a pattern that matched everything and one that matched nothing both leave the
+// `*` case passing.
+func TestReadLockToken_AcceptsTheEntityTagFormsAndRefusesTheRest(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name    string
+		stored  string
+		want    string
+		refused bool
+	}{
+		{name: "strong entity tag, the form this provider writes", stored: `"\"7\""`, want: `"7"`},
+		{name: "bare counter, the form state written before the quoting holds", stored: `"7"`, want: "7"},
+		{name: "weak validator", stored: `"W/\"7\""`, want: `W/"7"`},
+		{name: "wildcard", stored: `"*"`, refused: true},
+		{name: "not a counter", stored: `"garbage"`, refused: true},
+		{name: "empty", stored: `""`, refused: true},
+		{name: "comma-separated list", stored: `"\"7\", \"8\""`, refused: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			private := newRecordingPrivateState()
+			private.values[privateKeyVersion] = []byte(tc.stored)
+			token, diags := readLockToken(ctx, private)
+			if tc.refused {
+				if !diags.HasError() {
+					t.Fatalf("%s was accepted, and would be sent as a precondition", tc.stored)
+				}
+				if token != "" {
+					t.Errorf("token = %q, want none on a refused value", token)
+				}
+				return
+			}
+			if diags.HasError() {
+				t.Fatalf("%s was refused: %v", tc.stored, diags.Errors())
+			}
+			if token != tc.want {
+				t.Errorf("token = %q, want %q", token, tc.want)
+			}
+		})
+	}
+}
+
+// TestRead_RecordsThePolicysVersionForTheNextUpdate pins the other end of the round trip. A refresh
+// is the only thing that records a version for a policy Terraform is not writing, so a read that
+// stopped recording one would leave every subsequent update unconditional with nothing failing.
+func TestRead_RecordsThePolicysVersionForTheNextUpdate(t *testing.T) {
+	ctx := context.Background()
+	version := int64(9)
+	stub := &policyStub{version: &version}
+	private := newRecordingPrivateState()
+	r := &PolicyResource{client: stub.client(t), privateOverride: private}
+
+	policySchema, identity := policySchemas(ctx, t)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Read(ctx, resource.ReadRequest{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("reading an active policy: %v", resp.Diagnostics.Errors())
+	}
+	token, tokenDiags := readLockToken(ctx, private)
+	if tokenDiags.HasError() {
+		t.Fatalf("reading the recorded token back: %v", tokenDiags)
+	}
+	if token != `"9"` {
+		t.Errorf("recorded precondition = %q, want %q — the next update would not be conditional", token, `"9"`)
+	}
+}
+
+// TestCreate_PrivateStateFailureStillRecordsThePolicy pins the cost ordering. Recording the version
+// is bookkeeping whose only consequence is that the next update goes out unconditional; failing to
+// record a policy that exists is unrecoverable, because policy names are not unique and the next
+// apply creates a second one. So the write that fails must not be the one that decides.
+func TestCreate_PrivateStateFailureStillRecordsThePolicy(t *testing.T) {
+	ctx := context.Background()
+	version := int64(1)
+	stub := &policyStub{version: &version}
+	r := &PolicyResource{
+		client:          stub.client(t),
+		privateOverride: refusingPrivateState{recordingPrivateState: newRecordingPrivateState()},
+	}
+
+	policySchema, identity := policySchemas(ctx, t)
+	raw := createPlanRaw(ctx, policySchema)
+	resp := resource.CreateResponse{
+		State:    tfsdk.State{Schema: policySchema},
+		Identity: &identity,
+	}
+	r.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: raw},
+		Config: tfsdk.Config{Schema: policySchema, Raw: raw},
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("a private-state write must not fail the create: %v", resp.Diagnostics.Errors())
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("the created policy must be recorded in state, or the apply orphans it on the tenant")
+	}
+	if !warningContains(resp.Diagnostics, "Unable to record the AI policy's version") {
+		t.Errorf("a version that could not be recorded was not reported: %v", resp.Diagnostics.Warnings())
+	}
+	for _, warning := range resp.Diagnostics.Warnings() {
+		if strings.Contains(warning.Detail(), "NewProviderData") {
+			t.Errorf("the warning prescribes an implementation step: %q", warning.Detail())
+		}
+	}
+}
+
+// TestRead_PrivateStateFailureStillRefreshesState is the same ordering on the refresh path, where
+// the cost of failing is a resource that reports an error on every plan for a policy that is fine.
+func TestRead_PrivateStateFailureStillRefreshesState(t *testing.T) {
+	ctx := context.Background()
+	version := int64(4)
+	stub := &policyStub{name: "unit-test-policy-renamed", version: &version}
+	r := &PolicyResource{
+		client:          stub.client(t),
+		privateOverride: refusingPrivateState{recordingPrivateState: newRecordingPrivateState()},
+	}
+
+	policySchema, identity := policySchemas(ctx, t)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.ReadResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Read(ctx, resource.ReadRequest{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}, &resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("a private-state write must not fail the refresh: %v", resp.Diagnostics.Errors())
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("an active policy must stay in state")
+	}
+	var state policyModel
+	if diags := resp.State.Get(ctx, &state); diags.HasError() {
+		t.Fatalf("reading back the state: %v", diags)
+	}
+	if got := state.Name.ValueString(); got != "unit-test-policy-renamed" {
+		t.Errorf("name = %q, want the value the platform reported", got)
+	}
+}
+
+// warningContains reports whether any warning carries all of the given fragments across its summary
+// and detail.
+func warningContains(diags diag.Diagnostics, fragments ...string) bool {
+	for _, warning := range diags.Warnings() {
+		text := warning.Summary() + " " + warning.Detail()
+		matched := true
+		for _, fragment := range fragments {
+			if !strings.Contains(text, fragment) {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			return true
+		}
+	}
+	return false
 }

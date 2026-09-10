@@ -6,7 +6,6 @@ package policy
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -141,18 +140,6 @@ func mustCompile(pattern string) *regexp.Regexp {
 	return regexp.MustCompile(pattern)
 }
 
-// privateKeyVersion holds the policy's optimistic-lock counter between one apply and the next, so
-// that an update can make its PATCH conditional on nobody else having written the policy since the
-// provider last read it.
-//
-// It lives in private state rather than in the schema for two reasons. The counter is machinery an
-// operator can neither set nor usefully read — it increments on every PATCH, including one the
-// platform diffs to nothing — so surfacing it would put churn in every plan for a value nothing can
-// consume. And adding an attribute to a shipped schema needs a state upgrader, which private state
-// does not: a policy recorded before this key existed reads back empty and updates unconditionally,
-// exactly as it did before.
-const privateKeyVersion = "policy_version"
-
 // privateStateReader is the read half of the framework's private-state surface. The concrete type is
 // internal to the framework, so a narrow interface is the only way to write a helper against it —
 // and it makes the round trip testable without a live resource.
@@ -168,16 +155,54 @@ type privateStateReader interface {
 // pointer assigned straight into the interface would arrive as a non-nil interface holding a nil
 // pointer — past the guard below and into SetKey, which reports an uninitialized-ProviderData error
 // on a nil receiver. The framework populates the field on every real operation; a response built
-// without one is a unit test, and recording nothing is the right outcome there.
+// without one is a unit test, which is the reason the narrowing is needed at all, and recording
+// nothing is the right outcome there.
 type privateStateWriter interface {
 	SetKey(ctx context.Context, key string, value []byte) diag.Diagnostics
 }
+
+// privateState is both halves at once, which is what a test stand-in supplies. A unit test cannot
+// populate the framework's own private-state fields — the concrete type is internal and has no
+// exported constructor — so PolicyResource carries one field of this type that production leaves
+// nil, and without it the whole precondition round trip would be exercised by nothing.
+type privateState interface {
+	privateStateReader
+	privateStateWriter
+}
+
+// lockTokenPattern matches the entity-tag forms this provider records and the update endpoint
+// documents: a decimal counter, quoted or bare, optionally behind a weak-validator prefix.
+//
+// `*` is deliberately excluded even though the endpoint accepts it, because the platform reads it as
+// "apply regardless of the version" — a private-state value spelled that way would turn the check
+// off while the apply reported success, where every other unexpected spelling is refused with
+// VALIDATION_FAILED and therefore fails safe.
+var lockTokenPattern = mustCompile(`^(?:W/)?(?:"[0-9]+"|[0-9]+)$`)
+
+// privateKeyVersion holds the policy's optimistic-lock counter between one apply and the next, so
+// that an update can make its PATCH conditional on nobody else having written the policy since the
+// provider last read it.
+//
+// It lives in private state rather than in the schema for two reasons. The counter is machinery an
+// operator can neither set nor usefully read — it increments on every PATCH, including one the
+// platform diffs to nothing — so surfacing it would put churn in every plan for a value nothing can
+// consume. And adding an attribute to a shipped schema needs a state upgrader, which private state
+// does not: a policy recorded before this key existed reads back empty and updates unconditionally,
+// exactly as it did before.
+const privateKeyVersion = "policy_version"
 
 // readLockToken returns the If-Match precondition recorded by the last read of this policy, or the
 // empty string when there is none — a policy the platform created before it gained the counter, one
 // imported in this run, or state written before the provider began recording it. The empty string is
 // what UpdatePolicy takes to mean "unconditional", so each of those cases degrades to the behaviour
 // the resource had before this key existed.
+//
+// The two failures are reported at different strengths on purpose. A value that is not valid JSON
+// carries no version at all, so it is a warning and the update falls back to the unconditional write
+// the resource performed before this key existed. A value that decodes but is not a counter is an
+// error, because the one spelling the platform singles out is `*`: it would be sent as written,
+// accepted, and reported as a successful apply while the check it was meant to make had been turned
+// off.
 func readLockToken(ctx context.Context, r privateStateReader) (string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if r == nil {
@@ -190,10 +215,21 @@ func readLockToken(ctx context.Context, r privateStateReader) (string, diag.Diag
 	}
 	var token string
 	if err := json.Unmarshal(raw, &token); err != nil {
-		diags.AddError(
+		diags.AddWarning(
 			"Unable to read the AI policy's recorded version",
-			"Terraform's private state for this policy holds a value the provider cannot decode: "+err.Error()+
-				". Remove the resource from state and import it again to clear it.",
+			"Terraform's private state for this policy holds a version the provider cannot decode: "+err.Error()+
+				". This update is sent without the concurrent-edit check, and the next read of the policy records "+
+				"a version the check can use again.",
+		)
+		return "", diags
+	}
+	if !lockTokenPattern.MatchString(token) {
+		diags.AddError(
+			"Unusable version recorded for the AI policy",
+			"Terraform's private state for this policy holds "+strconv.Quote(token)+" where the policy's version "+
+				"counter belongs, so the update has not been sent. A value Jamf reads as \"apply regardless of the "+
+				"version\" would replace whatever the policy now holds while reporting a successful apply. Refresh "+
+				"the policy with \"terraform apply -refresh-only\": the read records the version Jamf reports.",
 		)
 		return "", diags
 	}
@@ -204,46 +240,115 @@ func readLockToken(ctx context.Context, r privateStateReader) (string, diag.Diag
 // policy the platform reports without one — every policy that predates the counter — clears the key
 // instead, so a value that has gone stale can never be sent as a precondition.
 //
-// The value is stored already rendered as the header the update will send. Private state must hold
-// valid JSON and the header is a decimal string, so storing the rendered form keeps one spelling of
-// the value rather than a number here and a formatting step at the call site.
+// The value is stored already rendered as the header the update will send, as the strong entity-tag
+// form RFC 7232 defines for If-Match and the update endpoint's own parameter documentation gives as
+// its example. The bare decimal was accepted when the endpoint was probed on 2026-09-09, so the
+// quoting guards against a stricter parser rather than a refusal anybody has seen — and a parser
+// that ignored an unquoted header rather than refusing it would turn the check off silently, which
+// is the failure worth spending two characters on.
+//
+// One assumption here is unprobed and needs a wire probe before it can be relied on: the counter is
+// taken from the policy body's version field, while the endpoint documentation names the ETag
+// response header as the source. GetPolicy discards response headers, so the documented source
+// cannot be read at all today, and the two have never been compared.
+//
+// A failure to record the counter is a warning and never an error. It is bookkeeping: losing it
+// degrades the next update to the unconditional write the resource performed before this key
+// existed, whereas an error here would fire the caller's own error check and leave a policy that
+// exists recorded in no state at all — and because policy names are not unique, the next apply would
+// then create a second one.
 func writeLockToken(ctx context.Context, w privateStateWriter, version *int64) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if w == nil {
 		return diags
 	}
 	if version == nil {
-		diags.Append(w.SetKey(ctx, privateKeyVersion, nil)...)
+		appendRecordFailure(&diags, w.SetKey(ctx, privateKeyVersion, nil))
 		return diags
 	}
-	encoded, err := json.Marshal(strconv.FormatInt(*version, 10))
+	encoded, err := json.Marshal(strconv.Quote(strconv.FormatInt(*version, 10)))
 	if err != nil {
-		diags.AddError(
-			"Unable to record the AI policy's version",
-			fmt.Sprintf("JSON-encoding the version counter %d for private state: %s", *version, err.Error()),
-		)
+		appendLockTokenNotRecorded(&diags)
 		return diags
 	}
-	diags.Append(w.SetKey(ctx, privateKeyVersion, encoded)...)
+	appendRecordFailure(&diags, w.SetKey(ctx, privateKeyVersion, encoded))
 	return diags
 }
 
-// appendVersionConflict reports an update the platform refused because the policy changed since
-// Terraform last read it.
+// appendRecordFailure reports a refused private-state write as one warning of the provider's own,
+// and carries any other diagnostic through. It replaces the wording rather than demoting it: the
+// framework answers a surface it cannot write with an error prescribing a call to its own
+// constructor, which is neither something an operator can act on nor something they should read.
+func appendRecordFailure(diags *diag.Diagnostics, from diag.Diagnostics) {
+	if from.HasError() {
+		appendLockTokenNotRecorded(diags)
+	}
+	for _, d := range from {
+		if d.Severity() != diag.SeverityError {
+			diags.Append(d)
+		}
+	}
+}
+
+// appendLockTokenNotRecorded reports that the version Jamf holds for the policy could not be kept
+// for the next update, and what that costs.
+func appendLockTokenNotRecorded(diags *diag.Diagnostics) {
+	diags.AddWarning(
+		"Unable to record the AI policy's version",
+		"The version Jamf reports for this policy could not be kept, and it is what makes the next update "+
+			"conditional on nobody else having written the policy in the meantime. That update will be an "+
+			"unconditional write. A later refresh of the policy records the version again.",
+	)
+}
+
+// appendUnconditionalUpdate reports an update sent with no precondition, which is the whole control
+// silently absent rather than a step that failed.
 //
-// The remedy is a plain re-run: the refresh at the start of the next plan picks up whatever was
-// written, so the change appears in the plan the operator approves instead of being replaced
-// unseen. That matters more here than it would elsewhere because settings_json is sent whole — the
-// platform holds no merge for it, so an update built on a stale read overwrites every setting
-// another editor had made.
+// It is the majority case on any estate with history: a policy the platform created before it kept
+// the counter reports none, so nothing can be compared and the write lands over whatever the policy
+// now holds. Nothing else records that — the plan cannot know, the platform answers 204, and the
+// apply reads as an ordinary success — so the warning is the only place an operator can see which of
+// their policies are unprotected.
+func appendUnconditionalUpdate(diags *diag.Diagnostics, id string) {
+	diags.AddWarning(
+		"AI policy updated without the concurrent-edit check",
+		"No usable version is recorded for policy "+id+", so this update could not be made conditional on the "+
+			"policy still holding the settings Terraform last read. Anything written to the policy since the last "+
+			"refresh has been replaced rather than reported. A policy created before the platform kept that "+
+			"counter reports none, which is the usual reason.",
+	)
+}
+
+// appendVersionConflict reports an update the platform refused because the policy is no longer at
+// the version Terraform recorded.
+//
+// It says what was observed rather than naming an editor, because two quite different faults arrive
+// as the same 409. Somebody or something else wrote the policy between the refresh and the apply, or
+// two Terraform resources manage the same policy — a double import, a module instantiated twice, one
+// policy ID behind count — in which case one refresh hands both the same version, the first update
+// advances it, and the second is refused. The first clears on a new plan and the second never will.
+//
+// The remedy is a new plan rather than a re-run, and the difference matters for the shape this
+// precondition exists to protect: a saved plan carries the version it was made with, so applying the
+// same plan file again resends the value the platform has already refused. Only a plan made after a
+// fresh read can carry a version the platform will accept, and it also shows the operator what the
+// other write changed before they approve anything over the top of it.
+//
+// That is worth refusing rather than merging because settings_json is sent whole — the platform
+// holds no merge for it, so an update built on a stale read overwrites every setting another editor
+// had made.
 func appendVersionConflict(diags *diag.Diagnostics, id string) {
 	diags.AddError(
-		"AI policy changed outside Terraform",
-		"Policy "+id+" was modified by something else after Terraform last read it, so the update was refused "+
-			"rather than applied over the top, and nothing has been changed. Run Terraform again: the refresh "+
-			"picks up the current policy and the next plan reports what this configuration would alter, "+
-			"including any setting the other change introduced. Terraform checks this because settings_json is "+
-			"written whole — Jamf holds no merge for it, so an update built on a stale read replaces every "+
+		"AI policy is not at the version Terraform last read",
+		"Policy "+id+" has moved on from the version Terraform recorded for it, so Jamf refused the update "+
+			"rather than applying it over the top, and nothing has been changed. Make a new plan: its refresh "+
+			"reads the policy as it now stands, and the plan then reports what this configuration would alter, "+
+			"including anything the other write introduced. Applying a saved plan file again is refused the same "+
+			"way, because the version recorded in the file is the one Jamf has already rejected. If a new plan is "+
+			"refused too, check whether two Terraform resources manage this policy: a duplicate import, a module "+
+			"instantiated twice, or one policy ID behind a count all give both resources the same version, and "+
+			"whichever updates second is refused. Terraform makes the update conditional because settings_json is "+
+			"written whole, and Jamf holds no merge for it, so an update built on a stale read replaces every "+
 			"setting another editor had made.",
 	)
 }
