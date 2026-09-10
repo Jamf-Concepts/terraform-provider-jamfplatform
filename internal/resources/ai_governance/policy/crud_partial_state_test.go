@@ -15,6 +15,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -51,6 +52,13 @@ type policyStub struct {
 	getStatus int
 	// updateStatus is the HTTP status the update answers with. Zero means 204.
 	updateStatus int
+	// updateCode is the machine-readable code carried by a failing update.
+	updateCode string
+	// version is the optimistic-lock counter the read reports. Nil reports none, which is what a
+	// policy the platform created before the counter shipped answers with.
+	version *int64
+	// ifMatch records the precondition the last update carried, so a test can see what was sent.
+	ifMatch atomic.Value
 	// publishStatus is the HTTP status the publish answers with. Zero means 201.
 	publishStatus int
 	// publishCode is the machine-readable code carried by a failing publish.
@@ -106,8 +114,9 @@ func (s *policyStub) serve(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost:
 		writeJSONBody(w, http.StatusCreated, map[string]any{"id": stubPolicyID})
 	case r.Method == http.MethodPatch:
+		s.ifMatch.Store(r.Header.Get("If-Match"))
 		if s.updateStatus != 0 {
-			writeAPIError(w, s.updateStatus, "", "the update failed")
+			writeAPIError(w, s.updateStatus, s.updateCode, "the update failed")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -170,7 +179,16 @@ func (s *policyStub) detail() map[string]any {
 	if published > 0 {
 		body["currentVersionNumber"] = published
 	}
+	if s.version != nil {
+		body["version"] = *s.version
+	}
 	return body
+}
+
+// sentIfMatch reports the precondition the last update carried, and whether one was seen at all.
+func (s *policyStub) sentIfMatch() (string, bool) {
+	value, ok := s.ifMatch.Load().(string)
+	return value, ok
 }
 
 // writeJSONBody writes a JSON response body with the given status.
@@ -701,5 +719,190 @@ func TestRead_IdentityImportKeepsTimeoutsTyped(t *testing.T) {
 	}
 	if got := len(state.Timeouts.AttributeTypes(ctx)); got != 4 {
 		t.Errorf("timeouts carries %d attribute types, want the schema's 4", got)
+	}
+}
+
+// recordingPrivateState is a stand-in for the framework's private-state surface. The concrete type
+// is internal to terraform-plugin-framework, so a response built in a unit test carries none and
+// there is no exported constructor to supply one — which is why the lock-token helpers take the two
+// narrow interfaces this satisfies.
+type recordingPrivateState struct {
+	values map[string][]byte
+}
+
+// newRecordingPrivateState returns an empty private-state stand-in.
+func newRecordingPrivateState() *recordingPrivateState {
+	return &recordingPrivateState{values: map[string][]byte{}}
+}
+
+// GetKey returns a stashed value, or nil when the key was never written.
+func (p *recordingPrivateState) GetKey(_ context.Context, key string) ([]byte, diag.Diagnostics) {
+	return p.values[key], nil
+}
+
+// SetKey stashes a value, deleting the key for an empty one the way the framework does.
+func (p *recordingPrivateState) SetKey(_ context.Context, key string, value []byte) diag.Diagnostics {
+	if len(value) == 0 {
+		delete(p.values, key)
+		return nil
+	}
+	p.values[key] = value
+	return nil
+}
+
+// TestHydrate_RecordsThePolicysVersionForTheNextUpdate pins where the precondition comes from. The
+// value has to be read back *after* the write, because the write itself advances the counter — a
+// token captured any earlier would make the following apply conflict with nothing but itself.
+func TestHydrate_RecordsThePolicysVersionForTheNextUpdate(t *testing.T) {
+	ctx := context.Background()
+	version := int64(7)
+	stub := &policyStub{version: &version}
+	r := &PolicyResource{client: stub.client(t)}
+	private := newRecordingPrivateState()
+
+	var model policyModel
+	var diags diag.Diagnostics
+	if !r.hydrate(ctx, &model, stubPolicyID, private, &diags) {
+		t.Fatalf("hydrating a live policy: %v", diags)
+	}
+	if diags.HasError() {
+		t.Fatalf("hydrating a live policy: %v", diags)
+	}
+
+	token, tokenDiags := readLockToken(ctx, private)
+	if tokenDiags.HasError() {
+		t.Fatalf("reading the recorded token back: %v", tokenDiags)
+	}
+	if token != "7" {
+		t.Errorf("recorded precondition = %q, want %q — the next update would not be conditional", token, "7")
+	}
+}
+
+// TestHydrate_ClearsTheTokenWhenThePolicyReportsNoVersion pins the legacy case. A policy the
+// platform created before the counter shipped reports null and sends no ETag, so there is no
+// precondition to make — and leaving a previously recorded one in place would send a value the
+// platform can only refuse.
+func TestHydrate_ClearsTheTokenWhenThePolicyReportsNoVersion(t *testing.T) {
+	ctx := context.Background()
+	stub := &policyStub{}
+	r := &PolicyResource{client: stub.client(t)}
+	private := newRecordingPrivateState()
+	private.values[privateKeyVersion] = []byte(`"3"`)
+
+	var model policyModel
+	var diags diag.Diagnostics
+	if !r.hydrate(ctx, &model, stubPolicyID, private, &diags) {
+		t.Fatalf("hydrating a live policy: %v", diags)
+	}
+
+	token, tokenDiags := readLockToken(ctx, private)
+	if tokenDiags.HasError() {
+		t.Fatalf("reading the recorded token back: %v", tokenDiags)
+	}
+	if token != "" {
+		t.Errorf("recorded precondition = %q, want none — a stale token must never be sent", token)
+	}
+}
+
+// TestUpdate_VersionConflictIsReportedAndChangesNothing pins the whole point of the precondition:
+// the platform refused the write, so the resource must say what happened and leave state exactly as
+// it found it. Removing the resource or committing the plan would both describe a policy that was
+// never written.
+func TestUpdate_VersionConflictIsReportedAndChangesNothing(t *testing.T) {
+	ctx := context.Background()
+	const renamed = "unit-test-policy-renamed"
+	stub := &policyStub{
+		name:         renamed,
+		updateStatus: http.StatusConflict,
+		updateCode:   codePolicyVersionConflict,
+	}
+	r := &PolicyResource{client: stub.client(t)}
+
+	policySchema, identity := policySchemas(ctx, t)
+	plan := updatePlanRaw(ctx, policySchema, renamed)
+	prior := priorStateRaw(ctx, policySchema)
+	resp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: prior},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: plan},
+		Config: tfsdk.Config{Schema: policySchema, Raw: plan},
+		State:  tfsdk.State{Schema: policySchema, Raw: prior},
+	}, &resp)
+
+	if !resp.Diagnostics.HasError() {
+		t.Fatal("a refused update must be reported as an error")
+	}
+	if resp.State.Raw.IsNull() {
+		t.Fatal("a policy that still exists must not be removed from state")
+	}
+	if !resp.State.Raw.Equal(prior) {
+		t.Errorf("state changed on a refused update:\n got %s\nwant %s", resp.State.Raw, prior)
+	}
+	if stub.publishCalls.Load() != 0 {
+		t.Error("a refused update must not go on to publish")
+	}
+
+	summary := resp.Diagnostics.Errors()[0].Summary()
+	if !strings.Contains(summary, "changed outside Terraform") {
+		t.Errorf("summary %q does not say the policy was changed by something else", summary)
+	}
+	detail := resp.Diagnostics.Errors()[0].Detail()
+	if !strings.Contains(detail, "Nothing has been changed") && !strings.Contains(detail, "nothing has been changed") {
+		t.Errorf("detail %q does not say the apply left the policy alone", detail)
+	}
+	if !strings.Contains(detail, "settings_json") {
+		t.Errorf("detail %q does not say why a stale write is worth refusing", detail)
+	}
+}
+
+// TestUpdatePolicy_SendsThePreconditionAsAHeader pins the SDK boundary rather than this package's
+// own logic, because the failure it guards against is silent. A header parameter the generator
+// emitted as a query key would leave every update unconditional with nothing anywhere reporting it —
+// the platform ignores the unknown key and answers 204 — so the value is asserted where it can be
+// seen, on the wire.
+func TestUpdatePolicy_SendsThePreconditionAsAHeader(t *testing.T) {
+	ctx := context.Background()
+	stub := &policyStub{}
+	api := stub.client(t)
+
+	request := &aigovernance.UpdatePolicyRequest{
+		SchemaVersion: stubSchemaVersion,
+		Settings:      json.RawMessage(stubSettings),
+	}
+	if err := api.UpdatePolicy(ctx, stubPolicyID, request, "7"); err != nil {
+		t.Fatalf("updating with a precondition: %v", err)
+	}
+	got, seen := stub.sentIfMatch()
+	if !seen {
+		t.Fatal("the stub saw no update at all")
+	}
+	if got != "7" {
+		t.Errorf("If-Match = %q, want %q", got, "7")
+	}
+}
+
+// TestUpdatePolicy_OmitsThePreconditionWhenThereIsNone pins the other half: the empty string must
+// send no header at all, not an empty one. An empty If-Match is not the same as an absent one, and
+// the platform validates the header it is given.
+func TestUpdatePolicy_OmitsThePreconditionWhenThereIsNone(t *testing.T) {
+	ctx := context.Background()
+	stub := &policyStub{}
+	api := stub.client(t)
+
+	request := &aigovernance.UpdatePolicyRequest{
+		SchemaVersion: stubSchemaVersion,
+		Settings:      json.RawMessage(stubSettings),
+	}
+	if err := api.UpdatePolicy(ctx, stubPolicyID, request, ""); err != nil {
+		t.Fatalf("updating without a precondition: %v", err)
+	}
+	got, seen := stub.sentIfMatch()
+	if !seen {
+		t.Fatal("the stub saw no update at all")
+	}
+	if got != "" {
+		t.Errorf("If-Match = %q, want no header", got)
 	}
 }

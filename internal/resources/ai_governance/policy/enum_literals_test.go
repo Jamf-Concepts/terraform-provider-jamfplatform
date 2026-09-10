@@ -33,6 +33,7 @@ func TestEnumLiteralsComeFromTheSDK(t *testing.T) {
 			"VALIDATION_FAILED":            "as above — no generated error-code vocabulary exists to alias.",
 			"POLICY_NOT_FOUND":             "as above — no generated error-code vocabulary exists to alias.",
 			"NO_DRAFT_TO_PUBLISH":          "as above — no generated error-code vocabulary exists to alias.",
+			"POLICY_VERSION_CONFLICT":      "as above. v2121 added the code with the If-Match precondition, but names it only in the parameter, operation and 409 response descriptions — never in an enum, so the generator emits nothing for it.",
 			"REQUEST_CONTEXT_NOT_PROVIDED": "the platform gateway's own pre-routing code; it belongs to no service spec, so no SDK package generates it.",
 		},
 	})

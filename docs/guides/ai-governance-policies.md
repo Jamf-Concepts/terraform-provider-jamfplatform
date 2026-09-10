@@ -136,6 +136,14 @@ Blueprints keep delivering the previously published version until the publish su
 
 The same mechanism publishes a draft somebody saved in the admin UI on a policy managed with `publish = true`. That is what `publish = true` means. If the draft's settings differ from the configuration, the ordinary `settings_json` diff reverts them first, so what gets published is what Terraform holds. Set `publish = false` on policies whose publishing someone else owns.
 
+### When someone else edits the policy at the same time
+
+`settings_json` is written whole. Jamf holds no merge for it, so an update built on a stale read replaces every setting another editor had made — including ones this configuration never mentions.
+
+Terraform refuses that rather than applying it. Every update is made conditional on the policy still being at the version last read; if anything wrote to the policy in between, Jamf rejects the update, **nothing is changed**, and the apply reports *AI policy changed outside Terraform*. Run Terraform again. The refresh picks up the current policy and the next plan reports what this configuration would alter, including whatever the other change introduced — so the overwrite happens only if you approve it.
+
+The check needs a version to compare against, and **a policy Jamf created before it gained that counter reports none**. Those are updated unconditionally, exactly as they were before. So is a policy whose state was written by an earlier release of this provider and applied with `-refresh=false`, since the version is recorded by a refresh. Nothing reports either case; both behave as the resource did before the check existed.
+
 ### Destroying a policy a blueprint still references
 
 Nothing stops you deleting a policy a deployed blueprint references. There is no refusal, no warning and no cleanup. The blueprint is left pointing at a version the platform will no longer serve, and the next change to that blueprint is rejected because the policy is archived.

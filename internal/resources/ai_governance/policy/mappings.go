@@ -43,6 +43,14 @@ const (
 	// follows lands here. Treated as success rather than translated — see publishIfNeeded in crud.go.
 	codeNoDraftToPublish = "NO_DRAFT_TO_PUBLISH"
 
+	// codePolicyVersionConflict accompanies the 409 from update when the If-Match precondition names a
+	// version other than the one the platform holds. The counter it compares against is
+	// PolicyDetail.version, which increments on every PATCH whether or not the PATCH changes anything,
+	// and is independent of the published version number a blueprint pins. Wire-probed 2026-09-09: a
+	// stale value is refused with this code, a syntactically invalid one with VALIDATION_FAILED, and
+	// `*` or an absent header updates unconditionally.
+	codePolicyVersionConflict = "POLICY_VERSION_CONFLICT"
+
 	// codeRequestContextNotProvided is the gateway's own 400, returned before the service is reached
 	// when the integration sends no scope header. Not translated into a diagnostic: providerdata's
 	// scope gate refuses organization scope at Configure, so an operator reaching this code has a

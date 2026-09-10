@@ -134,7 +134,10 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"Governance** component to a blueprint and reference the policy's `id` and `published_version`. " +
 			"Nothing reaches a device until a blueprint that names the policy is deployed.\n\nThe " +
 			"`settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` " +
-			"against the schema the platform serves for the tool and `schema_version`. See the [AI Governance " +
+			"against the schema the platform serves for the tool and `schema_version`.\n\nSettings are written " +
+			"whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being " +
+			"at the version last read. A policy something else changed in the meantime is reported rather than " +
+			"overwritten, and re-running Terraform shows the change in the next plan. See the [AI Governance " +
 			"policies guide](../guides/ai-governance-policies) for where each tool's settings are " +
 			"documented." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
