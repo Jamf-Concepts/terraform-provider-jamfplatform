@@ -10,6 +10,15 @@ The Jamf Platform API reached general availability on 3 September 2026, and `v0.
 provider is built against it. This guide covers upgrading a configuration written against the
 public beta.
 
+**Already on `v0.29.0` or later? None of this applies.** Read
+[Moving to the jamf namespace](namespace-migration) instead, which is the only step between a
+GA release and the current one.
+
+Coming from `v0.28.1` or earlier, you need both guides. This one changes the gateway host, the
+credentials and the scope attribute; the other rewrites the provider address recorded in state.
+Do the state rewrite first, since it needs no network access and no provider binary, then work
+through the sections here.
+
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
 constructs have been removed. The beta gateway stopped serving the Platform API,
@@ -26,22 +35,25 @@ environment scope, proxy support and a range of resource behaviour. Continued fe
 
 ## Installing this release
 
-`v0.29.0` is a stable release, so a range constraint resolves to it:
+The GA release was `v0.29.0`. It first published as `jamf-concepts/jamfplatform` and is available
+under `jamf/jamfplatform` as well, which is where a configuration coming from the beta today
+should point:
 
 ```hcl
 terraform {
   required_providers {
     jamfplatform = {
-      source  = "Jamf-Concepts/jamfplatform"
-      version = "~> 0.29"
+      source  = "jamf/jamfplatform"
+      version = ">= 0.29.0"
     }
   }
 }
 ```
 
-Run `terraform init -upgrade` after editing the constraint. A configuration pinned to a
-`0.29.0-rc.*` release candidate should move to `0.29.0`: the candidates are superseded, and the
-last of them differs from this release.
+The namespace is recorded in state, so this needs `terraform state replace-provider` as well as
+`terraform init -upgrade`. See [Moving to the jamf namespace](namespace-migration) for the order
+to run them in. A configuration pinned to a `0.29.0-rc.*` release candidate is superseded either
+way: the last candidate differs from the GA release.
 
 Upgrade the provider, change `base_url` and replace the credentials as one change, in one
 workspace, and verify a plan before moving on. The three are coupled — see

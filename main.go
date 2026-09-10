@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/Jamf-Concepts/jamfplatform",
+		Address: "registry.terraform.io/jamf/jamfplatform",
 		Debug:   debug,
 	}
 
