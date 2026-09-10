@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/aischemas"
 )
 
 // TestRenderProblem pins the wording each finding produces, and that every one names the schema

@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/aischemas"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // ModifyPlan predicts what this apply will do to the two attributes publishing moves, then checks

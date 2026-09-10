@@ -1,4 +1,4 @@
-module github.com/Jamf-Concepts/terraform-provider-jamfplatform
+module github.com/jamf/terraform-provider-jamfplatform
 
 go 1.26.6
 

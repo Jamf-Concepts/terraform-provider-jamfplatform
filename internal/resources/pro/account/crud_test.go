@@ -20,8 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/accountprivileges"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/accountprivileges"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // readTestAccountID is the identifier the Read tests below pass through. Jamf Pro

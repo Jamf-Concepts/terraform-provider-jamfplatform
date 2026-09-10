@@ -17,7 +17,7 @@ import (
 
 	"howett.net/plist"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // Server-controlled keys skipped on both sides before diff comparison.

@@ -42,7 +42,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/jsonvalue"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/jsonvalue"
 )
 
 // maxRefDepth bounds `$ref` expansion. The Codex schema is recursive, so a cycle that never

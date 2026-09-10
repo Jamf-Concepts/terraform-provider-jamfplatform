@@ -7,7 +7,7 @@ import (
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/availabletitles"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/availabletitles"
 )
 
 // PatchInternalSourceDataSourceModel represents the Terraform data source model

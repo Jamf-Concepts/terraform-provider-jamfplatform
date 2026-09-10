@@ -6,7 +6,7 @@ package payloadhelpers
 import (
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // ProfilePlatform selects which storage-category table applies. The category is

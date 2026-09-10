@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 
-	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
 )
 
 // privateRange is one of the three RFC 1918 blocks Jamf Security Cloud accepts

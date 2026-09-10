@@ -6,7 +6,7 @@ package deviceactions
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // eraseDeviceSDKMethods lists the SDK methods the device erase action's Invoke

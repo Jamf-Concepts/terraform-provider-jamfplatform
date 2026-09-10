@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // macOSFixtures / mobileFixtures are the checked-in profile corpora the two

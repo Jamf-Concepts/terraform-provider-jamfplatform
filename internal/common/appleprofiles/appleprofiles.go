@@ -33,7 +33,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/jsonvalue"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/jsonvalue"
 )
 
 //go:embed profiles.json

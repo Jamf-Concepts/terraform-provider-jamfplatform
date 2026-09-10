@@ -8,8 +8,8 @@ package devices_test
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 func TestAccDataSource_Devices(t *testing.T) {

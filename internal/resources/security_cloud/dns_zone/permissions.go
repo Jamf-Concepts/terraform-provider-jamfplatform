@@ -6,7 +6,7 @@ package dns_zone
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
 // resourceSDKMethods lists the SDK methods the DNS zone resource's CRUD path

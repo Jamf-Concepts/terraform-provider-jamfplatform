@@ -137,9 +137,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // Collection bounds enforced by Jamf Security Cloud, wire-probed on 2026-08-29. The

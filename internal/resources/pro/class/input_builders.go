@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // buildClassInput converts a plan model into the SDK payload used for Create and

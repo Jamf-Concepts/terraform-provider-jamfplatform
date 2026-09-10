@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Create creates a new Jamf Compliance Benchmark resource in Terraform.

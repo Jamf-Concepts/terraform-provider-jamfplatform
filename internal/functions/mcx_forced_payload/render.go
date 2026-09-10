@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 )
 
 // renderMCXForcedPayload builds a complete .mobileconfig plist that delivers the

@@ -57,8 +57,8 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/computertarget"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/computertarget"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // statusFailed is the DeploymentTask.status response value for a failed install

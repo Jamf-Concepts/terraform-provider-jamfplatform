@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // strSet builds a Terraform set from the given values. With no values it returns

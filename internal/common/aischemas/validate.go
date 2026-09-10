@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/jsonvalue"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/jsonvalue"
 )
 
 // walker carries the state one Validate call needs: the schema root for resolving local references,

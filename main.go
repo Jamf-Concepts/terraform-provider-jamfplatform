@@ -8,8 +8,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/provider"
 )
 
 var (
@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/Jamf-Concepts/jamfplatform",
+		Address: "registry.terraform.io/jamf/jamfplatform",
 		Debug:   debug,
 	}
 

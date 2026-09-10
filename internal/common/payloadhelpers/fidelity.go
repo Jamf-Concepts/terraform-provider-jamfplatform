@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // FidelityPhase selects the remediation sentence for a payload verification

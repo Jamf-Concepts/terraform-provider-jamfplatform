@@ -4,10 +4,10 @@
 package device_group
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/filters"
 )
 
 // DeviceGroupResourceModel represents the Terraform resource model for a Jamf device group.

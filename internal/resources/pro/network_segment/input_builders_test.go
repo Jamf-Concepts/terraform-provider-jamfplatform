@@ -6,8 +6,8 @@ package network_segment
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 func TestBuildNetworkSegmentInput_FullPlan(t *testing.T) {

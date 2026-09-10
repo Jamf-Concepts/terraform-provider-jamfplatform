@@ -1,6 +1,6 @@
 # terraform-provider-jamfplatform
 
-> **⚠️ This provider is moving to the `jamf` namespace.** A future release will carry the address `jamf/jamfplatform` in place of `jamf-concepts/jamfplatform`. Terraform records that namespace in state, so the change breaks existing configurations. Change nothing today. When the release lands, run [`terraform state replace-provider jamf-concepts/jamfplatform jamf/jamfplatform`](https://developer.hashicorp.com/terraform/cli/commands/state/replace-provider), point `source` at `jamf/jamfplatform` in the `required_providers` block, then run `terraform init -upgrade`. Repeat that for each workspace and state file holding `jamfplatform` resources. The state command asks for confirmation and writes a backup; add `-auto-approve` to run it unattended. OpenTofu works the same way, with `tofu` in place of `terraform`.
+> **⚠️ This provider now publishes as `jamf/jamfplatform`.** Earlier releases carried `jamf-concepts/jamfplatform`, and Terraform records the namespace in state, so upgrading from one of them needs `terraform state replace-provider jamf-concepts/jamfplatform jamf/jamfplatform` in every workspace and state file before `terraform init -upgrade` will succeed. See [Moving to the jamf namespace](docs/guides/namespace-migration.md).
 
 > **📘 Start here — [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/)**
 >
@@ -54,7 +54,7 @@ Further Jamf products are expected to be added; each will get its own row, names
 
 ## Using the Provider in your own Terraform Projects
 
-The jamfplatform provider is published in the [Hashicorp](https://registry.terraform.io/providers/Jamf-Concepts/jamfplatform) and [OpenTofu](https://search.opentofu.org/provider/jamf-concepts/jamfplatform) registries.
+The jamfplatform provider is published in the [Hashicorp](https://registry.terraform.io/providers/jamf/jamfplatform) and [OpenTofu](https://search.opentofu.org/provider/jamf/jamfplatform) registries.
 
 For a step-by-step walkthrough — from installing Terraform through to applying your first configuration and importing an existing tenant — see the Jamf Concepts guide: [**Managing the Jamf Platform with Terraform: the Jamf Platform provider**](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/).
 
@@ -64,7 +64,7 @@ For provider block/variable reference, refer to the registry link above for your
 
 ## Provider Configuration Reference and Example Usage
 
-Refer to the [documentation](https://registry.terraform.io/providers/Jamf-Concepts/jamfplatform/latest/docs) for a full list of resources and data sources, their usage and Terraform examples.
+Refer to the [documentation](https://registry.terraform.io/providers/jamf/jamfplatform/latest/docs) for a full list of resources and data sources, their usage and Terraform examples.
 
 ---
 
@@ -109,13 +109,13 @@ Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [TESTING
 4. **Run `make generate`** — regenerates `docs/` from schema descriptions and applies copyright headers.
 5. **CI** — `.github/workflows/integration-tests.yml` runs build, lint, docs-generation check, and the Go unit suite on every PR. The Go acceptance suite runs against a real tenant after a reviewer approves the `acceptance` environment gate.
 
-For bug reports, feature requests, or general discussion, please use [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).
+For bug reports, feature requests, or general discussion, please use [GitHub Issues](https://github.com/jamf/terraform-provider-jamfplatform/issues).
 
 ---
 
 ## Feedback & Discussion
 
-Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).
+Please contact the project principles via [GitHub Issues](https://github.com/jamf/terraform-provider-jamfplatform/issues).
 
 The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/). This channel is primarily focused on discussion and community support relating to the [jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) provider that is owned and maintained by our friends, [Deployment Theory](https://github.com/deploymenttheory).
 

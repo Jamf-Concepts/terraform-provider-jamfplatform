@@ -6,7 +6,7 @@ package mobileconfig
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 func parseDoc(t *testing.T, out []byte) map[string]any {

@@ -6,9 +6,9 @@ package disk_encryption_configuration
 import (
 	"context"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/impact"
 )
 
 // A disk encryption configuration is a policy dependency: no scope of its own, but every policy

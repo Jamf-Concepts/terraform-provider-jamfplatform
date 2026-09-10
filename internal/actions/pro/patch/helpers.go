@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // minJamfProVersion is empty: the patch policy log endpoints are present at the

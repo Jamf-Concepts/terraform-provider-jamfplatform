@@ -13,7 +13,7 @@ Thank you for your interest in contributing to the Terraform Provider for Jamf P
 
 ```bash
 # Clone the repository
-git clone https://github.com/Jamf-Concepts/terraform-provider-jamfplatform.git
+git clone https://github.com/jamf/terraform-provider-jamfplatform.git
 cd terraform-provider-jamfplatform
 
 # Install dependencies
@@ -79,7 +79,7 @@ Create (or edit) `~/.terraform.d/terraform.tfrc` and point the provider's source
 provider_installation {
   dev_overrides {
     # Replace with the absolute output of: echo "$(go env GOPATH)/bin"
-    "Jamf-Concepts/jamfplatform" = "/Users/you/go/bin"
+    "jamf/jamfplatform" = "/Users/you/go/bin"
   }
 
   # For all other providers, install from the registry as normal.
@@ -103,7 +103,7 @@ In a scratch directory (outside the repo, or under the gitignored `local-testing
 terraform {
   required_providers {
     jamfplatform = {
-      source = "Jamf-Concepts/jamfplatform"
+      source = "jamf/jamfplatform"
     }
   }
 }

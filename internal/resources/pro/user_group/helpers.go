@@ -6,7 +6,7 @@ package user_group
 import (
 	"fmt"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // validateUserGroupPlan enforces the smart/static cross-field rules:

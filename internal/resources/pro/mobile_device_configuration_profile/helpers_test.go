@@ -6,8 +6,8 @@ package mobile_device_configuration_profile
 import (
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/payloadhelpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 const minimalMobileconfig = `<?xml version="1.0" encoding="UTF-8"?>

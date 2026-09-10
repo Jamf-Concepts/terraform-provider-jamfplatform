@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/accountprivileges"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/accountprivileges"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // optTranslatedString returns a pointer to the wire-translated value of a

@@ -8,7 +8,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/enumguard"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/enumguard"
 )
 
 // TestEnumLiteralsComeFromTheSDK pins STYLE_GUIDE.md §"Enum values and error

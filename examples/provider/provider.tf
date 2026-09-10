@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     jamfplatform = {
-      source = "Jamf-Concepts/jamfplatform"
+      source = "jamf/jamfplatform"
     }
   }
 }
