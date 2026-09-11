@@ -84,7 +84,7 @@ func (r *JamfProtectResource) Create(ctx context.Context, req resource.CreateReq
 
 	got, err := r.client.RegisterJamfProtectV1(createCtx, buildJamfProtectRegistrationInput(plan, config))
 	if err != nil {
-		resp.Diagnostics.AddError("Error registering Jamf Protect", err.Error())
+		resp.Diagnostics.AddError("Error registering Jamf Protect", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -94,7 +94,7 @@ func (r *JamfProtectResource) Create(ctx context.Context, req resource.CreateReq
 	if want := helpers.OptionalBoolPointer(plan.AutoInstall); want != nil && *want != got.AutoInstall {
 		got, err = r.client.UpdateJamfProtectSettingsV1(createCtx, buildJamfProtectSettingsInput(want))
 		if err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Protect auto_install after registering", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Protect auto_install after registering", helpers.APIErrorDetail(err))
 			return
 		}
 	}
@@ -150,7 +150,7 @@ func (r *JamfProtectResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Protect registration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Protect registration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -202,7 +202,7 @@ func (r *JamfProtectResource) Update(ctx context.Context, req resource.UpdateReq
 		var err error
 		got, err = r.client.RegisterJamfProtectV1(updateCtx, buildJamfProtectRegistrationInput(plan, config))
 		if err != nil {
-			resp.Diagnostics.AddError("Error re-registering Jamf Protect", err.Error())
+			resp.Diagnostics.AddError("Error re-registering Jamf Protect", helpers.APIErrorDetail(err))
 			return
 		}
 		tflog.Trace(ctx, "re-registered Jamf Protect in place")
@@ -222,7 +222,7 @@ func (r *JamfProtectResource) Update(ctx context.Context, req resource.UpdateReq
 	if got == nil || *want != got.AutoInstall {
 		updated, err := r.client.UpdateJamfProtectSettingsV1(updateCtx, buildJamfProtectSettingsInput(want))
 		if err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Protect settings", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Protect settings", helpers.APIErrorDetail(err))
 			return
 		}
 		got = updated
@@ -272,7 +272,7 @@ func (r *JamfProtectResource) Delete(ctx context.Context, req resource.DeleteReq
 			tflog.Info(ctx, "Jamf Protect already unregistered")
 			return
 		}
-		resp.Diagnostics.AddError("Error unregistering Jamf Protect", err.Error())
+		resp.Diagnostics.AddError("Error unregistering Jamf Protect", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Trace(ctx, "unregistered Jamf Protect")

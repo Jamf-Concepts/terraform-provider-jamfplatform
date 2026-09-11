@@ -81,7 +81,7 @@ func (r *EnrollmentProfileListResource) List(ctx context.Context, req list.ListR
 	apiResp, err := r.client.ListMobileDeviceEnrollmentProfiles(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device enrollment profiles", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device enrollment profiles", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

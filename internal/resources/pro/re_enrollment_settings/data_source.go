@@ -88,7 +88,7 @@ func (d *ReEnrollmentSettingsDataSource) Read(ctx context.Context, req datasourc
 
 	got, err := d.client.GetReenrollmentSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Re-enrollment settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Re-enrollment settings", helpers.APIErrorDetail(err))
 		return
 	}
 

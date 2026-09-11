@@ -155,7 +155,7 @@ func (d *EnrollmentProfileDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignEnrollmentProfileDataSourceModel(&data, got)

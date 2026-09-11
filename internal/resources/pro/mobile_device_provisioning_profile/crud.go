@@ -19,7 +19,6 @@ package mobile_device_provisioning_profile
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -47,7 +46,7 @@ func (r *ProvisioningProfileResource) Create(ctx context.Context, req resource.C
 
 	created, err := r.client.CreateMobileDeviceProvisioningProfileByID(createCtx, "0", buildProvisioningProfileInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device provisioning profile", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -61,7 +60,7 @@ func (r *ProvisioningProfileResource) Create(ctx context.Context, req resource.C
 
 	got, err := r.client.GetMobileDeviceProvisioningProfileByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device provisioning profile", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProvisioningProfileResourceModel(&plan, got)
@@ -133,7 +132,7 @@ func (r *ProvisioningProfileResource) Read(ctx context.Context, req resource.Rea
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device provisioning profile", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -168,7 +167,7 @@ func (r *ProvisioningProfileResource) Update(ctx context.Context, req resource.U
 
 	got, err := r.client.GetMobileDeviceProvisioningProfileByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device provisioning profile", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProvisioningProfileResourceModel(&plan, got)
@@ -207,6 +206,6 @@ func (r *ProvisioningProfileResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro mobile device provisioning profile already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device provisioning profile", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 	}
 }

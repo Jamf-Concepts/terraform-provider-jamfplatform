@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*UnmanageAction)(nil)
@@ -70,7 +72,7 @@ func (a *UnmanageAction) Invoke(ctx context.Context, req action.InvokeRequest, r
 	if _, err := a.actions.UnmanageDevice(ctx, deviceID); err != nil {
 		resp.Diagnostics.AddError(
 			"Unmanage Device Failed",
-			fmt.Sprintf("Unable to unmanage device %s: %s", deviceID, err),
+			fmt.Sprintf("Unable to unmanage device %s: %s", deviceID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

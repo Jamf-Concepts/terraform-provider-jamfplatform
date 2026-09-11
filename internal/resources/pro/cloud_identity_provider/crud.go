@@ -234,7 +234,7 @@ func (r *CloudIdentityProviderResource) discoverProvider(ctx context.Context, id
 			)
 			return "", false
 		}
-		resp.Diagnostics.AddError("Error discovering Cloud Identity Provider type", err.Error())
+		resp.Diagnostics.AddError("Error discovering Cloud Identity Provider type", helpers.APIErrorDetail(err))
 		return "", false
 	}
 	if got == nil || got.ProviderName == "" {

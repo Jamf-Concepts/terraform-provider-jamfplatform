@@ -126,7 +126,7 @@ func (d *OnboardingDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	got, err := d.client.GetOnboardingV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro macOS Onboarding settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro macOS Onboarding settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignOnboardingDataSourceModel(readCtx, &data, got)...)

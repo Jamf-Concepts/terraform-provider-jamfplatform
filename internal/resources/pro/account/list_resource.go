@@ -116,7 +116,7 @@ func (r *AccountListResource) List(ctx context.Context, req list.ListRequest, st
 	accounts, err := r.client.ListAccountsV1(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro accounts", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro accounts", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

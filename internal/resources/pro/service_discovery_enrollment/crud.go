@@ -50,13 +50,13 @@ func (r *ServiceDiscoveryEnrollmentResource) Create(ctx context.Context, req res
 	}
 
 	if err := r.client.UpdateServiceDiscoveryEnrollmentWellKnownSettingsV1(createCtx, buildServiceDiscoveryEnrollmentInput(items)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro service discovery well-known settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro service discovery well-known settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetServiceDiscoveryEnrollmentWellKnownSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignServiceDiscoveryEnrollmentResourceModel(createCtx, &plan, got)...)
@@ -104,7 +104,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Read(ctx context.Context, req resou
 
 	got, err := r.client.GetServiceDiscoveryEnrollmentWellKnownSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -151,13 +151,13 @@ func (r *ServiceDiscoveryEnrollmentResource) Update(ctx context.Context, req res
 	}
 
 	if err := r.client.UpdateServiceDiscoveryEnrollmentWellKnownSettingsV1(updateCtx, buildServiceDiscoveryEnrollmentInput(items)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro service discovery well-known settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro service discovery well-known settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetServiceDiscoveryEnrollmentWellKnownSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro service discovery well-known settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignServiceDiscoveryEnrollmentResourceModel(updateCtx, &plan, got)...)

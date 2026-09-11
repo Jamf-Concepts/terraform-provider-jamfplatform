@@ -71,7 +71,7 @@ func (r *EnrollmentCustomizationResource) Create(ctx context.Context, req resour
 	if !plan.IconSource.IsNull() && !plan.IconSource.IsUnknown() && plan.IconSource.ValueString() != "" {
 		url, hash, err := uploadIconForPlan(createCtx, r.client, plan.IconSource.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error uploading enrollment customization icon", err.Error())
+			resp.Diagnostics.AddError("Error uploading enrollment customization icon", helpers.APIErrorDetail(err))
 			return
 		}
 		uploadedURL = url
@@ -82,7 +82,7 @@ func (r *EnrollmentCustomizationResource) Create(ctx context.Context, req resour
 
 	parentResp, err := r.client.CreateEnrollmentCustomizationV2(createCtx, buildParentInput(plan, uploadedURL))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro enrollment customization", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 		return
 	}
 	if parentResp == nil || parentResp.ID == "" {
@@ -177,13 +177,13 @@ func (r *EnrollmentCustomizationResource) Read(ctx context.Context, req resource
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro enrollment customization", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 		return
 	}
 	assignParentToResource(&state, got)
 
 	if err := hydratePanels(readCtx, r.client, &state); err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro enrollment customization panels", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro enrollment customization panels", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -232,7 +232,7 @@ func (r *EnrollmentCustomizationResource) Update(ctx context.Context, req resour
 	if uploadWanted && !plan.IconSource.IsNull() && !plan.IconSource.IsUnknown() && plan.IconSource.ValueString() != "" {
 		url, hash, err := uploadIconForPlan(updateCtx, r.client, plan.IconSource.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error uploading enrollment customization icon", err.Error())
+			resp.Diagnostics.AddError("Error uploading enrollment customization icon", helpers.APIErrorDetail(err))
 			return
 		}
 		uploadedURL = url
@@ -240,7 +240,7 @@ func (r *EnrollmentCustomizationResource) Update(ctx context.Context, req resour
 	}
 
 	if _, err := r.client.UpdateEnrollmentCustomizationV2(updateCtx, id, buildParentInput(plan, uploadedURL)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro enrollment customization", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -289,7 +289,7 @@ func (r *EnrollmentCustomizationResource) Delete(ctx context.Context, req resour
 			tflog.Info(ctx, "Jamf Pro enrollment customization already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro enrollment customization", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -333,19 +333,19 @@ func createAllPanels(ctx context.Context, client *pro.Client, parentID string, p
 	var diags diag.Diagnostics
 	for _, p := range plan.TextPanes {
 		if _, err := client.CreateEnrollmentCustomizationTextPanelV1(ctx, parentID, buildTextPanelInput(p)); err != nil {
-			diags.AddError("Error creating text pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error creating text pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
 	for _, p := range plan.LdapPanes {
 		if _, err := client.CreateEnrollmentCustomizationLdapPanelV1(ctx, parentID, buildLdapPanelInput(p)); err != nil {
-			diags.AddError("Error creating LDAP pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error creating LDAP pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
 	for _, p := range plan.SsoPanes {
 		if _, err := client.CreateEnrollmentCustomizationSsoPanelV1(ctx, parentID, buildSsoPanelInput(p)); err != nil {
-			diags.AddError("Error creating SSO pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error creating SSO pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -380,7 +380,7 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 			continue
 		}
 		if err := client.DeleteEnrollmentCustomizationPanelV1(ctx, parentID, id); err != nil && !helpers.IsNotFoundError(err) {
-			diags.AddError("Error deleting text pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error deleting text pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -389,7 +389,7 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 			continue
 		}
 		if err := client.DeleteEnrollmentCustomizationPanelV1(ctx, parentID, id); err != nil && !helpers.IsNotFoundError(err) {
-			diags.AddError("Error deleting LDAP pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error deleting LDAP pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -398,7 +398,7 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 			continue
 		}
 		if err := client.DeleteEnrollmentCustomizationPanelV1(ctx, parentID, id); err != nil && !helpers.IsNotFoundError(err) {
-			diags.AddError("Error deleting SSO pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error deleting SSO pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -408,13 +408,13 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 		id := p.ID.ValueString()
 		if id == "" || stateText[id] == nil {
 			if _, err := client.CreateEnrollmentCustomizationTextPanelV1(ctx, parentID, buildTextPanelInput(p)); err != nil {
-				diags.AddError("Error creating text pane on Jamf Pro enrollment customization", err.Error())
+				diags.AddError("Error creating text pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 				return diags
 			}
 			continue
 		}
 		if _, err := client.UpdateEnrollmentCustomizationTextPanelV1(ctx, parentID, id, buildTextPanelInput(p)); err != nil {
-			diags.AddError("Error updating text pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error updating text pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -422,13 +422,13 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 		id := p.ID.ValueString()
 		if id == "" || stateLdap[id] == nil {
 			if _, err := client.CreateEnrollmentCustomizationLdapPanelV1(ctx, parentID, buildLdapPanelInput(p)); err != nil {
-				diags.AddError("Error creating LDAP pane on Jamf Pro enrollment customization", err.Error())
+				diags.AddError("Error creating LDAP pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 				return diags
 			}
 			continue
 		}
 		if _, err := client.UpdateEnrollmentCustomizationLdapPanelV1(ctx, parentID, id, buildLdapPanelInput(p)); err != nil {
-			diags.AddError("Error updating LDAP pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error updating LDAP pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -436,13 +436,13 @@ func reconcilePanels(ctx context.Context, client *pro.Client, parentID string, p
 		id := p.ID.ValueString()
 		if id == "" || stateSso[id] == nil {
 			if _, err := client.CreateEnrollmentCustomizationSsoPanelV1(ctx, parentID, buildSsoPanelInput(p)); err != nil {
-				diags.AddError("Error creating SSO pane on Jamf Pro enrollment customization", err.Error())
+				diags.AddError("Error creating SSO pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 				return diags
 			}
 			continue
 		}
 		if _, err := client.UpdateEnrollmentCustomizationSsoPanelV1(ctx, parentID, id, buildSsoPanelInput(p)); err != nil {
-			diags.AddError("Error updating SSO pane on Jamf Pro enrollment customization", err.Error())
+			diags.AddError("Error updating SSO pane on Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 			return diags
 		}
 	}
@@ -484,12 +484,12 @@ func refreshState(ctx context.Context, client *pro.Client, plan *EnrollmentCusto
 	var diags diag.Diagnostics
 	got, err := client.GetEnrollmentCustomizationV2(ctx, plan.ID.ValueString())
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment customization after write", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment customization after write", helpers.APIErrorDetail(err))
 		return diags
 	}
 	assignParentToResource(plan, got)
 	if err := hydratePanels(ctx, client, plan); err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment customization panels", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment customization panels", helpers.APIErrorDetail(err))
 	}
 	return diags
 }

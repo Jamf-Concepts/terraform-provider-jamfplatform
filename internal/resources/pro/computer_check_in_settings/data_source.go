@@ -122,7 +122,7 @@ func (d *ComputerCheckInSettingsDataSource) Read(ctx context.Context, req dataso
 
 	got, err := d.client.GetCheckInSettingsV3(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Client Check-In settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Client Check-In settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerCheckInSettingsDataSourceModel(&data, got)

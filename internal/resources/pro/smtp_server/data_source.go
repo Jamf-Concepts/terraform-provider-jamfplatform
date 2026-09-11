@@ -144,7 +144,7 @@ func (d *SmtpServerDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	got, err := d.client.GetSmtpServerV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SMTP Server settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SMTP Server settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignSmtpServerDataSourceModel(&data, got)...)

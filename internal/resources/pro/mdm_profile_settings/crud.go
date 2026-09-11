@@ -44,13 +44,13 @@ func (r *MDMProfileSettingsResource) Create(ctx context.Context, req resource.Cr
 	defer cancel()
 
 	if _, err := r.client.UpdateDeviceCommunicationSettingsV1(createCtx, buildMDMProfileSettingsInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro device communication settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro device communication settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDeviceCommunicationSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMDMProfileSettingsResourceModel(&plan, got)
@@ -95,7 +95,7 @@ func (r *MDMProfileSettingsResource) Read(ctx context.Context, req resource.Read
 
 	got, err := r.client.GetDeviceCommunicationSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -131,13 +131,13 @@ func (r *MDMProfileSettingsResource) Update(ctx context.Context, req resource.Up
 	defer cancel()
 
 	if _, err := r.client.UpdateDeviceCommunicationSettingsV1(updateCtx, buildMDMProfileSettingsInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro device communication settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro device communication settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDeviceCommunicationSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro device communication settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMDMProfileSettingsResourceModel(&plan, got)

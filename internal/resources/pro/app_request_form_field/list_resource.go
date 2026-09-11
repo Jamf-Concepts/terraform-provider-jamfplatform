@@ -93,7 +93,7 @@ func (r *AppRequestFormFieldListResource) List(ctx context.Context, req list.Lis
 	resp, err := r.client.ListAppRequestFormInputFieldsV1(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro App Request form fields", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro App Request form fields", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

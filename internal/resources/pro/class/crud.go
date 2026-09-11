@@ -15,7 +15,6 @@ package class
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -49,7 +48,7 @@ func (r *ClassResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	created, err := r.client.CreateClassByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -63,7 +62,7 @@ func (r *ClassResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	got, err := r.client.GetClassByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignClassResourceModel(createCtx, &plan, got)...)
@@ -138,7 +137,7 @@ func (r *ClassResource) Read(ctx context.Context, req resource.ReadRequest, resp
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -178,13 +177,13 @@ func (r *ClassResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	if err := r.client.UpdateClassByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetClassByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignClassResourceModel(updateCtx, &plan, got)...)
@@ -226,6 +225,6 @@ func (r *ClassResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 			tflog.Info(ctx, "Jamf Pro class already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro class", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro class", helpers.APIErrorDetail(err))
 	}
 }

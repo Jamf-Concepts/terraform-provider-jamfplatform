@@ -21,7 +21,6 @@ package network_segment
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -48,7 +47,7 @@ func (r *NetworkSegmentResource) Create(ctx context.Context, req resource.Create
 
 	created, err := r.client.CreateNetworkSegmentByID(createCtx, "0", buildNetworkSegmentInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID via
@@ -64,7 +63,7 @@ func (r *NetworkSegmentResource) Create(ctx context.Context, req resource.Create
 
 	got, err := r.client.GetNetworkSegmentByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignNetworkSegmentResourceModel(&plan, got, false)
@@ -136,7 +135,7 @@ func (r *NetworkSegmentResource) Read(ctx context.Context, req resource.ReadRequ
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -167,13 +166,13 @@ func (r *NetworkSegmentResource) Update(ctx context.Context, req resource.Update
 	defer cancel()
 
 	if err := r.client.UpdateNetworkSegmentByID(updateCtx, plan.ID.ValueString(), buildNetworkSegmentInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetNetworkSegmentByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignNetworkSegmentResourceModel(&plan, got, false)
@@ -211,6 +210,6 @@ func (r *NetworkSegmentResource) Delete(ctx context.Context, req resource.Delete
 			tflog.Info(ctx, "Jamf Pro network segment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro network segment", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro network segment", helpers.APIErrorDetail(err))
 	}
 }

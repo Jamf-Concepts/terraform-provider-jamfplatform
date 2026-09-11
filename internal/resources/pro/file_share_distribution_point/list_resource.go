@@ -97,7 +97,7 @@ func (r *FileShareDistributionPointListResource) List(ctx context.Context, req l
 	dps, err := r.client.ListDistributionPointsV1(ctx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro file share distribution points", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro file share distribution points", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

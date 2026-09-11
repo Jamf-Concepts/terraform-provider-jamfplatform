@@ -129,7 +129,7 @@ func (d *SupervisionIdentityDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro supervision identity", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSupervisionIdentityDataSourceModel(&data, got)

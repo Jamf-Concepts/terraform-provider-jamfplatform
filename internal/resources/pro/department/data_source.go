@@ -96,7 +96,7 @@ func (d *DepartmentDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	got, err := d.client.GetDepartmentV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 	assignDepartmentDataSourceModel(&data, got)

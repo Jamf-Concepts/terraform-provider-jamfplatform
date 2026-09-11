@@ -49,7 +49,7 @@ func (r *CloudDistributionPointResource) Create(ctx context.Context, req resourc
 
 	input, err := buildCloudDistributionPointInput(plan, config)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid cloud distribution point configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid cloud distribution point configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -61,11 +61,11 @@ func (r *CloudDistributionPointResource) Create(ctx context.Context, req resourc
 				"A cloud distribution point is already configured on this Jamf Pro tenant, so it cannot be created. "+
 					"Import the existing object instead:\n\n"+
 					"  terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton\n\n"+
-					"Original error: "+err.Error(),
+					"Original error: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Error creating Jamf Pro cloud distribution point", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro cloud distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -113,7 +113,7 @@ func (r *CloudDistributionPointResource) Read(ctx context.Context, req resource.
 
 	got, err := r.client.GetCloudDistributionPointV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro cloud distribution point", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro cloud distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -161,13 +161,13 @@ func (r *CloudDistributionPointResource) Update(ctx context.Context, req resourc
 
 	input, err := buildCloudDistributionPointInput(plan, config)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid cloud distribution point configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid cloud distribution point configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.UpdateCloudDistributionPointV1(updateCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro cloud distribution point", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro cloud distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -213,7 +213,7 @@ func (r *CloudDistributionPointResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro cloud distribution point already removed")
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro cloud distribution point", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro cloud distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Trace(ctx, "deleted (disabled) Jamf Pro cloud distribution point")

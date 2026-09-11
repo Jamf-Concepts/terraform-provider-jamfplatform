@@ -67,7 +67,7 @@ func (r *SmtpServerResource) Create(ctx context.Context, req resource.CreateRequ
 
 	current, err := r.client.GetSmtpServerV2(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro SMTP Server settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro SMTP Server settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -78,7 +78,7 @@ func (r *SmtpServerResource) Create(ctx context.Context, req resource.CreateRequ
 
 	got, err := r.client.GetSmtpServerV2(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignSmtpServerResourceModel(&plan, got, &plan)...)
@@ -126,7 +126,7 @@ func (r *SmtpServerResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	got, err := r.client.GetSmtpServerV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -175,7 +175,7 @@ func (r *SmtpServerResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	got, err := r.client.GetSmtpServerV2(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro SMTP Server settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignSmtpServerResourceModel(&plan, got, &plan)...)

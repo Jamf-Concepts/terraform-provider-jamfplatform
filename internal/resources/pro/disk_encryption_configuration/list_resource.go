@@ -104,7 +104,7 @@ func (r *DiskEncryptionConfigurationListResource) List(ctx context.Context, req 
 	resp, err := r.client.ListDiskEncryptionConfigurations(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro disk encryption configurations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro disk encryption configurations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -91,7 +91,7 @@ func (r *ActivationCodeResource) Read(ctx context.Context, req resource.ReadRequ
 
 	got, err := r.client.GetActivationCode(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro activation code", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro activation code", helpers.APIErrorDetail(err))
 		return
 	}
 

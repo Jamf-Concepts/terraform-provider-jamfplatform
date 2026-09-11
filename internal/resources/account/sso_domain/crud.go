@@ -21,7 +21,6 @@ package sso_domain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -56,7 +55,7 @@ func (r *DomainResource) Create(ctx context.Context, req resource.CreateRequest,
 	created, err := r.client.CreateDomain(createCtx, buildDomainRequest(plan))
 	if err != nil {
 		if !appendClaimDiagnostics(&resp.Diagnostics, domain, err) {
-			resp.Diagnostics.AddError("Error claiming Jamf Account SSO domain", err.Error())
+			resp.Diagnostics.AddError("Error claiming Jamf Account SSO domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -136,7 +135,7 @@ func (r *DomainResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	domains, err := r.client.ListDomains(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Account SSO domains", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Account SSO domains", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -190,7 +189,7 @@ func (r *DomainResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	domains, err := r.client.ListDomains(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Account SSO domains", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Account SSO domains", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -269,6 +268,6 @@ func (r *DomainResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			tflog.Info(ctx, "Jamf Account SSO domain already withdrawn", map[string]any{"domain": state.Domain.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error withdrawing Jamf Account SSO domain", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error withdrawing Jamf Account SSO domain", helpers.APIErrorDetail(err))
 	}
 }

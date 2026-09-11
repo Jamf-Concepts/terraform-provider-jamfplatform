@@ -32,7 +32,6 @@ package inventory_preload_record
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -65,7 +64,7 @@ func (r *InventoryPreloadRecordResource) Create(ctx context.Context, req resourc
 
 	createResp, err := r.client.CreateInventoryPreloadRecordV2(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -73,7 +72,7 @@ func (r *InventoryPreloadRecordResource) Create(ctx context.Context, req resourc
 
 	got, err := r.client.GetInventoryPreloadRecordV2(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignInventoryPreloadRecordResourceModel(ctx, &plan, got)...)
@@ -148,7 +147,7 @@ func (r *InventoryPreloadRecordResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -190,7 +189,7 @@ func (r *InventoryPreloadRecordResource) Update(ctx context.Context, req resourc
 
 	got, err := r.client.UpdateInventoryPreloadRecordV2(updateCtx, plan.ID.ValueString(), input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignInventoryPreloadRecordResourceModel(ctx, &plan, got)...)
@@ -233,6 +232,6 @@ func (r *InventoryPreloadRecordResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro inventory preload record already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro inventory preload record", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 	}
 }

@@ -101,7 +101,7 @@ func (r *AdvancedComputerSearchListResource) List(ctx context.Context, req list.
 	resp, err := r.client.ListAdvancedComputerSearches(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced computer searches", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced computer searches", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

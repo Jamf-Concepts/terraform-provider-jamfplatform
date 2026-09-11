@@ -51,18 +51,18 @@ func (r *ImpactAlertNotificationSettingsResource) Create(ctx context.Context, re
 	// the plan as known prior values.
 	current, err := r.client.GetImpactAlertNotificationSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Impact Alert Notification settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Impact Alert Notification settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if err := r.client.UpdateImpactAlertNotificationSettingsV1(createCtx, buildImpactAlertNotificationSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Impact Alert Notification settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Impact Alert Notification settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetImpactAlertNotificationSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignImpactAlertNotificationSettingsResourceModel(&plan, got)
@@ -107,7 +107,7 @@ func (r *ImpactAlertNotificationSettingsResource) Read(ctx context.Context, req 
 
 	got, err := r.client.GetImpactAlertNotificationSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -144,13 +144,13 @@ func (r *ImpactAlertNotificationSettingsResource) Update(ctx context.Context, re
 	defer cancel()
 
 	if err := r.client.UpdateImpactAlertNotificationSettingsV1(updateCtx, buildImpactAlertNotificationSettingsInput(plan, nil)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Impact Alert Notification settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Impact Alert Notification settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetImpactAlertNotificationSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Impact Alert Notification settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignImpactAlertNotificationSettingsResourceModel(&plan, got)

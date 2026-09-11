@@ -21,7 +21,6 @@ package removable_mac_address
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -48,7 +47,7 @@ func (r *RemovableMacAddressResource) Create(ctx context.Context, req resource.C
 
 	created, err := r.client.CreateRemovableMacAddressByID(createCtx, "0", buildRemovableMacAddressInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID via
@@ -65,7 +64,7 @@ func (r *RemovableMacAddressResource) Create(ctx context.Context, req resource.C
 	// The create response carries the ID only (no name echo); GET to populate mac_address.
 	got, err := r.client.GetRemovableMacAddressByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 	assignRemovableMacAddressResourceModel(&plan, got)
@@ -137,7 +136,7 @@ func (r *RemovableMacAddressResource) Read(ctx context.Context, req resource.Rea
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -168,13 +167,13 @@ func (r *RemovableMacAddressResource) Update(ctx context.Context, req resource.U
 	defer cancel()
 
 	if err := r.client.UpdateRemovableMacAddressByID(updateCtx, plan.ID.ValueString(), buildRemovableMacAddressInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetRemovableMacAddressByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 	assignRemovableMacAddressResourceModel(&plan, got)
@@ -212,6 +211,6 @@ func (r *RemovableMacAddressResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro removable MAC address already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro removable MAC address", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 	}
 }

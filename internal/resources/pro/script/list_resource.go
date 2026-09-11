@@ -96,7 +96,7 @@ func (r *ScriptListResource) List(ctx context.Context, req list.ListRequest, str
 	items, err := r.client.ListScriptsV1(listCtx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro scripts", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro scripts", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

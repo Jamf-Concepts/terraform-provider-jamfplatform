@@ -18,6 +18,8 @@ import (
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var (
@@ -117,7 +119,7 @@ func (a *SynchronizeAction) Invoke(ctx context.Context, req action.InvokeRequest
 		if !appendInvokeDiagnostics(&resp.Diagnostics, err) {
 			resp.Diagnostics.AddError(
 				"UEM Connect Synchronize Failed",
-				fmt.Sprintf("Unable to start a sync for UEM Connect integration %s: %s", id, err),
+				fmt.Sprintf("Unable to start a sync for UEM Connect integration %s: %s", id, helpers.APIErrorDetail(err)),
 			)
 		}
 		return

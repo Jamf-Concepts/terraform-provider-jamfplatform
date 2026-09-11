@@ -103,7 +103,7 @@ func (r *PrinterListResource) List(ctx context.Context, req list.ListRequest, st
 	resp, err := r.client.ListPrinters(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro printers", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro printers", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -72,13 +72,13 @@ func (r *ManagedSoftwareUpdateResource) Create(ctx context.Context, req resource
 	// than being flipped to false on the write when the user omits `enabled`.
 	current, err := r.client.GetManagedSoftwareUpdateFeatureToggleV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Managed Software Updates feature", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Managed Software Updates feature", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := applyAndSettle(createCtx, r.client, buildManagedSoftwareUpdateInput(plan, current), settlePollInterval)
 	if err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Managed Software Updates feature", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Managed Software Updates feature", helpers.APIErrorDetail(err))
 		return
 	}
 	assignManagedSoftwareUpdateResourceModel(&plan, got)
@@ -123,7 +123,7 @@ func (r *ManagedSoftwareUpdateResource) Read(ctx context.Context, req resource.R
 
 	got, err := r.client.GetManagedSoftwareUpdateFeatureToggleV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Managed Software Updates feature", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Managed Software Updates feature", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -162,7 +162,7 @@ func (r *ManagedSoftwareUpdateResource) Update(ctx context.Context, req resource
 
 	got, err := applyAndSettle(updateCtx, r.client, buildManagedSoftwareUpdateInput(plan, nil), settlePollInterval)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Managed Software Updates feature", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Managed Software Updates feature", helpers.APIErrorDetail(err))
 		return
 	}
 	assignManagedSoftwareUpdateResourceModel(&plan, got)

@@ -101,7 +101,7 @@ func (d *AppInstallerTitlesDataSource) Read(ctx context.Context, req datasource.
 
 	titles, err := d.client.ListAppInstallerTitlesV1(readCtx, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list App Installer titles", err.Error())
+		resp.Diagnostics.AddError("Unable to list App Installer titles", helpers.APIErrorDetail(err))
 		return
 	}
 

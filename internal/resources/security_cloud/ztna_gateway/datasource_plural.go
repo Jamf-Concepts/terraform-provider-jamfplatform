@@ -139,7 +139,7 @@ func (d *GatewaysDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	gateways, err := d.client.ListZtnaGatewaysV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud ZTNA gateways", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud ZTNA gateways", helpers.APIErrorDetail(err))
 		return
 	}
 

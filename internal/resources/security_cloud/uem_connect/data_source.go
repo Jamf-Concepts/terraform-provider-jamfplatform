@@ -208,7 +208,7 @@ func (d *UEMConnectDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	page, err := d.client.ListUemConnectorsV1(readCtx)
 	if err != nil {
 		if !appendCreateDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		}
 		return
 	}

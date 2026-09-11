@@ -21,6 +21,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*SyncPlansAction)(nil)
@@ -64,7 +66,7 @@ func (a *SyncPlansAction) Invoke(ctx context.Context, req action.InvokeRequest, 
 		resp.Diagnostics.AddError(
 			"Jamf Protect Plans Sync Failed",
 			"Unable to trigger the Jamf Protect plans sync. Ensure the tenant is registered with a Jamf Protect instance "+
-				"(jamfplatform_pro_jamf_protect). Original error: "+err.Error(),
+				"(jamfplatform_pro_jamf_protect). Original error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

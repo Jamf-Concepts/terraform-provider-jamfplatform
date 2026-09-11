@@ -156,7 +156,7 @@ func (d *InventoryPreloadRecordDataSource) Read(ctx context.Context, req datasou
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 

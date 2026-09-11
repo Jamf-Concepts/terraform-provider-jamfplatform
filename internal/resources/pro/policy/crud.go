@@ -25,7 +25,6 @@ package policy
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -76,7 +75,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 	policyID := extractPolicyID(created)
@@ -91,7 +90,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	got, err := r.client.GetPolicyByID(createCtx, policyID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPolicyResourceModel(createCtx, &plan, got, false)...)
@@ -166,7 +165,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -230,7 +229,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if plan.Scope != nil {
 		current, err := r.client.GetPolicyByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro policy before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro policy before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.ComputerScopeModel
@@ -253,13 +252,13 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdatePolicyByID(updateCtx, plan.ID.ValueString(), input)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetPolicyByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPolicyResourceModel(updateCtx, &plan, got, false)...)
@@ -300,6 +299,6 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			tflog.Info(ctx, "Jamf Pro policy already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro policy", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro policy", helpers.APIErrorDetail(err))
 	}
 }

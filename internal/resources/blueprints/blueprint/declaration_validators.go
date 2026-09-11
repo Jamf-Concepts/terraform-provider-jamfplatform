@@ -150,7 +150,7 @@ func validateDeclarationPayload(authoredKind, declarationType, payload types.Str
 		diags.AddAttributeError(at,
 			"Declaration payload is not a JSON object",
 			fmt.Sprintf("%sCould not decode the payload: %s. Author it with jsonencode({ ... }).",
-				attributionPrefix(attribution), err),
+				attributionPrefix(attribution), helpers.APIErrorDetail(err)),
 		)
 		return diags
 	}

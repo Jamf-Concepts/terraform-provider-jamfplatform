@@ -112,7 +112,7 @@ func (d *ServiceDiscoveryEnrollmentDataSource) Read(ctx context.Context, req dat
 
 	got, err := d.client.GetServiceDiscoveryEnrollmentWellKnownSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro service discovery well-known settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro service discovery well-known settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignServiceDiscoveryEnrollmentDataSourceModel(readCtx, &data, got)...)

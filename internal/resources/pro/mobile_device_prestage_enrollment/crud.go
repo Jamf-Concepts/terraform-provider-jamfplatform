@@ -223,7 +223,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	postResp, err := r.client.CreateMobileDevicePrestageV3(createCtx, post)
 	if err != nil {
 		if !diagnoseAlreadyDefault(&resp.Diagnostics, cfg, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Pro mobile device prestage enrollment", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Pro mobile device prestage enrollment", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -240,7 +240,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	// Refresh via GET (server-canonical values).
 	got, err := r.client.GetMobileDevicePrestageV3(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment after create", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment after create", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGetToResource(createCtx, &plan, plan, got)...)
@@ -258,7 +258,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	}
 	scope, err := r.client.GetMobileDevicePrestageScopeV2(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage scope after create", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope after create", helpers.APIErrorDetail(err))
 		return
 	}
 	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -330,7 +330,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Read(ctx context.Context, req r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGetToResource(readCtx, &state, state, got)...)
@@ -341,7 +341,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Read(ctx context.Context, req r
 
 	scope, err := r.client.GetMobileDevicePrestageScopeV2(readCtx, state.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage scope", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope", helpers.APIErrorDetail(err))
 		return
 	}
 	state.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -393,7 +393,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	// Pre-PUT GET to source the three versionLocks + nested ids.
 	preGet, err := r.client.GetMobileDevicePrestageV3(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage before update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage before update", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -409,7 +409,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	if putErr != nil {
 		if !isPutSerializerBug(putErr) {
 			if !diagnoseAlreadyDefault(&resp.Diagnostics, cfg, putErr) {
-				resp.Diagnostics.AddError("Error updating Jamf Pro mobile device prestage enrollment", putErr.Error())
+				resp.Diagnostics.AddError("Error updating Jamf Pro mobile device prestage enrollment", helpers.APIErrorDetail(putErr))
 			}
 			return
 		}
@@ -420,7 +420,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	// 500-with-commit and 500-with-silent-rollback flavours of §F4b).
 	postGet, err := r.client.GetMobileDevicePrestageV3(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage after update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage after update", helpers.APIErrorDetail(err))
 		return
 	}
 	if unchanged := diffPlanAgainstGet(updateCtx, plan, postGet); len(unchanged) > 0 {
@@ -459,7 +459,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	scope, err := r.client.GetMobileDevicePrestageScopeV2(updateCtx, id)
 	if err != nil {
 		resp.Diagnostics.Append(scopeApplyDiags...)
-		resp.Diagnostics.AddError("Error reading prestage scope after update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope after update", helpers.APIErrorDetail(err))
 		return
 	}
 	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -505,7 +505,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Delete(ctx context.Context, req
 			tflog.Info(ctx, "Jamf Pro mobile device prestage enrollment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device prestage enrollment", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -532,7 +532,7 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 
 	scope, err := client.GetMobileDevicePrestageScopeV2(ctx, prestageID)
 	if err != nil {
-		diags.AddError("Error reading prestage scope before replace", err.Error())
+		diags.AddError("Error reading prestage scope before replace", helpers.APIErrorDetail(err))
 		return diags
 	}
 

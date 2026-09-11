@@ -62,7 +62,7 @@ func (r *AppInstallerResource) Create(ctx context.Context, req resource.CreateRe
 
 	created, err := r.client.CreateAppInstallerDeploymentV1(createCtx, buildAppInstallerInput(plan, appTitleID))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Error creating App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -75,7 +75,7 @@ func (r *AppInstallerResource) Create(ctx context.Context, req resource.CreateRe
 
 	got, err := r.client.GetAppInstallerDeploymentV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Error reading created App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerResourceModel(&plan, got, false)
@@ -147,7 +147,7 @@ func (r *AppInstallerResource) Read(ctx context.Context, req resource.ReadReques
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Error reading App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -214,13 +214,13 @@ func (r *AppInstallerResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	if _, err := r.client.UpdateAppInstallerDeploymentV1(updateCtx, plan.ID.ValueString(), buildAppInstallerInput(plan, appTitleID)); err != nil {
-		resp.Diagnostics.AddError("Error updating App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Error updating App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAppInstallerDeploymentV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Error reading updated App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerResourceModel(&plan, got, false)
@@ -258,6 +258,6 @@ func (r *AppInstallerResource) Delete(ctx context.Context, req resource.DeleteRe
 			tflog.Info(ctx, "App Installer deployment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting App Installer deployment", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting App Installer deployment", helpers.APIErrorDetail(err))
 	}
 }

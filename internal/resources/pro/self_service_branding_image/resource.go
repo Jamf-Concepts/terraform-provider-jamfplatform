@@ -38,6 +38,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/files"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -222,7 +223,7 @@ func (r *SelfServiceBrandingImageResource) ModifyPlan(ctx context.Context, req r
 	if localSource {
 		hashed, err := files.HashLocalSource(ctx, source)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading branding image source during plan", err.Error())
+			resp.Diagnostics.AddError("Error reading branding image source during plan", helpers.APIErrorDetail(err))
 			return
 		}
 		hash = hashed

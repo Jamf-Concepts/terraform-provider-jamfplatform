@@ -155,7 +155,7 @@ func (d *PredefinedAppsDataSource) Read(ctx context.Context, req datasource.Read
 
 	apps, err := d.client.ListZtnaPredefinedAppsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud predefined ZTNA apps", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud predefined ZTNA apps", helpers.APIErrorDetail(err))
 		return
 	}
 

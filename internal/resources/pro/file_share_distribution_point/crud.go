@@ -27,7 +27,6 @@ package file_share_distribution_point
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -69,7 +68,7 @@ func (r *FileShareDistributionPointResource) Create(ctx context.Context, req res
 
 	created, err := r.client.CreateDistributionPointV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -83,7 +82,7 @@ func (r *FileShareDistributionPointResource) Create(ctx context.Context, req res
 
 	got, err := r.client.GetDistributionPointV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFileShareDistributionPointResourceModel(&plan, got)
@@ -156,7 +155,7 @@ func (r *FileShareDistributionPointResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -208,7 +207,7 @@ func (r *FileShareDistributionPointResource) Update(ctx context.Context, req res
 
 	got, err := r.client.PatchDistributionPointV1(updateCtx, plan.ID.ValueString(), input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFileShareDistributionPointResourceModel(&plan, got)
@@ -256,6 +255,6 @@ func (r *FileShareDistributionPointResource) Delete(ctx context.Context, req res
 			tflog.Info(ctx, "Jamf Pro file share distribution point already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro file share distribution point", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 	}
 }

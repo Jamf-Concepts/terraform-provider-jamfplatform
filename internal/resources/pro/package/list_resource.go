@@ -90,7 +90,7 @@ func (r *PackageListResource) List(ctx context.Context, req list.ListRequest, st
 	pkgs, err := r.client.ListPackagesV1(ctx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro packages", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro packages", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

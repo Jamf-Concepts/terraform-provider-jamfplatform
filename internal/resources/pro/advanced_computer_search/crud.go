@@ -15,7 +15,6 @@ package advanced_computer_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -102,7 +101,7 @@ func (r *AdvancedComputerSearchResource) Create(ctx context.Context, req resourc
 
 	created, err := r.client.CreateAdvancedComputerSearchByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro advanced computer search", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -116,7 +115,7 @@ func (r *AdvancedComputerSearchResource) Create(ctx context.Context, req resourc
 
 	got, err := r.client.GetAdvancedComputerSearchByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced computer search", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedComputerSearchResourceModel(createCtx, &plan, got)...)
@@ -192,7 +191,7 @@ func (r *AdvancedComputerSearchResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro advanced computer search", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -241,13 +240,13 @@ func (r *AdvancedComputerSearchResource) Update(ctx context.Context, req resourc
 	}
 
 	if err := r.client.UpdateAdvancedComputerSearchByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro advanced computer search", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAdvancedComputerSearchByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced computer search", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedComputerSearchResourceModel(updateCtx, &plan, got)...)
@@ -289,6 +288,6 @@ func (r *AdvancedComputerSearchResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro advanced computer search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced computer search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced computer search", helpers.APIErrorDetail(err))
 	}
 }

@@ -66,7 +66,7 @@ func ResolveComputerID(ctx context.Context, client *pro.Client, resp *action.Inv
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Computer Lookup Failed",
-				fmt.Sprintf("Unable to look up computer for management id %s: %s", managementID, err),
+				fmt.Sprintf("Unable to look up computer for management id %s: %s", managementID, helpers.APIErrorDetail(err)),
 			)
 			return "", false
 		}
@@ -86,7 +86,7 @@ func ResolveComputerID(ctx context.Context, client *pro.Client, resp *action.Inv
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Computer Lookup Failed",
-				fmt.Sprintf("Unable to resolve serial number %s to a computer id: %s", serial, err),
+				fmt.Sprintf("Unable to resolve serial number %s to a computer id: %s", serial, helpers.APIErrorDetail(err)),
 			)
 			return "", false
 		}
@@ -99,7 +99,7 @@ func ResolveComputerID(ctx context.Context, client *pro.Client, resp *action.Inv
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Computer Lookup Failed",
-				fmt.Sprintf("Unable to resolve udid %s to a computer id: %s", udid, err),
+				fmt.Sprintf("Unable to resolve udid %s to a computer id: %s", udid, helpers.APIErrorDetail(err)),
 			)
 			return "", false
 		}

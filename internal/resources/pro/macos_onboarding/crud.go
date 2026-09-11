@@ -63,13 +63,13 @@ func (r *OnboardingResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	if _, err := r.client.UpdateOnboardingV1(createCtx, buildOnboardingInput(plan.Enabled.ValueBool(), items)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro macOS Onboarding settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro macOS Onboarding settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetOnboardingV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignOnboardingResourceModel(createCtx, &plan, got)...)
@@ -117,7 +117,7 @@ func (r *OnboardingResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	got, err := r.client.GetOnboardingV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -164,13 +164,13 @@ func (r *OnboardingResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	if _, err := r.client.UpdateOnboardingV1(updateCtx, buildOnboardingInput(plan.Enabled.ValueBool(), items)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro macOS Onboarding settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro macOS Onboarding settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetOnboardingV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro macOS Onboarding settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignOnboardingResourceModel(updateCtx, &plan, got)...)

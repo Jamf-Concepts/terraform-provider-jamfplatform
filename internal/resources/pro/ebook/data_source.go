@@ -131,7 +131,7 @@ func (d *EbookDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 	assignEbookFlatDataSource(&data, got)

@@ -133,7 +133,7 @@ func (d *DataSource) Read(ctx context.Context, req datasource.ReadRequest, resp 
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Unable to find macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFlatDataSource(&data, got)

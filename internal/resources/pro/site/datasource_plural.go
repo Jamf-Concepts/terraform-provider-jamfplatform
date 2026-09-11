@@ -104,7 +104,7 @@ func (d *SitesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	listResp, err := d.client.ListSites(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro sites", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro sites", helpers.APIErrorDetail(err))
 		return
 	}
 

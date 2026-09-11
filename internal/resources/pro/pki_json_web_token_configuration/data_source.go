@@ -124,7 +124,7 @@ func (d *JSONWebTokenConfigurationDataSource) Read(ctx context.Context, req data
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignJSONWebTokenConfigurationDataSourceModel(&data, got)

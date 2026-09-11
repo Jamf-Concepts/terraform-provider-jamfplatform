@@ -132,11 +132,11 @@ func (d *ReturnToServiceDataSource) Read(ctx context.Context, req datasource.Rea
 		if _, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
 			resp.Diagnostics.AddError(
 				"Multiple Jamf Pro Return to Service configurations match this display name",
-				err.Error()+". Look the configuration up by id instead.",
+				helpers.APIErrorDetail(err)+". Look the configuration up by id instead.",
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -90,9 +90,23 @@ func (a *appInstallerAction) ensureClient(resp *action.InvokeResponse) bool {
 // ("id field must be string of positive numeric value or -1") before it looks
 // anything up. That is an operator mistake and must fail the apply, not be
 // downgraded to a warning saying nothing needed retrying.
+//
+// Two 404s that no Jamf service produced are excluded, because reading either as
+// "nothing needed retrying" succeeds the action for a request that never reached
+// Jamf Pro: the operator takes the failed installations to be clear and no retry
+// is ever issued. They are the gateway's own unrouted reply
+// (helpers.IsGatewayUnrouted) and an edge error page, which CloudFront serves
+// with a 404 among other statuses (helpers.IsEdgeBlocked).
+//
+// The edge term is defence rather than a live fix, and the distinction is worth
+// recording because a future reader will find no test that fails without it.
+// SDK v1.0.0 condenses every edge page into one synthetic error detail, so such a
+// reply carries a non-empty `errors` array and the emptiness test already rejects
+// it. That coupling is the SDK's to change, not this package's, and the cost of
+// depending on it is an action that reports success for a blocked request.
 func isNothingToRetry(err error) bool {
 	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
-	if !ok || helpers.IsGatewayUnrouted(err) {
+	if !ok || helpers.IsGatewayUnrouted(err) || helpers.IsEdgeBlocked(err) {
 		return false
 	}
 	return apiErr.HasStatus(http.StatusNotFound) && len(apiErr.Details()) == 0

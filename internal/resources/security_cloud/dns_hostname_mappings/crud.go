@@ -12,7 +12,6 @@ package dns_hostname_mappings
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -77,7 +76,7 @@ func (r *HostnameMappingsResource) Create(ctx context.Context, req resource.Crea
 	existing, err := r.client.GetDnsCustomHostnameMappingsV1(createCtx)
 	if err != nil && !helpers.IsNotFoundError(err) {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error checking for existing Jamf Security Cloud hostname mappings", err.Error())
+			resp.Diagnostics.AddError("Error checking for existing Jamf Security Cloud hostname mappings", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -158,7 +157,7 @@ func (r *HostnameMappingsResource) Read(ctx context.Context, req resource.ReadRe
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud hostname mappings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud hostname mappings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -250,7 +249,7 @@ func (r *HostnameMappingsResource) Delete(ctx context.Context, req resource.Dele
 			tflog.Info(ctx, "Jamf Security Cloud hostname mappings already cleared")
 			return
 		}
-		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud hostname mappings", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud hostname mappings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -283,7 +282,7 @@ func (r *HostnameMappingsResource) write(callCtx, logCtx context.Context, plan *
 
 	if err := r.client.ReplaceDnsCustomHostnameMappingsV1(callCtx, &input); err != nil {
 		if !appendWriteDiagnostics(diags, err) && !appendDuplicateHostnameHint(diags, err) {
-			diags.AddError("Error "+verb+" Jamf Security Cloud hostname mappings", err.Error())
+			diags.AddError("Error "+verb+" Jamf Security Cloud hostname mappings", helpers.APIErrorDetail(err))
 		}
 		return false
 	}
@@ -297,7 +296,7 @@ func (r *HostnameMappingsResource) write(callCtx, logCtx context.Context, plan *
 				"configured mappings under the ID \""+helpers.SingletonID+"\" without confirming what was "+
 				"stored: Jamf Security Cloud dedupes addresses and returns its own order. The next plan will refresh "+
 				"them: there is no need to import them, and nothing has to be re-created. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return true
 	}

@@ -90,7 +90,7 @@ func (d *SelfServicePlusSettingsDataSource) Read(ctx context.Context, req dataso
 
 	got, err := d.client.GetSelfServicePlusSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service Plus settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service Plus settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServicePlusSettingsDataSourceModel(&data, got)

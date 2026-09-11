@@ -94,7 +94,7 @@ func (r *JamfConnectResource) Create(ctx context.Context, req resource.CreateReq
 	profileID := plan.ProfileID.ValueInt64()
 	linked, err := r.resolveByProfileID(createCtx, profileID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error resolving Jamf Connect configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error resolving Jamf Connect configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	if linked == nil {
@@ -104,7 +104,7 @@ func (r *JamfConnectResource) Create(ctx context.Context, req resource.CreateReq
 
 	got, err := r.client.UpdateJamfConnectConfigProfileV1(createCtx, helpers.DerefString(linked.UUID), buildJamfConnectInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -171,7 +171,7 @@ func (r *JamfConnectResource) Read(ctx context.Context, req resource.ReadRequest
 
 	linked, err := r.resolveByProfileID(readCtx, profileID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Connect deployment settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Connect deployment settings", helpers.APIErrorDetail(err))
 		return
 	}
 	if linked == nil {
@@ -216,7 +216,7 @@ func (r *JamfConnectResource) Update(ctx context.Context, req resource.UpdateReq
 	profileID := plan.ProfileID.ValueInt64()
 	linked, err := r.resolveByProfileID(updateCtx, profileID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error resolving Jamf Connect configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error resolving Jamf Connect configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	if linked == nil {
@@ -226,7 +226,7 @@ func (r *JamfConnectResource) Update(ctx context.Context, req resource.UpdateReq
 
 	got, err := r.client.UpdateJamfConnectConfigProfileV1(updateCtx, helpers.DerefString(linked.UUID), buildJamfConnectInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", helpers.APIErrorDetail(err))
 		return
 	}
 

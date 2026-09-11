@@ -119,7 +119,7 @@ func (d *TenantIDDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	info, err := d.client.GetCsaTenantIdV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro tenant identifier", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro tenant identifier", helpers.APIErrorDetail(err))
 		return
 	}
 

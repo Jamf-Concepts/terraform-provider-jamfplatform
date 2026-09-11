@@ -94,7 +94,7 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 	resp, err := r.client.ListAccounts(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro account groups", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro account groups", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

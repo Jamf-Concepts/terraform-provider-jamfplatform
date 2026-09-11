@@ -59,29 +59,29 @@ func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resou
 
 	file, filename, cleanup, err := files.OpenUploadSource(createCtx, plan.ImageFileSource.ValueString(), files.DefaultMaxBytes)
 	if err != nil {
-		resp.Diagnostics.AddError("Error opening branding image source", err.Error())
+		resp.Diagnostics.AddError("Error opening branding image source", helpers.APIErrorDetail(err))
 		return
 	}
 	defer cleanup()
 
 	hash, err := files.HashStreamSHA256(file)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading branding image source", err.Error())
+		resp.Diagnostics.AddError("Error reading branding image source", helpers.APIErrorDetail(err))
 		return
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		resp.Diagnostics.AddError("Error rewinding branding image source", err.Error())
+		resp.Diagnostics.AddError("Error rewinding branding image source", helpers.APIErrorDetail(err))
 		return
 	}
 
 	uploaded, err := r.client.UploadBrandingImageV1(createCtx, filename, file)
 	if err != nil {
-		resp.Diagnostics.AddError("Error uploading Jamf Pro branding image", err.Error())
+		resp.Diagnostics.AddError("Error uploading Jamf Pro branding image", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if err := assignUploadedImage(&plan, uploaded); err != nil {
-		resp.Diagnostics.AddError("Error processing branding image upload response", err.Error())
+		resp.Diagnostics.AddError("Error processing branding image upload response", helpers.APIErrorDetail(err))
 		return
 	}
 	plan.SourceHash = types.StringValue(hash)
@@ -153,7 +153,7 @@ func (r *SelfServiceBrandingImageResource) Read(ctx context.Context, req resourc
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro branding image", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro branding image", helpers.APIErrorDetail(err))
 		return
 	}
 

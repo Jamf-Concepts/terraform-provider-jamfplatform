@@ -91,7 +91,7 @@ func (r *SupervisionIdentityListResource) List(ctx context.Context, req list.Lis
 	items, err := r.client.ListSupervisionIdentitiesV1(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro supervision identities", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro supervision identities", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

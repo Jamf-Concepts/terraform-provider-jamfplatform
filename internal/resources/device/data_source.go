@@ -234,7 +234,7 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	deviceDetail, err := d.client.GetDevice(readCtx, lookupID)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read device", fmt.Sprintf("Failed to get device %s: %s", lookupID, err))
+		resp.Diagnostics.AddError("Unable to read device", fmt.Sprintf("Failed to get device %s: %s", lookupID, helpers.APIErrorDetail(err)))
 		return
 	}
 

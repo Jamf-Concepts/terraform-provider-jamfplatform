@@ -44,7 +44,7 @@ func (r *SsoFailoverURLResource) Create(ctx context.Context, req resource.Create
 
 	got, err := r.client.GenerateSsoFailoverV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error generating Jamf Pro SSO failover URL", err.Error())
+		resp.Diagnostics.AddError("Error generating Jamf Pro SSO failover URL", helpers.APIErrorDetail(err))
 		return
 	}
 	assignResourceModel(&plan, got)
@@ -92,7 +92,7 @@ func (r *SsoFailoverURLResource) Read(ctx context.Context, req resource.ReadRequ
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro SSO failover URL", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro SSO failover URL", helpers.APIErrorDetail(err))
 		return
 	}
 	assignResourceModel(&state, got)
@@ -131,7 +131,7 @@ func (r *SsoFailoverURLResource) Update(ctx context.Context, req resource.Update
 	if !plan.RegenerationTrigger.Equal(state.RegenerationTrigger) {
 		got, err := r.client.GenerateSsoFailoverV1(updateCtx)
 		if err != nil {
-			resp.Diagnostics.AddError("Error regenerating Jamf Pro SSO failover URL", err.Error())
+			resp.Diagnostics.AddError("Error regenerating Jamf Pro SSO failover URL", helpers.APIErrorDetail(err))
 			return
 		}
 		assignResourceModel(&plan, got)
@@ -139,7 +139,7 @@ func (r *SsoFailoverURLResource) Update(ctx context.Context, req resource.Update
 	} else {
 		got, err := r.client.GetSsoFailoverV1(updateCtx)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro SSO failover URL", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro SSO failover URL", helpers.APIErrorDetail(err))
 			return
 		}
 		assignResourceModel(&plan, got)

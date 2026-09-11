@@ -33,6 +33,14 @@ const catalogueCodeNotEntitled = securitycloud.ApiErrorItemCodeNotEntitled
 //
 // Everything else — expired credentials, a wrong base URL, a DNS failure, a 500 —
 // is a broken run, not an unentitled tenant, and must fail loudly.
+//
+// The bare-403 reading is therefore narrowed to a 403 a Jamf service produced:
+// an edge error page carries whatever status the edge chose and a WAF or IP
+// allowlist serves exactly a 403, so reading one as "not entitled" would skip a
+// whole lane whose egress is blocked and report it green — the silent skip
+// JAMFPLATFORM_ACC_REQUIRE exists to prevent. Excluded through
+// helpers.IsEdgeBlocked, as STYLE_GUIDE requires of anything classifying a
+// status itself.
 func isMissingEntitlement(err error) bool {
 	if err == nil {
 		return false
@@ -44,7 +52,7 @@ func isMissingEntitlement(err error) bool {
 			}
 		}
 	}
-	return helpers.IsForbiddenError(err)
+	return helpers.IsForbiddenError(err) && !helpers.IsEdgeBlocked(err)
 }
 
 // requireCatalogueRead decides the test outcome for a failed Jamf-managed catalogue

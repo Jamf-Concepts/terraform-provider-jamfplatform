@@ -15,7 +15,6 @@ package ldap_server
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -59,7 +58,7 @@ func (r *LdapServerResource) Create(ctx context.Context, req resource.CreateRequ
 
 	created, err := r.client.CreateLDAPServerByID(createCtx, "0", buildLdapServerInput(plan, resolvePassword(cfg)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -73,7 +72,7 @@ func (r *LdapServerResource) Create(ctx context.Context, req resource.CreateRequ
 
 	got, err := r.client.GetLDAPServerByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignLdapServerResourceModel(&plan, got, true)...)
@@ -149,7 +148,7 @@ func (r *LdapServerResource) Read(ctx context.Context, req resource.ReadRequest,
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -208,13 +207,13 @@ func (r *LdapServerResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	if err := r.client.UpdateLDAPServerByID(updateCtx, plan.ID.ValueString(), buildLdapServerInput(plan, password)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetLDAPServerByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignLdapServerResourceModel(&plan, got, true)...)
@@ -255,7 +254,7 @@ func (r *LdapServerResource) Delete(ctx context.Context, req resource.DeleteRequ
 			tflog.Info(ctx, "Jamf Pro LDAP server already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro LDAP server", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 	}
 }
 

@@ -22,7 +22,6 @@ package account_group
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -59,7 +58,7 @@ func (r *AccountGroupResource) Create(ctx context.Context, req resource.CreateRe
 
 	created, err := r.client.CreateAccountGroupByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -73,7 +72,7 @@ func (r *AccountGroupResource) Create(ctx context.Context, req resource.CreateRe
 
 	got, err := r.client.GetAccountGroupByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 	assignServerDerivedBaseFields(&plan, got)
@@ -142,7 +141,7 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -250,7 +249,7 @@ func (r *AccountGroupResource) Update(ctx context.Context, req resource.UpdateRe
 	if managesPrivileges(plan) {
 		current, err := r.client.GetAccountGroupByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro account group before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro account group before update", helpers.APIErrorDetail(err))
 			return
 		}
 		live = current
@@ -263,13 +262,13 @@ func (r *AccountGroupResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	if err := r.client.UpdateAccountGroupByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAccountGroupByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 	assignServerDerivedBaseFields(&plan, got)
@@ -307,6 +306,6 @@ func (r *AccountGroupResource) Delete(ctx context.Context, req resource.DeleteRe
 			tflog.Info(ctx, "Jamf Pro account group already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro account group", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro account group", helpers.APIErrorDetail(err))
 	}
 }

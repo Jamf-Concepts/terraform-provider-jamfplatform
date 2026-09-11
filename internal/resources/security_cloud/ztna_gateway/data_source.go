@@ -262,7 +262,7 @@ func (d *GatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud ZTNA gateway", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		return
 	}
 

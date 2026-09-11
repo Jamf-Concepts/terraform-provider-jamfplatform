@@ -147,13 +147,13 @@ func (d *SsoSettingsDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	settings, err := d.client.GetSsoSettingsV3(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	cert, err := d.client.GetSsoCertificateV2(readCtx)
 	if err != nil && !helpers.IsNotFoundError(err) {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO signing certificate", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return
 	}
 

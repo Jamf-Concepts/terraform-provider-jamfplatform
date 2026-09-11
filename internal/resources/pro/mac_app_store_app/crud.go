@@ -33,7 +33,6 @@ package mac_app_store_app
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -76,7 +75,7 @@ func (r *MacAppResource) Create(ctx context.Context, req resource.CreateRequest,
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractMacAppID(created)
@@ -90,7 +89,7 @@ func (r *MacAppResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	got, err := r.client.GetMacApplicationByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMacAppResourceModel(createCtx, &plan, got, false)...)
@@ -165,7 +164,7 @@ func (r *MacAppResource) Read(ctx context.Context, req resource.ReadRequest, res
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -222,7 +221,7 @@ func (r *MacAppResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if plan.Scope != nil {
 		current, err := r.client.GetMacApplicationByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro Mac App Store app before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro Mac App Store app before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.ComputerScopeModelNoIbeacons
@@ -242,13 +241,13 @@ func (r *MacAppResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateMacApplicationByID(updateCtx, plan.ID.ValueString(), payload)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetMacApplicationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMacAppResourceModel(updateCtx, &plan, got, false)...)
@@ -294,6 +293,6 @@ func (r *MacAppResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			tflog.Info(ctx, "Jamf Pro Mac App Store app already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Mac App Store app", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 	}
 }

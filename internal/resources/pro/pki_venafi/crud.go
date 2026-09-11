@@ -75,7 +75,7 @@ func (r *PkiVenafiResource) Create(ctx context.Context, req resource.CreateReque
 
 	created, err := r.client.CreateVenafiV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Venafi CA", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Venafi CA", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -111,7 +111,7 @@ func (r *PkiVenafiResource) Create(ctx context.Context, req resource.CreateReque
 	if hasProxyTrustStore(plan.ProxyTrustStore) {
 		pem := plan.ProxyTrustStore.ValueString()
 		if err := r.client.UploadVenafiProxyTrustStoreV1(createCtx, plan.ID.ValueString(), []byte(pem)); err != nil {
-			resp.Diagnostics.AddError("Error uploading Jamf Pro Venafi proxy trust store", err.Error())
+			resp.Diagnostics.AddError("Error uploading Jamf Pro Venafi proxy trust store", helpers.APIErrorDetail(err))
 			resp.Diagnostics.Append(r.refreshFromServer(createCtx, &plan)...)
 			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, pkiVenafiIdentityModel{ID: plan.ID})...)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -199,7 +199,7 @@ func (r *PkiVenafiResource) Read(ctx context.Context, req resource.ReadRequest, 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Venafi CA", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Venafi CA", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVenafiServerFields(&state, rec)
@@ -258,14 +258,14 @@ func (r *PkiVenafiResource) Update(ctx context.Context, req resource.UpdateReque
 	input := buildVenafiInput(plan, refreshToken)
 
 	if _, err := r.client.UpdateVenafiV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Venafi CA", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Venafi CA", helpers.APIErrorDetail(err))
 		return
 	}
 
 	// Regenerate the Jamf public key when its rotation trigger changed.
 	if shouldRotate(plan.JamfPublicKeyRotation, state.JamfPublicKeyRotation) {
 		if err := r.client.RegenerateVenafiJamfPublicKeyV1(updateCtx, plan.ID.ValueString()); err != nil {
-			resp.Diagnostics.AddError("Error regenerating Jamf Pro Venafi public key", err.Error())
+			resp.Diagnostics.AddError("Error regenerating Jamf Pro Venafi public key", helpers.APIErrorDetail(err))
 			return
 		}
 	}
@@ -318,7 +318,7 @@ func (r *PkiVenafiResource) Delete(ctx context.Context, req resource.DeleteReque
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro Venafi CA",
-			fmt.Sprintf("Jamf Pro returned an error deleting Venafi CA %s. If the CA is referenced by configuration profiles, Jamf Pro returns 409 Conflict; remove those references first. API error: %v", state.ID.ValueString(), err),
+			fmt.Sprintf("Jamf Pro returned an error deleting Venafi CA %s. If the CA is referenced by configuration profiles, Jamf Pro returns 409 Conflict; remove those references first. API error: %s", state.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 	}
 }
@@ -330,7 +330,7 @@ func (r *PkiVenafiResource) refreshFromServer(ctx context.Context, m *PkiVenafiR
 	var diags diag.Diagnostics
 	rec, err := r.client.GetVenafiV1(ctx, m.ID.ValueString())
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro Venafi CA", err.Error())
+		diags.AddError("Error reading Jamf Pro Venafi CA", helpers.APIErrorDetail(err))
 		return diags
 	}
 	assignVenafiServerFields(m, rec)
@@ -353,7 +353,7 @@ func (r *PkiVenafiResource) readJamfPublicKey(ctx context.Context, m *PkiVenafiR
 			m.JamfPublicKey = types.StringNull()
 			return diags
 		}
-		diags.AddError("Error reading Jamf Pro Venafi public key", err.Error())
+		diags.AddError("Error reading Jamf Pro Venafi public key", helpers.APIErrorDetail(err))
 		return diags
 	}
 	if len(pem) == 0 {
@@ -375,7 +375,7 @@ func (r *PkiVenafiResource) readProxyTrustStore(ctx context.Context, m *PkiVenaf
 			m.ProxyTrustStore = helpers.PreserveStringWhenWireEmpty(nil, m.ProxyTrustStore)
 			return diags
 		}
-		diags.AddError("Error reading Jamf Pro Venafi proxy trust store", err.Error())
+		diags.AddError("Error reading Jamf Pro Venafi proxy trust store", helpers.APIErrorDetail(err))
 		return diags
 	}
 	s := string(pem)
@@ -395,11 +395,11 @@ func (r *PkiVenafiResource) reconcileProxyTrustStore(ctx context.Context, id str
 	case planSet && (!stateSet || plan.ValueString() != state.ValueString()):
 		pem := plan.ValueString()
 		if err := r.client.UploadVenafiProxyTrustStoreV1(ctx, id, []byte(pem)); err != nil {
-			diags.AddError("Error uploading Jamf Pro Venafi proxy trust store", err.Error())
+			diags.AddError("Error uploading Jamf Pro Venafi proxy trust store", helpers.APIErrorDetail(err))
 		}
 	case !planSet && stateSet:
 		if err := r.client.DeleteVenafiProxyTrustStoreV1(ctx, id); err != nil {
-			diags.AddError("Error deleting Jamf Pro Venafi proxy trust store", err.Error())
+			diags.AddError("Error deleting Jamf Pro Venafi proxy trust store", helpers.APIErrorDetail(err))
 		}
 	}
 	return diags

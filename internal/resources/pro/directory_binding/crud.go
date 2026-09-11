@@ -20,7 +20,6 @@ package directory_binding
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -54,7 +53,7 @@ func (r *DirectoryBindingResource) Create(ctx context.Context, req resource.Crea
 
 	created, err := r.client.CreateDirectoryBindingByID(createCtx, "0", buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(cfg.Password)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -68,7 +67,7 @@ func (r *DirectoryBindingResource) Create(ctx context.Context, req resource.Crea
 
 	got, err := r.client.GetDirectoryBindingByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDirectoryBindingResourceModel(&plan, got)...)
@@ -146,7 +145,7 @@ func (r *DirectoryBindingResource) Read(ctx context.Context, req resource.ReadRe
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -202,13 +201,13 @@ func (r *DirectoryBindingResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	if err := r.client.UpdateDirectoryBindingByID(updateCtx, plan.ID.ValueString(), buildDirectoryBindingInput(plan, password)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDirectoryBindingByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDirectoryBindingResourceModel(&plan, got)...)
@@ -249,6 +248,6 @@ func (r *DirectoryBindingResource) Delete(ctx context.Context, req resource.Dele
 			tflog.Info(ctx, "Jamf Pro directory binding already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro directory binding", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro directory binding", helpers.APIErrorDetail(err))
 	}
 }

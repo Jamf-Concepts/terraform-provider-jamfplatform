@@ -138,7 +138,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	benchmarks, err := d.client.ListBenchmarks(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list CBEngine benchmarks", err.Error())
+		resp.Diagnostics.AddError("Unable to list CBEngine benchmarks", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -74,7 +74,7 @@ func (r *AutomatedDeviceEnrollmentResource) Create(ctx context.Context, req reso
 
 	uploadResp, err := r.client.UploadDeviceEnrollmentTokenV1(createCtx, buildCreateTokenInput(plan, decoded))
 	if err != nil {
-		resp.Diagnostics.AddError("Error uploading Jamf Pro Automated Device Enrollment token", err.Error())
+		resp.Diagnostics.AddError("Error uploading Jamf Pro Automated Device Enrollment token", helpers.APIErrorDetail(err))
 		return
 	}
 	if uploadResp == nil || uploadResp.ID == "" {
@@ -102,7 +102,7 @@ func (r *AutomatedDeviceEnrollmentResource) Create(ctx context.Context, req reso
 		}
 		resp.Diagnostics.AddError(
 			"Error finalising Jamf Pro Automated Device Enrollment instance",
-			fmt.Sprintf("Token upload succeeded but the follow-up metadata PUT failed; the partial instance was deleted. Underlying error: %s", err.Error()),
+			fmt.Sprintf("Token upload succeeded but the follow-up metadata PUT failed; the partial instance was deleted. Underlying error: %s", helpers.APIErrorDetail(err)),
 		)
 		return
 	}
@@ -120,7 +120,7 @@ func (r *AutomatedDeviceEnrollmentResource) Create(ctx context.Context, req reso
 
 	got, err := r.client.GetDeviceEnrollmentV1(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro Automated Device Enrollment instance", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro Automated Device Enrollment instance", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAutomatedDeviceEnrollmentResourceModel(&plan, got)
@@ -194,7 +194,7 @@ func (r *AutomatedDeviceEnrollmentResource) Read(ctx context.Context, req resour
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Automated Device Enrollment instance", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Automated Device Enrollment instance", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -250,7 +250,7 @@ func (r *AutomatedDeviceEnrollmentResource) Update(ctx context.Context, req reso
 			return
 		}
 		if _, err := r.client.ReplaceDeviceEnrollmentTokenV1(updateCtx, id, buildCreateTokenInput(plan, decoded)); err != nil {
-			resp.Diagnostics.AddError("Error rotating Jamf Pro Automated Device Enrollment token", err.Error())
+			resp.Diagnostics.AddError("Error rotating Jamf Pro Automated Device Enrollment token", helpers.APIErrorDetail(err))
 			return
 		}
 		// Token rotation triggers a fresh Apple ADE sync; wait for it
@@ -263,13 +263,13 @@ func (r *AutomatedDeviceEnrollmentResource) Update(ctx context.Context, req reso
 	}
 
 	if _, err := r.client.UpdateDeviceEnrollmentV1(updateCtx, id, buildMetadataInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Automated Device Enrollment instance metadata", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Automated Device Enrollment instance metadata", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDeviceEnrollmentV1(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro Automated Device Enrollment instance", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro Automated Device Enrollment instance", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAutomatedDeviceEnrollmentResourceModel(&plan, got)
@@ -307,7 +307,7 @@ func (r *AutomatedDeviceEnrollmentResource) Delete(ctx context.Context, req reso
 			tflog.Info(ctx, "Jamf Pro Automated Device Enrollment instance already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Automated Device Enrollment instance", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Automated Device Enrollment instance", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -338,7 +338,7 @@ func waitForAdeSync(ctx context.Context, client *pro.Client, id string) diag.Dia
 			if !helpers.IsNotFoundError(err) {
 				diags.AddError(
 					"Error polling Jamf Pro Automated Device Enrollment sync status",
-					fmt.Sprintf("Could not fetch sync status for instance %s: %s", id, err.Error()),
+					fmt.Sprintf("Could not fetch sync status for instance %s: %s", id, helpers.APIErrorDetail(err)),
 				)
 				return diags
 			}
@@ -394,7 +394,7 @@ func decodeServerToken(raw string) ([]byte, diag.Diagnostics) {
 	if err != nil {
 		diags.AddError(
 			"Invalid Automated Device Enrollment server token",
-			fmt.Sprintf("`server_token` is not valid base64: %s. Supply the base64-encoded contents of the `.p7m` token downloaded from Apple Business Manager / Apple School Manager.", err.Error()),
+			fmt.Sprintf("`server_token` is not valid base64: %s. Supply the base64-encoded contents of the `.p7m` token downloaded from Apple Business Manager / Apple School Manager.", helpers.APIErrorDetail(err)),
 		)
 		return nil, diags
 	}

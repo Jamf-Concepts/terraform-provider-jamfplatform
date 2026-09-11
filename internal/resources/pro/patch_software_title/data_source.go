@@ -214,16 +214,16 @@ func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.
 		if _, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
 			resp.Diagnostics.AddError(
 				"Multiple Jamf Pro patch software titles match this display name",
-				err.Error()+". Look the title up by id instead.",
+				helpers.APIErrorDetail(err)+". Look the title up by id instead.",
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Pro patch software title", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro patch software title", helpers.APIErrorDetail(err))
 		return
 	}
 	defs, err := d.proClient.ListPatchSoftwareTitleDefinitionsV3(readCtx, got.ID, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro patch software title versions", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro patch software title versions", helpers.APIErrorDetail(err))
 		return
 	}
 

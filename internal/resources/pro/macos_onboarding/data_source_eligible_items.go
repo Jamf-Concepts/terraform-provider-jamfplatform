@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -130,7 +131,7 @@ func (d *OnboardingEligibleItemsDataSource) Read(ctx context.Context, req dataso
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list eligible onboarding items", err.Error())
+		resp.Diagnostics.AddError("Unable to list eligible onboarding items", helpers.APIErrorDetail(err))
 		return
 	}
 

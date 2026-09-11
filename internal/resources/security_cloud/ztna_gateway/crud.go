@@ -15,7 +15,6 @@ package ztna_gateway
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -75,7 +74,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateZtnaGatewayV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA gateway", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -102,7 +101,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 				"recorded its ID and the configured values without the status or dedicated egress "+
 				"addresses. The next plan will refresh those — do not re-create it: nothing prevents a second "+
 				"gateway being provisioned alongside this one, which would consume another dedicated IP address "+
-				"from the account's allotment and leave this one running unmanaged. Underlying error: "+err.Error(),
+				"from the account's allotment and leave this one running unmanaged. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -206,7 +205,7 @@ func (r *GatewayResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -263,7 +262,7 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if err := r.client.UpdateZtnaGatewayV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA gateway", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -279,7 +278,7 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	got, err := readBackGateway(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), got)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGatewayResourceModel(ctx, &plan, got)...)
@@ -323,6 +322,6 @@ func (r *GatewayResource) Delete(ctx context.Context, req resource.DeleteRequest
 		if appendDeleteDiagnostics(&resp.Diagnostics, err) {
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud ZTNA gateway", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 	}
 }

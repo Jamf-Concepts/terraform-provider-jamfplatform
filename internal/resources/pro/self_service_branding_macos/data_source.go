@@ -88,7 +88,7 @@ func (d *SelfServiceBrandingMacosDataSource) Read(ctx context.Context, req datas
 
 	configs, err := d.client.ListMacOSBrandingConfigurationsV1(readCtx, nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service macOS branding", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service macOS branding", helpers.APIErrorDetail(err))
 		return
 	}
 	if len(configs) == 0 {

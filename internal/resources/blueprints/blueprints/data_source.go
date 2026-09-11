@@ -136,7 +136,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	blueprints, err := d.client.ListBlueprints(ctx, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list blueprints", err.Error())
+		resp.Diagnostics.AddError("Unable to list blueprints", helpers.APIErrorDetail(err))
 		return
 	}
 

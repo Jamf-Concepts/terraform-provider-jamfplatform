@@ -30,6 +30,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*PlanAction)(nil)
@@ -203,7 +205,7 @@ func (a *PlanAction) Invoke(ctx context.Context, req action.InvokeRequest, resp 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Managed Software Updates Plan Failed",
-			fmt.Sprintf("Unable to submit update plan for %s %s: %s", data.ObjectType.ValueString(), data.GroupID.ValueString(), err),
+			fmt.Sprintf("Unable to submit update plan for %s %s: %s", data.ObjectType.ValueString(), data.GroupID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 		return
 	}

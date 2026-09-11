@@ -135,7 +135,7 @@ func (r *ConnectionListResource) List(ctx context.Context, req list.ListRequest,
 	summaries, err := r.client.ListConnections(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Account SSO connections", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Account SSO connections", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

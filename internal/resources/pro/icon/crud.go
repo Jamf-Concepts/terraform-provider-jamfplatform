@@ -52,24 +52,24 @@ func (r *IconResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	file, filename, cleanup, err := files.OpenUploadSource(createCtx, plan.IconFileSource.ValueString(), files.DefaultMaxBytes)
 	if err != nil {
-		resp.Diagnostics.AddError("Error opening icon source", err.Error())
+		resp.Diagnostics.AddError("Error opening icon source", helpers.APIErrorDetail(err))
 		return
 	}
 	defer cleanup()
 
 	hash, err := files.HashStreamSHA256(file)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading icon source", err.Error())
+		resp.Diagnostics.AddError("Error reading icon source", helpers.APIErrorDetail(err))
 		return
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		resp.Diagnostics.AddError("Error rewinding icon source", err.Error())
+		resp.Diagnostics.AddError("Error rewinding icon source", helpers.APIErrorDetail(err))
 		return
 	}
 
 	iconResp, err := r.client.UploadIconV1(createCtx, filename, file)
 	if err != nil {
-		resp.Diagnostics.AddError("Error uploading Jamf Pro icon", err.Error())
+		resp.Diagnostics.AddError("Error uploading Jamf Pro icon", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -157,7 +157,7 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro icon", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro icon", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -209,7 +209,7 @@ func (r *IconResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	got, err := r.client.GetIconV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro icon", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro icon", helpers.APIErrorDetail(err))
 		return
 	}
 	assignIconResourceModel(&plan, got)

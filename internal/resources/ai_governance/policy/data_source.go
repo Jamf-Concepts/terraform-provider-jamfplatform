@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -144,13 +145,13 @@ func (d *PolicyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to read AI policy", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI policy", helpers.APIErrorDetail(err))
 		return
 	}
 
 	var model policyModel
 	if err := applyPolicyToState(&model, detail); err != nil {
-		resp.Diagnostics.AddError("Unable to read AI policy settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI policy settings", helpers.APIErrorDetail(err))
 		return
 	}
 

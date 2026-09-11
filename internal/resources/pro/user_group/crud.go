@@ -16,7 +16,6 @@ package user_group
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -178,7 +177,7 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 	manageMembers := helpers.IsConfiguredValue(plan.Members)
 
 	if err := validateUserGroupPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid user group configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid user group configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -201,7 +200,7 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 
 	created, err := r.client.CreateUserGroupByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -215,7 +214,7 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 
 	got, err := r.client.GetUserGroupByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUserGroupResourceModel(createCtx, &plan, got, manageMembers, false)...)
@@ -293,7 +292,7 @@ func (r *UserGroupResource) Read(ctx context.Context, req resource.ReadRequest, 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -340,7 +339,7 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 	manageMembers := helpers.IsConfiguredValue(plan.Members)
 
 	if err := validateUserGroupPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid user group configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid user group configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -362,13 +361,13 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	if err := r.client.UpdateUserGroupByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetUserGroupByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUserGroupResourceModel(updateCtx, &plan, got, manageMembers, false)...)
@@ -412,6 +411,6 @@ func (r *UserGroupResource) Delete(ctx context.Context, req resource.DeleteReque
 			tflog.Info(ctx, "Jamf Pro user group already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro user group", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro user group", helpers.APIErrorDetail(err))
 	}
 }

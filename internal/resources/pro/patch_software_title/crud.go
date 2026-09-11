@@ -115,7 +115,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 
 	created, err := r.client.CreatePatchSoftwareTitleByID(createCtx, "0", buildPatchSoftwareTitleCreateInput(plan)) //nolint:staticcheck // SA1019: classic /patchsoftwaretitles is the only id-minting create, and the configurations surface has no successor to migrate to — see #311 and the file header note
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro patch software title", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro patch software title", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -144,7 +144,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 
 	got, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV3(createCtx, id.ValueString(), buildPatchSoftwareTitleConfigurationPatch(plan, desired))
 	if err != nil {
-		resp.Diagnostics.AddError("Error applying Jamf Pro patch software title settings", err.Error())
+		resp.Diagnostics.AddError("Error applying Jamf Pro patch software title settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -174,7 +174,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 
 	if plan.AcceptExtensionAttributes.ValueBool() {
 		if err := r.acceptPendingExtensionAttributes(createCtx, id.ValueString(), plan.CategoryID.ValueString()); err != nil {
-			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
+			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", helpers.APIErrorDetail(err))
 			return
 		}
 		resp.Diagnostics.Append(r.refreshExtensionAttributes(createCtx, id.ValueString(), &plan)...)
@@ -269,7 +269,7 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro patch software title", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro patch software title", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -355,7 +355,7 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 	if len(planPackages) > 0 || len(priorKeys) > 0 {
 		live, err := r.proClient.GetPatchSoftwareTitleConfigurationV3(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro patch software title package assignments", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro patch software title package assignments", helpers.APIErrorDetail(err))
 			return
 		}
 		liveAssigned, unreadable := assignedPackagesByVersionCounted(live.Packages)
@@ -370,7 +370,7 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 
 	got, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV3(updateCtx, plan.ID.ValueString(), buildPatchSoftwareTitleConfigurationPatch(plan, desired))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro patch software title", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro patch software title", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -398,7 +398,7 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 
 	if plan.AcceptExtensionAttributes.ValueBool() {
 		if err := r.acceptPendingExtensionAttributes(updateCtx, plan.ID.ValueString(), plan.CategoryID.ValueString()); err != nil {
-			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
+			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", helpers.APIErrorDetail(err))
 			return
 		}
 		resp.Diagnostics.Append(r.refreshExtensionAttributes(updateCtx, plan.ID.ValueString(), &plan)...)
@@ -438,7 +438,7 @@ func (r *PatchSoftwareTitleResource) Delete(ctx context.Context, req resource.De
 			tflog.Info(ctx, "Jamf Pro patch software title already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro patch software title", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro patch software title", helpers.APIErrorDetail(err))
 	}
 }
 

@@ -41,9 +41,9 @@ func (r *ActivationCodeResource) applyActivationCode(ctx context.Context, plan A
 	got, getErr := r.client.GetActivationCode(ctx)
 	if getErr != nil {
 		if writeErr != nil {
-			diags.AddError("Error setting Jamf Pro activation code", writeErr.Error())
+			diags.AddError("Error setting Jamf Pro activation code", helpers.APIErrorDetail(writeErr))
 		} else {
-			diags.AddError("Error reading Jamf Pro activation code after write", getErr.Error())
+			diags.AddError("Error reading Jamf Pro activation code after write", helpers.APIErrorDetail(getErr))
 		}
 		return nil, diags
 	}
@@ -52,7 +52,7 @@ func (r *ActivationCodeResource) applyActivationCode(ctx context.Context, plan A
 		if helpers.IsServerError(writeErr) && activationCodeMatches(got, intendedCode, intendedOrg) {
 			tflog.Warn(ctx, activationCodePut500Warning)
 		} else {
-			diags.AddError("Error setting Jamf Pro activation code", writeErr.Error())
+			diags.AddError("Error setting Jamf Pro activation code", helpers.APIErrorDetail(writeErr))
 			return nil, diags
 		}
 	}

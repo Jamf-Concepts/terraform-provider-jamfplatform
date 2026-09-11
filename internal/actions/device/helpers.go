@@ -153,7 +153,7 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Device Lookup Failed",
-				fmt.Sprintf("Unable to resolve serial number %s to a device ID: %s", serial, err),
+				fmt.Sprintf("Unable to resolve serial number %s to a device ID: %s", serial, helpers.APIErrorDetail(err)),
 			)
 			return "", false
 		}

@@ -206,7 +206,7 @@ func (settingsValidator) ValidateString(_ context.Context, req validator.StringR
 	decoded, err := decodeJSON(req.ConfigValue.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddAttributeError(req.Path, "Settings are not valid JSON",
-			fmt.Sprintf("The settings could not be parsed as JSON: %s. Author this attribute with jsonencode({ ... }) or from a JSON file.", err))
+			fmt.Sprintf("The settings could not be parsed as JSON: %s. Author this attribute with jsonencode({ ... }) or from a JSON file.", helpers.APIErrorDetail(err)))
 		return
 	}
 	if _, ok := decoded.(map[string]any); !ok {

@@ -123,7 +123,7 @@ func (d *AllowedFileExtensionDataSource) Read(ctx context.Context, req datasourc
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro allowed file extension", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAllowedFileExtensionDataSourceModel(&data, got)

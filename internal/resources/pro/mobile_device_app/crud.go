@@ -94,7 +94,7 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractMobileAppID(created)
@@ -119,13 +119,13 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 		if delErr := r.client.DeleteMobileDeviceApplicationByID(createCtx, id); delErr != nil {
 			tflog.Warn(ctx, "failed to roll back partially-created Jamf Pro mobile device app after a failed finalize PUT; it may be orphaned in the tenant", map[string]any{"id": id, "delete_error": delErr.Error()})
 		}
-		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed; rolled back the partial create: %v", id, err))
+		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed; rolled back the partial create: %s", id, helpers.APIErrorDetail(err)))
 		return
 	}
 
 	got, err := r.client.GetMobileDeviceApplicationByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMobileAppResourceModel(createCtx, &plan, got, false)...)
@@ -200,7 +200,7 @@ func (r *MobileAppResource) Read(ctx context.Context, req resource.ReadRequest, 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -250,7 +250,7 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 	if plan.Scope != nil {
 		current, err := r.client.GetMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro mobile device app before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro mobile device app before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.MobileScopeModelNoIbeacons
@@ -270,13 +270,13 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString(), payload)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMobileAppResourceModel(updateCtx, &plan, got, false)...)
@@ -325,7 +325,7 @@ func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteReque
 			return getErr
 		},
 	); err != nil {
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("%v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Trace(ctx, "Jamf Pro mobile device app deletion confirmed", map[string]any{"id": id})

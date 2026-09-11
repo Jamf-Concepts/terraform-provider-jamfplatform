@@ -20,7 +20,6 @@ package patch_external_source
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -48,7 +47,7 @@ func (r *PatchExternalSourceResource) Create(ctx context.Context, req resource.C
 
 	created, err := r.client.CreatePatchExternalSourceByID(createCtx, "0", buildPatchExternalSourceInput(plan, types.Int64Null()))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID; we
@@ -64,7 +63,7 @@ func (r *PatchExternalSourceResource) Create(ctx context.Context, req resource.C
 
 	got, err := r.client.GetPatchExternalSourceByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 	assignPatchExternalSourceResourceModel(&plan, got)
@@ -137,7 +136,7 @@ func (r *PatchExternalSourceResource) Read(ctx context.Context, req resource.Rea
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -171,13 +170,13 @@ func (r *PatchExternalSourceResource) Update(ctx context.Context, req resource.U
 	defer cancel()
 
 	if err := r.client.UpdatePatchExternalSourceByID(updateCtx, plan.ID.ValueString(), buildPatchExternalSourceInput(plan, prior.Port)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetPatchExternalSourceByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 	assignPatchExternalSourceResourceModel(&plan, got)
@@ -215,6 +214,6 @@ func (r *PatchExternalSourceResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro patch external source already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro patch external source", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro patch external source", helpers.APIErrorDetail(err))
 	}
 }

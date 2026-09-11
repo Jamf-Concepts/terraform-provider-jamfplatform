@@ -109,7 +109,7 @@ func (d *NetworkSegmentsDataSource) Read(ctx context.Context, req datasource.Rea
 
 	listResp, err := d.client.ListNetworkSegments(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro network segments", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro network segments", helpers.APIErrorDetail(err))
 		return
 	}
 

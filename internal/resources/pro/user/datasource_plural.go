@@ -156,7 +156,7 @@ func (d *UsersDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	// platform=false: query against the tenant-internal user IDs.
 	got, err := d.client.ListUsersV1(readCtx, nil, filterExpression, false)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro users", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro users", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -205,7 +205,7 @@ func buildGroupNameFilter(ctx context.Context, filter *GroupNameFilterModel) (*s
 
 	encoded, err := json.Marshal(groupNameFilterDocument{Op: op, Groups: joinFilterGroups(groups)})
 	if err != nil {
-		diags.AddError("Unable to build the group filter", err.Error())
+		diags.AddError("Unable to build the group filter", helpers.APIErrorDetail(err))
 		return nil, diags
 	}
 	rendered := string(encoded)

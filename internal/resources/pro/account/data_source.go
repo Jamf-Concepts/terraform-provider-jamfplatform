@@ -106,7 +106,7 @@ func (d *AccountDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		got, err = d.client.ResolveAccountV1ByName(readCtx, data.Username.ValueString())
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro account", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro account", helpers.APIErrorDetail(err))
 		return
 	}
 

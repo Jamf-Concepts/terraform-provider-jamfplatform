@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RenewMdmProfileAction)(nil)
@@ -81,7 +83,7 @@ func (a *RenewMdmProfileAction) Invoke(ctx context.Context, req action.InvokeReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Renew MDM Profile Failed",
-			fmt.Sprintf("Unable to renew the MDM profile: %s", err),
+			fmt.Sprintf("Unable to renew the MDM profile: %s", helpers.APIErrorDetail(err)),
 		)
 		return
 	}

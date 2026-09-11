@@ -114,7 +114,7 @@ func (r *VolumePurchasingLocationListResource) List(ctx context.Context, req lis
 	items, err := r.client.ListVolumePurchasingLocationsV1(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro Volume Purchasing locations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro Volume Purchasing locations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

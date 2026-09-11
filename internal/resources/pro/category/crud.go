@@ -14,7 +14,6 @@ package category
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,7 +40,7 @@ func (r *CategoryResource) Create(ctx context.Context, req resource.CreateReques
 
 	createResp, err := r.client.CreateCategoryV1(createCtx, buildCategoryInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro category", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro category", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -49,7 +48,7 @@ func (r *CategoryResource) Create(ctx context.Context, req resource.CreateReques
 
 	got, err := r.client.GetCategoryV1(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro category", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro category", helpers.APIErrorDetail(err))
 		return
 	}
 	assignCategoryResourceModel(&plan, got)
@@ -121,7 +120,7 @@ func (r *CategoryResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro category", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro category", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -152,7 +151,7 @@ func (r *CategoryResource) Update(ctx context.Context, req resource.UpdateReques
 
 	got, err := r.client.UpdateCategoryV1(updateCtx, plan.ID.ValueString(), buildCategoryInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro category", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro category", helpers.APIErrorDetail(err))
 		return
 	}
 	assignCategoryResourceModel(&plan, got)
@@ -190,6 +189,6 @@ func (r *CategoryResource) Delete(ctx context.Context, req resource.DeleteReques
 			tflog.Info(ctx, "Jamf Pro category already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro category", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro category", helpers.APIErrorDetail(err))
 	}
 }

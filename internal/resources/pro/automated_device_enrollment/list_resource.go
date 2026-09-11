@@ -102,7 +102,7 @@ func (r *AutomatedDeviceEnrollmentListResource) List(ctx context.Context, req li
 	items, err := r.client.ListDeviceEnrollmentsV1(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro Automated Device Enrollment instances", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro Automated Device Enrollment instances", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

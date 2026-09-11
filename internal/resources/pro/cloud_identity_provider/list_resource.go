@@ -143,7 +143,7 @@ func (r *CloudIdentityProviderListResource) List(ctx context.Context, req list.L
 	all, err := r.client.ListCloudIdpV1(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro Cloud Identity Providers", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro Cloud Identity Providers", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

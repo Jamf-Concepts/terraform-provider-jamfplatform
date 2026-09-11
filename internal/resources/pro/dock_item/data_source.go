@@ -123,7 +123,7 @@ func (d *DockItemDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDockItemDataSourceModel(&data, got)...)

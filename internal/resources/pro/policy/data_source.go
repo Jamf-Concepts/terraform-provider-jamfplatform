@@ -145,7 +145,7 @@ func (d *PolicyDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro policy", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro policy", helpers.APIErrorDetail(err))
 		return
 	}
 	assignPolicyFlatDataSource(&data, got)

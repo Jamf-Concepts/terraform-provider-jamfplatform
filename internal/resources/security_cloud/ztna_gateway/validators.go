@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	commonvalidators "github.com/jamf/terraform-provider-jamfplatform/internal/common/validators"
 )
 
@@ -96,7 +97,7 @@ func (v privateCIDRValidator) ValidateString(_ context.Context, req validator.St
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Jamf Security Cloud subnet",
-			err.Error()+" Got: "+value,
+			helpers.APIErrorDetail(err)+" Got: "+value,
 		)
 		return
 	}

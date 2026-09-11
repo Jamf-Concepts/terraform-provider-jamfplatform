@@ -150,7 +150,7 @@ func (d *DeviceGroupsDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	groups, err := d.client.ListDeviceGroups(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list device groups", err.Error())
+		resp.Diagnostics.AddError("Unable to list device groups", helpers.APIErrorDetail(err))
 		return
 	}
 

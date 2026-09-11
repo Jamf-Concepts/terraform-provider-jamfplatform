@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	daSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*EraseAction)(nil)
@@ -121,7 +123,7 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Erase Device Failed",
-			fmt.Sprintf("Unable to erase device %s: %s", deviceID, err),
+			fmt.Sprintf("Unable to erase device %s: %s", deviceID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

@@ -102,7 +102,7 @@ func (r *AdvancedMobileDeviceSearchListResource) List(ctx context.Context, req l
 	listResp, err := r.client.ListAdvancedMobileDeviceSearchesV1(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced mobile device searches", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced mobile device searches", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

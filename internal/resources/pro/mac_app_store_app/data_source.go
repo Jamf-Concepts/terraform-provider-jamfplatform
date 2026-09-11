@@ -128,7 +128,7 @@ func (d *MacAppDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Mac App Store app", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMacAppFlatDataSource(&data, got)

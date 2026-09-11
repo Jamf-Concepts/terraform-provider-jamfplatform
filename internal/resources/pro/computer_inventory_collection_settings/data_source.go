@@ -128,7 +128,7 @@ func (d *ComputerInventoryCollectionSettingsDataSource) Read(ctx context.Context
 
 	got, err := d.client.GetComputerInventoryCollectionSettingsV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro computer inventory collection settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro computer inventory collection settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignComputerInventoryCollectionSettingsDataSourceModel(ctx, &data, got)...)

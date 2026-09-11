@@ -20,7 +20,6 @@ package printer
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -49,7 +48,7 @@ func (r *PrinterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	created, err := r.client.CreatePrinterByID(createCtx, "0", buildPrinterInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -63,7 +62,7 @@ func (r *PrinterResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetPrinterByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPrinterResourceModel(&plan, got)...)
@@ -138,7 +137,7 @@ func (r *PrinterResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -175,13 +174,13 @@ func (r *PrinterResource) Update(ctx context.Context, req resource.UpdateRequest
 	defer cancel()
 
 	if err := r.client.UpdatePrinterByID(updateCtx, plan.ID.ValueString(), buildPrinterInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetPrinterByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPrinterResourceModel(&plan, got)...)
@@ -222,6 +221,6 @@ func (r *PrinterResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Pro printer already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro printer", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro printer", helpers.APIErrorDetail(err))
 	}
 }

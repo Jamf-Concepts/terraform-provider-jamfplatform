@@ -170,7 +170,7 @@ func (d *GroupedGatewayDataSource) Read(ctx context.Context, req datasource.Read
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud ZTNA grouped gateway", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud ZTNA grouped gateway", helpers.APIErrorDetail(err))
 		return
 	}
 

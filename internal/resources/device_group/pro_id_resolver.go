@@ -37,18 +37,27 @@ const proGroupsTransientWarningKey = "device_group.jamf_pro_id.transient"
 // All failure modes degrade to (null, warning) rather than (zero, error) so the
 // Platform Create/Update/Read result that called us is never discarded:
 //
-//   - 403 Forbidden — the API integration lacks the Inventory → Device groups →
-//     Read permission (API capability `device-groups:read`). Surfaces a single
-//     actionable warning per provider invocation (latched via
-//     providerdata.Data.FiredOnce with proGroupsForbiddenWarningKey).
+//   - 403 Forbidden from a Jamf service — the API integration lacks the
+//     Inventory → Device groups → Read permission (API capability
+//     `device-groups:read`). Surfaces a single actionable warning per provider
+//     invocation (latched via providerdata.Data.FiredOnce with
+//     proGroupsForbiddenWarningKey).
 //   - 404 Not Found — group deleted between the Platform read and this call, or
 //     the Pro endpoint is absent on a Platform-only tenant. Silently null; no
 //     warning, since either case is benign for the device_group resource itself.
-//   - Anything else (transport error, 5xx, unexpected status) — null with a
-//     single transient-failure warning per provider invocation, latched via
-//     proGroupsTransientWarningKey. Returning an error here would cause Create
-//     to skip resp.State.Set and orphan a successfully-created group on the
-//     Platform side.
+//   - Anything else (transport error, 5xx, unexpected status, an edge error
+//     page) — null with a single transient-failure warning per provider
+//     invocation, latched via proGroupsTransientWarningKey. Returning an error
+//     here would cause Create to skip resp.State.Set and orphan a
+//     successfully-created group on the Platform side.
+//
+// The forbidden branch is gated on helpers.IsEdgeBlocked being false, as
+// STYLE_GUIDE requires of anything classifying a status itself: a CDN, WAF or IP
+// allowlist serves a 403 of its own, and naming a permission for one sends the
+// operator to re-grant a privilege that was never missing while the real cause
+// goes unreported. Such a reply falls into the transient branch instead, whose
+// detail renders through helpers.APIErrorDetail so the operator gets the
+// egress-IP guidance.
 //
 // Callers must therefore tolerate a null result without treating it as a hard
 // failure.
@@ -60,7 +69,7 @@ func resolveJamfProID(ctx context.Context, proClient *pro.Client, pd *providerda
 	grp, err := proClient.GetGroupV2(ctx, platformID)
 	if err != nil {
 		switch {
-		case helpers.IsForbiddenError(err):
+		case helpers.IsForbiddenError(err) && !helpers.IsEdgeBlocked(err):
 			if pd.FiredOnce(proGroupsForbiddenWarningKey) {
 				diags.AddWarning(
 					"API integration lacks the Device groups Read permission; jamf_pro_id will be null.",
@@ -80,7 +89,7 @@ func resolveJamfProID(ctx context.Context, proClient *pro.Client, pd *providerda
 			if pd.FiredOnce(proGroupsTransientWarningKey) {
 				diags.AddWarning(
 					"Failed to resolve Jamf Pro classic ID; jamf_pro_id will be null.",
-					"The provider tried to resolve the numeric Jamf Pro classic ID for one or more device groups via the Pro `/v2/groups` endpoint but the call failed: "+err.Error()+". This is treated as a transient bridging failure so the Platform device group operation is not rolled back; subsequent applies will retry.",
+					"The provider tried to resolve the numeric Jamf Pro classic ID for one or more device groups via the Pro `/v2/groups` endpoint but the call failed: "+helpers.APIErrorDetail(err)+". This is treated as a transient bridging failure so the Platform device group operation is not rolled back; subsequent applies will retry.",
 				)
 			}
 			tflog.Debug(ctx, "Pro groups endpoint returned unexpected error; nulling jamf_pro_id", map[string]any{

@@ -99,7 +99,7 @@ func (r *LdapServerListResource) List(ctx context.Context, req list.ListRequest,
 	resp, err := r.client.ListLDAPServers(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro LDAP servers", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro LDAP servers", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

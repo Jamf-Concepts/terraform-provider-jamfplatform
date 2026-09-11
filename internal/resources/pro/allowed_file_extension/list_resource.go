@@ -92,7 +92,7 @@ func (r *AllowedFileExtensionListResource) List(ctx context.Context, req list.Li
 	resp, err := r.client.ListAllowedFileExtensions(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro allowed file extensions", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro allowed file extensions", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

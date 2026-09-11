@@ -94,7 +94,7 @@ func (d *ActivationCodeDataSource) Read(ctx context.Context, req datasource.Read
 
 	got, err := d.client.GetActivationCode(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro activation code", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro activation code", helpers.APIErrorDetail(err))
 		return
 	}
 	assignActivationCodeDataSourceModel(&data, got)

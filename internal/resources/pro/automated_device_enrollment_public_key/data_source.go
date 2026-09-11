@@ -118,7 +118,7 @@ func (d *AutomatedDeviceEnrollmentPublicKeyDataSource) Read(ctx context.Context,
 
 	bytes, err := d.client.GetDeviceEnrollmentPublicKeyV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to fetch Jamf Pro Automated Device Enrollment public key", err.Error())
+		resp.Diagnostics.AddError("Unable to fetch Jamf Pro Automated Device Enrollment public key", helpers.APIErrorDetail(err))
 		return
 	}
 

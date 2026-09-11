@@ -86,7 +86,7 @@ func (r *CategoryListResource) List(ctx context.Context, req list.ListRequest, s
 	cats, err := r.client.ListCategoriesV1(ctx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro categories", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro categories", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

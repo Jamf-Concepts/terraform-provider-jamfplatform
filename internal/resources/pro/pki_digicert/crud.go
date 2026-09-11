@@ -50,13 +50,13 @@ func (r *DigicertResource) Create(ctx context.Context, req resource.CreateReques
 
 	input, err := buildDigicertInput(plan, cfg, plan.ClientCertificate != nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid DigiCert configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid DigiCert configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	createResp, err := r.client.CreateDigicertTrustLifecycleManagerV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 	if createResp == nil || createResp.ID == "" {
@@ -69,7 +69,7 @@ func (r *DigicertResource) Create(ctx context.Context, req resource.CreateReques
 
 	got, err := r.client.GetDigicertTrustLifecycleManagerV1(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got, false)...)
@@ -145,7 +145,7 @@ func (r *DigicertResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -186,18 +186,18 @@ func (r *DigicertResource) Update(ctx context.Context, req resource.UpdateReques
 	includeCert := shouldRotateCert(plan.ClientCertificate, state.ClientCertificate)
 	input, err := buildDigicertInput(plan, cfg, includeCert)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid DigiCert configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid DigiCert configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if err := r.client.UpdateDigicertTrustLifecycleManagerV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDigicertTrustLifecycleManagerV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDigicertServerFields(&plan, got, false)...)
@@ -240,7 +240,7 @@ func (r *DigicertResource) Delete(ctx context.Context, req resource.DeleteReques
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro DigiCert integration",
-			fmt.Sprintf("API error: %v. If this is a 409 conflict, the DigiCert integration is still referenced by one or more configuration profiles; remove those references before deleting.", err),
+			fmt.Sprintf("API error: %s. If this is a 409 conflict, the DigiCert integration is still referenced by one or more configuration profiles; remove those references before deleting.", helpers.APIErrorDetail(err)),
 		)
 	}
 }

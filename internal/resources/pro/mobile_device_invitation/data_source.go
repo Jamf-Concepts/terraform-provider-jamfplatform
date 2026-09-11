@@ -143,7 +143,7 @@ func (d *MobileDeviceInvitationDataSource) Read(ctx context.Context, req datasou
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device invitation", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMobileDeviceInvitationDataSourceModel(&data, got)

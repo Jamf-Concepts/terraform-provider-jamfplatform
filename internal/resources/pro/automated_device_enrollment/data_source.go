@@ -169,7 +169,7 @@ func (d *AutomatedDeviceEnrollmentDataSource) Read(ctx context.Context, req data
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Automated Device Enrollment instance", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Automated Device Enrollment instance", helpers.APIErrorDetail(err))
 		return
 	}
 

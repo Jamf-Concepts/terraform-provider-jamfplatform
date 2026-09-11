@@ -132,7 +132,7 @@ func (d *MobileDeviceExtensionAttributeDataSource) Read(ctx context.Context, req
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 

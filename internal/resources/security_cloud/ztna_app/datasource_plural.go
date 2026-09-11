@@ -216,7 +216,7 @@ func (d *ZtnaAppsDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	apps, err := d.client.ListZtnaAppsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud access policy applications", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud access policy applications", helpers.APIErrorDetail(err))
 		return
 	}
 

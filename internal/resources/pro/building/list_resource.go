@@ -95,7 +95,7 @@ func (r *BuildingListResource) List(ctx context.Context, req list.ListRequest, s
 	items, err := r.client.ListBuildingsV1(listCtx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro buildings", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro buildings", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

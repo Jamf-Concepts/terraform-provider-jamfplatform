@@ -122,7 +122,7 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 	summaries, err := r.client.ListPolicies(ctx, []string{defaultPolicySort}, config.SchemaDriftOnly.ValueBool())
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list AI policies", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list AI policies", helpers.APIErrorDetail(err)),
 		})
 		return
 	}
@@ -181,13 +181,13 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 func (r *PolicyListResource) appendResourceState(ctx context.Context, result *list.ListResult, id string) bool {
 	detail, err := r.client.GetPolicy(ctx, id)
 	if err != nil {
-		result.Diagnostics.AddError("Unable to read AI policy "+id, err.Error())
+		result.Diagnostics.AddError("Unable to read AI policy "+id, helpers.APIErrorDetail(err))
 		return false
 	}
 
 	state := policyModel{Timeouts: helpers.NewResourceTimeoutsNullValue(policyTimeoutAttributeTypes)}
 	if err := applyPolicyToState(&state, detail); err != nil {
-		result.Diagnostics.AddError("Unable to read AI policy settings", err.Error())
+		result.Diagnostics.AddError("Unable to read AI policy settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	state.Publish = resolvePublish(state.Publish)

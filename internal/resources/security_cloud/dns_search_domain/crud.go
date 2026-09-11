@@ -12,7 +12,6 @@ package dns_search_domain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -88,14 +87,14 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	case err != nil && !helpers.IsNotFoundError(err):
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error checking for an existing Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error checking for an existing Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	if err := r.client.SetDnsSearchDomainV1(createCtx, &securitycloud.SearchDomain{Suffix: plan.DomainName.ValueString()}); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error setting Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error setting Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -108,7 +107,7 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 			"The search domain \""+plan.DomainName.ValueString()+"\" was written to the tenant but could not be "+
 				"read back, so Terraform has recorded it under the ID \""+helpers.SingletonID+"\" without "+
 				"confirming the stored value. The next plan will refresh it — there is no need to import it, and "+
-				"nothing has to be re-created. Underlying error: "+err.Error(),
+				"nothing has to be re-created. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -189,7 +188,7 @@ func (r *SearchDomainResource) Read(ctx context.Context, req resource.ReadReques
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud search domain", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -235,14 +234,14 @@ func (r *SearchDomainResource) Update(ctx context.Context, req resource.UpdateRe
 
 	if err := r.client.SetDnsSearchDomainV1(updateCtx, &securitycloud.SearchDomain{Suffix: plan.DomainName.ValueString()}); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetDnsSearchDomainV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", err.Error())
+		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", helpers.APIErrorDetail(err))
 		return
 	}
 	if got == nil {
@@ -305,7 +304,7 @@ func (r *SearchDomainResource) Delete(ctx context.Context, req resource.DeleteRe
 			})
 			return
 		}
-		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud search domain", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -101,7 +101,7 @@ func (r *MobileAppListResource) List(ctx context.Context, req list.ListRequest, 
 	resp, err := r.client.ListMobileDeviceApplications(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device apps", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device apps", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

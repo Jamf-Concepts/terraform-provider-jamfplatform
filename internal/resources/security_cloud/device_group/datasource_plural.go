@@ -130,7 +130,7 @@ func (d *DeviceGroupsDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	groups, err := d.client.ListDeviceGroupsV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud device groups", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud device groups", helpers.APIErrorDetail(err))
 		return
 	}
 

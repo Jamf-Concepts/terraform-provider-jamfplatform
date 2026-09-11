@@ -494,7 +494,7 @@ func (v attributeMapValidator) ValidateString(_ context.Context, req validator.S
 			"`attribute_map` has to be a JSON object of mapping settings. Author it with `jsonencode({ ... })`. "+
 				"Jamf Account stores whatever it is given here without checking it and then ignores what it cannot "+
 				"read, so a malformed value would take effect as no mapping at all. Reported while parsing: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}

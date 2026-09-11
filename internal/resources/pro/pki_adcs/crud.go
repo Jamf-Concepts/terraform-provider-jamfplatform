@@ -63,13 +63,13 @@ func (r *AdcsResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	input, err := buildAdcsCreateInput(plan, cfg)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid AD CS configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid AD CS configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	created, err := r.client.CreateAdcsSettingsV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -83,7 +83,7 @@ func (r *AdcsResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	got, err := r.client.GetAdcsSettingsV1(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got, false)...)
@@ -161,7 +161,7 @@ func (r *AdcsResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -201,18 +201,18 @@ func (r *AdcsResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	input, err := buildAdcsUpdateInput(plan, state, cfg)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid AD CS configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid AD CS configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if err := r.client.UpdateAdcsSettingsV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAdcsSettingsV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdcsResourceModel(ctx, &plan, got, false)...)
@@ -256,7 +256,7 @@ func (r *AdcsResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro AD CS integration",
-			fmt.Sprintf("API error deleting AD CS integration %s: %v\n\nIf Jamf Pro returned 409 Conflict, the integration is still referenced by one or more configuration profiles. Remove those references (or the profiles) before deleting this resource.", state.ID.ValueString(), err),
+			fmt.Sprintf("API error deleting AD CS integration %s: %s\n\nIf Jamf Pro returned 409 Conflict, the integration is still referenced by one or more configuration profiles. Remove those references (or the profiles) before deleting this resource.", state.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 	}
 }

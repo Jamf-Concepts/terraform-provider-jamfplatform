@@ -25,7 +25,7 @@ func RequireMinJamfProVersion(actual, required, resourceType string) diag.Diagno
 	if err != nil {
 		diags.AddError(
 			"Unparseable Jamf Pro tenant version",
-			fmt.Sprintf("%s requires Jamf Pro >= %s but the tenant reported %q which could not be parsed: %s", resourceType, required, actual, err),
+			fmt.Sprintf("%s requires Jamf Pro >= %s but the tenant reported %q which could not be parsed: %s", resourceType, required, actual, APIErrorDetail(err)),
 		)
 		return diags
 	}
@@ -34,7 +34,7 @@ func RequireMinJamfProVersion(actual, required, resourceType string) diag.Diagno
 	if err != nil {
 		diags.AddError(
 			"Invalid resource minimum Jamf Pro version",
-			fmt.Sprintf("%s declared minJamfProVersion %q which could not be parsed: %s", resourceType, required, err),
+			fmt.Sprintf("%s declared minJamfProVersion %q which could not be parsed: %s", resourceType, required, APIErrorDetail(err)),
 		)
 		return diags
 	}

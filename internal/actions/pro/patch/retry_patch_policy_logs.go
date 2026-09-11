@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RetryPatchPolicyLogsAction)(nil)
@@ -92,7 +94,7 @@ func (a *RetryPatchPolicyLogsAction) Invoke(ctx context.Context, req action.Invo
 		if err := a.client.RetryPatchPolicyLogsV2(ctx, id, &pro.PatchPolicyLogRetry{DeviceIds: &ids}); err != nil {
 			resp.Diagnostics.AddError(
 				"Retry Patch Policy Logs Failed",
-				fmt.Sprintf("Unable to retry patch policy %s for the specified devices: %s", id, err),
+				fmt.Sprintf("Unable to retry patch policy %s for the specified devices: %s", id, helpers.APIErrorDetail(err)),
 			)
 			return
 		}
@@ -101,7 +103,7 @@ func (a *RetryPatchPolicyLogsAction) Invoke(ctx context.Context, req action.Invo
 		if err := a.client.RetryAllPatchPolicyLogsV2(ctx, id); err != nil {
 			resp.Diagnostics.AddError(
 				"Retry Patch Policy Logs Failed",
-				fmt.Sprintf("Unable to retry patch policy %s: %s", id, err),
+				fmt.Sprintf("Unable to retry patch policy %s: %s", id, helpers.APIErrorDetail(err)),
 			)
 			return
 		}

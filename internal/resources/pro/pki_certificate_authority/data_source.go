@@ -166,20 +166,20 @@ func (d *CertificateAuthorityDataSource) Read(ctx context.Context, req datasourc
 		id := data.ID.ValueString()
 		record, err = d.client.GetCertificateAuthorityV1(readCtx, id)
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to read Jamf Pro Certificate Authority", err.Error())
+			resp.Diagnostics.AddError("Unable to read Jamf Pro Certificate Authority", helpers.APIErrorDetail(err))
 			return
 		}
 		pem, err = d.client.DownloadCertificateAuthorityPemV1(readCtx, id)
 	} else {
 		record, err = d.client.GetActiveCertificateAuthorityV1(readCtx)
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to read active Jamf Pro Certificate Authority", err.Error())
+			resp.Diagnostics.AddError("Unable to read active Jamf Pro Certificate Authority", helpers.APIErrorDetail(err))
 			return
 		}
 		pem, err = d.client.DownloadActiveCertificateAuthorityPemV1(readCtx)
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to download Jamf Pro Certificate Authority PEM", err.Error())
+		resp.Diagnostics.AddError("Unable to download Jamf Pro Certificate Authority PEM", helpers.APIErrorDetail(err))
 		return
 	}
 

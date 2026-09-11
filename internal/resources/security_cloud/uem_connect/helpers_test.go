@@ -12,6 +12,8 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
 // apiError builds an error shaped the way the SDK surfaces a Jamf Security Cloud
@@ -206,5 +208,30 @@ func TestAppendMissingIntegrationDiagnostics(t *testing.T) {
 				t.Fatalf("HasError() = %v, want %v (%v)", diags.HasError(), tc.wantErr, diags)
 			}
 		})
+	}
+}
+
+// TestIsNotFound_EdgePageIsNotAbsence covers the one 404 the table above cannot
+// reach. An edge error page is marked inside the SDK's unexported transport, so a
+// hand-built *APIResponseError can never carry the marker and a table case for it
+// would assert nothing — hence the stub.
+//
+// CloudFront serving a 404 satisfies isNotFound's first arm, the status check, so
+// before the !IsEdgeBlocked term Read removed a live UEM Connect integration from
+// state and the next refresh emptied it while terraform plan reported a clean
+// create at exit 0. Delete's "already gone" branch reported success for the same
+// reply.
+func TestIsNotFound_EdgePageIsNotAbsence(t *testing.T) {
+	t.Parallel()
+
+	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
+		Status:      http.StatusNotFound,
+		ContentType: "text/html",
+		Body:        gatewaystub.CloudFrontPage(gatewaystub.CloudFrontNotFound),
+	})
+
+	if isNotFound(err) {
+		t.Errorf("isNotFound = true for a CloudFront 404 page, so Read removes a UEM Connect "+
+			"integration that is still there: %v", err)
 	}
 }

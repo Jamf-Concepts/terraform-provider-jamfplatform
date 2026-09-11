@@ -35,7 +35,6 @@ package vpp_invitation
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -76,7 +75,7 @@ func (r *VPPInvitationResource) Create(ctx context.Context, req resource.CreateR
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -87,7 +86,7 @@ func (r *VPPInvitationResource) Create(ctx context.Context, req resource.CreateR
 
 	got, err := r.client.GetVPPInvitationByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPInvitationResourceModel(createCtx, &plan, got, false)
@@ -151,7 +150,7 @@ func (r *VPPInvitationResource) Read(ctx context.Context, req resource.ReadReque
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
@@ -194,7 +193,7 @@ func (r *VPPInvitationResource) Update(ctx context.Context, req resource.UpdateR
 	if plan.Scope != nil {
 		current, err := r.client.GetVPPInvitationByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.UserScopeModel
@@ -215,13 +214,13 @@ func (r *VPPInvitationResource) Update(ctx context.Context, req resource.UpdateR
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateVPPInvitationByID(updateCtx, plan.ID.ValueString(), input)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetVPPInvitationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPInvitationResourceModel(updateCtx, &plan, got, false)
@@ -258,6 +257,6 @@ func (r *VPPInvitationResource) Delete(ctx context.Context, req resource.DeleteR
 			tflog.Info(ctx, "Jamf Pro VPP invitation already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro VPP invitation", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 	}
 }

@@ -45,7 +45,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 
 	bench, err := r.client.CreateBenchmark(createCtx, reqBody)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
+		resp.Diagnostics.AddError("Error creating benchmark", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -151,7 +151,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			return
 		}
 
-		resp.Diagnostics.AddError("Error reading benchmark", err.Error())
+		resp.Diagnostics.AddError("Error reading benchmark", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -204,7 +204,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 		resp.Diagnostics.AddError(
 			"Error deleting benchmark",
-			"Could not delete benchmark: "+err.Error(),
+			"Could not delete benchmark: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -216,7 +216,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		}
 		resp.Diagnostics.AddError(
 			"Error waiting for benchmark deletion",
-			fmt.Sprintf("Benchmark %s deletion did not complete: %v", data.ID.ValueString(), err),
+			fmt.Sprintf("Benchmark %s deletion did not complete: %s", data.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 		return
 	}

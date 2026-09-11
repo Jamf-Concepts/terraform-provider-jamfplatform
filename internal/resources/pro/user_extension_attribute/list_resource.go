@@ -103,7 +103,7 @@ func (r *UserExtensionAttributeListResource) List(ctx context.Context, req list.
 	listResp, err := r.client.ListUserExtensionAttributes(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro user extension attributes", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro user extension attributes", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

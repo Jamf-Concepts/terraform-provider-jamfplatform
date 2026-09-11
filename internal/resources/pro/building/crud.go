@@ -14,7 +14,6 @@ package building
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,7 +40,7 @@ func (r *BuildingResource) Create(ctx context.Context, req resource.CreateReques
 
 	createResp, err := r.client.CreateBuildingV1(createCtx, buildBuildingInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -49,7 +48,7 @@ func (r *BuildingResource) Create(ctx context.Context, req resource.CreateReques
 
 	got, err := r.client.GetBuildingV1(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 	assignBuildingResourceModel(&plan, got)
@@ -121,7 +120,7 @@ func (r *BuildingResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -151,7 +150,7 @@ func (r *BuildingResource) Update(ctx context.Context, req resource.UpdateReques
 	defer cancel()
 
 	if _, err := r.client.UpdateBuildingV1(updateCtx, plan.ID.ValueString(), buildBuildingInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -162,7 +161,7 @@ func (r *BuildingResource) Update(ctx context.Context, req resource.UpdateReques
 	// derived computed fields & Optional+Computed attributes.
 	got, err := r.client.GetBuildingV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 	assignBuildingResourceModel(&plan, got)
@@ -200,6 +199,6 @@ func (r *BuildingResource) Delete(ctx context.Context, req resource.DeleteReques
 			tflog.Info(ctx, "Jamf Pro building already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro building", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro building", helpers.APIErrorDetail(err))
 	}
 }

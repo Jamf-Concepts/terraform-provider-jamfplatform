@@ -69,7 +69,7 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 		return false, nil
 	})
 	if err != nil {
-		diags.AddError("Error reading device group", err.Error())
+		diags.AddError("Error reading device group", helpers.APIErrorDetail(err))
 		return false
 	}
 
@@ -78,7 +78,7 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(ctx, grp.ID)
 		if err != nil {
-			diags.AddError("Error reading device group members", err.Error())
+			diags.AddError("Error reading device group members", helpers.APIErrorDetail(err))
 			return false
 		}
 	}

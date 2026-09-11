@@ -22,7 +22,6 @@ package supervision_identity
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -56,7 +55,7 @@ func (r *SupervisionIdentityResource) Create(ctx context.Context, req resource.C
 	if hasCertificateData(cfg) {
 		input, buildErr := buildUploadInput(plan, cfg)
 		if buildErr != nil {
-			resp.Diagnostics.AddError("Invalid certificate_data", buildErr.Error())
+			resp.Diagnostics.AddError("Invalid certificate_data", helpers.APIErrorDetail(buildErr))
 			return
 		}
 		created, err = r.client.UploadSupervisionIdentityV1(createCtx, input)
@@ -64,7 +63,7 @@ func (r *SupervisionIdentityResource) Create(ctx context.Context, req resource.C
 		created, err = r.client.CreateSupervisionIdentityV1(createCtx, buildGenerateInput(plan, cfg))
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro supervision identity", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == 0 {
@@ -145,7 +144,7 @@ func (r *SupervisionIdentityResource) Read(ctx context.Context, req resource.Rea
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro supervision identity", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -179,7 +178,7 @@ func (r *SupervisionIdentityResource) Update(ctx context.Context, req resource.U
 
 	got, err := r.client.UpdateSupervisionIdentityV1(updateCtx, plan.ID.ValueString(), buildUpdateInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro supervision identity", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSupervisionIdentityResourceModel(&plan, got)
@@ -218,6 +217,6 @@ func (r *SupervisionIdentityResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro supervision identity already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro supervision identity", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 	}
 }

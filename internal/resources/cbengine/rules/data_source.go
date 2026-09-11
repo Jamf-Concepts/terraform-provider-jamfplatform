@@ -261,7 +261,7 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get rules",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

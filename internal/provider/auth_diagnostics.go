@@ -4,33 +4,31 @@
 package provider
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/egressip"
 	"golang.org/x/oauth2"
 )
 
-// egressIPLookupURL echoes the caller's public source address as a bare line of
-// text. Chosen because the response is a single IP and nothing else, so there is
-// no parsing to get wrong and no JSON contract to drift.
-const egressIPLookupURL = "https://checkip.amazonaws.com"
-
-// egressIPLookupTimeout bounds the lookup. This runs on a path where the user is
-// already waiting on a failed provider configuration, so a slow or unreachable
-// echo service must not add to the delay — a missing IP costs the user one
-// copy-pasteable command, whereas a hang costs them the error message itself.
-const egressIPLookupTimeout = 3 * time.Second
+// egressIPLookupURL is named in the diagnostic as the command to run when the
+// lookup itself could not reach the echo service.
+const egressIPLookupURL = egressip.LookupURL
 
 // egressIPLookup is the lookup used by authFailureDiagnostic, indirected so
-// tests can exercise the blocked-request branch without network access.
-var egressIPLookup = lookupPublicEgressIP
+// tests can exercise the blocked-request branch without network access. The
+// implementation is shared with the resource diagnostics and caches, so a
+// configuration failure and a later edge block cost one request between them.
+//
+// Calls through rather than copying the function value, for the reason given on
+// the copy in internal/common/helpers: a package-initialisation copy cannot be
+// stubbed from another package's test.
+var egressIPLookup = func() string { return egressip.Lookup() }
 
 // authFailureDiagnostic renders a failed credential validation as a Terraform
 // diagnostic summary and detail.
@@ -234,41 +232,4 @@ func isTokenEndpointNotFound(err error) bool {
 		return false
 	}
 	return retrieve.Response != nil && retrieve.Response.StatusCode == http.StatusNotFound
-}
-
-// lookupPublicEgressIP reports this host's public source address, or "" if it
-// cannot be determined.
-func lookupPublicEgressIP() string {
-	return fetchEgressIP(egressIPLookupURL)
-}
-
-// fetchEgressIP performs the lookup against an explicit URL so tests can point
-// it at a local server.
-//
-// Every failure is deliberately silent: this only enriches an error that is
-// already being returned, so a failed lookup must degrade to omitting one line
-// rather than replacing the real diagnostic with a complaint about the lookup.
-// The caller substitutes an equivalent shell command when this returns "".
-func fetchEgressIP(url string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), egressIPLookupTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return ""
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Capped read: the response should be one short line, and this path must not
-	// become a way for an intercepting proxy to stream an unbounded body into a
-	// Terraform error message.
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(body))
 }

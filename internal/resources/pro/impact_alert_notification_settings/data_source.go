@@ -102,7 +102,7 @@ func (d *ImpactAlertNotificationSettingsDataSource) Read(ctx context.Context, re
 
 	got, err := d.client.GetImpactAlertNotificationSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Impact Alert Notification settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Impact Alert Notification settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignImpactAlertNotificationSettingsDataSourceModel(&data, got)

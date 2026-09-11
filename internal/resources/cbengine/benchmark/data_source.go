@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -308,7 +309,7 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
 		id, idErr := d.client.ResolveBenchmarkIDByName(ctx, data.Title.ValueString())
 		if idErr != nil {
-			resp.Diagnostics.AddError("Unable to find benchmark", idErr.Error())
+			resp.Diagnostics.AddError("Unable to find benchmark", helpers.APIErrorDetail(idErr))
 			return
 		}
 		bench, err = d.client.GetBenchmark(ctx, id)
@@ -322,7 +323,7 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get benchmark",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

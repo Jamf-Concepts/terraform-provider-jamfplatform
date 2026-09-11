@@ -152,7 +152,7 @@ func (d *AppInstallerDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find App Installer deployment", err.Error())
+		resp.Diagnostics.AddError("Unable to find App Installer deployment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerDataSourceModel(&data, got)

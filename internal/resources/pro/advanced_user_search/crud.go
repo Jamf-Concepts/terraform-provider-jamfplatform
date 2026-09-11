@@ -15,7 +15,6 @@ package advanced_user_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -102,7 +101,7 @@ func (r *AdvancedUserSearchResource) Create(ctx context.Context, req resource.Cr
 
 	created, err := r.client.CreateAdvancedUserSearchByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -116,7 +115,7 @@ func (r *AdvancedUserSearchResource) Create(ctx context.Context, req resource.Cr
 
 	got, err := r.client.GetAdvancedUserSearchByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedUserSearchResourceModel(createCtx, &plan, got)...)
@@ -192,7 +191,7 @@ func (r *AdvancedUserSearchResource) Read(ctx context.Context, req resource.Read
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -241,13 +240,13 @@ func (r *AdvancedUserSearchResource) Update(ctx context.Context, req resource.Up
 	}
 
 	if err := r.client.UpdateAdvancedUserSearchByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAdvancedUserSearchByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedUserSearchResourceModel(updateCtx, &plan, got)...)
@@ -289,6 +288,6 @@ func (r *AdvancedUserSearchResource) Delete(ctx context.Context, req resource.De
 			tflog.Info(ctx, "Jamf Pro advanced user search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced user search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 	}
 }

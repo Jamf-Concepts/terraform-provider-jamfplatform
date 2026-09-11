@@ -150,7 +150,7 @@ func (d *PatchExternalSourceDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro patch external source", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro patch external source", helpers.APIErrorDetail(err))
 		return
 	}
 	assignPatchExternalSourceDataSourceModel(&data, got)

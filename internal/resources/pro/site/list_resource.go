@@ -91,7 +91,7 @@ func (r *SiteListResource) List(ctx context.Context, req list.ListRequest, strea
 	resp, err := r.client.ListSites(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro sites", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro sites", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

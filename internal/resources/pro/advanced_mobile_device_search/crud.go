@@ -15,7 +15,6 @@ package advanced_mobile_device_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -132,7 +131,7 @@ func (r *AdvancedMobileDeviceSearchResource) Create(ctx context.Context, req res
 
 	created, err := r.client.CreateAdvancedMobileDeviceSearchV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -146,7 +145,7 @@ func (r *AdvancedMobileDeviceSearchResource) Create(ctx context.Context, req res
 
 	got, err := r.client.GetAdvancedMobileDeviceSearchV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedMobileDeviceSearchResourceModel(createCtx, &plan, got)...)
@@ -234,7 +233,7 @@ func (r *AdvancedMobileDeviceSearchResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -310,13 +309,13 @@ func (r *AdvancedMobileDeviceSearchResource) Update(ctx context.Context, req res
 	}
 
 	if _, err := r.client.UpdateAdvancedMobileDeviceSearchV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAdvancedMobileDeviceSearchV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedMobileDeviceSearchResourceModel(updateCtx, &plan, got)...)
@@ -370,6 +369,6 @@ func (r *AdvancedMobileDeviceSearchResource) Delete(ctx context.Context, req res
 			tflog.Info(ctx, "Jamf Pro advanced mobile device search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced mobile device search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 	}
 }

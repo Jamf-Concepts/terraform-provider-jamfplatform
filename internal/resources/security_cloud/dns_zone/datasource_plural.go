@@ -134,7 +134,7 @@ func (d *DNSZonesDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	zones, err := d.client.ListDnsZonesV1(readCtx, defaultZoneSort)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud DNS zones", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud DNS zones", helpers.APIErrorDetail(err))
 		return
 	}
 

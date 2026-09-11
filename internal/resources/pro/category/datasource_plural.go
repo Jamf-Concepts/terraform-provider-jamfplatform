@@ -122,7 +122,7 @@ func (d *CategoriesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	cats, err := d.client.ListCategoriesV1(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro categories", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro categories", helpers.APIErrorDetail(err))
 		return
 	}
 

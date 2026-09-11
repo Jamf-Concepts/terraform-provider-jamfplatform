@@ -152,7 +152,7 @@ func (d *DiskEncryptionConfigurationDataSource) Read(ctx context.Context, req da
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDiskEncryptionConfigurationDataSourceModel(&data, got)...)

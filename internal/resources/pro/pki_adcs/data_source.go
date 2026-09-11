@@ -161,7 +161,7 @@ func (d *AdcsDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	got, err := d.client.GetAdcsSettingsV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro AD CS integration", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro AD CS integration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAdcsDataSourceModel(&data, got)

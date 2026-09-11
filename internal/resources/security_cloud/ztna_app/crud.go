@@ -14,7 +14,6 @@ package ztna_app
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -64,7 +63,7 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateZtnaAppV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err, !plan.PredefinedAppID.IsNull()) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud access policy application", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -82,7 +81,7 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 				"recorded its ID and the configured values without confirming what was stored. The next plan will "+
 				"refresh it — do not re-create it: host names, address ranges and predefined definitions belong to "+
 				"only one application per tenant, so a second create would be refused. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -181,7 +180,7 @@ func (r *ZtnaAppResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud access policy application", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -229,14 +228,14 @@ func (r *ZtnaAppResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if err := r.client.UpdateZtnaAppV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err, !plan.PredefinedAppID.IsNull()) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud access policy application", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetZtnaAppV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud access policy application", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAppResourceModel(ctx, &plan, got)...)
@@ -281,6 +280,6 @@ func (r *ZtnaAppResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Security Cloud access policy application already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud access policy application", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 	}
 }

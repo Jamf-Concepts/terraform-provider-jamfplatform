@@ -113,7 +113,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				"Unable to list device groups",
-				err.Error(),
+				helpers.APIErrorDetail(err),
 			),
 		})
 		return
@@ -147,7 +147,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 				stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 					diag.NewErrorDiagnostic(
 						"Unable to read device group",
-						err.Error(),
+						helpers.APIErrorDetail(err),
 					),
 				})
 				return
@@ -161,7 +161,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 					stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 						diag.NewErrorDiagnostic(
 							"Unable to read device group members",
-							err.Error(),
+							helpers.APIErrorDetail(err),
 						),
 					})
 					return

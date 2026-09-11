@@ -55,7 +55,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating blueprint",
-			"Could not create blueprint: "+err.Error(),
+			"Could not create blueprint: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -72,7 +72,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		if blueprint == nil {
 			resp.Diagnostics.AddError(
 				"Error reading created blueprint",
-				"Could not read created blueprint after deployment reconciliation failure: "+err.Error(),
+				"Could not read created blueprint after deployment reconciliation failure: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}
@@ -152,7 +152,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 		resp.Diagnostics.AddError(
 			"Error reading blueprint",
-			"Could not read blueprint: "+err.Error(),
+			"Could not read blueprint: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -209,7 +209,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	if err := r.client.UpdateBlueprint(updateCtx, data.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
-			"Could not update blueprint: "+err.Error(),
+			"Could not update blueprint: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -226,7 +226,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		if blueprint == nil {
 			resp.Diagnostics.AddError(
 				"Error reading updated blueprint",
-				"Could not read updated blueprint after deployment reconciliation failure: "+err.Error(),
+				"Could not read updated blueprint after deployment reconciliation failure: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}
@@ -244,6 +244,10 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 // Delete deletes the Blueprint resource.
+//
+// The warning branch returns without an error diagnostic, which makes the
+// framework drop the resource from state, so which failures may take it is
+// isDeleteMaybeComplete's decision rather than a bare 500 check.
 func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data BlueprintResourceModel
 
@@ -275,10 +279,10 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 			return
 		}
 
-		if helpers.IsServerError(err) {
+		if isDeleteMaybeComplete(err) {
 			resp.Diagnostics.AddWarning(
 				"Blueprint deletion encountered server error",
-				"Delete operation encountered a server error: "+err.Error()+
+				"Delete operation encountered a server error: "+helpers.APIErrorDetail(err)+
 					". The blueprint may have been deleted despite the error. Check your Jamf instance to verify the blueprint status.",
 			)
 			return
@@ -286,7 +290,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 
 		resp.Diagnostics.AddError(
 			"Error deleting blueprint",
-			"Could not delete blueprint: "+err.Error(),
+			"Could not delete blueprint: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

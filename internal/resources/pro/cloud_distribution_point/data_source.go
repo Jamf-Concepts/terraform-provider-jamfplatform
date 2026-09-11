@@ -105,7 +105,7 @@ func (d *CloudDistributionPointDataSource) Read(ctx context.Context, req datasou
 
 	got, err := d.client.GetCloudDistributionPointV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro cloud distribution point", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro cloud distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignCloudDistributionPointDataSourceModel(&data, got)

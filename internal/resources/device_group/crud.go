@@ -6,7 +6,6 @@ package device_group
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -143,7 +142,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
 	if err := validateDeviceGroupPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid device group configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -184,7 +183,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating device group",
-			fmt.Sprintf("API error: %v", err),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -282,7 +281,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading device group", err.Error())
+		resp.Diagnostics.AddError("Error reading device group", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -300,7 +299,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(readCtx, grp.ID)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading device group members", err.Error())
+			resp.Diagnostics.AddError("Error reading device group members", helpers.APIErrorDetail(err))
 			return
 		}
 	}
@@ -347,7 +346,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	defer cancel()
 
 	if err := validateDeviceGroupPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid device group configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -378,7 +377,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if err := r.client.UpdateDeviceGroup(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating device group",
-			fmt.Sprintf("API error: %v", err),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -392,7 +391,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 		current, err := r.client.ListDeviceGroupMembers(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading device group members", err.Error())
+			resp.Diagnostics.AddError("Error reading device group members", helpers.APIErrorDetail(err))
 			return
 		}
 
@@ -406,7 +405,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 				patch.Removed = &removed
 			}
 			if err := r.client.UpdateDeviceGroupMembers(updateCtx, plan.ID.ValueString(), patch); err != nil {
-				resp.Diagnostics.AddError("Error updating device group members", err.Error())
+				resp.Diagnostics.AddError("Error updating device group members", helpers.APIErrorDetail(err))
 				return
 			}
 		}
@@ -474,6 +473,6 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		}
 	})
 	if pollErr != nil {
-		resp.Diagnostics.AddError("Error deleting device group", pollErr.Error())
+		resp.Diagnostics.AddError("Error deleting device group", helpers.APIErrorDetail(pollErr))
 	}
 }

@@ -165,7 +165,7 @@ func (d *PatchPolicyDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	got, err := d.client.GetPatchPolicyByID(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPatchPolicyDataSourceModel(readCtx, &data, got)...)

@@ -24,7 +24,6 @@ package volume_purchasing_notification
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -57,7 +56,7 @@ func (r *VolumePurchasingNotificationResource) Create(ctx context.Context, req r
 
 	created, err := r.client.CreateVolumePurchasingSubscriptionV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Error creating Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -70,7 +69,7 @@ func (r *VolumePurchasingNotificationResource) Create(ctx context.Context, req r
 
 	got, err := r.client.GetVolumePurchasingSubscriptionV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Error reading created Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignVolumePurchasingNotificationResourceModel(createCtx, &plan, got)...)
@@ -145,7 +144,7 @@ func (r *VolumePurchasingNotificationResource) Read(ctx context.Context, req res
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Error reading Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -185,13 +184,13 @@ func (r *VolumePurchasingNotificationResource) Update(ctx context.Context, req r
 	}
 
 	if _, err := r.client.UpdateVolumePurchasingSubscriptionV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Error updating Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetVolumePurchasingSubscriptionV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignVolumePurchasingNotificationResourceModel(updateCtx, &plan, got)...)
@@ -232,6 +231,6 @@ func (r *VolumePurchasingNotificationResource) Delete(ctx context.Context, req r
 			tflog.Info(ctx, "Volume Purchasing notification already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Volume Purchasing notification", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Volume Purchasing notification", helpers.APIErrorDetail(err))
 	}
 }

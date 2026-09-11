@@ -214,17 +214,17 @@ func (d *CloudIdentityProviderDefaultsDataSource) Read(ctx context.Context, req 
 
 	entra, err := d.client.GetCloudAzureDefaultServerConfigurationV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read the Microsoft Entra ID cloud identity provider defaults", err.Error())
+		resp.Diagnostics.AddError("Unable to read the Microsoft Entra ID cloud identity provider defaults", helpers.APIErrorDetail(err))
 		return
 	}
 	googleServer, err := d.client.GetCloudLdapDefaultServerConfigurationV2(readCtx, providerGoogle)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read the Google Secure LDAP connection defaults", err.Error())
+		resp.Diagnostics.AddError("Unable to read the Google Secure LDAP connection defaults", helpers.APIErrorDetail(err))
 		return
 	}
 	googleMappings, err := d.client.GetCloudLdapDefaultMappingsV2(readCtx, providerGoogle)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read the Google Secure LDAP attribute mapping defaults", err.Error())
+		resp.Diagnostics.AddError("Unable to read the Google Secure LDAP attribute mapping defaults", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
 func apiError(status int, code, description string) error {
@@ -385,5 +387,28 @@ func TestGroupIDsFromSet(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestIsNotFound_EdgePageIsNotAbsence covers the one 404 the table above cannot
+// reach. An edge error page is marked inside the SDK's unexported transport, so a
+// hand-built *APIResponseError can never carry the marker and a table case for it
+// would assert nothing — hence the stub.
+//
+// CloudFront serving a 404 carries the status isNotFound keys off, so before the
+// !IsEdgeBlocked term an action told the operator the integration did not exist
+// for a request that never arrived at Jamf Security Cloud.
+func TestIsNotFound_EdgePageIsNotAbsence(t *testing.T) {
+	t.Parallel()
+
+	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
+		Status:      http.StatusNotFound,
+		ContentType: "text/html",
+		Body:        gatewaystub.CloudFrontPage(gatewaystub.CloudFrontNotFound),
+	})
+
+	if isNotFound(err) {
+		t.Errorf("isNotFound = true for a CloudFront 404 page, so the action reports an absent "+
+			"integration for a request that never reached Jamf: %v", err)
 	}
 }

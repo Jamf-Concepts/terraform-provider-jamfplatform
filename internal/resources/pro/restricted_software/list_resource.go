@@ -101,7 +101,7 @@ func (r *RestrictedSoftwareListResource) List(ctx context.Context, req list.List
 	resp, err := r.client.ListRestrictedSoftware(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro restricted software", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro restricted software", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

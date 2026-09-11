@@ -110,7 +110,7 @@ func (d *MDMProfileSettingsDataSource) Read(ctx context.Context, req datasource.
 
 	got, err := d.client.GetDeviceCommunicationSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro device communication settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro device communication settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMDMProfileSettingsDataSourceModel(&data, got)

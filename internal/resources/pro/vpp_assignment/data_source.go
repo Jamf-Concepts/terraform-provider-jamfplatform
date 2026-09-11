@@ -144,7 +144,7 @@ func (d *VPPAssignmentDataSource) Read(ctx context.Context, req datasource.ReadR
 		var err error
 		id, err = d.resolveIDByName(readCtx, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Pro VPP assignment", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 			return
 		}
 	default:
@@ -154,7 +154,7 @@ func (d *VPPAssignmentDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	got, err := d.client.GetVPPAssignmentByID(readCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPAssignmentDataSourceModel(readCtx, &data, got)

@@ -80,18 +80,18 @@ func (r *SelfServiceBrandingMacosResource) Create(ctx context.Context, req resou
 				"A Self Service macOS branding configuration already exists on this Jamf Pro tenant, so it cannot be created. "+
 					"Import the existing object instead:\n\n"+
 					"  terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton\n\n"+
-					"Original error: "+err.Error(),
+					"Original error: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Error creating Jamf Pro Self Service macOS branding", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Self Service macOS branding", helpers.APIErrorDetail(err))
 		return
 	}
 
 	// POST returns only an href + id; GET-after for authoritative state.
 	got, err := r.client.GetMacOSBrandingConfigurationV1(createCtx, href.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding after create", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding after create", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -138,7 +138,7 @@ func (r *SelfServiceBrandingMacosResource) Read(ctx context.Context, req resourc
 
 	got, err := r.findExisting(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding", helpers.APIErrorDetail(err))
 		return
 	}
 	if got == nil {
@@ -188,7 +188,7 @@ func (r *SelfServiceBrandingMacosResource) Update(ctx context.Context, req resou
 
 	existing, err := r.findExisting(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding before update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding before update", helpers.APIErrorDetail(err))
 		return
 	}
 	if existing == nil || existing.ID == nil {
@@ -201,7 +201,7 @@ func (r *SelfServiceBrandingMacosResource) Update(ctx context.Context, req resou
 
 	got, err := r.client.UpdateMacOSBrandingConfigurationV1(updateCtx, *existing.ID, buildSelfServiceBrandingMacosInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service macOS branding", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service macOS branding", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -241,7 +241,7 @@ func (r *SelfServiceBrandingMacosResource) Delete(ctx context.Context, req resou
 
 	existing, err := r.findExisting(deleteCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding before delete", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS branding before delete", helpers.APIErrorDetail(err))
 		return
 	}
 	if existing == nil || existing.ID == nil {
@@ -254,7 +254,7 @@ func (r *SelfServiceBrandingMacosResource) Delete(ctx context.Context, req resou
 			tflog.Info(ctx, "Jamf Pro Self Service macOS branding already removed")
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Self Service macOS branding", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Self Service macOS branding", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Trace(ctx, "deleted Jamf Pro Self Service macOS branding")

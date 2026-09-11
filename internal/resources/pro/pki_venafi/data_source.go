@@ -120,7 +120,7 @@ func (d *PkiVenafiDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	rec, err := d.client.GetVenafiV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Venafi CA", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Venafi CA", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVenafiDataSourceModel(&data, rec)
@@ -128,7 +128,7 @@ func (d *PkiVenafiDataSource) Read(ctx context.Context, req datasource.ReadReque
 	// jamf public key (byte-stable) — absent → null.
 	if pem, keyErr := d.client.GetVenafiJamfPublicKeyV1(readCtx, data.ID.ValueString()); keyErr != nil {
 		if !helpers.IsNotFoundError(keyErr) {
-			resp.Diagnostics.AddError("Error reading Jamf Pro Venafi public key", keyErr.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro Venafi public key", helpers.APIErrorDetail(keyErr))
 			return
 		}
 		data.JamfPublicKey = types.StringNull()
@@ -141,7 +141,7 @@ func (d *PkiVenafiDataSource) Read(ctx context.Context, req datasource.ReadReque
 	// proxy trust store — 404 → null.
 	if pem, tsErr := d.client.GetVenafiProxyTrustStoreV1(readCtx, data.ID.ValueString()); tsErr != nil {
 		if !helpers.IsNotFoundError(tsErr) {
-			resp.Diagnostics.AddError("Error reading Jamf Pro Venafi proxy trust store", tsErr.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro Venafi proxy trust store", helpers.APIErrorDetail(tsErr))
 			return
 		}
 		data.ProxyTrustStore = types.StringNull()

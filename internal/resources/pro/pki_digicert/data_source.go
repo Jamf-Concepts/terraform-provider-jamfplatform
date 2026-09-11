@@ -129,7 +129,7 @@ func (d *DigicertDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	got, err := d.client.GetDigicertTrustLifecycleManagerV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro DigiCert integration", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro DigiCert integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDigicertDataSourceModel(&data, got)...)

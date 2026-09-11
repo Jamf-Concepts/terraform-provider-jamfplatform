@@ -106,7 +106,7 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 	created, err := r.client.CreateUemConnectorV1(createCtx, input)
 	if err != nil {
 		if !appendCreateDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud UEM Connect integration", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -131,7 +131,7 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 				"failed, so Terraform has recorded its ID and the configured values without confirming what was "+
 				"stored. The next plan will refresh it — do not re-create it: Jamf Security Cloud allows one UEM "+
 				"Connect integration per tenant, so a second create would be refused. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -254,7 +254,7 @@ func (r *UEMConnectResource) Read(ctx context.Context, req resource.ReadRequest,
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -303,7 +303,7 @@ func (r *UEMConnectResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	got, err := r.client.GetUemConnectorV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUEMConnectResourceModel(&plan, got, false)...)
@@ -343,7 +343,7 @@ func (r *UEMConnectResource) Delete(ctx context.Context, req resource.DeleteRequ
 				map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -371,7 +371,7 @@ func (r *UEMConnectResource) applySettings(ctx context.Context, diags *diag.Diag
 			diags.AddError(
 				"Error writing Jamf Security Cloud UEM Connect settings",
 				"The integration was "+phase+" but its settings could not be written, so it may be running with "+
-					"Jamf Security Cloud's defaults. Re-run to converge. Reported: "+err.Error(),
+					"Jamf Security Cloud's defaults. Re-run to converge. Reported: "+helpers.APIErrorDetail(err),
 			)
 		}
 		return false
@@ -383,7 +383,7 @@ func (r *UEMConnectResource) applySettings(ctx context.Context, diags *diag.Diag
 			diags.AddError(
 				"Error setting Jamf Security Cloud UEM Connect enablement",
 				"The integration was "+phase+" and its settings written, but its enabled state could not be set. "+
-					"Re-run to converge. Reported: "+err.Error(),
+					"Re-run to converge. Reported: "+helpers.APIErrorDetail(err),
 			)
 		}
 		return false

@@ -140,15 +140,22 @@ func appendUpdateDiagnostics(diags *diag.Diagnostics, err error) bool {
 // isNotFound reports whether an error is Jamf Security Cloud saying the
 // integration is gone, which Read treats as a removal rather than a failure.
 //
-// A gateway-unrouted 404 is excluded, because Read acts on this by deleting the
-// resource from state and that reply means the request reached no Jamf service —
-// see helpers.IsGatewayUnrouted.
+// Two 404s that no Jamf service produced are excluded, because Read acts on this
+// by deleting the resource from state and each of them reports that the request
+// reached no Jamf service: the gateway's own unrouted reply
+// (helpers.IsGatewayUnrouted) and an edge error page, which CloudFront serves
+// with a 404 among other statuses (helpers.IsEdgeBlocked). Either one read as
+// absence empties a live UEM Connect integration out of state on the next
+// refresh, and Delete then reports success for an integration it never touched.
 func isNotFound(err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
 		return false
 	}
 	if helpers.IsGatewayUnrouted(err) {
+		return false
+	}
+	if helpers.IsEdgeBlocked(err) {
 		return false
 	}
 	if apiErr.HasStatus(http.StatusNotFound) {

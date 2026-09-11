@@ -16,6 +16,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
 // fakeAppInstallerClient answers every call with one canned error, recording the
@@ -333,5 +335,33 @@ func TestIsNothingToRetry(t *testing.T) {
 		if got := isNothingToRetry(tc.err); got != tc.want {
 			t.Errorf("%s: isNothingToRetry = %v, want %v", name, got, tc.want)
 		}
+	}
+}
+
+// TestIsNothingToRetry_EdgePageIsNotNothingToRetry covers the one 404 the table
+// above cannot reach. An edge error page is marked inside the SDK's unexported
+// transport, so a hand-built *APIResponseError can never carry the marker and a
+// table case for it would assert nothing — hence the stub.
+//
+// It pins the outcome, not one term: an edge page must never succeed the action
+// with "nothing needed retrying", because that tells the operator the failed
+// installations are clear when the request never reached Jamf Pro. Two mechanisms
+// now hold that — the !IsEdgeBlocked guard, and the fact that SDK v1.0.0 condenses
+// an edge page into one synthetic error detail, so the classifier's empty-errors
+// tell already misses it. Removing either alone leaves this test green, which is
+// why the guard's doc comment says so rather than leaving a reader hunting for the
+// test that proves it.
+func TestIsNothingToRetry_EdgePageIsNotNothingToRetry(t *testing.T) {
+	t.Parallel()
+
+	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
+		Status:      http.StatusNotFound,
+		ContentType: "text/html",
+		Body:        gatewaystub.CloudFrontPage(gatewaystub.CloudFrontNotFound),
+	})
+
+	if isNothingToRetry(err) {
+		t.Errorf("isNothingToRetry = true for a CloudFront 404 page, so the retry action reports "+
+			"success and issues no retry: %v", err)
 	}
 }

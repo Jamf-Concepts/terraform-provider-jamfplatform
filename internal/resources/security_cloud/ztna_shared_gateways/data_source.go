@@ -132,7 +132,7 @@ func (d *SharedGatewaysDataSource) Read(ctx context.Context, req datasource.Read
 
 	gateways, err := d.client.ListZtnaSharedGatewaysV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud shared ZTNA gateways", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud shared ZTNA gateways", helpers.APIErrorDetail(err))
 		return
 	}
 

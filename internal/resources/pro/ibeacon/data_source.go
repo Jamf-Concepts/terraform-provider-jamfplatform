@@ -125,7 +125,7 @@ func (d *IbeaconDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignIbeaconDataSourceModel(&data, got)...)

@@ -120,7 +120,7 @@ func (d *SiteDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSiteDataSourceModel(&data, got)

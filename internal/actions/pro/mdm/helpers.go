@@ -43,6 +43,7 @@ import (
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -217,7 +218,7 @@ func (a *mdmAction) resolveSerialNumbers(ctx context.Context, resp *action.Invok
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Device Lookup Failed",
-				fmt.Sprintf("Unable to resolve %d serial number(s) to management ids: %s", len(chunk), err),
+				fmt.Sprintf("Unable to resolve %d serial number(s) to management ids: %s", len(chunk), helpers.APIErrorDetail(err)),
 			)
 			return nil, false
 		}

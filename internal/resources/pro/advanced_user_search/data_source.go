@@ -142,7 +142,7 @@ func (d *AdvancedUserSearchDataSource) Read(ctx context.Context, req datasource.
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced user search", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 		return
 	}
 

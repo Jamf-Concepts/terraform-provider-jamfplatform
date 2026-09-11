@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Machine-readable error codes Jamf Security Cloud returns on the custom hostname
@@ -69,7 +71,7 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 				"Jamf Security Cloud refuses one of these mappings. Check that each host name is a valid name "+
 					"with no wildcard, that every `ipv4_addresses` entry is an IPv4 address and every "+
 					"`ipv6_addresses` entry an IPv6 address, and that each mapping sets at least one of the two. "+
-					"Reported by Jamf Security Cloud: "+detail.Description+". Underlying error: "+err.Error(),
+					"Reported by Jamf Security Cloud: "+detail.Description+". Underlying error: "+helpers.APIErrorDetail(err),
 			)
 		case codeListSizeExceeded:
 			diags.AddAttributeError(
@@ -77,20 +79,20 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 				"Hostname mapping collection size out of range",
 				"A collection here is outside the size Jamf Security Cloud accepts: `mappings` takes 1 to 500 "+
 					"entries, and each mapping takes at most 10 `ipv4_addresses` and 10 `ipv6_addresses`. "+
-					"Reported by Jamf Security Cloud: "+detail.Description+". Underlying error: "+err.Error(),
+					"Reported by Jamf Security Cloud: "+detail.Description+". Underlying error: "+helpers.APIErrorDetail(err),
 			)
 		case codeNotEntitled:
 			diags.AddError(
 				"Tenant not entitled to Jamf Security Cloud custom DNS",
 				"The credentials authenticated successfully but this tenant does not have the custom DNS surface "+
 					"enabled. Contact Jamf to have it provisioned. Reported by Jamf Security Cloud: "+
-					detail.Description+". Underlying error: "+err.Error(),
+					detail.Description+". Underlying error: "+helpers.APIErrorDetail(err),
 			)
 		default:
 			diags.AddError(
 				"Jamf Security Cloud rejected the write",
 				"Unrecognised error code "+detail.Code+": "+detail.Description+
-					". Underlying error: "+err.Error(),
+					". Underlying error: "+helpers.APIErrorDetail(err),
 			)
 		}
 		matched = true
@@ -116,7 +118,7 @@ func appendDuplicateHostnameHint(diags *diag.Diagnostics, err error) bool {
 		"The write failed with an internal server error carrying no detail. The known cause is the same host "+
 			"name appearing in more than one mapping, which this provider normally catches before the write — so "+
 			"check for a repeated `hostname`, and if there is none, this is worth reporting to Jamf. Underlying "+
-			"error: "+err.Error(),
+			"error: "+helpers.APIErrorDetail(err),
 	)
 	return true
 }

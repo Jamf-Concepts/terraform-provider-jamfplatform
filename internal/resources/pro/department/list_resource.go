@@ -95,7 +95,7 @@ func (r *DepartmentListResource) List(ctx context.Context, req list.ListRequest,
 	items, err := r.client.ListDepartmentsV1(listCtx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro departments", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro departments", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

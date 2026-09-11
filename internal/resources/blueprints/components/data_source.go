@@ -112,7 +112,7 @@ func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get components",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

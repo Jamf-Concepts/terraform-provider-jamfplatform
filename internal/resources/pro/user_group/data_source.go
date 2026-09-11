@@ -154,7 +154,7 @@ func (d *UserGroupDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro user group", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro user group", helpers.APIErrorDetail(err))
 		return
 	}
 	assignUserGroupDataSourceModel(&data, got)

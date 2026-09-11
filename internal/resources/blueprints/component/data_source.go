@@ -117,7 +117,7 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get component",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

@@ -135,7 +135,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Create(ctx context.Context
 
 	got, err := r.applySettings(createCtx, &plan)
 	if err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro computer inventory collection settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro computer inventory collection settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignComputerInventoryCollectionSettingsResourceModel(ctx, &plan, got)...)
@@ -183,7 +183,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Read(ctx context.Context, 
 
 	got, err := r.client.GetComputerInventoryCollectionSettingsV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer inventory collection settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer inventory collection settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -223,7 +223,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Update(ctx context.Context
 
 	got, err := r.applySettings(updateCtx, &plan)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro computer inventory collection settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro computer inventory collection settings", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignComputerInventoryCollectionSettingsResourceModel(ctx, &plan, got)...)

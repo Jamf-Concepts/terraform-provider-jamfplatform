@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // removedInV1 are the attributes dropped from the schema at v1. Both were
@@ -40,7 +42,7 @@ func (r *PatchSoftwareTitleResource) UpgradeState(ctx context.Context) map[int64
 				if err != nil {
 					resp.Diagnostics.AddError(
 						"Unable to upgrade jamfplatform_pro_patch_software_title state from v0 to v1",
-						fmt.Sprintf("Could not remove the withdrawn category_name / site_name attributes from prior state: %s", err),
+						fmt.Sprintf("Could not remove the withdrawn category_name / site_name attributes from prior state: %s", helpers.APIErrorDetail(err)),
 					)
 					return
 				}
@@ -54,7 +56,7 @@ func (r *PatchSoftwareTitleResource) UpgradeState(ctx context.Context) map[int64
 				if err != nil {
 					resp.Diagnostics.AddError(
 						"Unable to upgrade jamfplatform_pro_patch_software_title state from v0 to v1",
-						fmt.Sprintf("Could not decode rewritten prior state against the current schema: %s", err),
+						fmt.Sprintf("Could not decode rewritten prior state against the current schema: %s", helpers.APIErrorDetail(err)),
 					)
 					return
 				}
@@ -63,7 +65,7 @@ func (r *PatchSoftwareTitleResource) UpgradeState(ctx context.Context) map[int64
 				if err != nil {
 					resp.Diagnostics.AddError(
 						"Unable to upgrade jamfplatform_pro_patch_software_title state from v0 to v1",
-						fmt.Sprintf("Could not re-encode the upgraded state: %s", err),
+						fmt.Sprintf("Could not re-encode the upgraded state: %s", helpers.APIErrorDetail(err)),
 					)
 					return
 				}

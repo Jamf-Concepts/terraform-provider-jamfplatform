@@ -120,7 +120,7 @@ func (d *BuildingDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	got, err := d.client.GetBuildingV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro building", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro building", helpers.APIErrorDetail(err))
 		return
 	}
 	assignBuildingDataSourceModel(&data, got)

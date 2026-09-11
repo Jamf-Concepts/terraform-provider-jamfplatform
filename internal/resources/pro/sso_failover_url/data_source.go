@@ -97,7 +97,7 @@ func (d *SsoFailoverURLDataSource) Read(ctx context.Context, req datasource.Read
 
 	got, err := d.client.GetSsoFailoverV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO failover URL", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO failover URL", helpers.APIErrorDetail(err))
 		return
 	}
 	assignDataSourceModel(&data, got)

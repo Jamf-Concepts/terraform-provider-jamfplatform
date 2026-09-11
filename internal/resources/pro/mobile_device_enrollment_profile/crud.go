@@ -18,7 +18,6 @@ package mobile_device_enrollment_profile
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -43,7 +42,7 @@ func (r *EnrollmentProfileResource) Create(ctx context.Context, req resource.Cre
 
 	created, err := r.client.CreateMobileDeviceEnrollmentProfileByID(createCtx, "0", buildEnrollmentProfileInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -54,7 +53,7 @@ func (r *EnrollmentProfileResource) Create(ctx context.Context, req resource.Cre
 
 	got, err := r.client.GetMobileDeviceEnrollmentProfileByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignEnrollmentProfileResourceModel(&plan, got, false)
@@ -120,7 +119,7 @@ func (r *EnrollmentProfileResource) Read(ctx context.Context, req resource.ReadR
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignEnrollmentProfileResourceModel(&state, got, hydrating)
@@ -149,13 +148,13 @@ func (r *EnrollmentProfileResource) Update(ctx context.Context, req resource.Upd
 
 	// PUT returns no body — must GET to refresh server-derived fields.
 	if err := r.client.UpdateMobileDeviceEnrollmentProfileByID(updateCtx, plan.ID.ValueString(), buildEnrollmentProfileInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetMobileDeviceEnrollmentProfileByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device enrollment profile", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignEnrollmentProfileResourceModel(&plan, got, false)
@@ -192,6 +191,6 @@ func (r *EnrollmentProfileResource) Delete(ctx context.Context, req resource.Del
 			tflog.Info(ctx, "Jamf Pro mobile device enrollment profile already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device enrollment profile", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 	}
 }

@@ -91,7 +91,7 @@ func (r *GatewayListResource) List(ctx context.Context, req list.ListRequest, st
 	gateways, err := r.client.ListZtnaGatewaysV1(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud ZTNA gateways", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud ZTNA gateways", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

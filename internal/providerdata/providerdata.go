@@ -594,7 +594,7 @@ func configureSub[T any](
 		}
 		diags.AddError(
 			"Failed to read Jamf Pro tenant version",
-			fmt.Sprintf("%s requires Jamf Pro; could not read version: %s", resourceType, err),
+			fmt.Sprintf("%s requires Jamf Pro; could not read version: %s", resourceType, helpers.APIErrorDetail(err)),
 		)
 		return nil, diags
 	}

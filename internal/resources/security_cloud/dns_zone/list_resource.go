@@ -89,7 +89,7 @@ func (r *DNSZoneListResource) List(ctx context.Context, req list.ListRequest, st
 	zones, err := r.client.ListDnsZonesV1(ctx, defaultZoneSort)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud DNS zones", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud DNS zones", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

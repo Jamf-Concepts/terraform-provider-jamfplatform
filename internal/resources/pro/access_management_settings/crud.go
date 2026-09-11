@@ -50,18 +50,18 @@ func (r *AccessManagementSettingsResource) Create(ctx context.Context, req resou
 
 	current, err := r.client.GetEnrollmentAccessManagementV4(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Access Management settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Access Management settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateEnrollmentAccessManagementV4(createCtx, buildAccessManagementSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Access Management settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Access Management settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetEnrollmentAccessManagementV4(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAccessManagementSettingsResourceModel(&plan, got)
@@ -106,7 +106,7 @@ func (r *AccessManagementSettingsResource) Read(ctx context.Context, req resourc
 
 	got, err := r.client.GetEnrollmentAccessManagementV4(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -143,13 +143,13 @@ func (r *AccessManagementSettingsResource) Update(ctx context.Context, req resou
 	defer cancel()
 
 	if _, err := r.client.UpdateEnrollmentAccessManagementV4(updateCtx, buildAccessManagementSettingsInput(plan, nil)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Access Management settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Access Management settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetEnrollmentAccessManagementV4(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Access Management settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAccessManagementSettingsResourceModel(&plan, got)

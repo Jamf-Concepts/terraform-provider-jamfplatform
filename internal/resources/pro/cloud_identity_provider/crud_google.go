@@ -28,7 +28,7 @@ func (r *CloudIdentityProviderResource) createGoogle(ctx context.Context, plan, 
 
 	created, err := r.client.CreateCloudLdapV2(ctx, body)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -46,7 +46,7 @@ func (r *CloudIdentityProviderResource) createGoogle(ctx context.Context, plan, 
 
 	got, err := r.client.GetCloudLdapV2(ctx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 		return
 	}
 	// Preserve the user's rotation trigger across the read-back.
@@ -71,7 +71,7 @@ func (r *CloudIdentityProviderResource) readGoogle(ctx context.Context, state *C
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -99,13 +99,13 @@ func (r *CloudIdentityProviderResource) updateGoogle(ctx context.Context, plan, 
 	}
 
 	if _, err := r.client.UpdateCloudLdapV2(ctx, plan.ID.ValueString(), body); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetCloudLdapV2(ctx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 		return
 	}
 	assignGoogleState(&plan, got, keystoreWoVersion(plan), false)
@@ -124,6 +124,6 @@ func (r *CloudIdentityProviderResource) deleteGoogle(ctx context.Context, state 
 			tflog.Info(ctx, "Jamf Pro Cloud Identity Provider (Google) already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Cloud Identity Provider (Google)", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Cloud Identity Provider (Google)", helpers.APIErrorDetail(err))
 	}
 }

@@ -100,7 +100,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				"Unable to list blueprints",
-				err.Error(),
+				helpers.APIErrorDetail(err),
 			),
 		})
 		return
@@ -141,7 +141,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 				stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 					diag.NewErrorDiagnostic(
 						"Unable to read blueprint",
-						err.Error(),
+						helpers.APIErrorDetail(err),
 					),
 				})
 				return

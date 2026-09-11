@@ -152,13 +152,13 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		// platform=false: query against the tenant-internal user IDs.
 		got, err = d.client.GetUserV1(readCtx, data.ID.ValueString(), false)
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Pro user", fmt.Sprintf("Failed to get user %q: %s", data.ID.ValueString(), err))
+			resp.Diagnostics.AddError("Unable to find Jamf Pro user", fmt.Sprintf("Failed to get user %q: %s", data.ID.ValueString(), helpers.APIErrorDetail(err)))
 			return
 		}
 	case !data.Username.IsNull() && data.Username.ValueString() != "":
 		got, err = d.lookupByUsername(readCtx, data.Username.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Pro user", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Pro user", helpers.APIErrorDetail(err))
 			return
 		}
 	default:

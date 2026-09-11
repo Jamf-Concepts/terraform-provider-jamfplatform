@@ -15,7 +15,6 @@ package mobile_device_extension_attribute
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -49,7 +48,7 @@ func (r *MobileDeviceExtensionAttributeResource) Create(ctx context.Context, req
 
 	created, err := r.client.CreateMobileDeviceExtensionAttributeV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -63,7 +62,7 @@ func (r *MobileDeviceExtensionAttributeResource) Create(ctx context.Context, req
 
 	got, err := r.client.GetMobileDeviceExtensionAttributeV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMobileDeviceExtensionAttributeResourceModel(createCtx, &plan, got)...)
@@ -138,7 +137,7 @@ func (r *MobileDeviceExtensionAttributeResource) Read(ctx context.Context, req r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -178,13 +177,13 @@ func (r *MobileDeviceExtensionAttributeResource) Update(ctx context.Context, req
 	}
 
 	if _, err := r.client.UpdateMobileDeviceExtensionAttributeV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetMobileDeviceExtensionAttributeV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignMobileDeviceExtensionAttributeResourceModel(updateCtx, &plan, got)...)
@@ -225,6 +224,6 @@ func (r *MobileDeviceExtensionAttributeResource) Delete(ctx context.Context, req
 			tflog.Info(ctx, "Jamf Pro mobile device extension attribute already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device extension attribute", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 	}
 }

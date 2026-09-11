@@ -17,7 +17,6 @@ package account
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -52,7 +51,7 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 
 	created, err := r.proClient.CreateAccountV1(createCtx, buildProUserAccount(plan, helpers.OptionalStringPointer(cfg.Password)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro account", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro account", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -76,7 +75,7 @@ func (r *AccountResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.proClient.GetAccountV1(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro account", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro account", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProBaseFields(&plan, got)
@@ -152,7 +151,7 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro account", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro account", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProBaseFields(&state, got)
@@ -160,7 +159,7 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if custPrivApplicable(state.PrivilegeSet, state.AccessLevel) {
 		classicGot, err := r.classicClient.GetAccountByUserID(readCtx, id)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro account privileges", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro account privileges", helpers.APIErrorDetail(err))
 			return
 		}
 		resp.Diagnostics.Append(assignClassicPrivileges(readCtx, &state, classicGot, hydrating)...)
@@ -208,7 +207,7 @@ func (r *AccountResource) Update(ctx context.Context, req resource.UpdateRequest
 			password = helpers.OptionalStringPointer(cfg.Password)
 		}
 		if _, err := r.proClient.UpdateAccountV1(updateCtx, id, buildProUserAccount(plan, password)); err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Pro account", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Pro account", helpers.APIErrorDetail(err))
 			return
 		}
 	}
@@ -222,7 +221,7 @@ func (r *AccountResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	got, err := r.proClient.GetAccountV1(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro account", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro account", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProBaseFields(&plan, got)
@@ -260,7 +259,7 @@ func (r *AccountResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Pro account already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro account", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro account", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -281,7 +280,7 @@ func (r *AccountResource) writeCustomPrivileges(ctx context.Context, id string, 
 	}
 	live, err := r.classicClient.GetAccountByUserID(ctx, id)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro account privileges before write", err.Error())
+		diags.AddError("Error reading Jamf Pro account privileges before write", helpers.APIErrorDetail(err))
 		return diags
 	}
 	classicInput, d := buildClassicPrivileges(ctx, plan, live)
@@ -290,7 +289,7 @@ func (r *AccountResource) writeCustomPrivileges(ctx context.Context, id string, 
 		return diags
 	}
 	if err := r.classicClient.UpdateAccountByUserID(ctx, id, classicInput); err != nil {
-		diags.AddError(errSummary, err.Error())
+		diags.AddError(errSummary, helpers.APIErrorDetail(err))
 	}
 	return diags
 }

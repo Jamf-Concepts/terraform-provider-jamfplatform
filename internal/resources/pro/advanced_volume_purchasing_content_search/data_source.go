@@ -142,7 +142,7 @@ func (d *AdvancedVolumePurchasingContentSearchDataSource) Read(ctx context.Conte
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced volume purchasing content search", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced volume purchasing content search", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -132,7 +132,7 @@ func (d *MobileAppDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device app", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMobileAppFlatDataSource(&data, got)

@@ -23,7 +23,6 @@ package app_request_form_field
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -50,7 +49,7 @@ func (r *AppRequestFormFieldResource) Create(ctx context.Context, req resource.C
 
 	created, err := r.client.CreateAppRequestFormInputFieldV1(createCtx, buildAppRequestFormFieldInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro App Request form field", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -129,7 +128,7 @@ func (r *AppRequestFormFieldResource) Read(ctx context.Context, req resource.Rea
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Request form field", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -161,7 +160,7 @@ func (r *AppRequestFormFieldResource) Update(ctx context.Context, req resource.U
 
 	got, err := r.client.UpdateAppRequestFormInputFieldV1(updateCtx, plan.ID.ValueString(), buildAppRequestFormFieldInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro App Request form field", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppRequestFormFieldResourceModel(&plan, got)
@@ -199,6 +198,6 @@ func (r *AppRequestFormFieldResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro App Request form field already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro App Request form field", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 	}
 }

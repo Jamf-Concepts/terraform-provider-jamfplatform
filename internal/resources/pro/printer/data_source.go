@@ -134,7 +134,7 @@ func (d *PrinterDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro printer", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro printer", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPrinterDataSourceModel(&data, got)...)
