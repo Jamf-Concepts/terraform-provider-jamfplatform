@@ -12,6 +12,17 @@ import (
 	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
+// stubEgressIP binds the address lookup for one test, so nothing here reaches
+// the network. Not t.Parallel-safe against the other tests in this file, which
+// is why the tests that call it do not declare t.Parallel.
+func stubEgressIP(t *testing.T, ip string) {
+	t.Helper()
+
+	original := egressIPLookup
+	egressIPLookup = func() string { return ip }
+	t.Cleanup(func() { egressIPLookup = original })
+}
+
 // TestAPIErrorDetail_OnlyEdgePagesGainGuidance pins the property that let this
 // be applied to every call site at once: it changes nothing for an error a Jamf
 // service produced. If it ever appended to those, 791 diagnostics would grow a
@@ -69,18 +80,21 @@ func TestAPIErrorDetail_OnlyEdgePagesGainGuidance(t *testing.T) {
 // SDK has already retried it, so telling an operator to chase their egress IP
 // over a 504 costs a day and finds nothing.
 func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
-	t.Parallel()
 
-	t.Run("403 block names the address lookup", func(t *testing.T) {
-		t.Parallel()
+	t.Run("403 block reports the address it looked up", func(t *testing.T) {
+		stubEgressIP(t, "203.0.113.10")
 
 		detail := APIErrorDetail(gatewaystub.ErrorFrom(t, gatewaystub.Reply{
 			Status: http.StatusForbidden, ContentType: "text/html", Body: gatewaystub.NginxBlockPage,
 		}))
 
-		if !strings.Contains(detail, EgressIPLookupURL) {
-			t.Errorf("a blocked request does not name the address lookup, which is the one thing "+
+		if !strings.Contains(detail, "203.0.113.10") {
+			t.Errorf("a blocked request does not report the address, which is the one thing "+
 				"Jamf Support needs:\n%s", detail)
+		}
+		if strings.Contains(detail, EgressIPLookupURL) {
+			t.Errorf("the address was looked up, so the operator should not also be told to run "+
+				"the command:\n%s", detail)
 		}
 		if strings.Contains(detail, "Run the command again") {
 			t.Errorf("a blocked request is described as transient, so the operator will re-run it "+
@@ -88,8 +102,20 @@ func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
 		}
 	})
 
+	t.Run("403 block falls back to the command when the lookup fails", func(t *testing.T) {
+		stubEgressIP(t, "")
+
+		detail := APIErrorDetail(gatewaystub.ErrorFrom(t, gatewaystub.Reply{
+			Status: http.StatusForbidden, ContentType: "text/html", Body: gatewaystub.NginxBlockPage,
+		}))
+
+		if !strings.Contains(detail, EgressIPLookupURL) {
+			t.Errorf("a failed lookup left the operator with no way to find the address:\n%s", detail)
+		}
+	})
+
 	t.Run("504 gateway failure asks for a re-run", func(t *testing.T) {
-		t.Parallel()
+		stubEgressIP(t, "203.0.113.10")
 
 		detail := APIErrorDetail(gatewaystub.ErrorFrom(t, gatewaystub.Reply{
 			Status: http.StatusGatewayTimeout, ContentType: "text/html", Body: gatewaystub.CloudFrontPage(gatewaystub.CloudFrontGatewayTimeout),
@@ -98,7 +124,7 @@ func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
 		if !strings.Contains(detail, "Run the command again") {
 			t.Errorf("a gateway failure does not say to run it again:\n%s", detail)
 		}
-		if strings.Contains(detail, EgressIPLookupURL) {
+		if strings.Contains(detail, "203.0.113.10") || strings.Contains(detail, EgressIPLookupURL) {
 			t.Errorf("a gateway failure sends the operator after an egress IP, which the SDK has "+
 				"already retried past and which is not the cause:\n%s", detail)
 		}
@@ -110,7 +136,7 @@ func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
 // support ticket is opened with, so losing them to a friendlier paragraph would
 // be a worse diagnostic than the raw one this replaced.
 func TestAPIErrorDetail_KeepsTheOriginalMessage(t *testing.T) {
-	t.Parallel()
+	stubEgressIP(t, "203.0.113.10")
 
 	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
 		Status: http.StatusForbidden, ContentType: "text/html", Body: gatewaystub.NginxBlockPage,

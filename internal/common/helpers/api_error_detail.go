@@ -4,16 +4,22 @@
 package helpers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/egressip"
 )
 
-// EgressIPLookupURL echoes the caller's public source address as a bare line of
-// text, which is the address a Jamf-side allowlist or WAF rule is written
-// against. Shared with the provider's authentication diagnostic so the two
-// cannot name different services.
-const EgressIPLookupURL = "https://checkip.amazonaws.com"
+// EgressIPLookupURL is named in the diagnostic as the command to run when the
+// lookup itself could not reach the echo service.
+const EgressIPLookupURL = egressip.LookupURL
+
+// egressIPLookup reports this host's public source address, indirected so the
+// tests below assert on the rendered guidance without network access. Caching
+// lives in egressip.Lookup, so the burst an edge block would otherwise cause is
+// already handled there.
+var egressIPLookup = egressip.Lookup
 
 // edgeBlockGuidance names the remedy for a standing block: the address an
 // allowlist or WAF rule is written against.
@@ -24,10 +30,30 @@ const EgressIPLookupURL = "https://checkip.amazonaws.com"
 // wherever a resource reports an API failure, and an edge block fails every
 // in-flight resource at once, so a lookup here would multiply one outage into a
 // burst of third-party calls on a path the operator is already waiting on.
-const edgeBlockGuidance = "A CDN, firewall or IP allowlist answered instead of the API, so the request never " +
-	"reached the service and nothing changed.\n\n" +
-	"Check whether this host's IP address is allowed. Find the address with `curl -s " + EgressIPLookupURL +
-	"`, then give it to Jamf Support with the status and request id above."
+const edgeBlockPreamble = "A CDN, firewall or IP allowlist answered instead of the API, so the request never " +
+	"reached the service and nothing changed.\n\n"
+
+// edgeBlockKnownAddress is used when the lookup succeeded, which is the common
+// case: the echo service is not the host being blocked, so a Jamf-side
+// allowlist refusing this caller does not stop it answering.
+//
+// It names two owners because the page could have come from either end and the
+// operator cannot tell which from the summary above. Their own proxy or firewall
+// intercepting the request is theirs to find; a Jamf-side allowlist refusing
+// this address is not something they can inspect, so all they can do is hand the
+// address over. An earlier draft told them to "check whether it is allowed",
+// which is the half they have no way to do.
+const edgeBlockKnownAddress = "This host's public IP address is %s. Ask your network team whether outbound traffic " +
+	"to the Jamf API is being intercepted, and give the address to Jamf Support to check against the allowlist."
+
+// edgeBlockUnknownAddress is the fallback. It prints a command rather than
+// omitting the address, because an operator who cannot reach the echo service
+// from this host can still run the command from somewhere that shares its
+// egress — and because the same restriction that blocked the lookup is itself a
+// clue about what is in front of Jamf.
+const edgeBlockUnknownAddress = "Find this host's public IP address with `curl -s " + EgressIPLookupURL +
+	"`. Ask your network team whether outbound traffic to the Jamf API is being intercepted, and give the " +
+	"address to Jamf Support to check against the allowlist."
 
 // gatewayFailureGuidance covers a 5xx page, which needs the opposite remedy to a
 // block: the SDK has already retried it, so the answer is to run again rather
@@ -62,9 +88,13 @@ func APIErrorDetail(err error) string {
 		return err.Error()
 	}
 
-	guidance := edgeBlockGuidance
 	if apiErr := jamfplatform.AsAPIError(err); apiErr != nil && apiErr.StatusCode >= http.StatusInternalServerError {
-		guidance = gatewayFailureGuidance
+		return err.Error() + "\n\n" + gatewayFailureGuidance
 	}
-	return err.Error() + "\n\n" + guidance
+
+	address := edgeBlockUnknownAddress
+	if ip := egressIPLookup(); ip != "" {
+		address = fmt.Sprintf(edgeBlockKnownAddress, ip)
+	}
+	return err.Error() + "\n\n" + edgeBlockPreamble + address
 }

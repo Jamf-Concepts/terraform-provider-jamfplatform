@@ -107,46 +107,6 @@ func TestAuthFailureDiagnostic_FallsBackWhenEgressLookupFails(t *testing.T) {
 	}
 }
 
-// The lookup trims the trailing newline the echo service sends, so the IP does
-// not break the alignment of the support block.
-func TestLookupPublicEgressIP_TrimsResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("203.0.113.10\n"))
-	}))
-	t.Cleanup(server.Close)
-
-	got := fetchEgressIP(server.URL)
-	if got != "203.0.113.10" {
-		t.Errorf("fetchEgressIP() = %q, want %q", got, "203.0.113.10")
-	}
-}
-
-// An intercepting proxy may answer the lookup with an arbitrarily long body. The
-// read is capped so it cannot be pasted wholesale into a Terraform error.
-func TestLookupPublicEgressIP_CapsOversizedBody(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(strings.Repeat("A", 4096)))
-	}))
-	t.Cleanup(server.Close)
-
-	got := fetchEgressIP(server.URL)
-	if len(got) > 64 {
-		t.Errorf("fetchEgressIP() returned %d bytes, want the read capped at 64", len(got))
-	}
-}
-
-// An unreachable lookup returns "" rather than an error, so the caller can
-// substitute the manual command.
-func TestLookupPublicEgressIP_UnreachableReturnsEmpty(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	url := server.URL
-	server.Close() // nothing is listening now
-
-	if got := fetchEgressIP(url); got != "" {
-		t.Errorf("fetchEgressIP() = %q, want empty string for an unreachable host", got)
-	}
-}
-
 // End-to-end guard: the branch above is only worth having if the SDK really
 // raises the sentinel for an HTML token response. Without this, a change in the
 // SDK's detection would silently turn the blocked-request diagnostic into dead

@@ -1613,7 +1613,8 @@ resp.Diagnostics.AddError("Error creating Jamf Pro department", helpers.APIError
 ```
 
 It appends what to do about a response that came from a CDN, firewall or allowlist instead
-of Jamf, splitting a standing block (find the egress IP) from a gateway failure (already
+of Jamf, splitting a standing block (reports this host's public IP address, looked up through
+`internal/common/egressip` and cached once per process) from a gateway failure (already
 retried, run it again). For every error a Jamf service produced it returns `err.Error()`
 unchanged, so it is applied at **every** call site rather than the ones judged likely to see
 a block: which call an edge page lands on is a property of the network at that moment, not of
