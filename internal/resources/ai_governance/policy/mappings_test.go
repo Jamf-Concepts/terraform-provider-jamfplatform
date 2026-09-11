@@ -16,6 +16,7 @@ func TestErrorCodes(t *testing.T) {
 		"codeValidationFailed":          "VALIDATION_FAILED",
 		"codePolicyNotFound":            "POLICY_NOT_FOUND",
 		"codeNoDraftToPublish":          "NO_DRAFT_TO_PUBLISH",
+		"codePolicyVersionConflict":     "POLICY_VERSION_CONFLICT",
 		"codeRequestContextNotProvided": "REQUEST_CONTEXT_NOT_PROVIDED",
 	}
 	got := map[string]string{
@@ -25,6 +26,7 @@ func TestErrorCodes(t *testing.T) {
 		"codeValidationFailed":          codeValidationFailed,
 		"codePolicyNotFound":            codePolicyNotFound,
 		"codeNoDraftToPublish":          codeNoDraftToPublish,
+		"codePolicyVersionConflict":     codePolicyVersionConflict,
 		"codeRequestContextNotProvided": codeRequestContextNotProvided,
 	}
 

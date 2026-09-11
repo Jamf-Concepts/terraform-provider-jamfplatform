@@ -136,6 +136,16 @@ Blueprints keep delivering the previously published version until the publish su
 
 The same mechanism publishes a draft somebody saved in the admin UI on a policy managed with `publish = true`. That is what `publish = true` means. If the draft's settings differ from the configuration, the ordinary `settings_json` diff reverts them first, so what gets published is what Terraform holds. Set `publish = false` on policies whose publishing someone else owns.
 
+### When someone else edits the policy at the same time
+
+`settings_json` is written whole. Jamf holds no merge for it, so an update built on a stale read replaces every setting another editor had made — including ones this configuration never mentions.
+
+Terraform refuses that. Where Jamf holds a version, each update carries it, and Jamf rejects the update if anything wrote to the policy in between. **Nothing changes**, and the apply reports *AI policy is not at the version Terraform last read*.
+
+Clearing it takes a **new plan**. Its refresh reads the current policy, and the plan shows you what this configuration would alter, including the other change, so you overwrite it only if you approve. Re-applying a saved plan file fails the same way however often you retry, because the file carries the version Jamf refused.
+
+The check needs a version to compare against, and **Jamf reports none for a policy it created before it started keeping that counter**. Terraform updates that policy unconditionally, as it did before this check existed. The same goes for a policy whose state an earlier release of this provider wrote, applied with `-refresh=false`, because nothing has recorded a version for it yet. Any apply that writes the policy records one, so the next apply carries a precondition even without a refresh. Either way the apply warns and names the policy, reporting *AI policy updated without the concurrent-edit check*.
+
 ### Destroying a policy a blueprint still references
 
 Nothing stops you deleting a policy a deployed blueprint references. There is no refusal, no warning and no cleanup. The blueprint is left pointing at a version the platform will no longer serve, and the next change to that blueprint is rejected because the policy is archived.

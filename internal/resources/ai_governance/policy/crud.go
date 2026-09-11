@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -56,7 +57,12 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	publishErr := r.publishIfNeeded(ctx, created.ID, plan.Publish.ValueBool())
 
-	if !r.hydrate(ctx, &plan, created.ID, &resp.Diagnostics) {
+	var private privateStateWriter
+	if resp.Private != nil {
+		private = resp.Private
+	}
+	private = r.lockTokenWriter(private)
+	if !r.hydrate(ctx, &plan, created.ID, private, &resp.Diagnostics) {
 		resp.State.RemoveResource(ctx)
 		appendCreatePublishFailure(&resp.Diagnostics, created.ID, publishErr)
 		return
@@ -124,6 +130,12 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		resp.Diagnostics.AddError("Unable to read AI policy settings", err.Error())
 		return
 	}
+	var private privateStateWriter
+	if resp.Private != nil {
+		private = resp.Private
+	}
+	private = r.lockTokenWriter(private)
+	resp.Diagnostics.Append(writeLockToken(ctx, private, detail.Version)...)
 	state.Publish = resolvePublish(state.Publish)
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, policyIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -141,6 +153,14 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 // A failed publish is reported only after state has been committed, for the reason Create records:
 // the diagnostic would otherwise fire the error check that guards the state write, leaving state at
 // the values it held before the update and hiding the draft the platform now holds.
+//
+// The PATCH is conditional on the policy still being at the version the provider last read, which
+// Jamf compares against an If-Match precondition. Settings are sent whole and the platform holds no
+// merge for them, so without the precondition an update built on a stale read would overwrite every
+// setting another editor had made, with nothing anywhere reporting it. A policy that predates the
+// platform's counter reports none and is updated unconditionally as before, which is reported as a
+// warning: the platform answers such an update 204 and nothing else would show that the check the
+// schema describes had not been made.
 func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan policyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -162,7 +182,18 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	defer cancel()
 
 	id := state.ID.ValueString()
-	if err := r.client.UpdatePolicy(ctx, id, buildUpdateRequest(&plan)); err != nil {
+	ifMatch, diags := readLockToken(ctx, r.lockTokenReader(req.Private))
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if ifMatch == "" {
+		appendUnconditionalUpdate(&resp.Diagnostics, id)
+		tflog.Warn(ctx, "Updating an AI Governance policy without an If-Match precondition", map[string]any{
+			"policy_id": id,
+		})
+	}
+	if err := r.client.UpdatePolicy(ctx, id, buildUpdateRequest(&plan), ifMatch); err != nil {
 		if isNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			resp.Diagnostics.AddWarning(
@@ -170,6 +201,10 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 				"The policy was archived outside Terraform, so it could not be updated. It has been removed from "+
 					"state and the next plan will propose creating it again.",
 			)
+			return
+		}
+		if isVersionConflict(err) {
+			appendVersionConflict(&resp.Diagnostics, id)
 			return
 		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
@@ -180,7 +215,12 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	publishErr := r.publishIfNeeded(ctx, id, plan.Publish.ValueBool())
 
-	if !r.hydrate(ctx, &plan, id, &resp.Diagnostics) {
+	var private privateStateWriter
+	if resp.Private != nil {
+		private = resp.Private
+	}
+	private = r.lockTokenWriter(private)
+	if !r.hydrate(ctx, &plan, id, private, &resp.Diagnostics) {
 		resp.State.RemoveResource(ctx)
 		appendUpdatePublishFailure(&resp.Diagnostics, publishErr)
 		return
@@ -289,9 +329,34 @@ func (r *PolicyResource) publishIfNeeded(ctx context.Context, id string, publish
 	return nil
 }
 
+// lockTokenReader returns the surface the recorded precondition is read from: the stand-in a unit
+// test set, and otherwise the private state the framework supplied with the request.
+func (r *PolicyResource) lockTokenReader(supplied privateStateReader) privateStateReader {
+	if r.privateOverride != nil {
+		return r.privateOverride
+	}
+	return supplied
+}
+
+// lockTokenWriter returns the surface the policy's version is recorded on: the stand-in a unit test
+// set, and otherwise the private state the framework supplied with the response, already narrowed by
+// the caller for the reason privateStateWriter records.
+func (r *PolicyResource) lockTokenWriter(supplied privateStateWriter) privateStateWriter {
+	if r.privateOverride != nil {
+		return r.privateOverride
+	}
+	return supplied
+}
+
 // hydrate re-reads the policy and copies it onto the model, reporting whether the model is usable.
 // A policy that has vanished between the write and the read leaves nothing to record.
-func (r *PolicyResource) hydrate(ctx context.Context, model *policyModel, id string, diags *diag.Diagnostics) bool {
+//
+// It also stashes the policy's lock counter, because this is the one place a write is followed by a
+// read: the value recorded here is the precondition the next update sends. The write the just-
+// completed PATCH performed has already moved the counter, so taking it from anywhere earlier would
+// guarantee a conflict on the following apply. Failing to record it does not make the model
+// unusable — writeLockToken says why a policy that exists must still be recorded in state.
+func (r *PolicyResource) hydrate(ctx context.Context, model *policyModel, id string, private privateStateWriter, diags *diag.Diagnostics) bool {
 	detail, err := r.client.GetPolicy(ctx, id)
 	if err != nil {
 		if isNotFound(err) {
@@ -309,6 +374,7 @@ func (r *PolicyResource) hydrate(ctx context.Context, model *policyModel, id str
 		diags.AddError("Unable to read AI policy settings", err.Error())
 		return false
 	}
+	diags.Append(writeLockToken(ctx, private, detail.Version)...)
 	model.Publish = resolvePublish(model.Publish)
 	return true
 }

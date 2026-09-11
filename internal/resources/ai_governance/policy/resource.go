@@ -90,9 +90,15 @@ const (
 )
 
 // PolicyResource implements the Terraform resource for Jamf AI Governance policies.
+//
+// privateOverride is a test seam and is nil in production, where every operation uses the private
+// state the framework supplies. privateState says why one is needed: the framework's private-state
+// type is internal with no exported constructor, so a request or response built in a unit test
+// carries none, and the precondition an update sends would otherwise be pinned by nothing.
 type PolicyResource struct {
-	client  *aigovernance.Client
-	schemas *aischemas.Cache
+	client          *aigovernance.Client
+	schemas         *aischemas.Cache
+	privateOverride privateState
 }
 
 var (
@@ -134,7 +140,11 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"Governance** component to a blueprint and reference the policy's `id` and `published_version`. " +
 			"Nothing reaches a device until a blueprint that names the policy is deployed.\n\nThe " +
 			"`settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` " +
-			"against the schema the platform serves for the tool and `schema_version`. See the [AI Governance " +
+			"against the schema the platform serves for the tool and `schema_version`.\n\nSettings are written " +
+			"whole, and Jamf holds no merge for them, so an update is made conditional on the policy still being " +
+			"at the version last read. If something else changed the policy in the meantime, Jamf refuses the " +
+			"update and a new plan shows you the change. A policy Jamf created before it started keeping that " +
+			"counter has none, so Terraform updates it without the check. See the [AI Governance " +
 			"policies guide](../guides/ai-governance-policies) for where each tool's settings are " +
 			"documented." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
