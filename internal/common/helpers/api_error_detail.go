@@ -22,11 +22,11 @@ const EgressIPLookupURL = egressip.LookupURL
 var egressIPLookup = egressip.Lookup
 
 // edgeBlockPreamble states what happened, in the order an operator needs it:
-// the request did not arrive, what answered instead, and that nothing was
-// written. The last clause matters most — an apply that failed part-way is the
-// first thing they will worry about.
-const edgeBlockPreamble = "The request did not reach the Jamf API. A CDN, firewall or IP allowlist answered " +
-	"instead; no changes were made.\n\n"
+// what answered, that the request never arrived, and that nothing changed. The
+// last clause matters most, because an apply that failed part-way is the first
+// thing they will worry about.
+const edgeBlockPreamble = "A CDN, firewall or IP allowlist answered this request. It never reached the Jamf " +
+	"API, so nothing changed.\n\n"
 
 // edgeBlockKnownAddress is used when the lookup succeeded, which is the common
 // case: the echo service is not the host being blocked, so a Jamf-side
@@ -46,17 +46,17 @@ const edgeBlockUnknownAddress = "Egress IP address: run `curl -s " + EgressIPLoo
 // this address is not something they can inspect, so handing the address over is
 // the whole of their part. An earlier draft told them to "check whether it is
 // allowed", which is the half they have no way to do.
-const edgeBlockSteps = "1. Confirm with your network team that outbound traffic to the Jamf API is not intercepted.\n" +
-	"2. Provide the egress IP address, status and request id to Jamf Support."
+const edgeBlockSteps = "1. Ask your network team whether anything intercepts outbound traffic to the Jamf API.\n" +
+	"2. Provide the address above, the status and the request id to Jamf Support."
 
 // gatewayFailureGuidance covers a 5xx page, which needs the opposite remedy to a
 // block: the SDK has already retried it, so the answer is to run again rather
 // than to go hunting for an allowlist. The split is the one the SDK's godoc asks
 // consumers to make.
-const gatewayFailureGuidance = "The request did not reach the Jamf API. The gateway answered with an error page; " +
-	"no changes were made.\n\n" +
-	"The provider has already retried. Re-run the command in a few minutes. Credentials and network " +
-	"access are not the cause."
+const gatewayFailureGuidance = "The gateway answered with an error page. The request never reached the Jamf API " +
+	"and nothing changed.\n\n" +
+	"The provider retried and got the same page, so the fault is on the Jamf side. Re-run the command in " +
+	"a few minutes."
 
 // APIErrorDetail renders err as the detail of a Terraform diagnostic, appending
 // what to do about it when the response came from something other than Jamf.
