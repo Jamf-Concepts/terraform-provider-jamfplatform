@@ -175,7 +175,7 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	devices, err := d.client.ListDevices(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list devices", err.Error())
+		resp.Diagnostics.AddError("Unable to list devices", helpers.APIErrorDetail(err))
 		return
 	}
 

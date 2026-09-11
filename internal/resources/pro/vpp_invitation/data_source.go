@@ -153,7 +153,7 @@ func (d *VPPInvitationDataSource) Read(ctx context.Context, req datasource.ReadR
 		var err error
 		id, err = d.resolveIDByName(readCtx, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Pro VPP invitation", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 			return
 		}
 	default:
@@ -163,7 +163,7 @@ func (d *VPPInvitationDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	got, err := d.client.GetVPPInvitationByID(readCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro VPP invitation", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPInvitationDataSourceModel(readCtx, &data, got)

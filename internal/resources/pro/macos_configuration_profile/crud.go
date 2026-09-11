@@ -88,7 +88,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -105,7 +105,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 
 	got, err := r.client.GetOSXConfigurationProfileByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading created macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	// Capture the raw server-canonical payload bytes before
@@ -195,7 +195,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 			resp.State.RemoveResource(readCtx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	var rawServerPayload []byte
@@ -301,7 +301,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if plan.Scope != nil {
 		current, err := r.client.GetOSXConfigurationProfileByID(updateCtx, state.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading macOS configuration profile before update", err.Error())
+			resp.Diagnostics.AddError("Error reading macOS configuration profile before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.ComputerScopeModel
@@ -332,13 +332,13 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateOSXConfigurationProfileByID(updateCtx, id, input)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error updating macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetOSXConfigurationProfileByID(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading updated macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	var rawServerPayload []byte
@@ -390,7 +390,7 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 		if helpers.IsNotFoundError(err) {
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting macOS configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error deleting macOS configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 }

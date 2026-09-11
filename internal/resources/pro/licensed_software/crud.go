@@ -72,7 +72,7 @@ func (r *LicensedSoftwareResource) Create(ctx context.Context, req resource.Crea
 
 	created, err := r.client.CreateLicensedSoftwareByID(createCtx, "0", payload)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractLicensedSoftwareID(created)
@@ -86,7 +86,7 @@ func (r *LicensedSoftwareResource) Create(ctx context.Context, req resource.Crea
 
 	got, err := r.client.GetLicensedSoftwareByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(createCtx, &plan, got, false)...)
@@ -161,7 +161,7 @@ func (r *LicensedSoftwareResource) Read(ctx context.Context, req resource.ReadRe
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -210,13 +210,13 @@ func (r *LicensedSoftwareResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	if err := r.client.UpdateLicensedSoftwareByID(updateCtx, plan.ID.ValueString(), payload); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetLicensedSoftwareByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(updateCtx, &plan, got, false)...)

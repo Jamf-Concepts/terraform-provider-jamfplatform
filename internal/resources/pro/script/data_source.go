@@ -132,7 +132,7 @@ func (d *ScriptDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	got, err := d.client.GetScriptV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 	assignScriptDataSourceModel(&data, got)

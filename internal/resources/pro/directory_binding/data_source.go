@@ -227,7 +227,7 @@ func (d *DirectoryBindingDataSource) Read(ctx context.Context, req datasource.Re
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro directory binding", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro directory binding", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDirectoryBindingDataSourceModel(&data, got)...)

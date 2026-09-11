@@ -120,7 +120,7 @@ func (d *RemovableMacAddressDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro removable MAC address", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro removable MAC address", helpers.APIErrorDetail(err))
 		return
 	}
 	assignRemovableMacAddressDataSourceModel(&data, got)

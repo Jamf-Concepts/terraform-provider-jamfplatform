@@ -51,7 +51,7 @@ func (r *ComputerExtensionAttributeResource) Create(ctx context.Context, req res
 
 	created, err := r.client.CreateComputerExtensionAttributeV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -65,7 +65,7 @@ func (r *ComputerExtensionAttributeResource) Create(ctx context.Context, req res
 
 	got, err := r.client.GetComputerExtensionAttributeV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignComputerExtensionAttributeResourceModel(createCtx, &plan, got)...)
@@ -140,7 +140,7 @@ func (r *ComputerExtensionAttributeResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -182,13 +182,13 @@ func (r *ComputerExtensionAttributeResource) Update(ctx context.Context, req res
 	}
 
 	if _, err := r.client.UpdateComputerExtensionAttributeV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetComputerExtensionAttributeV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignComputerExtensionAttributeResourceModel(updateCtx, &plan, got)...)

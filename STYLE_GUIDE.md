@@ -1606,6 +1606,22 @@ Testing either one needs `internal/testhelpers/gatewaystub`, not a hand-built
 exported constructor can produce a marked error and a fabricated one asserts only that the
 provider agrees with itself.
 
+**Render every API error through `helpers.APIErrorDetail(err)`, never `err.Error()`.**
+
+```go
+resp.Diagnostics.AddError("Error creating Jamf Pro department", helpers.APIErrorDetail(err))
+```
+
+It appends what to do about a response that came from a CDN, firewall or allowlist instead
+of Jamf, splitting a standing block (find the egress IP) from a gateway failure (already
+retried, run it again). For every error a Jamf service produced it returns `err.Error()`
+unchanged, so it is applied at **every** call site rather than the ones judged likely to see
+a block: which call an edge page lands on is a property of the network at that moment, not of
+the resource. The two CloudFront failures that prompted it landed on *creates*, the
+operations an obvious "reads and deletes only" narrowing would have skipped.
+`internal/conformance/api_error_detail_test.go` walks the AST and fails on a bare
+`.Error()` in a diagnostic detail, so a new construct cannot miss it.
+
 For genuinely transient Pro states (`429`, `423 Locked` on in-flight async ops, `409` on stale `PATCH`/`PUT`), keep retry logic in-resource until **3 or more** resources need it, then extract a shared `RetryWithBackoff(ctx, op, isRetriable, maxAttempts)` (same deferred-abstraction discipline as shared schemas). `device_group`'s propagation-delete retry is the current in-resource precedent.
 
 ### Provider overall minimum Jamf Pro version (advisory warning)

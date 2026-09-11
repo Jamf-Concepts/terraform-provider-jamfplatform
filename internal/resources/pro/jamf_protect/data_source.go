@@ -131,7 +131,7 @@ func (d *JamfProtectPlansDataSource) Read(ctx context.Context, req datasource.Re
 
 	plans, err := d.client.ListJamfProtectPlansV1(readCtx, sort, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Protect plans", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Protect plans", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -154,7 +154,7 @@ func (d *PatchInternalSourceDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro patch internal source", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro patch internal source", helpers.APIErrorDetail(err))
 		return
 	}
 	assignPatchInternalSourceDataSourceModel(&data, got)

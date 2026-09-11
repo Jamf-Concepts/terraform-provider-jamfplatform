@@ -44,13 +44,13 @@ func (r *SelfServicePlusSettingsResource) Create(ctx context.Context, req resour
 	defer cancel()
 
 	if err := r.client.UpdateSelfServicePlusSettingsV1(createCtx, buildSelfServicePlusSettingsInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Self Service Plus settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Self Service Plus settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetSelfServicePlusSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServicePlusSettingsResourceModel(&plan, got)
@@ -95,7 +95,7 @@ func (r *SelfServicePlusSettingsResource) Read(ctx context.Context, req resource
 
 	got, err := r.client.GetSelfServicePlusSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -131,13 +131,13 @@ func (r *SelfServicePlusSettingsResource) Update(ctx context.Context, req resour
 	defer cancel()
 
 	if err := r.client.UpdateSelfServicePlusSettingsV1(updateCtx, buildSelfServicePlusSettingsInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service Plus settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service Plus settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetSelfServicePlusSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service Plus settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServicePlusSettingsResourceModel(&plan, got)

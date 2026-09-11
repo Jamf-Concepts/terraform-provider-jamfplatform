@@ -140,7 +140,7 @@ func (d *MobileDevicePrestageEnrollmentDataSource) Read(ctx context.Context, req
 		var err error
 		id, err = d.client.ResolveMobileDevicePrestageV3IDByName(readCtx, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error resolving Jamf Pro mobile device prestage by name", err.Error())
+			resp.Diagnostics.AddError("Error resolving Jamf Pro mobile device prestage by name", helpers.APIErrorDetail(err))
 			return
 		}
 	default:
@@ -150,7 +150,7 @@ func (d *MobileDevicePrestageEnrollmentDataSource) Read(ctx context.Context, req
 
 	got, err := d.client.GetMobileDevicePrestageV3(readCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device prestage enrollment", helpers.APIErrorDetail(err))
 		return
 	}
 

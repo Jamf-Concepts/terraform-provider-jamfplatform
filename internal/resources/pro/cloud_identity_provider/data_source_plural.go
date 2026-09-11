@@ -121,7 +121,7 @@ func (d *CloudIdentityProvidersDataSource) Read(ctx context.Context, req datasou
 
 	all, err := d.client.ListCloudIdpV1(readCtx, nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro Cloud Identity Providers", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro Cloud Identity Providers", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -42,13 +42,13 @@ func (r *IbeaconResource) Create(ctx context.Context, req resource.CreateRequest
 	defer cancel()
 
 	if err := validateIbeaconPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid iBeacon configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid iBeacon configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	created, err := r.client.CreateIBeaconByID(createCtx, "0", buildIbeaconInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID via
@@ -64,7 +64,7 @@ func (r *IbeaconResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetIBeaconByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignIbeaconResourceModel(&plan, got)...)
@@ -139,7 +139,7 @@ func (r *IbeaconResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -173,18 +173,18 @@ func (r *IbeaconResource) Update(ctx context.Context, req resource.UpdateRequest
 	defer cancel()
 
 	if err := validateIbeaconPlan(&plan); err != nil {
-		resp.Diagnostics.AddError("Invalid iBeacon configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid iBeacon configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if err := r.client.UpdateIBeaconByID(updateCtx, plan.ID.ValueString(), buildIbeaconInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetIBeaconByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro iBeacon", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro iBeacon", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignIbeaconResourceModel(&plan, got)...)

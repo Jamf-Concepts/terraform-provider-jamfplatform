@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/files"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -201,7 +202,7 @@ func (r *IconResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 	if localSource {
 		hashed, err := files.HashLocalSource(ctx, source)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading icon source during plan", err.Error())
+			resp.Diagnostics.AddError("Error reading icon source during plan", helpers.APIErrorDetail(err))
 			return
 		}
 		hash = hashed

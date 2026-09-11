@@ -187,13 +187,13 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	grp, err := d.client.GetDeviceGroup(readCtx, data.ID.ValueString())
 
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find device group", err.Error())
+		resp.Diagnostics.AddError("Unable to find device group", helpers.APIErrorDetail(err))
 		return
 	}
 
 	members, err := d.client.ListDeviceGroupMembers(readCtx, grp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read device group members", err.Error())
+		resp.Diagnostics.AddError("Unable to read device group members", helpers.APIErrorDetail(err))
 		return
 	}
 

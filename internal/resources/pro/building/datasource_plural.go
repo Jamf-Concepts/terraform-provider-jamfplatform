@@ -128,7 +128,7 @@ func (d *BuildingsDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	list, err := d.client.ListBuildingsV1(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro buildings", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro buildings", helpers.APIErrorDetail(err))
 		return
 	}
 

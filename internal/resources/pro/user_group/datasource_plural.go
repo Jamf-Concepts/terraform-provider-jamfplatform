@@ -110,7 +110,7 @@ func (d *UserGroupsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	listResp, err := d.client.ListUserGroups(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro user groups", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro user groups", helpers.APIErrorDetail(err))
 		return
 	}
 

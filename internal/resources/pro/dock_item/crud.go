@@ -42,7 +42,7 @@ func (r *DockItemResource) Create(ctx context.Context, req resource.CreateReques
 
 	created, err := r.client.CreateDockItemByID(createCtx, "0", buildDockItemInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -56,7 +56,7 @@ func (r *DockItemResource) Create(ctx context.Context, req resource.CreateReques
 
 	got, err := r.client.GetDockItemByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDockItemResourceModel(&plan, got)...)
@@ -131,7 +131,7 @@ func (r *DockItemResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -166,13 +166,13 @@ func (r *DockItemResource) Update(ctx context.Context, req resource.UpdateReques
 	defer cancel()
 
 	if err := r.client.UpdateDockItemByID(updateCtx, plan.ID.ValueString(), buildDockItemInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDockItemByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro dock item", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro dock item", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDockItemResourceModel(&plan, got)...)

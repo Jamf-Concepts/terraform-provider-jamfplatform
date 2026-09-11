@@ -14,13 +14,14 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"golang.org/x/oauth2"
 )
 
 // egressIPLookupURL echoes the caller's public source address as a bare line of
 // text. Chosen because the response is a single IP and nothing else, so there is
 // no parsing to get wrong and no JSON contract to drift.
-const egressIPLookupURL = "https://checkip.amazonaws.com"
+const egressIPLookupURL = helpers.EgressIPLookupURL
 
 // egressIPLookupTimeout bounds the lookup. This runs on a path where the user is
 // already waiting on a failed provider configuration, so a slow or unreachable

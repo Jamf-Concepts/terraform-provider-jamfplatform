@@ -136,7 +136,7 @@ func (d *ToolDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to read AI tool", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI tool", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -155,7 +155,7 @@ func (d *ToolDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	document, err := d.client.GetToolSchema(ctx, summary.ID, version)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read AI tool settings schema", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI tool settings schema", helpers.APIErrorDetail(err))
 		return
 	}
 

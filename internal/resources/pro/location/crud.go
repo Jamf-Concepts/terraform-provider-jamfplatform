@@ -68,7 +68,7 @@ func (r *VolumePurchasingLocationResource) Create(ctx context.Context, req resou
 
 	createResp, err := r.client.CreateVolumePurchasingLocationV1(createCtx, buildCreateInput(plan, trimmedToken))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Volume Purchasing location", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Volume Purchasing location", helpers.APIErrorDetail(err))
 		return
 	}
 	if createResp == nil || createResp.ID == "" {
@@ -95,7 +95,7 @@ func (r *VolumePurchasingLocationResource) Create(ctx context.Context, req resou
 	// The first iteration runs immediately so small tenants converge fast.
 	loc, err := pollForSyncComplete(createCtx, r.client, id, syncPollInterval, time.Time{})
 	if err != nil {
-		resp.Diagnostics.AddError("Error waiting for Jamf Pro Volume Purchasing content sync", err.Error())
+		resp.Diagnostics.AddError("Error waiting for Jamf Pro Volume Purchasing content sync", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -173,7 +173,7 @@ func (r *VolumePurchasingLocationResource) Read(ctx context.Context, req resourc
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Volume Purchasing location", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Volume Purchasing location", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -241,7 +241,7 @@ func (r *VolumePurchasingLocationResource) Update(ctx context.Context, req resou
 			return
 		}
 		if _, err := r.client.UpdateVolumePurchasingLocationV1(updateCtx, id, buildTokenRotationPatch(plan, trimmedToken)); err != nil {
-			resp.Diagnostics.AddError("Error rotating Jamf Pro Volume Purchasing service token", err.Error())
+			resp.Diagnostics.AddError("Error rotating Jamf Pro Volume Purchasing service token", helpers.APIErrorDetail(err))
 			return
 		}
 
@@ -260,7 +260,7 @@ func (r *VolumePurchasingLocationResource) Update(ctx context.Context, req resou
 		anchor := parseRFC3339OrZero(state.LastSyncTime.ValueString())
 		loc, err := pollForSyncComplete(updateCtx, r.client, id, syncPollInterval, anchor)
 		if err != nil {
-			resp.Diagnostics.AddError("Error waiting for Jamf Pro Volume Purchasing content sync after token rotation", err.Error())
+			resp.Diagnostics.AddError("Error waiting for Jamf Pro Volume Purchasing content sync after token rotation", helpers.APIErrorDetail(err))
 			return
 		}
 		resp.Diagnostics.Append(assignVolumePurchasingLocationResourceModel(ctx, &plan, loc)...)
@@ -271,12 +271,12 @@ func (r *VolumePurchasingLocationResource) Update(ctx context.Context, req resou
 		// Metadata-only Update: no service_token field on the wire, no
 		// Reclaim, no sync poll.
 		if _, err := r.client.UpdateVolumePurchasingLocationV1(updateCtx, id, buildMetadataPatch(plan)); err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Pro Volume Purchasing location metadata", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Pro Volume Purchasing location metadata", helpers.APIErrorDetail(err))
 			return
 		}
 		got, err := r.client.GetVolumePurchasingLocationV1(updateCtx, id)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading updated Jamf Pro Volume Purchasing location", err.Error())
+			resp.Diagnostics.AddError("Error reading updated Jamf Pro Volume Purchasing location", helpers.APIErrorDetail(err))
 			return
 		}
 		resp.Diagnostics.Append(assignVolumePurchasingLocationResourceModel(ctx, &plan, got)...)

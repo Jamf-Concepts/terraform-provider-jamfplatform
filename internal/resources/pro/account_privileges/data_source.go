@@ -117,7 +117,7 @@ func (d *AccountPrivilegesDataSource) Read(ctx context.Context, req datasource.R
 
 	catalog, err := accountprivileges.DiscoverCategorized(readCtx, d.client)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to discover Jamf Pro privilege catalog", err.Error())
+		resp.Diagnostics.AddError("Unable to discover Jamf Pro privilege catalog", helpers.APIErrorDetail(err))
 		return
 	}
 

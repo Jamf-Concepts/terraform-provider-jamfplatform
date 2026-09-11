@@ -122,7 +122,7 @@ func (d *JamfProServerURLDataSource) Read(ctx context.Context, req datasource.Re
 
 	got, err := d.client.GetJamfProServerURLV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro server URL", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro server URL", helpers.APIErrorDetail(err))
 		return
 	}
 	data.URL = types.StringValue(got.URL)

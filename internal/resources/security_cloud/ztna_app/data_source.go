@@ -333,7 +333,7 @@ func (d *ZtnaAppDataSource) lookup(ctx context.Context, data ZtnaAppDataSourceMo
 				)
 				return nil, false
 			}
-			diags.AddError("Unable to find Jamf Security Cloud access policy application", err.Error())
+			diags.AddError("Unable to find Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 			return nil, false
 		}
 		return app, true
@@ -341,7 +341,7 @@ func (d *ZtnaAppDataSource) lookup(ctx context.Context, data ZtnaAppDataSourceMo
 
 	apps, err := d.client.ListZtnaAppsV1(ctx)
 	if err != nil {
-		diags.AddError("Unable to list Jamf Security Cloud access policy applications", err.Error())
+		diags.AddError("Unable to list Jamf Security Cloud access policy applications", helpers.APIErrorDetail(err))
 		return nil, false
 	}
 

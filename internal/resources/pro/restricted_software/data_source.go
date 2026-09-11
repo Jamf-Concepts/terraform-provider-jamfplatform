@@ -128,7 +128,7 @@ func (d *RestrictedSoftwareDataSource) Read(ctx context.Context, req datasource.
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 	assignRestrictedSoftwareFlatDataSource(&data, got)

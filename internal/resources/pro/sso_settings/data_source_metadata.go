@@ -104,7 +104,7 @@ func (d *SsoSpMetadataDataSource) Read(ctx context.Context, req datasource.ReadR
 	// download entirely when SAML is not part of the configuration.
 	settings, err := d.client.GetSsoSettingsV3(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO settings before metadata download", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO settings before metadata download", helpers.APIErrorDetail(err))
 		return
 	}
 	if settings != nil && settings.ConfigurationType == configurationTypeOIDC {
@@ -130,7 +130,7 @@ func (d *SsoSpMetadataDataSource) Read(ctx context.Context, req datasource.ReadR
 			resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to download Jamf Pro SSO SP metadata", err.Error())
+		resp.Diagnostics.AddError("Unable to download Jamf Pro SSO SP metadata", helpers.APIErrorDetail(err))
 		return
 	}
 

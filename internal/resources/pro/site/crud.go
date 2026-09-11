@@ -43,7 +43,7 @@ func (r *SiteResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	created, err := r.client.CreateSiteByID(createCtx, "0", buildSiteInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID via
@@ -59,7 +59,7 @@ func (r *SiteResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	got, err := r.client.GetSiteByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSiteResourceModel(&plan, got)
@@ -131,7 +131,7 @@ func (r *SiteResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -162,13 +162,13 @@ func (r *SiteResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	defer cancel()
 
 	if err := r.client.UpdateSiteByID(updateCtx, plan.ID.ValueString(), buildSiteInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetSiteByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro site", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro site", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSiteResourceModel(&plan, got)

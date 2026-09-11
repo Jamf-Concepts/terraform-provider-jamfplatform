@@ -202,14 +202,14 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Read(ctx context.Context, re
 
 	got, err := d.client.GetEnrollmentSettingsV4(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro User-Initiated Enrollment settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro User-Initiated Enrollment settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSettingsDataSourceModel(&data, got)
 
 	groups, err := d.client.ListEnrollmentAccessGroupsV3(readCtx, nil, true)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro enrollment Access Groups", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro enrollment Access Groups", helpers.APIErrorDetail(err))
 		return
 	}
 	set, d2 := assignAccessGroupsState(readCtx, groups)
@@ -221,7 +221,7 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Read(ctx context.Context, re
 
 	langs, err := d.client.ListEnrollmentLanguagesV3(readCtx, nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro enrollment languages", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro enrollment languages", helpers.APIErrorDetail(err))
 		return
 	}
 	langMap, d3 := messagingLanguagesToMap(readCtx, langs)

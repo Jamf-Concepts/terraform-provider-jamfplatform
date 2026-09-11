@@ -52,7 +52,7 @@ func (r *ReturnToServiceResource) Create(ctx context.Context, req resource.Creat
 
 	created, err := r.client.CreateReturnToServiceConfigurationV1(createCtx, buildReturnToServiceInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -66,7 +66,7 @@ func (r *ReturnToServiceResource) Create(ctx context.Context, req resource.Creat
 
 	got, err := r.client.GetReturnToServiceConfigurationV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignReturnToServiceResourceModel(&plan, got)
@@ -138,7 +138,7 @@ func (r *ReturnToServiceResource) Read(ctx context.Context, req resource.ReadReq
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -170,13 +170,13 @@ func (r *ReturnToServiceResource) Update(ctx context.Context, req resource.Updat
 	defer cancel()
 
 	if _, err := r.client.UpdateReturnToServiceConfigurationV1(updateCtx, plan.ID.ValueString(), buildReturnToServiceInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetReturnToServiceConfigurationV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignReturnToServiceResourceModel(&plan, got)

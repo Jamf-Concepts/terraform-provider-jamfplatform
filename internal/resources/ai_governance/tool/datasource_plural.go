@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // ToolsDataSource reads the whole catalogue of AI tools Jamf can govern.
@@ -95,7 +96,7 @@ type toolSummaryItem struct {
 func (d *ToolsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	response, err := d.client.ListTools(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list AI tools", err.Error())
+		resp.Diagnostics.AddError("Unable to list AI tools", helpers.APIErrorDetail(err))
 		return
 	}
 

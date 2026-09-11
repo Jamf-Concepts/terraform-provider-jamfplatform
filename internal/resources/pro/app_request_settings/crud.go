@@ -64,7 +64,7 @@ func (r *AppRequestSettingsResource) Create(ctx context.Context, req resource.Cr
 
 	current, err := r.client.GetAppRequestSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro App Request settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro App Request settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -124,7 +124,7 @@ func (r *AppRequestSettingsResource) Read(ctx context.Context, req resource.Read
 
 	got, err := r.client.GetAppRequestSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Request settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Request settings", helpers.APIErrorDetail(err))
 		return
 	}
 

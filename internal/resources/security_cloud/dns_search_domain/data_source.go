@@ -116,7 +116,7 @@ func (d *SearchDomainDataSource) Read(ctx context.Context, req datasource.ReadRe
 			resp.Diagnostics.AddError(noSearchDomainConfiguredError())
 			return
 		}
-		resp.Diagnostics.AddError("Unable to read Jamf Security Cloud search domain", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		return
 	}
 

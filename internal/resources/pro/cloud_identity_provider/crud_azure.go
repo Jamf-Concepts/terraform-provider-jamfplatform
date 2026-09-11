@@ -26,7 +26,7 @@ func (r *CloudIdentityProviderResource) createAzure(ctx context.Context, plan, _
 
 	created, err := r.client.CreateCloudAzureV1(ctx, body)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -44,7 +44,7 @@ func (r *CloudIdentityProviderResource) createAzure(ctx context.Context, plan, _
 
 	got, err := r.client.GetCloudAzureV1(ctx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAzureState(&plan, got, false)
@@ -66,7 +66,7 @@ func (r *CloudIdentityProviderResource) readAzure(ctx context.Context, state *Cl
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -96,7 +96,7 @@ func (r *CloudIdentityProviderResource) updateAzure(ctx context.Context, plan, _
 	if plan.Azure.Mappings == nil {
 		live, err := r.client.GetCloudAzureV1(ctx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Azure) attribute mappings", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro Cloud Identity Provider (Azure) attribute mappings", helpers.APIErrorDetail(err))
 			return
 		}
 		if live != nil && live.Server != nil {
@@ -107,13 +107,13 @@ func (r *CloudIdentityProviderResource) updateAzure(ctx context.Context, plan, _
 	body := buildAzureUpdateRequest(plan, liveMappings)
 
 	if _, err := r.client.UpdateCloudAzureV1(ctx, plan.ID.ValueString(), body); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetCloudAzureV1(ctx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAzureState(&plan, got, false)
@@ -132,6 +132,6 @@ func (r *CloudIdentityProviderResource) deleteAzure(ctx context.Context, state C
 			tflog.Info(ctx, "Jamf Pro Cloud Identity Provider (Azure) already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Cloud Identity Provider (Azure)", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Cloud Identity Provider (Azure)", helpers.APIErrorDetail(err))
 	}
 }

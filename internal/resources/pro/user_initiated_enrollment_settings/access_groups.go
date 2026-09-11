@@ -227,7 +227,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileAccessGroups(
 
 	current, err := r.client.ListEnrollmentAccessGroupsV3(ctx, nil, true)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment Access Groups", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment Access Groups", helpers.APIErrorDetail(err))
 		return false
 	}
 
@@ -236,21 +236,21 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileAccessGroups(
 		case accessGroupCreate:
 			gid, err := r.resolveAccessGroupID(ctx, op.Group)
 			if err != nil {
-				diags.AddError("Error resolving directory-service group", err.Error())
+				diags.AddError("Error resolving directory-service group", helpers.APIErrorDetail(err))
 				return false
 			}
 			if _, err := r.client.CreateEnrollmentAccessGroupV3(ctx, buildAccessGroupInput(op.Group, gid)); err != nil {
-				diags.AddError("Error creating Jamf Pro enrollment Access Group", err.Error())
+				diags.AddError("Error creating Jamf Pro enrollment Access Group", helpers.APIErrorDetail(err))
 				return false
 			}
 		case accessGroupUpdate:
 			gid, err := r.resolveAccessGroupID(ctx, op.Group)
 			if err != nil {
-				diags.AddError("Error resolving directory-service group", err.Error())
+				diags.AddError("Error resolving directory-service group", helpers.APIErrorDetail(err))
 				return false
 			}
 			if _, err := r.client.UpdateEnrollmentAccessGroupV3(ctx, op.ID, buildAccessGroupInput(op.Group, gid)); err != nil {
-				diags.AddError("Error updating Jamf Pro enrollment Access Group", err.Error())
+				diags.AddError("Error updating Jamf Pro enrollment Access Group", helpers.APIErrorDetail(err))
 				return false
 			}
 		case accessGroupDelete:
@@ -258,7 +258,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileAccessGroups(
 				if helpers.IsNotFoundError(err) {
 					continue
 				}
-				diags.AddError("Error deleting Jamf Pro enrollment Access Group", err.Error())
+				diags.AddError("Error deleting Jamf Pro enrollment Access Group", helpers.APIErrorDetail(err))
 				return false
 			}
 		}

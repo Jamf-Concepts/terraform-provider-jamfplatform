@@ -116,7 +116,7 @@ func (d *DepartmentsDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	list, err := d.client.ListDepartmentsV1(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro departments", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro departments", helpers.APIErrorDetail(err))
 		return
 	}
 

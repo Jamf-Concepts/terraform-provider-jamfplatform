@@ -129,7 +129,7 @@ func (d *AppRequestFormFieldDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro App Request form field", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppRequestFormFieldDataSourceModel(&data, got)

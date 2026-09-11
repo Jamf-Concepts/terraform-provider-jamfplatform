@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -139,7 +140,7 @@ func (d *EnrollmentCustomizationDataSource) Read(ctx context.Context, req dataso
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro enrollment customization", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 		return
 	}
 

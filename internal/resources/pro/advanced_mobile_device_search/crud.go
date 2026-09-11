@@ -132,7 +132,7 @@ func (r *AdvancedMobileDeviceSearchResource) Create(ctx context.Context, req res
 
 	created, err := r.client.CreateAdvancedMobileDeviceSearchV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -146,7 +146,7 @@ func (r *AdvancedMobileDeviceSearchResource) Create(ctx context.Context, req res
 
 	got, err := r.client.GetAdvancedMobileDeviceSearchV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedMobileDeviceSearchResourceModel(createCtx, &plan, got)...)
@@ -234,7 +234,7 @@ func (r *AdvancedMobileDeviceSearchResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -310,13 +310,13 @@ func (r *AdvancedMobileDeviceSearchResource) Update(ctx context.Context, req res
 	}
 
 	if _, err := r.client.UpdateAdvancedMobileDeviceSearchV1(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAdvancedMobileDeviceSearchV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAdvancedMobileDeviceSearchResourceModel(updateCtx, &plan, got)...)

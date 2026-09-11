@@ -133,7 +133,7 @@ func (d *WebhookDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 	assignWebhookFlatDataSource(ctx, &data, got)

@@ -98,7 +98,7 @@ func (r *EbookResource) Create(ctx context.Context, req resource.CreateRequest, 
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractEbookID(created)
@@ -112,7 +112,7 @@ func (r *EbookResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	got, err := r.client.GetEbookByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignEbookResourceModel(createCtx, &plan, got, false)...)
@@ -187,7 +187,7 @@ func (r *EbookResource) Read(ctx context.Context, req resource.ReadRequest, resp
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -237,7 +237,7 @@ func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if plan.Scope != nil {
 		current, err := r.client.GetEbookByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro ebook before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro ebook before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *EbookScopeModel
@@ -257,13 +257,13 @@ func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateEbookByID(updateCtx, plan.ID.ValueString(), payload)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetEbookByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro ebook", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro ebook", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignEbookResourceModel(updateCtx, &plan, got, false)...)

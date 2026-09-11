@@ -88,14 +88,14 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	case err != nil && !helpers.IsNotFoundError(err):
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error checking for an existing Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error checking for an existing Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	if err := r.client.SetDnsSearchDomainV1(createCtx, &securitycloud.SearchDomain{Suffix: plan.DomainName.ValueString()}); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error setting Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error setting Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -189,7 +189,7 @@ func (r *SearchDomainResource) Read(ctx context.Context, req resource.ReadReques
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud search domain", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -235,14 +235,14 @@ func (r *SearchDomainResource) Update(ctx context.Context, req resource.UpdateRe
 
 	if err := r.client.SetDnsSearchDomainV1(updateCtx, &securitycloud.SearchDomain{Suffix: plan.DomainName.ValueString()}); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud search domain", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetDnsSearchDomainV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", err.Error())
+		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", helpers.APIErrorDetail(err))
 		return
 	}
 	if got == nil {

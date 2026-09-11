@@ -90,7 +90,7 @@ func (d *AccessManagementSettingsDataSource) Read(ctx context.Context, req datas
 
 	got, err := d.client.GetEnrollmentAccessManagementV4(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Access Management settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Access Management settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAccessManagementSettingsDataSourceModel(&data, got)

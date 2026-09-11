@@ -128,7 +128,7 @@ func (d *UserExtensionAttributeDataSource) Read(ctx context.Context, req datasou
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 

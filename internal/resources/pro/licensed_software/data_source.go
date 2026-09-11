@@ -128,7 +128,7 @@ func (d *LicensedSoftwareDataSource) Read(ctx context.Context, req datasource.Re
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro licensed software", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro licensed software", helpers.APIErrorDetail(err))
 		return
 	}
 	assignLicensedSoftwareFlatDataSource(&data, got)

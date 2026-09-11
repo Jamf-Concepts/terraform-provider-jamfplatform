@@ -75,7 +75,7 @@ func (r *WebhookResource) Create(ctx context.Context, req resource.CreateRequest
 
 	created, err := r.client.CreateWebhookByID(createCtx, "0", buildWebhookInput(plan, helpers.OptionalStringPointer(cfg.Password)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractWebhookID(created)
@@ -89,7 +89,7 @@ func (r *WebhookResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetWebhookByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignWebhookResourceModel(createCtx, &plan, got)...)
@@ -164,7 +164,7 @@ func (r *WebhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -216,13 +216,13 @@ func (r *WebhookResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if err := r.client.UpdateWebhookByID(updateCtx, plan.ID.ValueString(), buildWebhookInput(plan, password)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetWebhookByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro webhook", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro webhook", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignWebhookResourceModel(updateCtx, &plan, got)...)

@@ -51,7 +51,7 @@ func (r *AllowedFileExtensionResource) Create(ctx context.Context, req resource.
 
 	created, err := r.client.CreateAllowedFileExtensionByID(createCtx, "0", buildAllowedFileExtensionInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro allowed file extension", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 		return
 	}
 	// Defensive: the classic SDK trusts the server and would deref a nil ID; we explicitly
@@ -68,7 +68,7 @@ func (r *AllowedFileExtensionResource) Create(ctx context.Context, req resource.
 	// The create response carries the ID only (no extension echo); GET to populate extension.
 	got, err := r.client.GetAllowedFileExtensionByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro allowed file extension", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAllowedFileExtensionResourceModel(&plan, got)
@@ -140,7 +140,7 @@ func (r *AllowedFileExtensionResource) Read(ctx context.Context, req resource.Re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro allowed file extension", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -175,7 +175,7 @@ func (r *AllowedFileExtensionResource) Update(ctx context.Context, req resource.
 
 	got, err := r.client.GetAllowedFileExtensionByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro allowed file extension", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAllowedFileExtensionResourceModel(&plan, got)

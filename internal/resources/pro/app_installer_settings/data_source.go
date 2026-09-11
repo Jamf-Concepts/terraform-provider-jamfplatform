@@ -150,7 +150,7 @@ func (d *AppInstallerSettingsDataSource) Read(ctx context.Context, req datasourc
 
 	got, err := d.client.GetAppInstallerGlobalSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro App Installer global settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro App Installer global settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerSettingsDataSourceModel(&data, got)

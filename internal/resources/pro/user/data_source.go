@@ -158,7 +158,7 @@ func (d *UserDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	case !data.Username.IsNull() && data.Username.ValueString() != "":
 		got, err = d.lookupByUsername(readCtx, data.Username.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Pro user", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Pro user", helpers.APIErrorDetail(err))
 			return
 		}
 	default:

@@ -158,7 +158,7 @@ func (d *ContentCategoriesDataSource) Read(ctx context.Context, req datasource.R
 
 	categories, err := d.client.ListContentCategoriesV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud content categories", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud content categories", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -130,7 +130,7 @@ func (d *JamfConnectDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	profiles, err := d.client.ListJamfConnectConfigProfilesV1(readCtx, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Connect configuration profiles", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Connect configuration profiles", helpers.APIErrorDetail(err))
 		return
 	}
 

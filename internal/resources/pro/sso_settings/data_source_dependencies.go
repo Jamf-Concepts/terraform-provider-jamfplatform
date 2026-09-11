@@ -115,7 +115,7 @@ func (d *SsoDependenciesDataSource) Read(ctx context.Context, req datasource.Rea
 
 	got, err := d.client.GetSsoDependenciesV3(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO dependencies", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO dependencies", helpers.APIErrorDetail(err))
 		return
 	}
 

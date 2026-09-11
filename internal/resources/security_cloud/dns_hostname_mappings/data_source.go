@@ -127,7 +127,7 @@ func (d *HostnameMappingsDataSource) Read(ctx context.Context, req datasource.Re
 
 	got, err := d.client.GetDnsCustomHostnameMappingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Security Cloud hostname mappings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Security Cloud hostname mappings", helpers.APIErrorDetail(err))
 		return
 	}
 

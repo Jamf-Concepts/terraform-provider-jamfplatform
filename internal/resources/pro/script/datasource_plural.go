@@ -145,7 +145,7 @@ func (d *ScriptsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	list, err := d.client.ListScriptsV1(readCtx, nil, filterExpression)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro scripts", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro scripts", helpers.APIErrorDetail(err))
 		return
 	}
 

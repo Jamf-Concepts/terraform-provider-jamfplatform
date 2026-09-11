@@ -136,7 +136,7 @@ func (d *ReturnToServiceDataSource) Read(ctx context.Context, req datasource.Rea
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Return to Service configuration", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Return to Service configuration", helpers.APIErrorDetail(err))
 		return
 	}
 

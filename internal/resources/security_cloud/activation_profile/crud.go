@@ -66,7 +66,7 @@ func (r *ActivationProfileResource) Create(ctx context.Context, req resource.Cre
 	created, err := r.client.CreateActivationProfileV1(createCtx, request)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Unable to create activation profile", err.Error())
+			resp.Diagnostics.AddError("Unable to create activation profile", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -134,7 +134,7 @@ func (r *ActivationProfileResource) Read(ctx context.Context, req resource.ReadR
 			return
 		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Unable to read activation profile", err.Error())
+			resp.Diagnostics.AddError("Unable to read activation profile", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -222,7 +222,7 @@ func (r *ActivationProfileResource) Delete(ctx context.Context, req resource.Del
 	if appendWriteDiagnostics(&resp.Diagnostics, err) {
 		return
 	}
-	resp.Diagnostics.AddError("Unable to delete activation profile", err.Error())
+	resp.Diagnostics.AddError("Unable to delete activation profile", helpers.APIErrorDetail(err))
 }
 
 // assertPaused pauses or resumes the profile to match the desired state.
@@ -248,5 +248,5 @@ func (r *ActivationProfileResource) assertPaused(ctx context.Context, diags *dia
 	if paused {
 		action = "pause"
 	}
-	diags.AddError("Unable to "+action+" activation profile", err.Error())
+	diags.AddError("Unable to "+action+" activation profile", helpers.APIErrorDetail(err))
 }

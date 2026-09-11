@@ -69,7 +69,7 @@ func (r *FileShareDistributionPointResource) Create(ctx context.Context, req res
 
 	created, err := r.client.CreateDistributionPointV1(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -83,7 +83,7 @@ func (r *FileShareDistributionPointResource) Create(ctx context.Context, req res
 
 	got, err := r.client.GetDistributionPointV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFileShareDistributionPointResourceModel(&plan, got)
@@ -156,7 +156,7 @@ func (r *FileShareDistributionPointResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -208,7 +208,7 @@ func (r *FileShareDistributionPointResource) Update(ctx context.Context, req res
 
 	got, err := r.client.PatchDistributionPointV1(updateCtx, plan.ID.ValueString(), input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFileShareDistributionPointResourceModel(&plan, got)

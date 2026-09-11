@@ -115,7 +115,7 @@ func (d *GsxConnectionSettingsDataSource) Read(ctx context.Context, req datasour
 
 	got, err := d.client.GetGSXConnectionV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro GSX Connection settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro GSX Connection settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignGsxConnectionSettingsDataSourceModel(&data, got)

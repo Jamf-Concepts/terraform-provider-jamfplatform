@@ -170,7 +170,7 @@ func (d *DNSZoneDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud DNS zone", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 		return
 	}
 

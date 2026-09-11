@@ -158,7 +158,7 @@ func (d *ClassDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 

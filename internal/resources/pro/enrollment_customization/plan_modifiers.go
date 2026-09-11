@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/files"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // ModifyPlan decides whether the icon needs re-uploading, and leaves
@@ -67,7 +68,7 @@ func (r *EnrollmentCustomizationResource) ModifyPlan(ctx context.Context, req re
 	if localSource {
 		hashed, err := files.HashLocalSource(ctx, source)
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading enrollment customization icon source during plan", err.Error())
+			resp.Diagnostics.AddError("Error reading enrollment customization icon source during plan", helpers.APIErrorDetail(err))
 			return
 		}
 		hash = hashed

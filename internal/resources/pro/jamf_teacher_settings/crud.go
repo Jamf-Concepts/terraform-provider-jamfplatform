@@ -63,7 +63,7 @@ func (r *JamfTeacherSettingsResource) Create(ctx context.Context, req resource.C
 
 	current, err := r.client.GetTeacherAppSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Jamf Teacher settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Jamf Teacher settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -112,7 +112,7 @@ func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.Rea
 
 	got, err := r.client.GetTeacherAppSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Jamf Teacher settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Jamf Teacher settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -189,13 +189,13 @@ func applyAndRefresh(ctx context.Context, client *pro.Client, plan *JamfTeacherS
 	}
 
 	if _, err := client.UpdateTeacherAppSettingsV1(ctx, body); err != nil {
-		diags.AddError("Error updating Jamf Pro Jamf Teacher settings", err.Error())
+		diags.AddError("Error updating Jamf Pro Jamf Teacher settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
 	got, err := client.GetTeacherAppSettingsV1(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro Jamf Teacher settings after write", err.Error())
+		diags.AddError("Error reading Jamf Pro Jamf Teacher settings after write", helpers.APIErrorDetail(err))
 		return false
 	}
 

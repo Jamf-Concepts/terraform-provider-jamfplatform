@@ -69,7 +69,7 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.MobileDevic
 		raw := []byte(v)
 		prepared, err := payloadhelpers.PrepareWirePayload(raw, existingUUID, existingUUID)
 		if err != nil {
-			diags.AddError("Failed to inject server-canonical PayloadUUID/PayloadIdentifier into update payload", err.Error())
+			diags.AddError("Failed to inject server-canonical PayloadUUID/PayloadIdentifier into update payload", helpers.APIErrorDetail(err))
 			return nil, nil, diags
 		}
 		s := proclassic.PayloadsXMLText(prepared)

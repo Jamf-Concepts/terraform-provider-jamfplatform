@@ -49,18 +49,18 @@ func (r *AppInstallerSettingsResource) Create(ctx context.Context, req resource.
 
 	current, err := r.client.GetAppInstallerGlobalSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings before write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings before write", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateAppInstallerGlobalSettingsV1(createCtx, buildMergedInput(current, plan)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro App Installer global settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro App Installer global settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAppInstallerGlobalSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerSettingsResourceModel(&plan, got)
@@ -105,7 +105,7 @@ func (r *AppInstallerSettingsResource) Read(ctx context.Context, req resource.Re
 
 	got, err := r.client.GetAppInstallerGlobalSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -143,18 +143,18 @@ func (r *AppInstallerSettingsResource) Update(ctx context.Context, req resource.
 
 	current, err := r.client.GetAppInstallerGlobalSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings before update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings before update", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateAppInstallerGlobalSettingsV1(updateCtx, buildMergedInput(current, plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro App Installer global settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro App Installer global settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetAppInstallerGlobalSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro App Installer global settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignAppInstallerSettingsResourceModel(&plan, got)

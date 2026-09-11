@@ -130,7 +130,7 @@ func (d *NetworkSegmentDataSource) Read(ctx context.Context, req datasource.Read
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro network segment", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro network segment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignNetworkSegmentDataSourceModel(&data, got)

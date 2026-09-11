@@ -41,7 +41,7 @@ func (r *ScriptResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	createResp, err := r.client.CreateScriptV1(createCtx, buildScriptInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -49,7 +49,7 @@ func (r *ScriptResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	got, err := r.client.GetScriptV1(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 	assignScriptResourceModel(&plan, got)
@@ -121,7 +121,7 @@ func (r *ScriptResource) Read(ctx context.Context, req resource.ReadRequest, res
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -151,7 +151,7 @@ func (r *ScriptResource) Update(ctx context.Context, req resource.UpdateRequest,
 	defer cancel()
 
 	if _, err := r.client.UpdateScriptV1(updateCtx, plan.ID.ValueString(), buildScriptInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -164,7 +164,7 @@ func (r *ScriptResource) Update(ctx context.Context, req resource.UpdateRequest,
 	// from the canonical representation.
 	got, err := r.client.GetScriptV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro script", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro script", helpers.APIErrorDetail(err))
 		return
 	}
 	assignScriptResourceModel(&plan, got)

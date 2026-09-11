@@ -128,7 +128,7 @@ func (d *GroupedGatewaysDataSource) Read(ctx context.Context, req datasource.Rea
 
 	groups, err := d.client.ListZtnaGroupedGatewaysV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud ZTNA grouped gateways", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Security Cloud ZTNA grouped gateways", helpers.APIErrorDetail(err))
 		return
 	}
 

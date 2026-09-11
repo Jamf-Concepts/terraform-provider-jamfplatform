@@ -49,7 +49,7 @@ func (r *ClassResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	created, err := r.client.CreateClassByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -63,7 +63,7 @@ func (r *ClassResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	got, err := r.client.GetClassByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignClassResourceModel(createCtx, &plan, got)...)
@@ -138,7 +138,7 @@ func (r *ClassResource) Read(ctx context.Context, req resource.ReadRequest, resp
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -178,13 +178,13 @@ func (r *ClassResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	if err := r.client.UpdateClassByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetClassByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro class", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro class", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignClassResourceModel(updateCtx, &plan, got)...)

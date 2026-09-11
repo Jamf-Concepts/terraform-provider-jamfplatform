@@ -57,7 +57,7 @@ func (r *MobileDeviceInvitationResource) Create(ctx context.Context, req resourc
 
 	created, err := r.client.CreateMobileDeviceInvitationByID(createCtx, "0", buildMobileDeviceInvitationInput(plan, siteID))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device invitation", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -73,7 +73,7 @@ func (r *MobileDeviceInvitationResource) Create(ctx context.Context, req resourc
 	// representation (expiration echo, site, server-defaulted bools, target_ios).
 	got, err := r.client.GetMobileDeviceInvitationByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMobileDeviceInvitationResourceModel(&plan, got)
@@ -148,7 +148,7 @@ func (r *MobileDeviceInvitationResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -185,7 +185,7 @@ func (r *MobileDeviceInvitationResource) Update(ctx context.Context, req resourc
 
 	got, err := r.client.GetMobileDeviceInvitationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignMobileDeviceInvitationResourceModel(&plan, got)

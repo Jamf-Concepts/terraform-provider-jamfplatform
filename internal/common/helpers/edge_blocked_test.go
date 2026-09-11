@@ -29,7 +29,7 @@ func TestIsNotFoundError_EdgePageIsNotGone(t *testing.T) {
 		{
 			name: "cloudfront 404 page did not reach Jamf",
 			reply: gatewaystub.Reply{
-				Status: http.StatusNotFound, ContentType: "text/html", Body: gatewaystub.CloudFrontPage,
+				Status: http.StatusNotFound, ContentType: "text/html", Body: gatewaystub.CloudFrontPage(gatewaystub.CloudFrontNotFound),
 			},
 			edge:     true,
 			notFound: false,

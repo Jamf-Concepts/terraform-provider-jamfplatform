@@ -116,7 +116,7 @@ func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.Read
 
 	got, err := r.client.GetParentAppSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Jamf Parent settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Jamf Parent settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -193,7 +193,7 @@ func (r *JamfParentSettingsResource) Delete(ctx context.Context, _ resource.Dele
 func applyAndRefresh(ctx context.Context, client *pro.Client, plan *JamfParentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	current, err := client.GetParentAppSettingsV1(ctx)
 	if err != nil {
-		diags.AddError("Error reading existing Jamf Pro Jamf Parent settings", err.Error())
+		diags.AddError("Error reading existing Jamf Pro Jamf Parent settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
@@ -204,13 +204,13 @@ func applyAndRefresh(ctx context.Context, client *pro.Client, plan *JamfParentSe
 	}
 
 	if _, err := client.UpdateParentAppSettingsV1(ctx, body); err != nil {
-		diags.AddError("Error updating Jamf Pro Jamf Parent settings", err.Error())
+		diags.AddError("Error updating Jamf Pro Jamf Parent settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
 	got, err := client.GetParentAppSettingsV1(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro Jamf Parent settings after write", err.Error())
+		diags.AddError("Error reading Jamf Pro Jamf Parent settings after write", helpers.APIErrorDetail(err))
 		return false
 	}
 

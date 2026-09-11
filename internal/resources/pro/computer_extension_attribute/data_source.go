@@ -134,7 +134,7 @@ func (d *ComputerExtensionAttributeDataSource) Read(ctx context.Context, req dat
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro computer extension attribute", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 

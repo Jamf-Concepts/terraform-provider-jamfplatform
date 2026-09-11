@@ -194,7 +194,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) applySettings(
 
 	got, err := r.client.GetEnrollmentSettingsV4(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro User-Initiated Enrollment settings", err.Error())
+		diags.AddError("Error reading Jamf Pro User-Initiated Enrollment settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	if got == nil {
@@ -213,7 +213,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) applySettings(
 	}
 
 	if _, err := r.client.UpdateEnrollmentSettingsV4(ctx, &body); err != nil {
-		diags.AddError("Error updating Jamf Pro User-Initiated Enrollment settings", err.Error())
+		diags.AddError("Error updating Jamf Pro User-Initiated Enrollment settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	return true
@@ -316,7 +316,7 @@ func priorCert(state *UserInitiatedEnrollmentSettingsResourceModel, mdm bool) *c
 func (r *UserInitiatedEnrollmentSettingsResource) refresh(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	got, err := r.client.GetEnrollmentSettingsV4(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro User-Initiated Enrollment settings", err.Error())
+		diags.AddError("Error reading Jamf Pro User-Initiated Enrollment settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	assignSettingsResourceModel(state, got)
@@ -336,7 +336,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) refresh(ctx context.Context, s
 func (r *UserInitiatedEnrollmentSettingsResource) refreshAccessGroups(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	groups, err := r.client.ListEnrollmentAccessGroupsV3(ctx, nil, true)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment Access Groups", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment Access Groups", helpers.APIErrorDetail(err))
 		return false
 	}
 
@@ -377,7 +377,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) refreshAccessGroups(ctx contex
 func (r *UserInitiatedEnrollmentSettingsResource) refreshMessagingLanguages(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	langs, err := r.client.ListEnrollmentLanguagesV3(ctx, nil)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment languages", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment languages", helpers.APIErrorDetail(err))
 		return false
 	}
 

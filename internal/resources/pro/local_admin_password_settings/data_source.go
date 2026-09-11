@@ -85,7 +85,7 @@ func (d *LocalAdminPasswordSettingsDataSource) Read(ctx context.Context, req dat
 
 	got, err := d.client.GetLocalAdminPasswordSettingsV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro local administrator password settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro local administrator password settings", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -109,7 +109,7 @@ func (d *AppInstallerTitleDataSource) Read(ctx context.Context, req datasource.R
 
 	got, err := d.client.GetAppInstallerTitleV1(readCtx, data.ID.ValueString(), version)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find App Installer title", err.Error())
+		resp.Diagnostics.AddError("Unable to find App Installer title", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -121,7 +121,7 @@ func (d *AppInstallerTitleDataSource) Read(ctx context.Context, req datasource.R
 	// that genuinely publishes no earlier versions, which is the common case.
 	versions, err := d.client.ListAppInstallerTitleVersionsV1(readCtx, data.ID.ValueString(), "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list App Installer title versions", err.Error())
+		resp.Diagnostics.AddError("Unable to list App Installer title versions", helpers.APIErrorDetail(err))
 		return
 	}
 	data.Versions = assignTitleVersions(versions)

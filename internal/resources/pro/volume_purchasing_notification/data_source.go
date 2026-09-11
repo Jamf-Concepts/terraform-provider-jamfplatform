@@ -151,7 +151,7 @@ func (d *VolumePurchasingNotificationDataSource) Read(ctx context.Context, req d
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Volume Purchasing notification", err.Error())
+		resp.Diagnostics.AddError("Unable to find Volume Purchasing notification", helpers.APIErrorDetail(err))
 		return
 	}
 

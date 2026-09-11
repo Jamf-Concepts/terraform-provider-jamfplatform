@@ -65,7 +65,7 @@ func (r *InventoryPreloadRecordResource) Create(ctx context.Context, req resourc
 
 	createResp, err := r.client.CreateInventoryPreloadRecordV2(createCtx, input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -73,7 +73,7 @@ func (r *InventoryPreloadRecordResource) Create(ctx context.Context, req resourc
 
 	got, err := r.client.GetInventoryPreloadRecordV2(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignInventoryPreloadRecordResourceModel(ctx, &plan, got)...)
@@ -148,7 +148,7 @@ func (r *InventoryPreloadRecordResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -190,7 +190,7 @@ func (r *InventoryPreloadRecordResource) Update(ctx context.Context, req resourc
 
 	got, err := r.client.UpdateInventoryPreloadRecordV2(updateCtx, plan.ID.ValueString(), input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro inventory preload record", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignInventoryPreloadRecordResourceModel(ctx, &plan, got)...)

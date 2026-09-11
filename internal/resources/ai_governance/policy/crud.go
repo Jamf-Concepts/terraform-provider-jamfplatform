@@ -50,7 +50,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 	created, err := r.client.CreatePolicy(ctx, buildCreateRequest(&plan))
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Unable to create AI policy", err.Error())
+			resp.Diagnostics.AddError("Unable to create AI policy", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -110,7 +110,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to read AI policy", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI policy", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -127,7 +127,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	if err := applyPolicyToState(&state, detail); err != nil {
-		resp.Diagnostics.AddError("Unable to read AI policy settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read AI policy settings", helpers.APIErrorDetail(err))
 		return
 	}
 	var private privateStateWriter
@@ -208,7 +208,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 			return
 		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Unable to update AI policy", err.Error())
+			resp.Diagnostics.AddError("Unable to update AI policy", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -263,7 +263,7 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		if isNotFound(err) {
 			return
 		}
-		resp.Diagnostics.AddError("Unable to delete AI policy", err.Error())
+		resp.Diagnostics.AddError("Unable to delete AI policy", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -367,11 +367,11 @@ func (r *PolicyResource) hydrate(ctx context.Context, model *policyModel, id str
 			)
 			return false
 		}
-		diags.AddError("Unable to read AI policy back after writing it", err.Error())
+		diags.AddError("Unable to read AI policy back after writing it", helpers.APIErrorDetail(err))
 		return false
 	}
 	if err := applyPolicyToState(model, detail); err != nil {
-		diags.AddError("Unable to read AI policy settings", err.Error())
+		diags.AddError("Unable to read AI policy settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	diags.Append(writeLockToken(ctx, private, detail.Version)...)

@@ -107,7 +107,7 @@ func (d *AccountGroupDataSource) Read(ctx context.Context, req datasource.ReadRe
 		got, err = d.client.GetAccountGroupByName(readCtx, data.DisplayName.ValueString())
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro account group", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro account group", helpers.APIErrorDetail(err))
 		return
 	}
 

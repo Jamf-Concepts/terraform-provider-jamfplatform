@@ -147,7 +147,7 @@ func (d *AppInstallersDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	entries, err := d.client.ListAppInstallerDeploymentsV1(readCtx, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list App Installer deployments", err.Error())
+		resp.Diagnostics.AddError("Unable to list App Installer deployments", helpers.APIErrorDetail(err))
 		return
 	}
 

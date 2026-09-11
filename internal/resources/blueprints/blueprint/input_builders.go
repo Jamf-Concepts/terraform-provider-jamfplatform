@@ -170,7 +170,7 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blue
 func (r *BlueprintResource) collectSingleComponent(allComponents *[]blueprints.Component, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
 	clientComp, err := comp.ToClientComponent()
 	if err != nil {
-		diags.AddError("Failed to build "+componentName+" component", err.Error())
+		diags.AddError("Failed to build "+componentName+" component", helpers.APIErrorDetail(err))
 		return
 	}
 	*allComponents = append(*allComponents, *clientComp)

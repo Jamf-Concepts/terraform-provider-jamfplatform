@@ -76,7 +76,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	created, err := r.client.CreateDeviceGroupV1(createCtx, buildGroupCreateInput(plan))
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud device group", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -175,7 +175,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud device group", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -247,7 +247,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 	if err := r.client.UpdateDeviceGroupV2(updateCtx, plan.ID.ValueString(), buildGroupUpdateInput(plan)); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud device group", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 		}
 		return
 	}

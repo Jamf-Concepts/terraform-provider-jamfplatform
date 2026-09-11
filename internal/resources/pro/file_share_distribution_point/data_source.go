@@ -165,7 +165,7 @@ func (d *FileShareDistributionPointDataSource) Read(ctx context.Context, req dat
 		got, err = d.client.ResolveDistributionPointV1ByName(readCtx, data.Name.ValueString())
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro file share distribution point", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro file share distribution point", helpers.APIErrorDetail(err))
 		return
 	}
 	assignFileShareDistributionPointDataSourceModel(&data, got)

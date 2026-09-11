@@ -152,7 +152,7 @@ func (d *ProvisioningProfileDataSource) Read(ctx context.Context, req datasource
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device provisioning profile", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro mobile device provisioning profile", helpers.APIErrorDetail(err))
 		return
 	}
 	assignProvisioningProfileDataSourceModel(&data, got)

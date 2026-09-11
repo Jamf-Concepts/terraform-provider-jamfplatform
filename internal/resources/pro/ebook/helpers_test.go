@@ -99,7 +99,7 @@ func TestIsAcceptedAsyncDelete_EdgePageIsNotAcceptance(t *testing.T) {
 	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
 		Status:      http.StatusNotFound,
 		ContentType: "text/html",
-		Body:        gatewaystub.CloudFrontPage,
+		Body:        gatewaystub.CloudFrontPage(gatewaystub.CloudFrontNotFound),
 	})
 
 	if isAcceptedAsyncDelete(err) {

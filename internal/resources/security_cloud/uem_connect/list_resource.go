@@ -93,7 +93,7 @@ func (r *UEMConnectListResource) List(ctx context.Context, req list.ListRequest,
 	if err != nil {
 		var listDiags diag.Diagnostics
 		if !appendCreateDiagnostics(&listDiags, err) {
-			listDiags.AddError("Unable to list the Jamf Security Cloud UEM Connect integration", err.Error())
+			listDiags.AddError("Unable to list the Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		}
 		stream.Results = list.ListResultsStreamDiagnostics(listDiags)
 		return

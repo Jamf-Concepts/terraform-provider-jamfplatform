@@ -138,7 +138,7 @@ func (d *ComputerInvitationDataSource) Read(ctx context.Context, req datasource.
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro computer invitation", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro computer invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerInvitationDataSourceModel(&data, got)

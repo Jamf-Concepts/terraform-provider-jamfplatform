@@ -106,7 +106,7 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 	created, err := r.client.CreateUemConnectorV1(createCtx, input)
 	if err != nil {
 		if !appendCreateDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud UEM Connect integration", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -254,7 +254,7 @@ func (r *UEMConnectResource) Read(ctx context.Context, req resource.ReadRequest,
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -303,7 +303,7 @@ func (r *UEMConnectResource) Update(ctx context.Context, req resource.UpdateRequ
 
 	got, err := r.client.GetUemConnectorV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUEMConnectResourceModel(&plan, got, false)...)
@@ -343,7 +343,7 @@ func (r *UEMConnectResource) Delete(ctx context.Context, req resource.DeleteRequ
 				map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud UEM Connect integration", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud UEM Connect integration", helpers.APIErrorDetail(err))
 		return
 	}
 

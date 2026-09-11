@@ -7,8 +7,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )

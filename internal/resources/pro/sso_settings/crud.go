@@ -66,7 +66,7 @@ func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateReq
 
 	current, err := r.client.GetSsoSettingsV3(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", err.Error())
+		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -166,7 +166,7 @@ func (r *SsoSettingsResource) Update(ctx context.Context, req resource.UpdateReq
 
 	current, err := r.client.GetSsoSettingsV3(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", err.Error())
+		resp.Diagnostics.AddError("Error reading the tenant's current Jamf Pro SSO settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -223,7 +223,7 @@ func applySettings(ctx context.Context, client *pro.Client, plan SsoSettingsReso
 		return false
 	}
 	if _, err := client.UpdateSsoSettingsV3(ctx, body); err != nil {
-		diags.AddError("Error updating Jamf Pro SSO settings", err.Error())
+		diags.AddError("Error updating Jamf Pro SSO settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	return true
@@ -322,7 +322,7 @@ func reconcileCertificate(ctx context.Context, client *pro.Client, prior string,
 // generateCertificate calls POST /v2/sso/cert.
 func generateCertificate(ctx context.Context, client *pro.Client, diags *diag.Diagnostics) bool {
 	if _, err := client.GenerateSsoCertificateV2(ctx); err != nil {
-		diags.AddError("Error generating Jamf Pro SSO signing certificate", err.Error())
+		diags.AddError("Error generating Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return false
 	}
 	tflog.Trace(ctx, "generated Jamf Pro SSO signing certificate")
@@ -346,7 +346,7 @@ func uploadCertificate(ctx context.Context, client *pro.Client, plan *signingCer
 		return false
 	}
 	if _, err := client.UpdateSsoCertificateV2(ctx, body); err != nil {
-		diags.AddError("Error uploading Jamf Pro SSO signing certificate", err.Error())
+		diags.AddError("Error uploading Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return false
 	}
 	tflog.Trace(ctx, "uploaded Jamf Pro SSO signing certificate")
@@ -359,7 +359,7 @@ func deleteCertificate(ctx context.Context, client *pro.Client, diags *diag.Diag
 		if helpers.IsNotFoundError(err) {
 			return true
 		}
-		diags.AddError("Error deleting Jamf Pro SSO signing certificate", err.Error())
+		diags.AddError("Error deleting Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return false
 	}
 	tflog.Trace(ctx, "deleted Jamf Pro SSO signing certificate")
@@ -430,7 +430,7 @@ func currentCertSetupType(ctx context.Context, client *pro.Client, diags *diag.D
 		if helpers.IsNotFoundError(err) {
 			return setupTypeNone
 		}
-		diags.AddError("Error reading Jamf Pro SSO signing certificate", err.Error())
+		diags.AddError("Error reading Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return ""
 	}
 	if got == nil || got.Keystore == nil || got.Keystore.KeystoreSetupType == "" {
@@ -444,7 +444,7 @@ func currentCertSetupType(ctx context.Context, client *pro.Client, diags *diag.D
 func refreshSettingsAndCert(ctx context.Context, client *pro.Client, state *SsoSettingsResourceModel, diags *diag.Diagnostics) bool {
 	got, err := client.GetSsoSettingsV3(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro SSO settings", err.Error())
+		diags.AddError("Error reading Jamf Pro SSO settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	diags.Append(assignSsoSettingsResourceModel(ctx, state, got)...)
@@ -457,7 +457,7 @@ func refreshSettingsAndCert(ctx context.Context, client *pro.Client, state *SsoS
 		if helpers.IsNotFoundError(err) {
 			return true
 		}
-		diags.AddError("Error reading Jamf Pro SSO signing certificate", err.Error())
+		diags.AddError("Error reading Jamf Pro SSO signing certificate", helpers.APIErrorDetail(err))
 		return false
 	}
 	diags.Append(assignSigningCertificateState(ctx, state, cert)...)

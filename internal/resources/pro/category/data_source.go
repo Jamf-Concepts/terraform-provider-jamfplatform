@@ -97,7 +97,7 @@ func (d *CategoryDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	got, err := d.client.GetCategoryV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro category", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro category", helpers.APIErrorDetail(err))
 		return
 	}
 	assignCategoryDataSourceModel(&data, got)

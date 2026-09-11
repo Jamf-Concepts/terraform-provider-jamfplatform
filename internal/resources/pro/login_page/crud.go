@@ -54,18 +54,18 @@ func (r *LoginPageSettingsResource) Create(ctx context.Context, req resource.Cre
 	// write, so the live read always supplies a valid non-empty value for omitted fields.
 	current, err := r.client.GetLoginCustomizationV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro login page settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro login page settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateLoginCustomizationV1(createCtx, buildLoginPageSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro login page settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro login page settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetLoginCustomizationV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignLoginPageSettingsResourceModel(&plan, got)
@@ -110,7 +110,7 @@ func (r *LoginPageSettingsResource) Read(ctx context.Context, req resource.ReadR
 
 	got, err := r.client.GetLoginCustomizationV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -149,13 +149,13 @@ func (r *LoginPageSettingsResource) Update(ctx context.Context, req resource.Upd
 	defer cancel()
 
 	if _, err := r.client.UpdateLoginCustomizationV1(updateCtx, buildLoginPageSettingsInput(plan, nil)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro login page settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro login page settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetLoginCustomizationV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro login page settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignLoginPageSettingsResourceModel(&plan, got)

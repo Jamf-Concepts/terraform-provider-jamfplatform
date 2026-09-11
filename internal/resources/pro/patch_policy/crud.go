@@ -120,7 +120,7 @@ func (r *PatchPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	configID := plan.SoftwareTitleConfigurationID.ValueString()
 	created, err := r.client.CreatePatchPolicyBySoftwareTitleConfigID(createCtx, configID, payload)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractPatchPolicyID(created)
@@ -134,7 +134,7 @@ func (r *PatchPolicyResource) Create(ctx context.Context, req resource.CreateReq
 
 	got, err := r.client.GetPatchPolicyByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPatchPolicyResourceModel(createCtx, &plan, got, false)...)
@@ -209,7 +209,7 @@ func (r *PatchPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -260,7 +260,7 @@ func (r *PatchPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	if plan.Scope != nil {
 		current, err := r.client.GetPatchPolicyByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro patch policy before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro patch policy before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *PatchPolicyScopeModel
@@ -278,13 +278,13 @@ func (r *PatchPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if err := r.client.UpdatePatchPolicyByID(updateCtx, plan.ID.ValueString(), payload); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetPatchPolicyByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro patch policy", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro patch policy", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPatchPolicyResourceModel(updateCtx, &plan, got, false)...)

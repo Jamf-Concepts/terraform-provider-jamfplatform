@@ -56,18 +56,18 @@ func (r *SelfServiceMacosSettingsResource) Create(ctx context.Context, req resou
 	// did not declare keeps its current value on the full-replace PUT.
 	current, err := r.client.GetSelfServiceSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateSelfServiceSettingsV1(createCtx, buildSelfServiceMacosSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetSelfServiceSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServiceMacosSettingsResourceModel(&plan, got)
@@ -112,7 +112,7 @@ func (r *SelfServiceMacosSettingsResource) Read(ctx context.Context, req resourc
 
 	got, err := r.client.GetSelfServiceSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -154,18 +154,18 @@ func (r *SelfServiceMacosSettingsResource) Update(ctx context.Context, req resou
 
 	current, err := r.client.GetSelfServiceSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateSelfServiceSettingsV1(updateCtx, buildSelfServiceMacosSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetSelfServiceSettingsV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Self Service macOS settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServiceMacosSettingsResourceModel(&plan, got)

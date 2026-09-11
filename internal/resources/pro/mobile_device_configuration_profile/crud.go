@@ -81,7 +81,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -98,7 +98,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 
 	got, err := r.client.GetMobileDeviceConfigurationProfileByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading created mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	var rawServerPayload []byte
@@ -185,7 +185,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 			resp.State.RemoveResource(readCtx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	var rawServerPayload []byte
@@ -287,7 +287,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if plan.Scope != nil {
 		current, err := r.client.GetMobileDeviceConfigurationProfileByID(updateCtx, state.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading mobile device configuration profile before update", err.Error())
+			resp.Diagnostics.AddError("Error reading mobile device configuration profile before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.MobileScopeModel
@@ -318,13 +318,13 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateMobileDeviceConfigurationProfileByID(updateCtx, id, input)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error updating mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetMobileDeviceConfigurationProfileByID(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error reading updated mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 	var rawServerPayload []byte
@@ -376,7 +376,7 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 		if helpers.IsNotFoundError(err) {
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting mobile device configuration profile", err.Error())
+		resp.Diagnostics.AddError("Error deleting mobile device configuration profile", helpers.APIErrorDetail(err))
 		return
 	}
 }

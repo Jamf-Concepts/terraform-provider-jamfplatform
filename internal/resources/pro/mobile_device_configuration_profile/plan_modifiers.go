@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/payloadhelpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/scope"
@@ -103,7 +104,7 @@ func writePrivatePayloadRefs(ctx context.Context, w privatePayloadWriter, userAu
 	if userAuthoredInput != "" {
 		encoded, err := encodePrivatePayload([]byte(userAuthoredInput))
 		if err != nil {
-			diags.AddError("Failed to encode last-applied input for private state", err.Error())
+			diags.AddError("Failed to encode last-applied input for private state", helpers.APIErrorDetail(err))
 			return diags
 		}
 		diags.Append(w.SetKey(ctx, privateKeyLastInput, encoded)...)
@@ -112,7 +113,7 @@ func writePrivatePayloadRefs(ctx context.Context, w privatePayloadWriter, userAu
 		canonicalised := plisthelpers.CanonicalisePlistXML(rawServerCanonical)
 		encoded, err := encodePrivatePayload(canonicalised)
 		if err != nil {
-			diags.AddError("Failed to encode last-applied canonical for private state", err.Error())
+			diags.AddError("Failed to encode last-applied canonical for private state", helpers.APIErrorDetail(err))
 			return diags
 		}
 		diags.Append(w.SetKey(ctx, privateKeyLastCanonical, encoded)...)
@@ -131,7 +132,7 @@ func writePrivateServerNow(ctx context.Context, w privatePayloadWriter, rawServe
 	canonicalised := plisthelpers.CanonicalisePlistXML(rawServerCanonical)
 	encoded, err := encodePrivatePayload(canonicalised)
 	if err != nil {
-		diags.AddError("Failed to encode server-now canonical for private state", err.Error())
+		diags.AddError("Failed to encode server-now canonical for private state", helpers.APIErrorDetail(err))
 		return diags
 	}
 	diags.Append(w.SetKey(ctx, privateKeyServerNow, encoded)...)

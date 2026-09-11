@@ -62,7 +62,7 @@ func (r *DNSZoneResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateDnsZoneV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud DNS zone", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -154,7 +154,7 @@ func (r *DNSZoneResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud DNS zone", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -202,14 +202,14 @@ func (r *DNSZoneResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if err := r.client.UpdateDnsZoneV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud DNS zone", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetDnsZoneV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud DNS zone", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDNSZoneResourceModel(ctx, &plan, got)...)

@@ -130,7 +130,7 @@ func (d *SelfServiceMacosSettingsDataSource) Read(ctx context.Context, req datas
 
 	got, err := d.client.GetSelfServiceSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service macOS settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro Self Service macOS settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignSelfServiceMacosSettingsDataSourceModel(&data, got)

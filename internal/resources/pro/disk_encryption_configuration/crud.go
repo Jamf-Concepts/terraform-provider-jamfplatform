@@ -48,7 +48,7 @@ func (r *DiskEncryptionConfigurationResource) Create(ctx context.Context, req re
 
 	created, err := r.client.CreateDiskEncryptionConfigurationByID(createCtx, "0", buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&cfg)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -62,7 +62,7 @@ func (r *DiskEncryptionConfigurationResource) Create(ctx context.Context, req re
 
 	got, err := r.client.GetDiskEncryptionConfigurationByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDiskEncryptionConfigurationResourceModel(&plan, got)...)
@@ -139,7 +139,7 @@ func (r *DiskEncryptionConfigurationResource) Read(ctx context.Context, req reso
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -200,13 +200,13 @@ func (r *DiskEncryptionConfigurationResource) Update(ctx context.Context, req re
 	}
 
 	if err := r.client.UpdateDiskEncryptionConfigurationByID(updateCtx, plan.ID.ValueString(), buildDiskEncryptionConfigurationInput(plan, password)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetDiskEncryptionConfigurationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro disk encryption configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignDiskEncryptionConfigurationResourceModel(&plan, got)...)

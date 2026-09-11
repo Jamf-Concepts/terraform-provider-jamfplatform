@@ -57,7 +57,7 @@ func (r *GroupedGatewayResource) Create(ctx context.Context, req resource.Create
 	created, err := r.client.CreateZtnaGroupedGatewayV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA grouped gateway", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA grouped gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -165,7 +165,7 @@ func (r *GroupedGatewayResource) Read(ctx context.Context, req resource.ReadRequ
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA grouped gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA grouped gateway", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -210,14 +210,14 @@ func (r *GroupedGatewayResource) Update(ctx context.Context, req resource.Update
 
 	if err := r.client.UpdateZtnaGroupedGatewayV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA grouped gateway", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA grouped gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetZtnaGroupedGatewayV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA grouped gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA grouped gateway", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGroupedGatewayResourceModel(ctx, &plan, got)...)

@@ -237,7 +237,7 @@ func (d *VolumePurchasingLocationDataSource) Read(ctx context.Context, req datas
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro Volume Purchasing location", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro Volume Purchasing location", helpers.APIErrorDetail(err))
 		return
 	}
 

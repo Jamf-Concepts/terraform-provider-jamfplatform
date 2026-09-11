@@ -75,7 +75,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateZtnaGatewayV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA gateway", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -206,7 +206,7 @@ func (r *GatewayResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -263,7 +263,7 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if err := r.client.UpdateZtnaGatewayV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA gateway", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -279,7 +279,7 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	got, err := readBackGateway(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), got)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA gateway", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGatewayResourceModel(ctx, &plan, got)...)

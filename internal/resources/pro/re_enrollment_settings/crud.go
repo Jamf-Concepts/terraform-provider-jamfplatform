@@ -59,7 +59,7 @@ func (r *ReEnrollmentSettingsResource) Create(ctx context.Context, req resource.
 	// toggles into the plan as known prior values.)
 	current, err := r.client.GetReenrollmentSettingsV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Re-enrollment settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Re-enrollment settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -109,7 +109,7 @@ func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.Re
 
 	got, err := r.client.GetReenrollmentSettingsV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Re-enrollment settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Re-enrollment settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignReEnrollmentSettingsResourceModel(&state, got)
@@ -182,13 +182,13 @@ func (r *ReEnrollmentSettingsResource) Delete(ctx context.Context, _ resource.De
 func applyAndRefresh(ctx context.Context, client *pro.Client, plan *ReEnrollmentSettingsResourceModel, current *pro.Reenrollment, diags *diag.Diagnostics) bool {
 	body := buildReenrollmentInput(*plan, current)
 	if _, err := client.UpdateReenrollmentSettingsV1(ctx, body); err != nil {
-		diags.AddError("Error updating Jamf Pro Re-enrollment settings", err.Error())
+		diags.AddError("Error updating Jamf Pro Re-enrollment settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
 	got, err := client.GetReenrollmentSettingsV1(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro Re-enrollment settings", err.Error())
+		diags.AddError("Error reading Jamf Pro Re-enrollment settings", helpers.APIErrorDetail(err))
 		return false
 	}
 	assignReEnrollmentSettingsResourceModel(plan, got)

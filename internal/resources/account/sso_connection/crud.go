@@ -90,7 +90,7 @@ func (r *ConnectionResource) Create(ctx context.Context, req resource.CreateRequ
 			return
 		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, actionCreate, err) {
-			resp.Diagnostics.AddError("Error creating Jamf Account SSO connection", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Account SSO connection", helpers.APIErrorDetail(err))
 		}
 		if checkErr != nil {
 			resp.Diagnostics.AddWarning(
@@ -207,7 +207,7 @@ func (r *ConnectionResource) Read(ctx context.Context, req resource.ReadRequest,
 	found, err := r.client.GetConnection(readCtx, id)
 	if err != nil {
 		if !helpers.IsNotFoundError(err) {
-			resp.Diagnostics.AddError("Error reading Jamf Account SSO connection", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Account SSO connection", helpers.APIErrorDetail(err))
 			return
 		}
 		r.reportMissingConnection(readCtx, ctx, resp, id)
@@ -313,7 +313,7 @@ func (r *ConnectionResource) Update(ctx context.Context, req resource.UpdateRequ
 			return
 		}
 		if !appendWriteDiagnostics(&resp.Diagnostics, actionChange, err) {
-			resp.Diagnostics.AddError("Error updating Jamf Account SSO connection", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Account SSO connection", helpers.APIErrorDetail(err))
 		}
 		if checkErr != nil {
 			resp.Diagnostics.AddWarning(

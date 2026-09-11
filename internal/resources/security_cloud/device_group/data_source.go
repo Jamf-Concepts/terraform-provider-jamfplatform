@@ -143,14 +143,14 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	if !data.ID.IsNull() {
 		got, err := d.client.GetDeviceGroupV1(readCtx, data.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 			return
 		}
 		group = got
 	} else {
 		listed, err := d.client.ListDeviceGroupsV2(readCtx)
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", err.Error())
+			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 			return
 		}
 

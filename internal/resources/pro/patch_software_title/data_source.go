@@ -218,12 +218,12 @@ func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.
 			)
 			return
 		}
-		resp.Diagnostics.AddError("Unable to find Jamf Pro patch software title", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro patch software title", helpers.APIErrorDetail(err))
 		return
 	}
 	defs, err := d.proClient.ListPatchSoftwareTitleDefinitionsV3(readCtx, got.ID, nil, "")
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro patch software title versions", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro patch software title versions", helpers.APIErrorDetail(err))
 		return
 	}
 

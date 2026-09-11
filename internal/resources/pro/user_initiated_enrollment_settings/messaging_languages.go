@@ -47,7 +47,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) validateMessagingLanguageKeys(
 
 	namesByCode, err := r.languageNamesByCode(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment language codes", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment language codes", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -90,7 +90,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileMessagingLanguages(
 
 	current, err := r.client.ListEnrollmentLanguagesV3(ctx, nil)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro enrollment languages", err.Error())
+		diags.AddError("Error reading Jamf Pro enrollment languages", helpers.APIErrorDetail(err))
 		return false
 	}
 	currentByCode := make(map[string]pro.EnrollmentProcessTextObject, len(current))
@@ -104,7 +104,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileMessagingLanguages(
 	if !ok {
 		got, gErr := r.client.GetEnrollmentLanguageV3(ctx, defaultLanguageCode)
 		if gErr != nil {
-			diags.AddError("Error reading Jamf Pro English enrollment language", gErr.Error())
+			diags.AddError("Error reading Jamf Pro English enrollment language", helpers.APIErrorDetail(gErr))
 			return false
 		}
 		if got != nil {
@@ -118,7 +118,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileMessagingLanguages(
 		if _, exists := currentByCode[code]; !exists {
 			namesByCode, err = r.languageNamesByCode(ctx)
 			if err != nil {
-				diags.AddError("Error reading Jamf Pro enrollment language codes", err.Error())
+				diags.AddError("Error reading Jamf Pro enrollment language codes", helpers.APIErrorDetail(err))
 				return false
 			}
 			break
@@ -129,7 +129,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileMessagingLanguages(
 		switch op.Action {
 		case messagingLanguageUpsert:
 			if _, err := r.client.UpdateEnrollmentLanguageV3(ctx, op.Code, op.Body); err != nil {
-				diags.AddError("Error writing Jamf Pro enrollment language \""+op.Code+"\"", err.Error())
+				diags.AddError("Error writing Jamf Pro enrollment language \""+op.Code+"\"", helpers.APIErrorDetail(err))
 				return false
 			}
 		case messagingLanguageDelete:
@@ -137,7 +137,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) reconcileMessagingLanguages(
 				if helpers.IsNotFoundError(err) {
 					continue
 				}
-				diags.AddError("Error deleting Jamf Pro enrollment language \""+op.Code+"\"", err.Error())
+				diags.AddError("Error deleting Jamf Pro enrollment language \""+op.Code+"\"", helpers.APIErrorDetail(err))
 				return false
 			}
 		}

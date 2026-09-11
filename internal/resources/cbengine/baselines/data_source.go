@@ -129,7 +129,7 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get baselines",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

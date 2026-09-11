@@ -77,7 +77,7 @@ func (r *RestrictedSoftwareResource) Create(ctx context.Context, req resource.Cr
 
 	created, err := r.client.CreateRestrictedSoftwareByID(createCtx, "0", payload)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractRestrictedSoftwareID(created)
@@ -91,7 +91,7 @@ func (r *RestrictedSoftwareResource) Create(ctx context.Context, req resource.Cr
 
 	got, err := r.client.GetRestrictedSoftwareByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(createCtx, &plan, got, false)...)
@@ -166,7 +166,7 @@ func (r *RestrictedSoftwareResource) Read(ctx context.Context, req resource.Read
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -216,7 +216,7 @@ func (r *RestrictedSoftwareResource) Update(ctx context.Context, req resource.Up
 	if plan.Scope != nil {
 		current, err := r.client.GetRestrictedSoftwareByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro restricted software before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro restricted software before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *RestrictedSoftwareScopeModel
@@ -234,13 +234,13 @@ func (r *RestrictedSoftwareResource) Update(ctx context.Context, req resource.Up
 	}
 
 	if err := r.client.UpdateRestrictedSoftwareByID(updateCtx, plan.ID.ValueString(), payload); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetRestrictedSoftwareByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro restricted software", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro restricted software", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(updateCtx, &plan, got, false)...)

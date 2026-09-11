@@ -139,7 +139,7 @@ func (d *ComputerPrestageEnrollmentDataSource) Read(ctx context.Context, req dat
 		var err error
 		id, err = d.client.ResolveComputerPrestageV3IDByName(readCtx, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error resolving Jamf Pro computer prestage by name", err.Error())
+			resp.Diagnostics.AddError("Error resolving Jamf Pro computer prestage by name", helpers.APIErrorDetail(err))
 			return
 		}
 	default:
@@ -149,7 +149,7 @@ func (d *ComputerPrestageEnrollmentDataSource) Read(ctx context.Context, req dat
 
 	got, err := d.client.GetComputerPrestageV3(readCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment", helpers.APIErrorDetail(err))
 		return
 	}
 

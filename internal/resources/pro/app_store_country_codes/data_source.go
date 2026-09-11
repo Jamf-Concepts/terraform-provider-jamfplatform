@@ -142,7 +142,7 @@ func (d *AppStoreCountryCodesDataSource) Read(ctx context.Context, req datasourc
 
 	codes, err := d.client.ListAppStoreCountryCodesV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Pro App Store country codes", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Pro App Store country codes", helpers.APIErrorDetail(err))
 		return
 	}
 

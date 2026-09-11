@@ -64,7 +64,7 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 	created, err := r.client.CreateZtnaAppV1(createCtx, input)
 	if err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err, !plan.PredefinedAppID.IsNull()) {
-			resp.Diagnostics.AddError("Error creating Jamf Security Cloud access policy application", err.Error())
+			resp.Diagnostics.AddError("Error creating Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		}
 		return
 	}
@@ -181,7 +181,7 @@ func (r *ZtnaAppResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Security Cloud access policy application", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -229,14 +229,14 @@ func (r *ZtnaAppResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if err := r.client.UpdateZtnaAppV1(updateCtx, plan.ID.ValueString(), input); err != nil {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err, !plan.PredefinedAppID.IsNull()) {
-			resp.Diagnostics.AddError("Error updating Jamf Security Cloud access policy application", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		}
 		return
 	}
 
 	got, err := r.client.GetZtnaAppV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud access policy application", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignAppResourceModel(ctx, &plan, got)...)

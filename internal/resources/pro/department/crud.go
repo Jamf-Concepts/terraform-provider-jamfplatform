@@ -41,7 +41,7 @@ func (r *DepartmentResource) Create(ctx context.Context, req resource.CreateRequ
 
 	createResp, err := r.client.CreateDepartmentV1(createCtx, buildDepartmentInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -49,7 +49,7 @@ func (r *DepartmentResource) Create(ctx context.Context, req resource.CreateRequ
 
 	got, err := r.client.GetDepartmentV1(createCtx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 	assignDepartmentResourceModel(&plan, got)
@@ -121,7 +121,7 @@ func (r *DepartmentResource) Read(ctx context.Context, req resource.ReadRequest,
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -151,7 +151,7 @@ func (r *DepartmentResource) Update(ctx context.Context, req resource.UpdateRequ
 	defer cancel()
 
 	if _, err := r.client.UpdateDepartmentV1(updateCtx, plan.ID.ValueString(), buildDepartmentInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -160,7 +160,7 @@ func (r *DepartmentResource) Update(ctx context.Context, req resource.UpdateRequ
 	// but this keeps the resource consistent with the rest of the Pro suite.
 	got, err := r.client.GetDepartmentV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro department", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro department", helpers.APIErrorDetail(err))
 		return
 	}
 	assignDepartmentResourceModel(&plan, got)

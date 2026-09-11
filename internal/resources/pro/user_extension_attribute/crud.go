@@ -50,7 +50,7 @@ func (r *UserExtensionAttributeResource) Create(ctx context.Context, req resourc
 
 	created, err := r.client.CreateUserExtensionAttributeByID(createCtx, "0", input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -64,7 +64,7 @@ func (r *UserExtensionAttributeResource) Create(ctx context.Context, req resourc
 
 	got, err := r.client.GetUserExtensionAttributeByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUserExtensionAttributeResourceModel(createCtx, &plan, got)...)
@@ -139,7 +139,7 @@ func (r *UserExtensionAttributeResource) Read(ctx context.Context, req resource.
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -179,13 +179,13 @@ func (r *UserExtensionAttributeResource) Update(ctx context.Context, req resourc
 	}
 
 	if err := r.client.UpdateUserExtensionAttributeByID(updateCtx, plan.ID.ValueString(), input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetUserExtensionAttributeByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro user extension attribute", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignUserExtensionAttributeResourceModel(updateCtx, &plan, got)...)

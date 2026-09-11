@@ -98,7 +98,7 @@ func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resou
 
 	got, err := r.client.GetLocalAdminPasswordSettingsV2(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro local administrator password settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro local administrator password settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignLocalAdminPasswordSettingsResourceModel(&state, got, &resp.Diagnostics)
@@ -165,14 +165,14 @@ func (r *LocalAdminPasswordSettingsResource) Delete(ctx context.Context, _ resou
 func applyAndRefresh(ctx context.Context, client *pro.Client, plan *LocalAdminPasswordSettingsResourceModel, diags *diag.Diagnostics) bool {
 	current, err := client.GetLocalAdminPasswordSettingsV2(ctx)
 	if err != nil {
-		diags.AddError("Error reading existing Jamf Pro local administrator password settings", err.Error())
+		diags.AddError("Error reading existing Jamf Pro local administrator password settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
 	body := buildLocalAdminPasswordSettingsInput(*plan, current)
 
 	if _, err := client.UpdateLocalAdminPasswordSettingsV2(ctx, body); err != nil {
-		diags.AddError("Error updating Jamf Pro local administrator password settings", err.Error())
+		diags.AddError("Error updating Jamf Pro local administrator password settings", helpers.APIErrorDetail(err))
 		return false
 	}
 
@@ -181,7 +181,7 @@ func applyAndRefresh(ctx context.Context, client *pro.Client, plan *LocalAdminPa
 	// or future field addition is picked up without code changes.
 	got, err := client.GetLocalAdminPasswordSettingsV2(ctx)
 	if err != nil {
-		diags.AddError("Error reading Jamf Pro local administrator password settings", err.Error())
+		diags.AddError("Error reading Jamf Pro local administrator password settings", helpers.APIErrorDetail(err))
 		return false
 	}
 

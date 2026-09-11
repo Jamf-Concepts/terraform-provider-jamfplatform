@@ -194,7 +194,7 @@ func (d *DomainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	domains, err := d.client.ListDomains(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Account SSO domains", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Account SSO domains", helpers.APIErrorDetail(err))
 		return
 	}
 

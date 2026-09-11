@@ -207,7 +207,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get blueprint",
-			err.Error(),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

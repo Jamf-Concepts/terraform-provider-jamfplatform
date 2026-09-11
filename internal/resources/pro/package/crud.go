@@ -73,7 +73,7 @@ func (r *PackageResource) Create(ctx context.Context, req resource.CreateRequest
 
 	created, err := r.client.CreatePackageV1(createCtx, buildPackageInput(plan))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == "" {
@@ -108,7 +108,7 @@ func (r *PackageResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := finalReadRestoringSize(createCtx, r.client, plan.ID.ValueString(), plan.FileName.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignPackageResourceModel(&plan, got)...)
@@ -183,7 +183,7 @@ func (r *PackageResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -252,7 +252,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		// metadata on top of the canonical server record.
 		refreshed, getErr := r.client.GetPackageV1(updateCtx, plan.ID.ValueString())
 		if getErr != nil {
-			resp.Diagnostics.AddError("Error reading post-upload Jamf Pro package", getErr.Error())
+			resp.Diagnostics.AddError("Error reading post-upload Jamf Pro package", helpers.APIErrorDetail(getErr))
 			return
 		}
 		tflog.Info(ctx, "streaming post-poll GET", map[string]any{
@@ -270,7 +270,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		})
 		streamPutResp, err := r.client.UpdatePackageV1(updateCtx, plan.ID.ValueString(), streamInput)
 		if err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Pro package", err.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Pro package", helpers.APIErrorDetail(err))
 			return
 		}
 		tflog.Info(ctx, "streaming metadata PUT response", map[string]any{
@@ -302,7 +302,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 
 		f, filename, c, openErr := files.OpenUploadSource(updateCtx, plan.PackageFileSource.ValueString(), files.DefaultMaxBytes)
 		if openErr != nil {
-			resp.Diagnostics.AddError("Error opening package binary", openErr.Error())
+			resp.Diagnostics.AddError("Error opening package binary", helpers.APIErrorDetail(openErr))
 			return
 		}
 		cleanup = c
@@ -310,7 +310,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		sha, sz, hashErr := HashStreamSHA3(f)
 		if hashErr != nil {
 			cleanup()
-			resp.Diagnostics.AddError("Error hashing package binary", hashErr.Error())
+			resp.Diagnostics.AddError("Error hashing package binary", helpers.APIErrorDetail(hashErr))
 			return
 		}
 		localSha3 = sha
@@ -361,7 +361,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	// server state.
 	if willReupload {
 		if _, seekErr := uploadFile.Seek(0, io.SeekStart); seekErr != nil {
-			resp.Diagnostics.AddError("Error preparing package upload", seekErr.Error())
+			resp.Diagnostics.AddError("Error preparing package upload", helpers.APIErrorDetail(seekErr))
 			return
 		}
 		fileName := plan.FileName.ValueString()
@@ -386,7 +386,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	case planHasManifestSrc:
 		equal, eqErr := ManifestBodiesEqual(updateCtx, state.Manifest.ValueString(), plan.ManifestFileSource.ValueString())
 		if eqErr != nil {
-			resp.Diagnostics.AddError("Error comparing package manifest source", eqErr.Error())
+			resp.Diagnostics.AddError("Error comparing package manifest source", helpers.APIErrorDetail(eqErr))
 			return
 		}
 		if !equal {
@@ -398,7 +398,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	case stateHadManifest && !planHasManifestSrc:
 		if err := r.client.DeletePackageManifestV1(updateCtx, plan.ID.ValueString()); err != nil {
 			if !helpers.IsNotFoundError(err) {
-				resp.Diagnostics.AddError("Error deleting Jamf Pro package manifest", err.Error())
+				resp.Diagnostics.AddError("Error deleting Jamf Pro package manifest", helpers.APIErrorDetail(err))
 				return
 			}
 		}
@@ -413,7 +413,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	// resource does not own survives. Matches the spike's S5 probe pattern.
 	postReconcile, err := r.client.GetPackageV1(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading post-reconcile Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error reading post-reconcile Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 	// No hash override on re-upload: the upload + convergence poll above
@@ -432,7 +432,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 	})
 	putResp, err := r.client.UpdatePackageV1(updateCtx, plan.ID.ValueString(), input)
 	if err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Info(ctx, "package metadata PUT response", map[string]any{
@@ -445,7 +445,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	got, err := finalReadRestoringSize(updateCtx, r.client, plan.ID.ValueString(), plan.FileName.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro package", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro package", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Info(ctx, "package update final GET", map[string]any{

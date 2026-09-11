@@ -171,7 +171,7 @@ func (d *ConnectionsDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	summaries, err := d.client.ListConnections(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list Jamf Account SSO connections", err.Error())
+		resp.Diagnostics.AddError("Unable to list Jamf Account SSO connections", helpers.APIErrorDetail(err))
 		return
 	}
 

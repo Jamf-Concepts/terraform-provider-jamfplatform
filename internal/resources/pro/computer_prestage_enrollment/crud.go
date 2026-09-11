@@ -70,7 +70,7 @@ func (r *ComputerPrestageEnrollmentResource) Create(ctx context.Context, req res
 
 	postResp, err := r.client.CreateComputerPrestageV3(createCtx, post)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro computer prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro computer prestage enrollment", helpers.APIErrorDetail(err))
 		return
 	}
 	if postResp == nil || postResp.ID == "" {
@@ -86,7 +86,7 @@ func (r *ComputerPrestageEnrollmentResource) Create(ctx context.Context, req res
 	// Refresh via GET (server-canonical values).
 	got, err := r.client.GetComputerPrestageV3(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment after create", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment after create", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGetToResource(createCtx, &plan, plan, got)...)
@@ -111,7 +111,7 @@ func (r *ComputerPrestageEnrollmentResource) Create(ctx context.Context, req res
 	}
 	scope, err := r.client.GetComputerPrestageScopeV2(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage scope after create", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope after create", helpers.APIErrorDetail(err))
 		return
 	}
 	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -191,7 +191,7 @@ func (r *ComputerPrestageEnrollmentResource) Read(ctx context.Context, req resou
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer prestage enrollment", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignGetToResource(readCtx, &state, state, got)...)
@@ -201,7 +201,7 @@ func (r *ComputerPrestageEnrollmentResource) Read(ctx context.Context, req resou
 
 	scope, err := r.client.GetComputerPrestageScopeV2(readCtx, state.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage scope", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope", helpers.APIErrorDetail(err))
 		return
 	}
 	state.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -258,7 +258,7 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 	// Pre-PUT GET to source versionLocks.
 	preGet, err := r.client.GetComputerPrestageV3(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage before update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage before update", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -276,7 +276,7 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 	putHitServerBug := false
 	if putErr != nil {
 		if !isPutSerializerBug(putErr) {
-			resp.Diagnostics.AddError("Error updating Jamf Pro computer prestage enrollment", putErr.Error())
+			resp.Diagnostics.AddError("Error updating Jamf Pro computer prestage enrollment", helpers.APIErrorDetail(putErr))
 			return
 		}
 		putHitServerBug = true
@@ -286,7 +286,7 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 	// 500-with-commit and 500-with-silent-rollback flavours of F4b).
 	postGet, err := r.client.GetComputerPrestageV3(updateCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading prestage after update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage after update", helpers.APIErrorDetail(err))
 		return
 	}
 	if unchanged := diffPlanAgainstGet(updateCtx, plan, postGet); len(unchanged) > 0 {
@@ -330,7 +330,7 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 	scope, err := r.client.GetComputerPrestageScopeV2(updateCtx, id)
 	if err != nil {
 		resp.Diagnostics.Append(scopeApplyDiags...)
-		resp.Diagnostics.AddError("Error reading prestage scope after update", err.Error())
+		resp.Diagnostics.AddError("Error reading prestage scope after update", helpers.APIErrorDetail(err))
 		return
 	}
 	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
@@ -380,7 +380,7 @@ func (r *ComputerPrestageEnrollmentResource) Delete(ctx context.Context, req res
 			tflog.Info(ctx, "Jamf Pro computer prestage enrollment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro computer prestage enrollment", err.Error())
+		resp.Diagnostics.AddError("Error deleting Jamf Pro computer prestage enrollment", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -461,7 +461,7 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 
 	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
 	if err != nil {
-		diags.AddError("Error reading prestage scope before replace", err.Error())
+		diags.AddError("Error reading prestage scope before replace", helpers.APIErrorDetail(err))
 		return diags
 	}
 

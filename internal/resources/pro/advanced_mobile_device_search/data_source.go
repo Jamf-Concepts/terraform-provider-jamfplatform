@@ -142,7 +142,7 @@ func (d *AdvancedMobileDeviceSearchDataSource) Read(ctx context.Context, req dat
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced mobile device search", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 		return
 	}
 

@@ -66,7 +66,7 @@ func (r *JSONWebTokenConfigurationResource) Create(ctx context.Context, req reso
 	// requires it).
 	created, err := r.client.CreateJsonWebTokenConfigurationByID(createCtx, "0", buildJSONWebTokenConfigurationInput(plan, helpers.OptionalStringPointer(cfg.EncryptionKey)))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	id := extractJSONWebTokenConfigurationID(created)
@@ -80,7 +80,7 @@ func (r *JSONWebTokenConfigurationResource) Create(ctx context.Context, req reso
 
 	got, err := r.client.GetJsonWebTokenConfigurationByID(createCtx, id)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignJSONWebTokenConfigurationResourceModel(&plan, got)
@@ -152,7 +152,7 @@ func (r *JSONWebTokenConfigurationResource) Read(ctx context.Context, req resour
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -198,13 +198,13 @@ func (r *JSONWebTokenConfigurationResource) Update(ctx context.Context, req reso
 	encryptionKey := encryptionKeyForUpdate(plan.EncryptionKeyWoVersion, state.EncryptionKeyWoVersion, cfg.EncryptionKey)
 
 	if err := r.client.UpdateJsonWebTokenConfigurationByID(updateCtx, plan.ID.ValueString(), buildJSONWebTokenConfigurationInput(plan, encryptionKey)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetJsonWebTokenConfigurationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro JSON Web Token configuration", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 		return
 	}
 	assignJSONWebTokenConfigurationResourceModel(&plan, got)

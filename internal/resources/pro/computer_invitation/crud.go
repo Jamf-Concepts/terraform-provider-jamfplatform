@@ -68,7 +68,7 @@ func (r *ComputerInvitationResource) Create(ctx context.Context, req resource.Cr
 
 	created, err := r.client.CreateComputerInvitationByID(createCtx, "0", buildComputerInvitationInput(plan, helpers.OptionalStringPointer(cfg.SSHPassword), siteID))
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro computer invitation", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro computer invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -84,7 +84,7 @@ func (r *ComputerInvitationResource) Create(ctx context.Context, req resource.Cr
 	// representation (status, expiration echo, site, server-defaulted bools).
 	got, err := r.client.GetComputerInvitationByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro computer invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro computer invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerInvitationResourceModel(&plan, got)
@@ -159,7 +159,7 @@ func (r *ComputerInvitationResource) Read(ctx context.Context, req resource.Read
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer invitation", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -196,7 +196,7 @@ func (r *ComputerInvitationResource) Update(ctx context.Context, req resource.Up
 
 	got, err := r.client.GetComputerInvitationByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro computer invitation", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro computer invitation", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerInvitationResourceModel(&plan, got)

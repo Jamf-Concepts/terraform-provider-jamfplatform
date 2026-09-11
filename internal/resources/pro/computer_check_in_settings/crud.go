@@ -51,18 +51,18 @@ func (r *ComputerCheckInSettingsResource) Create(ctx context.Context, req resour
 	// has already carried omitted toggles into the plan as known prior values.
 	current, err := r.client.GetCheckInSettingsV3(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro Client Check-In settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Client Check-In settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateCheckInSettingsV3(createCtx, buildComputerCheckInSettingsInput(plan, current)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro Client Check-In settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro Client Check-In settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetCheckInSettingsV3(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerCheckInSettingsResourceModel(&plan, got)
@@ -107,7 +107,7 @@ func (r *ComputerCheckInSettingsResource) Read(ctx context.Context, req resource
 
 	got, err := r.client.GetCheckInSettingsV3(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -143,13 +143,13 @@ func (r *ComputerCheckInSettingsResource) Update(ctx context.Context, req resour
 	defer cancel()
 
 	if _, err := r.client.UpdateCheckInSettingsV3(updateCtx, buildComputerCheckInSettingsInput(plan, nil)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro Client Check-In settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro Client Check-In settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetCheckInSettingsV3(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro Client Check-In settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignComputerCheckInSettingsResourceModel(&plan, got)

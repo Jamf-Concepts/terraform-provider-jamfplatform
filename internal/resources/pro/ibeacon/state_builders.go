@@ -43,11 +43,11 @@ func assignIbeaconResourceModel(state *IbeaconResourceModel, ib *proclassic.Ibea
 
 	major, includeAnyMajor, mErr := decodeIbeaconAxisValue(ib.Major)
 	if mErr != nil {
-		diags.AddError("Invalid iBeacon major value", mErr.Error())
+		diags.AddError("Invalid iBeacon major value", helpers.APIErrorDetail(mErr))
 	}
 	minor, includeAnyMinor, nErr := decodeIbeaconAxisValue(ib.Minor)
 	if nErr != nil {
-		diags.AddError("Invalid iBeacon minor value", nErr.Error())
+		diags.AddError("Invalid iBeacon minor value", helpers.APIErrorDetail(nErr))
 	}
 	if diags.HasError() {
 		return diags
@@ -79,11 +79,11 @@ func assignIbeaconDataSourceModel(state *IbeaconDataSourceModel, ib *proclassic.
 
 	major, includeAnyMajor, mErr := decodeIbeaconAxisValue(ib.Major)
 	if mErr != nil {
-		diags.AddError("Invalid iBeacon major value", mErr.Error())
+		diags.AddError("Invalid iBeacon major value", helpers.APIErrorDetail(mErr))
 	}
 	minor, includeAnyMinor, nErr := decodeIbeaconAxisValue(ib.Minor)
 	if nErr != nil {
-		diags.AddError("Invalid iBeacon minor value", nErr.Error())
+		diags.AddError("Invalid iBeacon minor value", helpers.APIErrorDetail(nErr))
 	}
 	if diags.HasError() {
 		return diags

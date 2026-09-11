@@ -72,7 +72,7 @@ func (r *VPPAssignmentResource) Create(ctx context.Context, req resource.CreateR
 		})
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Error creating Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 	if created == nil || created.ID == nil {
@@ -83,7 +83,7 @@ func (r *VPPAssignmentResource) Create(ctx context.Context, req resource.CreateR
 
 	got, err := r.client.GetVPPAssignmentByID(createCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPAssignmentResourceModel(createCtx, &plan, got, false)
@@ -150,7 +150,7 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
@@ -196,7 +196,7 @@ func (r *VPPAssignmentResource) Update(ctx context.Context, req resource.UpdateR
 	if plan.Scope != nil {
 		current, err := r.client.GetVPPAssignmentByID(updateCtx, plan.ID.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment before update", err.Error())
+			resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment before update", helpers.APIErrorDetail(err))
 			return
 		}
 		var serverScope *scope.UserScopeModel
@@ -217,13 +217,13 @@ func (r *VPPAssignmentResource) Update(ctx context.Context, req resource.UpdateR
 	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
 		return r.client.UpdateVPPAssignmentByID(updateCtx, plan.ID.ValueString(), input)
 	}); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetVPPAssignmentByID(updateCtx, plan.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP assignment", err.Error())
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP assignment", helpers.APIErrorDetail(err))
 		return
 	}
 	assignVPPAssignmentResourceModel(updateCtx, &plan, got, false)

@@ -56,24 +56,24 @@ func (r *GsxConnectionSettingsResource) Create(ctx context.Context, req resource
 
 	current, err := r.client.GetGSXConnectionV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading existing Jamf Pro GSX Connection settings", err.Error())
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro GSX Connection settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	input, err := buildGsxConnectionInput(plan, cfg, current)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid GSX Connection configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid GSX Connection configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateGSXConnectionV1(createCtx, input); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro GSX Connection settings", err.Error())
+		resp.Diagnostics.AddError("Error setting Jamf Pro GSX Connection settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetGSXConnectionV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings after write", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings after write", helpers.APIErrorDetail(err))
 		return
 	}
 	assignGsxConnectionSettingsResourceModel(&plan, got)
@@ -119,7 +119,7 @@ func (r *GsxConnectionSettingsResource) Read(ctx context.Context, req resource.R
 
 	got, err := r.client.GetGSXConnectionV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings", helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -159,18 +159,18 @@ func (r *GsxConnectionSettingsResource) Update(ctx context.Context, req resource
 
 	input, err := buildGsxConnectionInput(plan, cfg, nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Invalid GSX Connection configuration", err.Error())
+		resp.Diagnostics.AddError("Invalid GSX Connection configuration", helpers.APIErrorDetail(err))
 		return
 	}
 
 	if _, err := r.client.UpdateGSXConnectionV1(updateCtx, input); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro GSX Connection settings", err.Error())
+		resp.Diagnostics.AddError("Error updating Jamf Pro GSX Connection settings", helpers.APIErrorDetail(err))
 		return
 	}
 
 	got, err := r.client.GetGSXConnectionV1(updateCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings after update", err.Error())
+		resp.Diagnostics.AddError("Error reading Jamf Pro GSX Connection settings after update", helpers.APIErrorDetail(err))
 		return
 	}
 	assignGsxConnectionSettingsResourceModel(&plan, got)

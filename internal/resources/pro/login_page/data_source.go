@@ -102,7 +102,7 @@ func (d *LoginPageSettingsDataSource) Read(ctx context.Context, req datasource.R
 
 	got, err := d.client.GetLoginCustomizationV1(readCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Jamf Pro login page settings", err.Error())
+		resp.Diagnostics.AddError("Unable to read Jamf Pro login page settings", helpers.APIErrorDetail(err))
 		return
 	}
 	assignLoginPageSettingsDataSourceModel(&data, got)

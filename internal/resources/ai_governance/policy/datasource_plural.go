@@ -173,7 +173,7 @@ func (d *PoliciesDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	summaries, err := d.client.ListPolicies(ctx, sort, config.SchemaDriftOnly.ValueBool())
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to list AI policies", err.Error())
+		resp.Diagnostics.AddError("Unable to list AI policies", helpers.APIErrorDetail(err))
 		return
 	}
 

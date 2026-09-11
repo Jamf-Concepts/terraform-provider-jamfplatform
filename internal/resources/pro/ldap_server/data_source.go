@@ -219,7 +219,7 @@ func (d *LdapServerDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to find Jamf Pro LDAP server", err.Error())
+		resp.Diagnostics.AddError("Unable to find Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 		return
 	}
 	resp.Diagnostics.Append(assignLdapServerDataSourceModel(&data, got)...)
