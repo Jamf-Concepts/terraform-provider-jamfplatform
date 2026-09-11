@@ -409,7 +409,7 @@ func waitForPrestageReady(ctx context.Context, client *pro.Client, id string) di
 		if err != nil {
 			diags.AddError(
 				"Error polling Jamf Pro computer prestage readiness",
-				fmt.Sprintf("Could not fetch prestage %s: %s", id, err.Error()),
+				fmt.Sprintf("Could not fetch prestage %s: %s", id, helpers.APIErrorDetail(err)),
 			)
 			return diags
 		}

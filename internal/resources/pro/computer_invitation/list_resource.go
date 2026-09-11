@@ -95,7 +95,7 @@ func (r *ComputerInvitationListResource) List(ctx context.Context, req list.List
 	resp, err := r.client.ListComputerInvitations(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro computer invitations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro computer invitations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

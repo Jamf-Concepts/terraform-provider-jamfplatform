@@ -100,7 +100,7 @@ func (r *MacAppListResource) List(ctx context.Context, req list.ListRequest, str
 	resp, err := r.client.ListMacApplications(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro Mac App Store apps", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro Mac App Store apps", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

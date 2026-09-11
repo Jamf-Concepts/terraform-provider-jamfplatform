@@ -128,7 +128,7 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 	entries, err := r.client.ListAppInstallerDeploymentsV1(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list App Installer deployments", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list App Installer deployments", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

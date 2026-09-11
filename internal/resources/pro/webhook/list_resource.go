@@ -100,7 +100,7 @@ func (r *WebhookListResource) List(ctx context.Context, req list.ListRequest, st
 	resp, err := r.client.ListWebhooks(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro webhooks", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro webhooks", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

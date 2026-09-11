@@ -122,7 +122,7 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 	summaries, err := r.client.ListPolicies(ctx, []string{defaultPolicySort}, config.SchemaDriftOnly.ValueBool())
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list AI policies", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list AI policies", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

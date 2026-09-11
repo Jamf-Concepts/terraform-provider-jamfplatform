@@ -15,7 +15,6 @@ package advanced_volume_purchasing_content_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -228,6 +227,6 @@ func (r *AdvancedVolumePurchasingContentSearchResource) Delete(ctx context.Conte
 			tflog.Info(ctx, "Jamf Pro advanced volume purchasing content search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced volume purchasing content search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced volume purchasing content search", helpers.APIErrorDetail(err))
 	}
 }

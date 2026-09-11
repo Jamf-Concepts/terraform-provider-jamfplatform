@@ -318,7 +318,7 @@ func (r *VolumePurchasingLocationResource) Delete(ctx context.Context, req resou
 			tflog.Info(ctx, "Jamf Pro Volume Purchasing location already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Volume Purchasing location", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Volume Purchasing location", helpers.APIErrorDetail(err))
 	}
 }
 

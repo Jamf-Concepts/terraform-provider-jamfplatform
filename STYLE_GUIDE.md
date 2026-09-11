@@ -1620,8 +1620,18 @@ unchanged, so it is applied at **every** call site rather than the ones judged l
 a block: which call an edge page lands on is a property of the network at that moment, not of
 the resource. The two CloudFront failures that prompted it landed on *creates*, the
 operations an obvious "reads and deletes only" narrowing would have skipped.
-`internal/conformance/api_error_detail_test.go` walks the AST and fails on a bare
-`.Error()` in a diagnostic detail, so a new construct cannot miss it.
+`internal/conformance/api_error_detail_test.go` walks the AST and fails on an error rendered
+into the detail of `AddError`, `AddAttributeError`, `diag.NewErrorDiagnostic` or
+`diag.NewAttributeErrorDiagnostic` — an `.Error()` call on any receiver, or an error-shaped
+identifier handed to `fmt.Sprintf`, through any amount of concatenation — so a new construct
+cannot miss it. The guard's first version matched one shape, a bare `err.Error()` standing
+alone, and passed while ~180 details still rendered raw, `category`'s own list resource and
+classic `Delete` among them. Two things it deliberately does not enforce: a **warning**
+diagnostic (`AddWarning`, `diag.NewWarningDiagnostic`), most of which render a decode or
+plan-modifier failure rather than an API call, so those are converted by hand where they do
+report one; and it recognises no per-site exemption, so a locally produced error in a detail
+— a base64 or JSON decode, a version parse, a state re-encode — is wrapped like any other.
+That costs nothing, since `APIErrorDetail` appends nothing to an error the SDK never marked.
 
 For genuinely transient Pro states (`429`, `423 Locked` on in-flight async ops, `409` on stale `PATCH`/`PUT`), keep retry logic in-resource until **3 or more** resources need it, then extract a shared `RetryWithBackoff(ctx, op, isRetriable, maxAttempts)` (same deferred-abstraction discipline as shared schemas). `device_group`'s propagation-delete retry is the current in-resource precedent.
 

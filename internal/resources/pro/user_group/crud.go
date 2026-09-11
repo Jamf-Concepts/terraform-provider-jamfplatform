@@ -16,7 +16,6 @@ package user_group
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -412,6 +411,6 @@ func (r *UserGroupResource) Delete(ctx context.Context, req resource.DeleteReque
 			tflog.Info(ctx, "Jamf Pro user group already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro user group", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro user group", helpers.APIErrorDetail(err))
 	}
 }

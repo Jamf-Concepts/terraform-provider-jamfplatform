@@ -102,7 +102,7 @@ func (r *ReturnToServiceListResource) List(ctx context.Context, req list.ListReq
 	listResp, err := r.client.ListReturnToServiceConfigurationsV1(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro Return to Service configurations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro Return to Service configurations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

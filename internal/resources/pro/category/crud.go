@@ -14,7 +14,6 @@ package category
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -190,6 +189,6 @@ func (r *CategoryResource) Delete(ctx context.Context, req resource.DeleteReques
 			tflog.Info(ctx, "Jamf Pro category already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro category", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro category", helpers.APIErrorDetail(err))
 	}
 }

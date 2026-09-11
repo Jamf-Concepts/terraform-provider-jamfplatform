@@ -493,7 +493,7 @@ func (r *PackageResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Pro package already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro package", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro package", helpers.APIErrorDetail(err))
 	}
 }
 

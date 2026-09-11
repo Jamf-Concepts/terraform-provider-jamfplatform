@@ -33,7 +33,6 @@ package mac_app_store_app
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -294,6 +293,6 @@ func (r *MacAppResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			tflog.Info(ctx, "Jamf Pro Mac App Store app already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro Mac App Store app", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro Mac App Store app", helpers.APIErrorDetail(err))
 	}
 }

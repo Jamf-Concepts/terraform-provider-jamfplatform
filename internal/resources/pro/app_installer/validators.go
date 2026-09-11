@@ -76,7 +76,7 @@ func resolveAppTitleID(ctx context.Context, resolver titleCatalog, name string) 
 		diags.AddAttributeError(
 			path.Root("app_title_name"),
 			"Unable to resolve App Installer title",
-			fmt.Sprintf("Resolving App Catalog title %q failed: %s", name, err),
+			fmt.Sprintf("Resolving App Catalog title %q failed: %s", name, helpers.APIErrorDetail(err)),
 		)
 		return "", diags
 	}

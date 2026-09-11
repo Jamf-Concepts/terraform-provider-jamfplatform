@@ -129,7 +129,7 @@ func (r *InventoryPreloadRecordListResource) List(ctx context.Context, req list.
 	items, err := r.client.ListInventoryPreloadRecordsV2(listCtx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro inventory preload records", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro inventory preload records", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

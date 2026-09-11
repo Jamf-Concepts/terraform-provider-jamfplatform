@@ -248,7 +248,7 @@ func applyCertToBody(
 	}
 	identity, err := buildCertificateIdentity(cfgCert)
 	if err != nil {
-		diags.AddError("Invalid keystore_file base64", "The supplied keystore_file is not valid RFC 4648 base64: "+err.Error())
+		diags.AddError("Invalid keystore_file base64", "The supplied keystore_file is not valid RFC 4648 base64: "+helpers.APIErrorDetail(err))
 		return false
 	}
 	*dst = identity

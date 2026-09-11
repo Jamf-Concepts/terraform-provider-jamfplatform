@@ -15,7 +15,6 @@ package computer_extension_attribute
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -229,6 +228,6 @@ func (r *ComputerExtensionAttributeResource) Delete(ctx context.Context, req res
 			tflog.Info(ctx, "Jamf Pro computer extension attribute already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro computer extension attribute", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro computer extension attribute", helpers.APIErrorDetail(err))
 	}
 }

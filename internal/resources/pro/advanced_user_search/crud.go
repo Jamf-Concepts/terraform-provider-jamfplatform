@@ -15,7 +15,6 @@ package advanced_user_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -289,6 +288,6 @@ func (r *AdvancedUserSearchResource) Delete(ctx context.Context, req resource.De
 			tflog.Info(ctx, "Jamf Pro advanced user search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced user search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced user search", helpers.APIErrorDetail(err))
 	}
 }

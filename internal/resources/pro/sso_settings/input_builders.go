@@ -78,7 +78,7 @@ func federationMetadataFileOrCurrent(v types.String, current *[]byte) (*[]byte, 
 		diags.AddAttributeError(
 			path.Root("saml_settings").AtName("federation_metadata_file"),
 			"Invalid federation_metadata_file base64",
-			"The supplied federation_metadata_file is not valid RFC 4648 base64: "+err.Error(),
+			"The supplied federation_metadata_file is not valid RFC 4648 base64: "+helpers.APIErrorDetail(err),
 		)
 		return nil, diags
 	}
@@ -278,7 +278,7 @@ func buildSsoCertificateInput(plan signingCertificateModel) (*pro.SsoKeystore, d
 		diags.AddAttributeError(
 			path.Root("signing_certificate").AtName("keystore_file"),
 			"Invalid keystore_file base64",
-			"The supplied keystore_file is not valid RFC 4648 base64: "+err.Error(),
+			"The supplied keystore_file is not valid RFC 4648 base64: "+helpers.APIErrorDetail(err),
 		)
 		return nil, diags
 	}

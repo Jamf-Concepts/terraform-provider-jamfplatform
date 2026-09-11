@@ -9,6 +9,8 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // assignConnectionResourceModel populates a resource model from a connection
@@ -346,7 +348,7 @@ func parseGroupNameFilter(raw *string) (*GroupNameFilterModel, diag.Diagnostics)
 	if err != nil {
 		diags.AddError(
 			"Unable to read the group filter Jamf Account holds",
-			"Jamf Account holds a group filter for this connection that this provider cannot read: "+err.Error()+
+			"Jamf Account holds a group filter for this connection that this provider cannot read: "+helpers.APIErrorDetail(err)+
 				". Reading it back as no filter would let the next apply clear it, so the refresh has stopped "+
 				"instead. Please report this issue to the provider developers, quoting the value: "+*raw,
 		)

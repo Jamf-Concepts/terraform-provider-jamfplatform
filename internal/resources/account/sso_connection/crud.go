@@ -21,7 +21,6 @@ package sso_connection
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/account"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -121,7 +120,7 @@ func (r *ConnectionResource) Create(ctx context.Context, req resource.CreateRequ
 				"read. Terraform has recorded that identifier and the configured values without confirming "+
 				"what Jamf Account stored, and the next plan will refresh it. Do not create it again: Jamf "+
 				"does not require connection names to be unique, so a second create would leave two "+
-				"connections rather than being refused. Underlying error: "+listErr.Error(),
+				"connections rather than being refused. Underlying error: "+helpers.APIErrorDetail(listErr),
 		)
 		return
 	}
@@ -389,7 +388,7 @@ func (r *ConnectionResource) Delete(ctx context.Context, req resource.DeleteRequ
 			tflog.Info(ctx, "Jamf Account SSO connection already removed", map[string]any{"id": id})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Account SSO connection", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Account SSO connection", helpers.APIErrorDetail(err))
 	}
 }
 
@@ -413,7 +412,7 @@ func (r *ConnectionResource) readSummary(ctx context.Context, id string) (*accou
 			"Unable to list Jamf Account SSO connections",
 			"The connection itself was read, but the organization's connection list — which is the only place "+
 				"the enabled products and the consent ticket appear — could not be. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return nil, diags
 	}
@@ -474,7 +473,7 @@ func (r *ConnectionResource) reportMissingConnection(readCtx, ctx context.Contex
 			"Reading the connection on its identifier reported it missing, and the organization's connection "+
 				"list could not be read to confirm that. Terraform has left it in state rather than assuming it "+
 				"is gone, because Jamf Account is known to list a connection it cannot read on its own identifier. "+
-				"Underlying error: "+err.Error(),
+				"Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

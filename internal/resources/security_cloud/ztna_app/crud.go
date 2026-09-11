@@ -14,7 +14,6 @@ package ztna_app
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -82,7 +81,7 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 				"recorded its ID and the configured values without confirming what was stored. The next plan will "+
 				"refresh it — do not re-create it: host names, address ranges and predefined definitions belong to "+
 				"only one application per tenant, so a second create would be refused. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -281,6 +280,6 @@ func (r *ZtnaAppResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Security Cloud access policy application already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud access policy application", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud access policy application", helpers.APIErrorDetail(err))
 	}
 }

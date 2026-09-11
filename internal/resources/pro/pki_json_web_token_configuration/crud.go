@@ -31,7 +31,6 @@ package pki_json_web_token_configuration
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -242,6 +241,6 @@ func (r *JSONWebTokenConfigurationResource) Delete(ctx context.Context, req reso
 			tflog.Info(ctx, "Jamf Pro JSON Web Token configuration already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro JSON Web Token configuration", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro JSON Web Token configuration", helpers.APIErrorDetail(err))
 	}
 }

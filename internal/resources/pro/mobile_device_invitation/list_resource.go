@@ -94,7 +94,7 @@ func (r *MobileDeviceInvitationListResource) List(ctx context.Context, req list.
 	resp, err := r.client.ListMobileDeviceInvitations(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device invitations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device invitations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

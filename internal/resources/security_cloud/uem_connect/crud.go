@@ -131,7 +131,7 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 				"failed, so Terraform has recorded its ID and the configured values without confirming what was "+
 				"stored. The next plan will refresh it — do not re-create it: Jamf Security Cloud allows one UEM "+
 				"Connect integration per tenant, so a second create would be refused. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -371,7 +371,7 @@ func (r *UEMConnectResource) applySettings(ctx context.Context, diags *diag.Diag
 			diags.AddError(
 				"Error writing Jamf Security Cloud UEM Connect settings",
 				"The integration was "+phase+" but its settings could not be written, so it may be running with "+
-					"Jamf Security Cloud's defaults. Re-run to converge. Reported: "+err.Error(),
+					"Jamf Security Cloud's defaults. Re-run to converge. Reported: "+helpers.APIErrorDetail(err),
 			)
 		}
 		return false
@@ -383,7 +383,7 @@ func (r *UEMConnectResource) applySettings(ctx context.Context, diags *diag.Diag
 			diags.AddError(
 				"Error setting Jamf Security Cloud UEM Connect enablement",
 				"The integration was "+phase+" and its settings written, but its enabled state could not be set. "+
-					"Re-run to converge. Reported: "+err.Error(),
+					"Re-run to converge. Reported: "+helpers.APIErrorDetail(err),
 			)
 		}
 		return false

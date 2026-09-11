@@ -93,7 +93,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 	groups, err := r.client.ListDeviceGroupsV2(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud device groups", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud device groups", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

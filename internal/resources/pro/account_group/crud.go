@@ -22,7 +22,6 @@ package account_group
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -307,6 +306,6 @@ func (r *AccountGroupResource) Delete(ctx context.Context, req resource.DeleteRe
 			tflog.Info(ctx, "Jamf Pro account group already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro account group", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro account group", helpers.APIErrorDetail(err))
 	}
 }

@@ -14,7 +14,6 @@ package building
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -200,6 +199,6 @@ func (r *BuildingResource) Delete(ctx context.Context, req resource.DeleteReques
 			tflog.Info(ctx, "Jamf Pro building already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro building", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro building", helpers.APIErrorDetail(err))
 	}
 }

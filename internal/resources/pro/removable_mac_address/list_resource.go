@@ -92,7 +92,7 @@ func (r *RemovableMacAddressListResource) List(ctx context.Context, req list.Lis
 	resp, err := r.client.ListRemovableMacAddresses(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro removable MAC addresses", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro removable MAC addresses", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -31,6 +31,7 @@ import (
 	mdmactions "github.com/jamf/terraform-provider-jamfplatform/internal/actions/pro/mdm"
 	patchactions "github.com/jamf/terraform-provider-jamfplatform/internal/actions/pro/patch"
 	uemconnectactions "github.com/jamf/terraform-provider-jamfplatform/internal/actions/security_cloud/uem_connect"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	mcxforcedpayload "github.com/jamf/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
@@ -403,7 +404,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS",
-			fmt.Sprintf("Expected an integer number of milliseconds, got %q: %s", getenv(envMinRequestIntervalMs), err),
+			fmt.Sprintf("Expected an integer number of milliseconds, got %q: %s", getenv(envMinRequestIntervalMs), helpers.APIErrorDetail(err)),
 		)
 		return
 	}

@@ -92,7 +92,7 @@ func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block Co
 			if err != nil {
 				diags.AddError(
 					"Error encoding component configuration",
-					"Could not encode component configuration to JSON: "+err.Error(),
+					"Could not encode component configuration to JSON: "+helpers.APIErrorDetail(err),
 				)
 				continue
 			}
@@ -188,7 +188,7 @@ type legacyPayloadEntry struct {
 func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]blueprints.Component, diags *diag.Diagnostics, legacyPayloads types.Dynamic, blueprintName string) {
 	raw, err := helpers.TerraformDynamicToJSON(legacyPayloads)
 	if err != nil {
-		diags.AddError("Error reading legacy payloads", "Could not convert legacy payloads to JSON: "+err.Error())
+		diags.AddError("Error reading legacy payloads", "Could not convert legacy payloads to JSON: "+helpers.APIErrorDetail(err))
 		return
 	}
 
@@ -234,7 +234,7 @@ func (r *BlueprintResource) collectBlockLegacyPayloads(allComponents *[]blueprin
 			if err := json.Unmarshal([]byte(payload.Settings.ValueString()), &settingsMap); err != nil {
 				diags.AddError(
 					"Invalid legacy payload settings",
-					"settings for payload_type "+entry.PayloadType+" must be a JSON object string (use jsonencode): "+err.Error(),
+					"settings for payload_type "+entry.PayloadType+" must be a JSON object string (use jsonencode): "+helpers.APIErrorDetail(err),
 				)
 				return
 			}
@@ -282,7 +282,7 @@ func (r *BlueprintResource) appendLegacyConfigProfile(allComponents *[]blueprint
 
 	configJSON, err := json.Marshal(config)
 	if err != nil {
-		diags.AddError("Error encoding legacy payloads configuration", "Could not encode configuration to JSON: "+err.Error())
+		diags.AddError("Error encoding legacy payloads configuration", "Could not encode configuration to JSON: "+helpers.APIErrorDetail(err))
 		return
 	}
 

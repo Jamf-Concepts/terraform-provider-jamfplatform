@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*FlushMdmCommandsAction)(nil)
@@ -95,7 +97,7 @@ func (a *FlushMdmCommandsAction) Invoke(ctx context.Context, req action.InvokeRe
 	if err := a.classic.DeleteCommandFlushByIDTypeIDStatus(ctx, idType, id, status); err != nil {
 		resp.Diagnostics.AddError(
 			"Flush Commands Failed",
-			fmt.Sprintf("Unable to flush %s commands for %s %s: %s", status, idType, id, err),
+			fmt.Sprintf("Unable to flush %s commands for %s %s: %s", status, idType, id, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

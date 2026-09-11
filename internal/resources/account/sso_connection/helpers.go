@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // actionCreate and actionChange are the operation names the two writes pass
@@ -536,7 +538,7 @@ func appendOrphanedCreateDiagnostics(diags *diag.Diagnostics, name string, orpha
 				"    terraform import <this resource address> "+orphans[0].ID+"\n\nor remove it in the Jamf "+
 				"Account console and apply again. Terraform cannot choose for you: adopting it would record state "+
 				"for a connection whose contents were never confirmed, and removing it might destroy one already "+
-				"in use.\n\nReported by Jamf Account: "+cause.Error(),
+				"in use.\n\nReported by Jamf Account: "+helpers.APIErrorDetail(cause),
 		)
 		return
 	}
@@ -550,7 +552,7 @@ func appendOrphanedCreateDiagnostics(diags *diag.Diagnostics, name string, orpha
 			"which of them is new. Then either import that one:\n\n"+
 			"    terraform import <this resource address> <its identifier>\n\nor remove it there and apply "+
 			"again. Do not import one you did not just create: Terraform would adopt a connection someone else "+
-			"manages and replace it on the next apply.\n\nReported by Jamf Account: "+cause.Error(),
+			"manages and replace it on the next apply.\n\nReported by Jamf Account: "+helpers.APIErrorDetail(cause),
 	)
 }
 
@@ -568,6 +570,6 @@ func appendUnconfirmedUpdateDiagnostics(diags *diag.Diagnostics, id string, caus
 		"Changing connection "+id+" reported a failure, and Jamf Account does not say whether the change was "+
 			"applied or refused. Terraform has left the previous values in state rather than record values it "+
 			"cannot confirm.\n\nRun `terraform plan -refresh-only` to see what Jamf Account currently holds, "+
-			"then apply again.\n\nReported by Jamf Account: "+cause.Error(),
+			"then apply again.\n\nReported by Jamf Account: "+helpers.APIErrorDetail(cause),
 	)
 }

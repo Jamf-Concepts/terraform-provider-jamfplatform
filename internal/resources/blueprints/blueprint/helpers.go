@@ -166,3 +166,16 @@ func scopeDeviceGroups(scope *blueprints.BlueprintScope) []string {
 	}
 	return scope.DeviceGroups
 }
+
+// isDeleteMaybeComplete reports whether a failed DELETE could still have
+// removed the blueprint, which is the only case where Delete is entitled to
+// warn instead of erroring and let the framework drop the resource from state.
+//
+// A Jamf-produced 500 qualifies: the service has been observed completing the
+// delete and then failing the response. An edge error page does not, however it
+// is statused — a CDN, WAF or gateway 500 means the request never arrived, so
+// the blueprint is still live and still deployed, and dropping it from state
+// would have a later apply recreate it alongside itself.
+func isDeleteMaybeComplete(err error) bool {
+	return helpers.IsServerError(err) && !helpers.IsEdgeBlocked(err)
+}

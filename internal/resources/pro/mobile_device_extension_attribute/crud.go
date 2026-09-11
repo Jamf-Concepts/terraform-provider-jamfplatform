@@ -15,7 +15,6 @@ package mobile_device_extension_attribute
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -225,6 +224,6 @@ func (r *MobileDeviceExtensionAttributeResource) Delete(ctx context.Context, req
 			tflog.Info(ctx, "Jamf Pro mobile device extension attribute already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device extension attribute", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device extension attribute", helpers.APIErrorDetail(err))
 	}
 }

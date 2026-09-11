@@ -21,7 +21,6 @@ package network_segment
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -211,6 +210,6 @@ func (r *NetworkSegmentResource) Delete(ctx context.Context, req resource.Delete
 			tflog.Info(ctx, "Jamf Pro network segment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro network segment", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro network segment", helpers.APIErrorDetail(err))
 	}
 }

@@ -16,6 +16,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*AbandonFeatureToggleAction)(nil)
@@ -59,7 +61,7 @@ func (a *AbandonFeatureToggleAction) Invoke(ctx context.Context, req action.Invo
 	if err := a.client.AbandonManagedSoftwareUpdateFeatureToggleV1(ctx); err != nil {
 		resp.Diagnostics.AddError(
 			"Abandon Feature Toggle Failed",
-			"Unable to force-stop the Managed Software Updates feature-toggle process: "+err.Error(),
+			"Unable to force-stop the Managed Software Updates feature-toggle process: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

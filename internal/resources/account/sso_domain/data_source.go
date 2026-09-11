@@ -215,7 +215,7 @@ func (d *DomainDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		resp.Diagnostics.AddError(
 			"Unable to read Jamf Account SSO domain assignments",
 			"The domain \""+found.Domain+"\" is claimed, but the connections it is assigned to could not be "+
-				"read. Underlying error: "+err.Error(),
+				"read. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

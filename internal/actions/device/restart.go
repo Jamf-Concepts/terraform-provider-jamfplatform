@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RestartAction)(nil)
@@ -72,7 +74,7 @@ func (a *RestartAction) Invoke(ctx context.Context, req action.InvokeRequest, re
 	if _, err := a.actions.RestartDevice(ctx, deviceID); err != nil {
 		resp.Diagnostics.AddError(
 			"Restart Device Failed",
-			fmt.Sprintf("Unable to restart device %s: %s", deviceID, err),
+			fmt.Sprintf("Unable to restart device %s: %s", deviceID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

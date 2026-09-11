@@ -97,7 +97,7 @@ func (r *NetworkSegmentListResource) List(ctx context.Context, req list.ListRequ
 	resp, err := r.client.ListNetworkSegments(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro network segments", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro network segments", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -93,7 +93,7 @@ func (a *uemConnectAction) resolveIntegrationID(ctx context.Context, configured 
 			diags.AddError(
 				"Could not find the UEM Connect integration to synchronize",
 				"Reading this tenant's UEM Connect integration failed, so there is nothing to act on. Reported: "+
-					err.Error(),
+					helpers.APIErrorDetail(err),
 			)
 		}
 		return ""
@@ -158,15 +158,21 @@ func addNotEntitled(diags *diag.Diagnostics, description string) {
 // isNotFound reports whether an error is Jamf Security Cloud saying the named
 // integration does not exist.
 //
-// A gateway-unrouted 404 is excluded: it reports that the request reached no
-// Jamf service, so reporting the integration as absent would blame the operator
-// for a base URL problem. See helpers.IsGatewayUnrouted.
+// Two 404s that no Jamf service produced are excluded: each reports that the
+// request reached no Jamf service, so reporting the integration as absent would
+// blame the operator for a live integration and a network fault they were never
+// told about. They are the gateway's own unrouted reply
+// (helpers.IsGatewayUnrouted) and an edge error page, which CloudFront serves
+// with a 404 among other statuses (helpers.IsEdgeBlocked).
 func isNotFound(err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
 		return false
 	}
 	if helpers.IsGatewayUnrouted(err) {
+		return false
+	}
+	if helpers.IsEdgeBlocked(err) {
 		return false
 	}
 	return apiErr.HasStatus(http.StatusNotFound)

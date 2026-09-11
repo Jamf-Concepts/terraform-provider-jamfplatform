@@ -15,7 +15,6 @@ package advanced_mobile_device_search
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -370,6 +369,6 @@ func (r *AdvancedMobileDeviceSearchResource) Delete(ctx context.Context, req res
 			tflog.Info(ctx, "Jamf Pro advanced mobile device search already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced mobile device search", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro advanced mobile device search", helpers.APIErrorDetail(err))
 	}
 }

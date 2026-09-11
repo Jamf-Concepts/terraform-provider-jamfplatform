@@ -15,7 +15,6 @@ package class
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -226,6 +225,6 @@ func (r *ClassResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 			tflog.Info(ctx, "Jamf Pro class already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro class", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro class", helpers.APIErrorDetail(err))
 	}
 }

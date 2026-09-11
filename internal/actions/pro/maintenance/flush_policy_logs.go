@@ -47,6 +47,8 @@ import (
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*FlushPolicyLogsAction)(nil)
@@ -164,7 +166,7 @@ func (a *FlushPolicyLogsAction) Invoke(ctx context.Context, req action.InvokeReq
 	if _, err := a.classic.GetPolicyByID(ctx, policyID); err != nil {
 		resp.Diagnostics.AddError(
 			"Policy Not Found",
-			fmt.Sprintf("Unable to read policy %s, so its logs were not flushed: %s", policyID, err),
+			fmt.Sprintf("Unable to read policy %s, so its logs were not flushed: %s", policyID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}
@@ -174,7 +176,7 @@ func (a *FlushPolicyLogsAction) Invoke(ctx context.Context, req action.InvokeReq
 	if err := a.classic.DeleteLogFlushByLogIDInterval(ctx, logFlushLog, policyID, interval); err != nil {
 		resp.Diagnostics.AddError(
 			"Flush Policy Logs Failed",
-			fmt.Sprintf("Unable to flush logs for policy %s: %s", policyID, err),
+			fmt.Sprintf("Unable to flush logs for policy %s: %s", policyID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

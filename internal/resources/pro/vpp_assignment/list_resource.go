@@ -82,7 +82,7 @@ func (r *VPPAssignmentListResource) List(ctx context.Context, req list.ListReque
 	apiResp, err := r.client.ListVPPAssignments(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro VPP assignments", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro VPP assignments", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

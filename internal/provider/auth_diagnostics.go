@@ -24,7 +24,11 @@ const egressIPLookupURL = egressip.LookupURL
 // tests can exercise the blocked-request branch without network access. The
 // implementation is shared with the resource diagnostics and caches, so a
 // configuration failure and a later edge block cost one request between them.
-var egressIPLookup = egressip.Lookup
+//
+// Calls through rather than copying the function value, for the reason given on
+// the copy in internal/common/helpers: a package-initialisation copy cannot be
+// stubbed from another package's test.
+var egressIPLookup = func() string { return egressip.Lookup() }
 
 // authFailureDiagnostic renders a failed credential validation as a Terraform
 // diagnostic summary and detail.

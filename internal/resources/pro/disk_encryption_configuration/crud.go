@@ -14,7 +14,6 @@ package disk_encryption_configuration
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -247,7 +246,7 @@ func (r *DiskEncryptionConfigurationResource) Delete(ctx context.Context, req re
 			tflog.Info(ctx, "Jamf Pro disk encryption configuration already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro disk encryption configuration", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro disk encryption configuration", helpers.APIErrorDetail(err))
 	}
 }
 

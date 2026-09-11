@@ -8,6 +8,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RetryAllInstallationsAction)(nil)
@@ -70,7 +72,7 @@ func (a *RetryAllInstallationsAction) Invoke(ctx context.Context, req action.Inv
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Retry App Installer Installations Failed",
-			"Unable to retry the tenant's failed App Installer installations: "+err.Error(),
+			"Unable to retry the tenant's failed App Installer installations: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}

@@ -24,6 +24,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var (
@@ -171,7 +173,7 @@ func (a *DeployActivationProfileAction) Invoke(ctx context.Context, req action.I
 		if !appendDeployDiagnostics(&resp.Diagnostics, err, code, osValue, groups) {
 			resp.Diagnostics.AddError(
 				"Activation Profile Deploy Failed",
-				fmt.Sprintf("Unable to deploy activation profile %s (%s) to Jamf Pro: %s", code, osValue, err),
+				fmt.Sprintf("Unable to deploy activation profile %s (%s) to Jamf Pro: %s", code, osValue, helpers.APIErrorDetail(err)),
 			)
 		}
 		return

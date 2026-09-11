@@ -21,7 +21,6 @@ package mobile_device_invitation
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -224,6 +223,6 @@ func (r *MobileDeviceInvitationResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro mobile device invitation already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device invitation", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device invitation", helpers.APIErrorDetail(err))
 	}
 }

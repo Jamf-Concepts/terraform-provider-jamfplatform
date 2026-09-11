@@ -119,7 +119,7 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 		if delErr := r.client.DeleteMobileDeviceApplicationByID(createCtx, id); delErr != nil {
 			tflog.Warn(ctx, "failed to roll back partially-created Jamf Pro mobile device app after a failed finalize PUT; it may be orphaned in the tenant", map[string]any{"id": id, "delete_error": delErr.Error()})
 		}
-		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed; rolled back the partial create: %v", id, err))
+		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed; rolled back the partial create: %s", id, helpers.APIErrorDetail(err)))
 		return
 	}
 
@@ -325,7 +325,7 @@ func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteReque
 			return getErr
 		},
 	); err != nil {
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("%v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", helpers.APIErrorDetail(err))
 		return
 	}
 	tflog.Trace(ctx, "Jamf Pro mobile device app deletion confirmed", map[string]any{"id": id})

@@ -61,7 +61,7 @@ func (r *CloudDistributionPointResource) Create(ctx context.Context, req resourc
 				"A cloud distribution point is already configured on this Jamf Pro tenant, so it cannot be created. "+
 					"Import the existing object instead:\n\n"+
 					"  terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton\n\n"+
-					"Original error: "+err.Error(),
+					"Original error: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}

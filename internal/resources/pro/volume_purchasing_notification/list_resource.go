@@ -99,7 +99,7 @@ func (r *VolumePurchasingNotificationListResource) List(ctx context.Context, req
 	entries, err := r.client.ListVolumePurchasingSubscriptionsV1(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Volume Purchasing notifications", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Volume Purchasing notifications", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

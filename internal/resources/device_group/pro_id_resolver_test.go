@@ -14,7 +14,9 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/egressip"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
 // newProIDMockClient spins up a local HTTPS server that auto-serves OAuth tokens
@@ -208,4 +210,69 @@ func TestResolveJamfProID_NilGuards(t *testing.T) {
 	if !id2.IsNull() {
 		t.Error("empty platform id must null the attribute")
 	}
+}
+
+// proIDResolverEdgePageHandler serves an nginx WAF block page — HTML, not a
+// Jamf reply — at the supplied status, so the real SDK marks the error the way
+// an edge block is marked in production. The page comes from gatewaystub
+// rather than being retyped here: it is the shape a WAF actually serves, and
+// gatewaystub is deliberately untagged so a unit test may import it.
+func proIDResolverEdgePageHandler(t *testing.T, status int) http.Handler {
+	t.Helper()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/groups/") {
+			t.Errorf("unexpected request path %q (expected '/groups/'-containing path)", r.URL.Path)
+			http.Error(w, "unexpected path", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(gatewaystub.NginxBlockPage))
+	})
+}
+
+// TestResolveJamfProID_EdgeBlocked403_ReportsTransientNotMissingPermission
+// pins the edge exclusion on the forbidden branch. A WAF or IP allowlist serves
+// a 403 page of its own, and diagnosing that as "grant Inventory → Device
+// groups → Read" sends the operator to re-grant a privilege that was never
+// missing. The reply must take the transient branch instead, and jamf_pro_id
+// must still be nulled without failing the apply.
+func TestResolveJamfProID_EdgeBlocked403_ReportsTransientNotMissingPermission(t *testing.T) {
+	stubEgressLookup(t, "203.0.113.10")
+
+	client := newProIDMockClient(t, proIDResolverEdgePageHandler(t, http.StatusForbidden))
+	pd := providerdata.New(client)
+
+	id, diags := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid")
+	if diags.HasError() {
+		t.Fatalf("an edge 403 must not produce an error diagnostic; got %v", diags)
+	}
+	if !id.IsNull() {
+		t.Error("an edge 403 must null the jamf_pro_id attribute")
+	}
+	if countSeverity(diags, diag.SeverityWarning) != 1 {
+		t.Fatalf("expected exactly 1 warning on an edge 403, got %d (%v)", countSeverity(diags, diag.SeverityWarning), diags)
+	}
+	if strings.Contains(diags[0].Summary(), "Device groups Read permission") {
+		t.Errorf("an edge 403 must not be diagnosed as a missing permission, got %q", diags[0].Summary())
+	}
+	if !strings.Contains(diags[0].Summary(), "Failed to resolve") {
+		t.Errorf("an edge 403 should take the transient branch, got summary %q", diags[0].Summary())
+	}
+	if !strings.Contains(diags[0].Detail(), "Egress IP address: 203.0.113.10") {
+		t.Errorf("the transient detail should render through helpers.APIErrorDetail and carry the egress-IP guidance, got %q", diags[0].Detail())
+	}
+}
+
+// stubEgressLookup binds the egress-address lookup for one test. Without it the
+// assertion above reaches helpers.APIErrorDetail's real lookup, which is an
+// outbound request to a third-party echo service from `make test` — and it would
+// still pass, since the fallback wording also carries the address line, so the
+// network call would go unnoticed rather than failing anything.
+func stubEgressLookup(t *testing.T, address string) {
+	t.Helper()
+
+	original := egressip.Lookup
+	egressip.Lookup = func() string { return address }
+	t.Cleanup(func() { egressip.Lookup = original })
 }

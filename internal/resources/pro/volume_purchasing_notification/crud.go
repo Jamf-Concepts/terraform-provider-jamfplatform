@@ -24,7 +24,6 @@ package volume_purchasing_notification
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -232,6 +231,6 @@ func (r *VolumePurchasingNotificationResource) Delete(ctx context.Context, req r
 			tflog.Info(ctx, "Volume Purchasing notification already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Volume Purchasing notification", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Volume Purchasing notification", helpers.APIErrorDetail(err))
 	}
 }

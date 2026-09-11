@@ -23,6 +23,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var (
@@ -174,7 +176,7 @@ func (a *VerifySSODomainAction) Invoke(ctx context.Context, req action.InvokeReq
 		if !appendInvokeDiagnostics(&resp.Diagnostics, err, target, idPath) {
 			resp.Diagnostics.AddError(
 				"Domain verification could not be run",
-				fmt.Sprintf("Jamf Account refused to verify domain %s: %s", target, err),
+				fmt.Sprintf("Jamf Account refused to verify domain %s: %s", target, helpers.APIErrorDetail(err)),
 			)
 		}
 		return

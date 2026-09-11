@@ -13,6 +13,7 @@ package egressip
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -33,6 +34,11 @@ const lookupTimeout = 3 * time.Second
 // maxResponseBytes caps the read. The response should be one short line, and
 // this must not become a way for an intercepting proxy to stream an unbounded
 // body into a Terraform error message.
+//
+// 64 comfortably clears the 45 characters a canonical IPv6 address takes, so
+// the cap can only ever truncate a body that is not an address — and a
+// truncation is then rejected as one rather than returned, since FetchFrom
+// parses what it read.
 const maxResponseBytes = 64
 
 // Lookup reports this host's public source address, or "" if it cannot be
@@ -66,6 +72,13 @@ func onceFrom(url string) func() string {
 // returned, so a failed lookup must degrade to omitting one line rather than
 // replacing the real diagnostic with a complaint about the lookup. Callers
 // substitute an equivalent shell command when this returns "".
+//
+// A non-2xx status, or a body that is not an address, counts as a failure
+// rather than as an answer. The network this diagnostic exists for is one that
+// intercepts requests, which is the same network whose captive portal or proxy
+// answers the echo service with an error page — so an unvalidated body is the
+// shape the blocked case itself produces, and returning it would print
+// proxy-controlled bytes where the operator needs the copy-pasteable command.
 func FetchFrom(url string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), lookupTimeout)
 	defer cancel()
@@ -80,9 +93,17 @@ func FetchFrom(url string) string {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return ""
+	}
+
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(body))
+	address := strings.TrimSpace(string(body))
+	if net.ParseIP(address) == nil {
+		return ""
+	}
+	return address
 }

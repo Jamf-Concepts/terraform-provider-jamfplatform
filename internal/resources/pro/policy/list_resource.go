@@ -105,7 +105,7 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 	resp, err := r.client.ListPolicies(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro policies", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro policies", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

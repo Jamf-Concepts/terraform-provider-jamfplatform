@@ -93,7 +93,7 @@ func (r *ProvisioningProfileListResource) List(ctx context.Context, req list.Lis
 	resp, err := r.client.ListMobileDeviceProvisioningProfiles(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device provisioning profiles", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device provisioning profiles", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

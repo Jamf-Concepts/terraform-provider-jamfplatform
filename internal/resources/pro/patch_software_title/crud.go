@@ -438,7 +438,7 @@ func (r *PatchSoftwareTitleResource) Delete(ctx context.Context, req resource.De
 			tflog.Info(ctx, "Jamf Pro patch software title already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro patch software title", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro patch software title", helpers.APIErrorDetail(err))
 	}
 }
 

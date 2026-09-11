@@ -4,11 +4,16 @@
 package blueprint
 
 import (
+	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/testhelpers/gatewaystub"
 )
 
 func TestDescribeBlueprintBlocks(t *testing.T) {
@@ -276,5 +281,72 @@ func TestDesiredDeployedValue_NullDefaults(t *testing.T) {
 func TestDesiredDeployedValue_UnknownDefaults(t *testing.T) {
 	if desiredDeployedValue(types.BoolUnknown()) != true {
 		t.Error("expected true as default for unknown value")
+	}
+}
+
+// TestIsDeleteMaybeComplete pins which failed DELETE replies may take Delete's
+// warning branch, since that branch returns no error diagnostic and so drops
+// the blueprint from Terraform state.
+func TestIsDeleteMaybeComplete(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "jamf json 500",
+			err:  &jamfplatform.APIResponseError{StatusCode: 500, Body: `{"httpStatus":500}`},
+			want: true,
+		},
+		{
+			name: "jamf json 409",
+			err:  &jamfplatform.APIResponseError{StatusCode: 409, Body: `{"httpStatus":409}`},
+			want: false,
+		},
+		{
+			name: "non-api error",
+			err:  errors.New("dial tcp: connection refused"),
+			want: false,
+		},
+		{
+			name: "nil",
+			err:  nil,
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isDeleteMaybeComplete(tt.err); got != tt.want {
+				t.Errorf("isDeleteMaybeComplete(%v) = %t, want %t", tt.err, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsDeleteMaybeComplete_EdgePageIsNotCompletion covers the case the table
+// above cannot reach. An edge error page is marked inside the SDK's unexported
+// transport, so a hand-built *APIResponseError can never carry the marker and a
+// table case for it would assert nothing — hence the stub.
+//
+// A CloudFront 502 is a server error, so before the IsEdgeBlocked exclusion it
+// took the warning branch and dropped a live, still-deployed blueprint from
+// state for a request that never reached Jamf at all.
+func TestIsDeleteMaybeComplete_EdgePageIsNotCompletion(t *testing.T) {
+	t.Parallel()
+
+	err := gatewaystub.ErrorFrom(t, gatewaystub.Reply{
+		Status:      http.StatusBadGateway,
+		ContentType: "text/html",
+		Body:        gatewaystub.CloudFrontPage(gatewaystub.CloudFrontBadGateway),
+	})
+
+	if isDeleteMaybeComplete(err) {
+		t.Errorf("isDeleteMaybeComplete = true for a CloudFront 502 page, so Delete drops a "+
+			"blueprint that was never deleted from state: %v", err)
 	}
 }

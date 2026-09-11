@@ -315,6 +315,6 @@ func (r *EbookResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 			fmt.Sprintf("The classic /ebooks DELETE for id %s returned an accepted-but-misleading client error. The ebook has been removed from Terraform state; Jamf Pro completes the deletion a short time later. Confirmation is intentionally not polled because reading the ebook back delays the removal. (delete response: %v)", id, delErr),
 		)
 	default:
-		resp.Diagnostics.AddError("Error deleting Jamf Pro ebook", fmt.Sprintf("%v", delErr))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro ebook", helpers.APIErrorDetail(delErr))
 	}
 }

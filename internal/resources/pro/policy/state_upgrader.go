@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ resource.ResourceWithUpgradeState = &PolicyResource{}
@@ -77,7 +79,7 @@ func (r *PolicyResource) upgradeRawState(
 	fail := func(what string, err error) {
 		resp.Diagnostics.AddError(
 			fmt.Sprintf("Unable to upgrade jamfplatform_pro_policy state from %s", from),
-			fmt.Sprintf("%s: %s", what, err),
+			fmt.Sprintf("%s: %s", what, helpers.APIErrorDetail(err)),
 		)
 	}
 

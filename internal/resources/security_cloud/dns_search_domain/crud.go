@@ -12,7 +12,6 @@ package dns_search_domain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -108,7 +107,7 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 			"The search domain \""+plan.DomainName.ValueString()+"\" was written to the tenant but could not be "+
 				"read back, so Terraform has recorded it under the ID \""+helpers.SingletonID+"\" without "+
 				"confirming the stored value. The next plan will refresh it — there is no need to import it, and "+
-				"nothing has to be re-created. Underlying error: "+err.Error(),
+				"nothing has to be re-created. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -305,7 +304,7 @@ func (r *SearchDomainResource) Delete(ctx context.Context, req resource.DeleteRe
 			})
 			return
 		}
-		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud search domain", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud search domain", helpers.APIErrorDetail(err))
 		return
 	}
 

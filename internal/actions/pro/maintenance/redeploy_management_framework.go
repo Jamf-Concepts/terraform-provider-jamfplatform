@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*RedeployManagementFrameworkAction)(nil)
@@ -72,7 +74,7 @@ func (a *RedeployManagementFrameworkAction) Invoke(ctx context.Context, req acti
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Redeploy Management Framework Failed",
-			fmt.Sprintf("Unable to redeploy the management framework to computer %s: %s", computerID, err),
+			fmt.Sprintf("Unable to redeploy the management framework to computer %s: %s", computerID, helpers.APIErrorDetail(err)),
 		)
 		return
 	}

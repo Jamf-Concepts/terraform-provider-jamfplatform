@@ -15,7 +15,6 @@ package user_extension_attribute
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -226,6 +225,6 @@ func (r *UserExtensionAttributeResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro user extension attribute already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro user extension attribute", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro user extension attribute", helpers.APIErrorDetail(err))
 	}
 }

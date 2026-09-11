@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*SendBlankPushAction)(nil)
@@ -73,7 +75,7 @@ func (a *SendBlankPushAction) Invoke(ctx context.Context, req action.InvokeReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Blank Push Failed",
-			fmt.Sprintf("Unable to send blank push: %s", err),
+			fmt.Sprintf("Unable to send blank push: %s", helpers.APIErrorDetail(err)),
 		)
 		return
 	}

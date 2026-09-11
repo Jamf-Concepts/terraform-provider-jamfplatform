@@ -94,7 +94,7 @@ func (r *IbeaconListResource) List(ctx context.Context, req list.ListRequest, st
 	resp, err := r.client.ListIBeacons(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro iBeacons", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro iBeacons", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

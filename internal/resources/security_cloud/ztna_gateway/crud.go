@@ -15,7 +15,6 @@ package ztna_gateway
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -102,7 +101,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 				"recorded its ID and the configured values without the status or dedicated egress "+
 				"addresses. The next plan will refresh those — do not re-create it: nothing prevents a second "+
 				"gateway being provisioned alongside this one, which would consume another dedicated IP address "+
-				"from the account's allotment and leave this one running unmanaged. Underlying error: "+err.Error(),
+				"from the account's allotment and leave this one running unmanaged. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -323,6 +322,6 @@ func (r *GatewayResource) Delete(ctx context.Context, req resource.DeleteRequest
 		if appendDeleteDiagnostics(&resp.Diagnostics, err) {
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud ZTNA gateway", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud ZTNA gateway", helpers.APIErrorDetail(err))
 	}
 }

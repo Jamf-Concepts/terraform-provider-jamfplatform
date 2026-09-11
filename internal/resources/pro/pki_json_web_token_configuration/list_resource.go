@@ -102,7 +102,7 @@ func (r *JSONWebTokenConfigurationListResource) List(ctx context.Context, req li
 	resp, err := r.client.ListJsonWebTokenConfigurations(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro JSON Web Token configurations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro JSON Web Token configurations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

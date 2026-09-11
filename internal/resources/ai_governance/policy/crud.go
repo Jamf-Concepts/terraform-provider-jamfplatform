@@ -292,7 +292,7 @@ func appendCreatePublishFailure(diags *diag.Diagnostics, id string, err error) {
 		"The policy was created with ID "+id+" but publishing it failed, so it holds an unpublished draft and "+
 			"cannot be deployed by a blueprint yet. Terraform has recorded the policy — do not create it again, "+
 			"because policy names are not unique and a second create would leave two. The next apply retries the "+
-			"publish, and it can also be published in the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+			"publish, and it can also be published in the Jamf Account admin UI. Reported by Jamf: "+helpers.APIErrorDetail(err),
 	)
 }
 
@@ -307,7 +307,7 @@ func appendUpdatePublishFailure(diags *diag.Diagnostics, err error) {
 		"AI policy updated but not published",
 		"The policy's draft was saved but publishing it failed, so blueprints continue to deploy the previously "+
 			"published version. Terraform has recorded the draft, and the next apply retries the publish — it can "+
-			"also be published in the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+			"also be published in the Jamf Account admin UI. Reported by Jamf: "+helpers.APIErrorDetail(err),
 	)
 }
 

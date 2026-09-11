@@ -18,7 +18,6 @@ package mobile_device_enrollment_profile
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -192,6 +191,6 @@ func (r *EnrollmentProfileResource) Delete(ctx context.Context, req resource.Del
 			tflog.Info(ctx, "Jamf Pro mobile device enrollment profile already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device enrollment profile", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device enrollment profile", helpers.APIErrorDetail(err))
 	}
 }

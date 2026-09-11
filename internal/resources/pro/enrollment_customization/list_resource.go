@@ -104,7 +104,7 @@ func (r *EnrollmentCustomizationListResource) List(ctx context.Context, req list
 	items, err := r.client.ListEnrollmentCustomizationsV2(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro enrollment customizations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro enrollment customizations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

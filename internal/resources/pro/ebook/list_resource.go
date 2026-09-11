@@ -100,7 +100,7 @@ func (r *EbookListResource) List(ctx context.Context, req list.ListRequest, stre
 	resp, err := r.client.ListEbooks(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro ebooks", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro ebooks", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/ldapgroups"
 )
 
@@ -53,7 +54,7 @@ func resolveDSGroupCriteria(ctx context.Context, resolver ldapgroups.Searcher, o
 			continue
 		}
 		if err != nil {
-			diags.AddError("Invalid directory-service group criterion", fmt.Sprintf("Criterion %q: %s", name, err.Error()))
+			diags.AddError("Invalid directory-service group criterion", fmt.Sprintf("Criterion %q: %s", name, helpers.APIErrorDetail(err)))
 			continue
 		}
 		out[i].AttributeValue = types.StringValue(wire)

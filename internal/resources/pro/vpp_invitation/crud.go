@@ -35,7 +35,6 @@ package vpp_invitation
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -258,6 +257,6 @@ func (r *VPPInvitationResource) Delete(ctx context.Context, req resource.DeleteR
 			tflog.Info(ctx, "Jamf Pro VPP invitation already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro VPP invitation", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro VPP invitation", helpers.APIErrorDetail(err))
 	}
 }

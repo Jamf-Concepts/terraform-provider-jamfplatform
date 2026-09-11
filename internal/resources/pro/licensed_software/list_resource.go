@@ -95,7 +95,7 @@ func (r *LicensedSoftwareListResource) List(ctx context.Context, req list.ListRe
 	resp, err := r.client.ListLicensedSoftware(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro licensed software", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro licensed software", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

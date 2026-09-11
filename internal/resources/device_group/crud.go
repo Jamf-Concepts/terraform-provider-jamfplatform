@@ -6,7 +6,6 @@ package device_group
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -184,7 +183,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating device group",
-			fmt.Sprintf("API error: %v", err),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -378,7 +377,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if err := r.client.UpdateDeviceGroup(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating device group",
-			fmt.Sprintf("API error: %v", err),
+			helpers.APIErrorDetail(err),
 		)
 		return
 	}

@@ -103,7 +103,7 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 	resp, err := r.client.ListOSXConfigurationProfiles(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list macOS configuration profiles", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list macOS configuration profiles", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

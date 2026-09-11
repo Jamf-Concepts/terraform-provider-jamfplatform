@@ -85,7 +85,7 @@ func (r *GroupedGatewayListResource) List(ctx context.Context, req list.ListRequ
 	groups, err := r.client.ListZtnaGroupedGatewaysV1(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud ZTNA grouped gateways", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud ZTNA grouped gateways", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

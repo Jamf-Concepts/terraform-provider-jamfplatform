@@ -91,7 +91,7 @@ func (r *ZtnaAppListResource) List(ctx context.Context, req list.ListRequest, st
 	apps, err := r.client.ListZtnaAppsV1(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud access policy applications", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Security Cloud access policy applications", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

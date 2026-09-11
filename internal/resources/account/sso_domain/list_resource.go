@@ -103,7 +103,7 @@ func (r *DomainListResource) List(ctx context.Context, req list.ListRequest, str
 	domains, err := r.client.ListDomains(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Account SSO domains", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Account SSO domains", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

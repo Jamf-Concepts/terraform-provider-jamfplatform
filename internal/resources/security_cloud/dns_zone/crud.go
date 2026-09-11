@@ -15,7 +15,6 @@ package dns_zone
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -78,7 +77,7 @@ func (r *DNSZoneResource) Create(ctx context.Context, req resource.CreateRequest
 			"The zone was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
 				"recorded its ID and the configured values without confirming what was stored. The next plan will "+
 				"refresh it — do not re-create it: a domain may belong to only one custom DNS zone, so a second "+
-				"create would be refused as a domain conflict with this one. Underlying error: "+err.Error(),
+				"create would be refused as a domain conflict with this one. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -250,6 +249,6 @@ func (r *DNSZoneResource) Delete(ctx context.Context, req resource.DeleteRequest
 			tflog.Info(ctx, "Jamf Security Cloud DNS zone already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud DNS zone", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud DNS zone", helpers.APIErrorDetail(err))
 	}
 }

@@ -82,7 +82,7 @@ func (r *VPPInvitationListResource) List(ctx context.Context, req list.ListReque
 	apiResp, err := r.client.ListVPPInvitations(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro VPP invitations", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro VPP invitations", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

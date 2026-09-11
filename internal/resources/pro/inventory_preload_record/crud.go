@@ -32,7 +32,6 @@ package inventory_preload_record
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -233,6 +232,6 @@ func (r *InventoryPreloadRecordResource) Delete(ctx context.Context, req resourc
 			tflog.Info(ctx, "Jamf Pro inventory preload record already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro inventory preload record", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro inventory preload record", helpers.APIErrorDetail(err))
 	}
 }

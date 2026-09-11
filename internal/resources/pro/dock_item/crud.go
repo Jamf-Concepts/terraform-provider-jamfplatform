@@ -15,7 +15,6 @@ package dock_item
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -213,6 +212,6 @@ func (r *DockItemResource) Delete(ctx context.Context, req resource.DeleteReques
 			tflog.Info(ctx, "Jamf Pro dock item already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro dock item", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro dock item", helpers.APIErrorDetail(err))
 	}
 }

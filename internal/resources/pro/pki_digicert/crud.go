@@ -240,7 +240,7 @@ func (r *DigicertResource) Delete(ctx context.Context, req resource.DeleteReques
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro DigiCert integration",
-			fmt.Sprintf("API error: %v. If this is a 409 conflict, the DigiCert integration is still referenced by one or more configuration profiles; remove those references before deleting.", err),
+			fmt.Sprintf("API error: %s. If this is a 409 conflict, the DigiCert integration is still referenced by one or more configuration profiles; remove those references before deleting.", helpers.APIErrorDetail(err)),
 		)
 	}
 }

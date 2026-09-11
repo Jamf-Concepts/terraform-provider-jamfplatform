@@ -20,7 +20,6 @@ package directory_binding
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -249,6 +248,6 @@ func (r *DirectoryBindingResource) Delete(ctx context.Context, req resource.Dele
 			tflog.Info(ctx, "Jamf Pro directory binding already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro directory binding", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro directory binding", helpers.APIErrorDetail(err))
 	}
 }

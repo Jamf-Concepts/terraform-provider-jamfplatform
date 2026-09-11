@@ -23,7 +23,6 @@ package app_request_form_field
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -199,6 +198,6 @@ func (r *AppRequestFormFieldResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro App Request form field already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro App Request form field", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro App Request form field", helpers.APIErrorDetail(err))
 	}
 }

@@ -258,6 +258,6 @@ func (r *AppInstallerResource) Delete(ctx context.Context, req resource.DeleteRe
 			tflog.Info(ctx, "App Installer deployment already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting App Installer deployment", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting App Installer deployment", helpers.APIErrorDetail(err))
 	}
 }

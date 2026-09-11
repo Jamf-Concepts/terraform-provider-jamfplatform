@@ -115,7 +115,7 @@ func buildKeystoreFile(planKeystore, cfgKeystore *cloudLdapKeystoreModel) (pro.C
 		if err != nil {
 			diags.AddError(
 				"Invalid keystore encoding",
-				"The Google keystore `file` is not valid base64. Supply the PKCS#12 certificate as base64, e.g. file = filebase64(\"google-ldap.p12\"). Decode error: "+err.Error(),
+				"The Google keystore `file` is not valid base64. Supply the PKCS#12 certificate as base64, e.g. file = filebase64(\"google-ldap.p12\"). Decode error: "+helpers.APIErrorDetail(err),
 			)
 			return out, diags
 		}

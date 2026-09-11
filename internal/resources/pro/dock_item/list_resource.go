@@ -103,7 +103,7 @@ func (r *DockItemListResource) List(ctx context.Context, req list.ListRequest, s
 	resp, err := r.client.ListDockItems(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro dock items", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro dock items", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

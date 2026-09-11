@@ -318,7 +318,7 @@ func (r *PkiVenafiResource) Delete(ctx context.Context, req resource.DeleteReque
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro Venafi CA",
-			fmt.Sprintf("Jamf Pro returned an error deleting Venafi CA %s. If the CA is referenced by configuration profiles, Jamf Pro returns 409 Conflict; remove those references first. API error: %v", state.ID.ValueString(), err),
+			fmt.Sprintf("Jamf Pro returned an error deleting Venafi CA %s. If the CA is referenced by configuration profiles, Jamf Pro returns 409 Conflict; remove those references first. API error: %s", state.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 	}
 }

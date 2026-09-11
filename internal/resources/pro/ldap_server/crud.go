@@ -15,7 +15,6 @@ package ldap_server
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -255,7 +254,7 @@ func (r *LdapServerResource) Delete(ctx context.Context, req resource.DeleteRequ
 			tflog.Info(ctx, "Jamf Pro LDAP server already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro LDAP server", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro LDAP server", helpers.APIErrorDetail(err))
 	}
 }
 

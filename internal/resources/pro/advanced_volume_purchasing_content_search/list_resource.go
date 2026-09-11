@@ -102,7 +102,7 @@ func (r *AdvancedVolumePurchasingContentSearchListResource) List(ctx context.Con
 	listResp, err := r.client.ListAdvancedUserContentSearchesV1(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced volume purchasing content searches", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro advanced volume purchasing content searches", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

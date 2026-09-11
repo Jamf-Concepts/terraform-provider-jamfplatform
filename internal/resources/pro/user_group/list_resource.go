@@ -107,7 +107,7 @@ func (r *UserGroupListResource) List(ctx context.Context, req list.ListRequest, 
 	resp, err := r.client.ListUserGroups(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro user groups", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro user groups", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

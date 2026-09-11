@@ -128,7 +128,7 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 	items, err := r.proClient.ListPatchSoftwareTitleConfigurationsV3(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro patch software titles", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro patch software titles", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

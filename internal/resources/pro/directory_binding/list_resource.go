@@ -106,7 +106,7 @@ func (r *DirectoryBindingListResource) List(ctx context.Context, req list.ListRe
 	resp, err := r.client.ListDirectoryBindings(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro directory bindings", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro directory bindings", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

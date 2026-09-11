@@ -214,7 +214,7 @@ func (d *PatchSoftwareTitleDataSource) Read(ctx context.Context, req datasource.
 		if _, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
 			resp.Diagnostics.AddError(
 				"Multiple Jamf Pro patch software titles match this display name",
-				err.Error()+". Look the title up by id instead.",
+				helpers.APIErrorDetail(err)+". Look the title up by id instead.",
 			)
 			return
 		}

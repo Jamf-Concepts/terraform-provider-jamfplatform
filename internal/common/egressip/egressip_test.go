@@ -37,6 +37,36 @@ func TestFetchFrom_CapsOversizedBody(t *testing.T) {
 	}
 }
 
+// The network this diagnostic exists for intercepts requests, so the echo
+// service is as likely to be answered by a captive portal as by AWS. A page is
+// not an address: it must return "" so the caller renders the manual command
+// instead of pasting proxy-controlled bytes into a support ticket.
+func TestFetchFrom_RejectsNonAddressBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("<!DOCTYPE html><html><head><title>Sign in</title></head>"))
+	}))
+	t.Cleanup(server.Close)
+
+	if got := FetchFrom(server.URL); got != "" {
+		t.Errorf("FetchFrom() = %q, want empty string for a body that is not an address", got)
+	}
+}
+
+// A proxy refusing the request answers with a status and a body of its own —
+// 407 with a sign-in page being the common one. The status is checked before
+// the body so that body never reaches the diagnostic.
+func TestFetchFrom_RejectsNonSuccessStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusProxyAuthRequired)
+		_, _ = w.Write([]byte("203.0.113.10\n"))
+	}))
+	t.Cleanup(server.Close)
+
+	if got := FetchFrom(server.URL); got != "" {
+		t.Errorf("FetchFrom() = %q, want empty string for a non-2xx status", got)
+	}
+}
+
 // An unreachable lookup returns "" rather than an error, so the caller can
 // substitute the manual command.
 func TestFetchFrom_UnreachableReturnsEmpty(t *testing.T) {

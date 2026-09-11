@@ -204,7 +204,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 		resp.Diagnostics.AddError(
 			"Error deleting benchmark",
-			"Could not delete benchmark: "+err.Error(),
+			"Could not delete benchmark: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -216,7 +216,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		}
 		resp.Diagnostics.AddError(
 			"Error waiting for benchmark deletion",
-			fmt.Sprintf("Benchmark %s deletion did not complete: %v", data.ID.ValueString(), err),
+			fmt.Sprintf("Benchmark %s deletion did not complete: %s", data.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 		return
 	}

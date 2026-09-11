@@ -100,7 +100,7 @@ func (r *MobileDeviceExtensionAttributeListResource) List(ctx context.Context, r
 	items, err := r.client.ListMobileDeviceExtensionAttributesV1(listCtx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device extension attributes", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro mobile device extension attributes", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

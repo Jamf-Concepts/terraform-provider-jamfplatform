@@ -19,7 +19,13 @@ const EgressIPLookupURL = egressip.LookupURL
 // tests below assert on the rendered guidance without network access. Caching
 // lives in egressip.Lookup, so the burst an edge block would otherwise cause is
 // already handled there.
-var egressIPLookup = egressip.Lookup
+//
+// It calls through rather than copying the function value: a copy is taken at
+// package initialisation, so a test in another package that binds
+// egressip.Lookup to a stub would still reach the real echo service here — and
+// pass, since the fallback wording carries the address line too, leaving the
+// network call to go unnoticed.
+var egressIPLookup = func() string { return egressip.Lookup() }
 
 // edgeBlockPreamble states what happened, in the order an operator needs it:
 // what answered, that the request never arrived, and that nothing changed. The
@@ -61,14 +67,21 @@ const gatewayFailureGuidance = "The gateway answered with an error page. The req
 // APIErrorDetail renders err as the detail of a Terraform diagnostic, appending
 // what to do about it when the response came from something other than Jamf.
 //
-// Every resource reporting an API failure should pass its error through here
-// rather than calling err.Error() directly. It is a no-op for an error any Jamf
-// service produced, which is nearly all of them, so it is applied uniformly
-// instead of at the call sites judged likely to see a block: which call hits an
-// edge is not a property of the resource, and the two failures that prompted
-// this — CloudFront 502 and 504 pages on CI runs 34471595582, 34202213638 and
-// 34128074623 — landed on creates, the operations a narrower sweep would have
-// skipped.
+// Every error rendered into a diagnostic detail goes through here rather than
+// through err.Error(), and that is wider than the name: it is a no-op for an
+// error any Jamf service produced, which is nearly all of them, and equally a
+// no-op for one no service produced at all — a base64 or JSON decode of an
+// operator attribute, a version that would not parse. Only the API case is
+// named because only the API case gains anything; the rest pass through because
+// nothing structural separates them at a call site, so the alternative to
+// wrapping them is a per-site exemption, which is the escape hatch the
+// conformance guard exists to close.
+//
+// Applied uniformly rather than at the call sites judged likely to see a block:
+// which call hits an edge is not a property of the resource, and the two
+// failures that prompted this — CloudFront 502 and 504 pages on CI runs
+// 34471595582, 34202213638 and 34128074623 — landed on creates, the operations
+// a narrower sweep would have skipped.
 //
 // The classification is IsEdgeBlocked's, and so the SDK's. What the operator
 // sees without this is a condensed one-line page summary carrying a status and

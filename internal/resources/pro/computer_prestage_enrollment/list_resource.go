@@ -110,7 +110,7 @@ func (r *ComputerPrestageEnrollmentListResource) List(ctx context.Context, req l
 	items, err := r.client.ListComputerPrestagesV3(listCtx, nil)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro computer prestage enrollments", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro computer prestage enrollments", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

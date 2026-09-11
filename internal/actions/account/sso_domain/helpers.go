@@ -42,6 +42,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -129,7 +130,7 @@ func (a *ssoDomainAction) resolveDomainID(ctx context.Context, data VerifySSODom
 			"Could not read this organization's claimed domains",
 			fmt.Sprintf("Naming a domain by name means looking it up among the domains this organization has "+
 				"claimed, and that read failed, so there is nothing to verify. Set `domain_id` instead to skip "+
-				"the lookup. Reported by Jamf Account: %s", err),
+				"the lookup. Reported by Jamf Account: %s", helpers.APIErrorDetail(err)),
 		)
 		return "", false
 	}

@@ -22,7 +22,6 @@ package supervision_identity
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -218,6 +217,6 @@ func (r *SupervisionIdentityResource) Delete(ctx context.Context, req resource.D
 			tflog.Info(ctx, "Jamf Pro supervision identity already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro supervision identity", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro supervision identity", helpers.APIErrorDetail(err))
 	}
 }

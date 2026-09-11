@@ -24,7 +24,6 @@ package allowed_file_extension
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -213,6 +212,6 @@ func (r *AllowedFileExtensionResource) Delete(ctx context.Context, req resource.
 			tflog.Info(ctx, "Jamf Pro allowed file extension already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro allowed file extension", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro allowed file extension", helpers.APIErrorDetail(err))
 	}
 }

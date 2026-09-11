@@ -104,7 +104,7 @@ func (r *PatchExternalSourceListResource) List(ctx context.Context, req list.Lis
 	resp, err := r.client.ListPatchExternalSources(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro patch external sources", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro patch external sources", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

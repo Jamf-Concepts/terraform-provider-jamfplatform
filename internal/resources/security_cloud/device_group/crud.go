@@ -29,7 +29,6 @@ package device_group
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -102,7 +101,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 			"The group was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
 				"recorded its ID and the configured name without confirming what was stored. The next plan will "+
 				"refresh it — do not re-create it: group names are unique per tenant, so a second create would be "+
-				"refused as a name already in use. Underlying error: "+err.Error(),
+				"refused as a name already in use. Underlying error: "+helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -260,7 +259,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 				"already carries the new name on the tenant. The provider could not read it back to confirm "+
 				"what was stored, so Terraform's state still holds the previous name. Run \"terraform plan\" "+
 				"again to reconcile it, and do not rename the group back. Underlying error: "+
-				err.Error(),
+				helpers.APIErrorDetail(err),
 		)
 		return
 	}
@@ -322,6 +321,6 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 			tflog.Info(ctx, "Jamf Security Cloud device group already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud device group", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Security Cloud device group", helpers.APIErrorDetail(err))
 	}
 }

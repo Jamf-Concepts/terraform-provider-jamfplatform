@@ -289,7 +289,7 @@ func (r *EnrollmentCustomizationResource) Delete(ctx context.Context, req resour
 			tflog.Info(ctx, "Jamf Pro enrollment customization already removed", map[string]any{"id": state.ID.ValueString()})
 			return
 		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro enrollment customization", fmt.Sprintf("API error: %v", err))
+		resp.Diagnostics.AddError("Error deleting Jamf Pro enrollment customization", helpers.APIErrorDetail(err))
 	}
 }
 

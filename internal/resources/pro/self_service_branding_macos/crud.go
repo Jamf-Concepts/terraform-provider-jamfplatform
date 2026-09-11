@@ -80,7 +80,7 @@ func (r *SelfServiceBrandingMacosResource) Create(ctx context.Context, req resou
 				"A Self Service macOS branding configuration already exists on this Jamf Pro tenant, so it cannot be created. "+
 					"Import the existing object instead:\n\n"+
 					"  terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton\n\n"+
-					"Original error: "+err.Error(),
+					"Original error: "+helpers.APIErrorDetail(err),
 			)
 			return
 		}

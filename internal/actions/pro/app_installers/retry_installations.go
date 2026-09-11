@@ -113,7 +113,7 @@ func (a *RetryInstallationsAction) Invoke(ctx context.Context, req action.Invoke
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Retry App Installer Installations Failed",
-				fmt.Sprintf("Unable to retry the failed installations of App Installer deployment %s: %s", id, err),
+				fmt.Sprintf("Unable to retry the failed installations of App Installer deployment %s: %s", id, helpers.APIErrorDetail(err)),
 			)
 			return
 		}
@@ -132,7 +132,7 @@ func (a *RetryInstallationsAction) Invoke(ctx context.Context, req action.Invoke
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Retry App Installer Installations Failed",
-				fmt.Sprintf("Unable to retry App Installer deployment %s on computer %s: %s. %d of %d computers were retried before this failure.", id, computerID, err, retried, len(computerIDs)),
+				fmt.Sprintf("Unable to retry App Installer deployment %s on computer %s: %s. %d of %d computers were retried before this failure.", id, computerID, helpers.APIErrorDetail(err), retried, len(computerIDs)),
 			)
 			return
 		}

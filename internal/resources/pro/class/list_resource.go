@@ -99,7 +99,7 @@ func (r *ClassListResource) List(ctx context.Context, req list.ListRequest, stre
 	resp, err := r.client.ListClasses(listCtx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
-			diag.NewErrorDiagnostic("Unable to list Jamf Pro classes", err.Error()),
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro classes", helpers.APIErrorDetail(err)),
 		})
 		return
 	}

@@ -256,7 +256,7 @@ func (r *AdcsResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		}
 		resp.Diagnostics.AddError(
 			"Error deleting Jamf Pro AD CS integration",
-			fmt.Sprintf("API error deleting AD CS integration %s: %v\n\nIf Jamf Pro returned 409 Conflict, the integration is still referenced by one or more configuration profiles. Remove those references (or the profiles) before deleting this resource.", state.ID.ValueString(), err),
+			fmt.Sprintf("API error deleting AD CS integration %s: %s\n\nIf Jamf Pro returned 409 Conflict, the integration is still referenced by one or more configuration profiles. Remove those references (or the profiles) before deleting this resource.", state.ID.ValueString(), helpers.APIErrorDetail(err)),
 		)
 	}
 }
