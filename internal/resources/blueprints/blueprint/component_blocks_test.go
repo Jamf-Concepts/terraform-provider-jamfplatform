@@ -345,6 +345,16 @@ func typedComponentCases() []typedComponentCase {
 			populated:       func(b ComponentBlockModel) bool { return b.AIGovernance != nil && len(b.AIGovernance.Policies) == 1 },
 		},
 		{
+			// A declaration list is the component's whole content, so an empty object would leave
+			// the attribute looking unpopulated the same way AI Governance would.
+			identifier:      "com.jamf.ddm-strict",
+			schemaAttribute: "apple_declarations",
+			configuration:   json.RawMessage(`{"declarations":[{"channelType":"SYSTEM","kind":"CONFIGURATION","payloadKey":1,"type":"com.apple.configuration.siri.settings","payload":{"Enabled":true}}]}`),
+			populated: func(b ComponentBlockModel) bool {
+				return b.AppleDeclarations != nil && len(b.AppleDeclarations.Declarations) == 1
+			},
+		},
+		{
 			identifier:      "com.jamf.ddm.audio-accessory-settings",
 			schemaAttribute: "audio_accessory_settings",
 			configuration:   empty,

@@ -20,9 +20,15 @@ import (
 // a value of the wrong type or a missing required key fails the write outright, and a miscased key
 // is stored under Apple's spelling, leaving configuration and state permanently apart.
 //
-// A finding that rests on the embedded schemas being current is a warning, not an error — a key
-// Apple added after the snapshot is indistinguishable from one that never existed, and the provider
-// must not block a configuration that works. See internal/common/appleprofiles.
+// Every finding is an error. Jamf accepts a payload carrying an unrecognised key, reports success
+// and discards the key, so a warning would leave the operator with a payload that silently never
+// applies — the same reasoning as internal/common/appledeclarations. The escape hatch is the same
+// too, but it is per block rather than per payload: appendLegacyConfigProfile folds every payload in
+// a block into one com.jamf.ddm-configuration-profile component, so moving a single payload to
+// raw_component would write that component twice and leave the payloads still declared as
+// legacy_payloads unreconciled. The embedded tables are refreshed daily so that erroring on an
+// unrecognised name cannot block a working configuration for long, and a finding that the snapshot
+// could explain says so and names it. See internal/common/appleprofiles.
 type legacyPayloadSchemaValidator struct{}
 
 // blockLegacyPayloadSchemaValidator validates a component block's typed legacy payload list, whose
@@ -111,15 +117,16 @@ func (v legacyPayloadSchemaValidator) ValidateDynamic(_ context.Context, req val
 }
 
 // appendPayloadProblems runs one payload through the schema table and turns each problem into a
-// diagnostic. A problem that depends on the snapshot being current becomes a warning; the rest
-// become errors, because Jamf was observed to refuse or rewrite those writes.
+// diagnostic. Every problem is an error, because Jamf was observed to refuse or silently rewrite
+// each of these writes; a problem the embedded snapshot could explain
+// (appleprofiles.Problem.StaleTableSuspect) additionally names the snapshot and the escape hatch,
+// which is what distinguishes the two classes rather than the severity. validators_test.go pins
+// that split, since nothing else in the package would fail if a finding became advisory again.
 func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings map[string]any, payloadPath, typePath, settingsPath path.Path) {
 	problems := appleprofiles.Validate(payloadType, settings)
 	if len(problems) == 0 {
 		return
 	}
-
-	_, release := appleprofiles.Provenance()
 
 	for _, problem := range problems {
 		target := settingsPath
@@ -137,11 +144,15 @@ func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings
 		if problem.Path != "" {
 			detail = problem.Path + ": " + detail
 		}
-		detail += fmt.Sprintf(" (checked against Apple's schemas as of %s; run `make apple-profiles` if Apple has published newer ones)", release)
-
-		if problem.Advisory() {
-			diags.AddAttributeWarning(target, summary, detail)
-			continue
+		if problem.StaleTableSuspect() {
+			detail += fmt.Sprintf(
+				" The provider's schemas come from apple/device-management %s. If Apple has published this since,"+
+					" upgrade the provider; to deliver these payloads without these checks, move every legacy payload"+
+					" in the same block to a single raw_component with identifier com.jamf.ddm-configuration-profile."+
+					" The platform stores a block's legacy payloads as one component, so moving only this payload"+
+					" would write that component twice and stop the others being reconciled.",
+				appleprofiles.ProvenanceSummary(),
+			)
 		}
 		diags.AddAttributeError(target, summary, detail)
 	}

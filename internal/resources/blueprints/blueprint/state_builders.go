@@ -72,7 +72,7 @@ func updateComponentBlocksFromAPI(ctx context.Context, diags *diag.Diagnostics, 
 			priorActivation = prior[i].ActivationConditions
 		}
 
-		block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw)
+		block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw, false)
 		block.Name = helpers.ReconcileOptionalStringPointer(step.Name, priorName)
 		block.ActivationConditions = helpers.ReconcileOptionalStringPointer(step.ActivationPredicate, priorActivation)
 		block.LegacyPayloads = flattenBlockLegacyPayloads(priorLegacy, apiComponentsByID, priorRaw)
@@ -93,6 +93,10 @@ func updateComponentBlocksFromAPI(ctx context.Context, diags *diag.Diagnostics, 
 // updateFlatComponentsFromAPI populates the deprecated flat top-level attributes from the first
 // step (flat mode). When the blueprint has more than one step it also emits a migration warning:
 // the flat attributes cannot represent the extra blocks, so applying would collapse them.
+//
+// It asks mapStepComponents to keep a blockOnlyComponentIdentifiers component in raw_component,
+// because the flat attributes have no field for one and dropping it from state would delete it from
+// the blueprint on the next apply without a plan diff.
 func updateFlatComponentsFromAPI(ctx context.Context, diags *diag.Diagnostics, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) {
 	priorRaw := rawIdentifierSet(model.Components)
 
@@ -101,7 +105,7 @@ func updateFlatComponentsFromAPI(ctx context.Context, diags *diag.Diagnostics, m
 		step = blueprint.Steps[0]
 	}
 
-	block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw)
+	block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw, true)
 	model.applyFlatComponentsFromBlock(block)
 	model.LegacyPayloads = flattenFlatLegacyPayloads(model.LegacyPayloads, apiComponentsByID, priorRaw)
 	model.ActivationConditions = helpers.ReconcileOptionalStringPointer(step.ActivationPredicate, model.ActivationConditions)
@@ -131,7 +135,13 @@ func rawIdentifierSet(components []ComponentModel) map[string]struct{} {
 // ComponentBlockModel carrier, and returns the step's components keyed by identifier so the caller
 // can flatten legacy payloads. It leaves Name, ActivationConditions, and LegacyPayloads unset — the
 // caller reconciles those.
-func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step blueprints.BlueprintStep, priorRawIdentifiers map[string]struct{}) (ComponentBlockModel, map[string]blueprints.Component) {
+//
+// retainBlockOnlyAsRaw keeps a blockOnlyComponentIdentifiers component in raw_component instead of
+// skipping it as strongly typed, and only the flat-mode caller sets it: block mode has a typed
+// attribute for every such component, so retaining it there would populate the typed attribute and
+// raw_component at once. The mode is threaded in rather than the flat caller appending the fallback
+// afterwards, so a retained component keeps its position in the platform's component order.
+func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step blueprints.BlueprintStep, priorRawIdentifiers map[string]struct{}, retainBlockOnlyAsRaw bool) (ComponentBlockModel, map[string]blueprints.Component) {
 	var block ComponentBlockModel
 
 	apiComponentsByID := make(map[string]blueprints.Component)
@@ -141,7 +151,9 @@ func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step bluepr
 		apiComponentsByID[comp.Identifier] = comp
 
 		_, handledAsRaw := priorRawIdentifiers[comp.Identifier]
-		if _, isTyped := stronglyTypedComponentIdentifiers[comp.Identifier]; isTyped && !handledAsRaw {
+		_, isTyped := stronglyTypedComponentIdentifiers[comp.Identifier]
+		_, blockOnly := blockOnlyComponentIdentifiers[comp.Identifier]
+		if isTyped && !handledAsRaw && (!retainBlockOnlyAsRaw || !blockOnly) {
 			continue
 		}
 
@@ -171,6 +183,10 @@ func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step bluepr
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components of a block from the
 // API response.
 func updateStronglyTypedComponentsFromAPI(diags *diag.Diagnostics, block *ComponentBlockModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
+	block.AppleDeclarations = buildTypedComponent[components.AppleDeclarationsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm-strict", func(raw json.RawMessage, target *components.AppleDeclarationsComponent) error {
+		return target.FromRawConfiguration(raw)
+	})
+
 	block.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(raw json.RawMessage, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})

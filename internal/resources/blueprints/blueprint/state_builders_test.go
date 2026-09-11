@@ -4,7 +4,9 @@
 package blueprint
 
 import (
+	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -775,5 +777,126 @@ func TestRestoreRedactedValues_DoesNotSubstituteNonRedactedValue(t *testing.T) {
 	}
 	if string(got) != `{"Password":"changed-elsewhere"}` {
 		t.Errorf("expected the wire value kept, got %s", got)
+	}
+}
+
+// --- Block-only components in flat mode ---
+
+// TestUpdateFlatComponentsFromAPI_KeepsBlockOnlyComponentInRawComponent pins the fallback that
+// stops a flat-mode read losing a component the flat attributes cannot represent. Dropping it is
+// silent and destructive: a flat-mode apply rewrites every step from state, so a component absent
+// from state is deleted from the blueprint with nothing in the plan to show it.
+func TestUpdateFlatComponentsFromAPI_KeepsBlockOnlyComponentInRawComponent(t *testing.T) {
+	ctx := context.Background()
+
+	for identifier := range blockOnlyComponentIdentifiers {
+		t.Run(identifier, func(t *testing.T) {
+			model := &BlueprintResourceModel{
+				Components: []ComponentModel{
+					{Identifier: types.StringValue("com.jamf.custom.x"), Configuration: types.MapNull(types.StringType)},
+				},
+			}
+			blueprint := &blueprints.BlueprintDetail{
+				DeploymentState: &blueprints.DeploymentState{State: "DEPLOYED"},
+				Steps: []blueprints.BlueprintStep{{
+					Components: []blueprints.Component{
+						{Identifier: identifier, Configuration: json.RawMessage(`{}`)},
+						{Identifier: "com.jamf.custom.x", Configuration: json.RawMessage(`{"k":"v"}`)},
+					},
+				}},
+			}
+
+			diags := updateModelFromAPIResponse(ctx, model, blueprint)
+			if diags.HasError() {
+				t.Fatalf("unexpected error diagnostics: %v", diags)
+			}
+			if model.ComponentBlocks != nil {
+				t.Fatal("expected a flat-mode read, got component_blocks populated")
+			}
+
+			var identifiers []string
+			for _, comp := range model.Components {
+				identifiers = append(identifiers, comp.Identifier.ValueString())
+			}
+			if len(identifiers) != 2 || identifiers[0] != identifier || identifiers[1] != "com.jamf.custom.x" {
+				t.Fatalf("expected %q retained in raw_component in the platform's component order, got %v", identifier, identifiers)
+			}
+		})
+	}
+}
+
+// TestUpdateComponentBlocksFromAPI_BlockOnlyComponentStaysTypedInBlockMode is the other half: the
+// fallback is flat-mode only, and a block-mode read that also wrote raw_component would populate the
+// typed attribute and raw_component at once, which fails an apply with "Provider produced
+// inconsistent result after apply".
+func TestUpdateComponentBlocksFromAPI_BlockOnlyComponentStaysTypedInBlockMode(t *testing.T) {
+	ctx := context.Background()
+
+	for identifier := range blockOnlyComponentIdentifiers {
+		t.Run(identifier, func(t *testing.T) {
+			model := &BlueprintResourceModel{}
+			blueprint := &blueprints.BlueprintDetail{
+				DeploymentState: &blueprints.DeploymentState{State: "DEPLOYED"},
+				Steps: []blueprints.BlueprintStep{{
+					Name:       new("Block"),
+					Components: []blueprints.Component{{Identifier: identifier, Configuration: json.RawMessage(`{}`)}},
+				}},
+			}
+
+			diags := updateModelFromAPIResponse(ctx, model, blueprint)
+			if diags.HasError() {
+				t.Fatalf("unexpected error diagnostics: %v", diags)
+			}
+			if len(model.ComponentBlocks) != 1 {
+				t.Fatalf("expected 1 component block, got %d", len(model.ComponentBlocks))
+			}
+			if got := model.ComponentBlocks[0].Components; len(got) != 0 {
+				t.Errorf("%q has a typed component_blocks attribute, so a block-mode read must not also write raw_component, got %+v", identifier, got)
+			}
+		})
+	}
+}
+
+// TestBlockOnlyComponentIdentifiers_CoversEveryTypedComponentWithoutFlatField is the durable guard
+// behind the fallback above. A typed component identifier with no BlueprintResourceModel field is
+// unrepresentable in flat mode, so it must be registered in blockOnlyComponentIdentifiers or a
+// flat-mode read drops it. The check reads the model's tfsdk tags rather than a hand-kept list, so
+// the next block-only component fails here instead of silently reintroducing the drop.
+func TestBlockOnlyComponentIdentifiers_CoversEveryTypedComponentWithoutFlatField(t *testing.T) {
+	flatFields := make(map[string]struct{})
+	modelType := reflect.TypeFor[BlueprintResourceModel]()
+	for field := range modelType.Fields() {
+		if tag, ok := field.Tag.Lookup("tfsdk"); ok {
+			flatFields[tag] = struct{}{}
+		}
+	}
+
+	attributeFor := make(map[string]string, len(stronglyTypedComponentIdentifiers))
+	for _, tc := range typedComponentCases() {
+		attributeFor[tc.identifier] = tc.schemaAttribute
+	}
+
+	for identifier := range stronglyTypedComponentIdentifiers {
+		attribute, known := attributeFor[identifier]
+		if !known {
+			t.Errorf("stronglyTypedComponentIdentifiers entry %q has no typedComponentCases row, so its flat representation cannot be checked", identifier)
+			continue
+		}
+
+		_, hasFlatField := flatFields[attribute]
+		_, blockOnly := blockOnlyComponentIdentifiers[identifier]
+
+		switch {
+		case hasFlatField && blockOnly:
+			t.Errorf("%q has the BlueprintResourceModel field %q, so it must not be in blockOnlyComponentIdentifiers — it would land in raw_component as well as its flat attribute", identifier, attribute)
+		case !hasFlatField && !blockOnly:
+			t.Errorf("%q maps to component_blocks attribute %q, which BlueprintResourceModel has no field for, so a flat-mode read has nowhere to put it — register it in blockOnlyComponentIdentifiers or a flat-mode read drops it and the next apply deletes it", identifier, attribute)
+		}
+	}
+
+	for identifier := range blockOnlyComponentIdentifiers {
+		if _, typed := stronglyTypedComponentIdentifiers[identifier]; !typed {
+			t.Errorf("blockOnlyComponentIdentifiers entry %q is not strongly typed, so it already stays in raw_component and the entry is inert", identifier)
+		}
 	}
 }

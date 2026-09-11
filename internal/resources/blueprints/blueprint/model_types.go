@@ -77,6 +77,7 @@ type ComponentBlockModel struct {
 	ActivationConditions      types.String                                   `tfsdk:"activation_conditions"`
 	Components                []ComponentModel                               `tfsdk:"raw_component"`
 	AIGovernance              *components.AIGovernanceComponent              `tfsdk:"ai_governance"`
+	AppleDeclarations         *components.AppleDeclarationsComponent         `tfsdk:"apple_declarations"`
 	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
 	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
 	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`

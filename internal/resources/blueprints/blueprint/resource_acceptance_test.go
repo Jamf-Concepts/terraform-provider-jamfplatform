@@ -1130,6 +1130,14 @@ func TestAccResource_Blueprint_LegacyPayloads_SchemaValidation(t *testing.T) {
 				PlanOnly:    true,
 			},
 			{
+				// A key Apple does not declare is an ERROR, not a warning. Jamf accepts the write
+				// and discards the key, so the payload silently never applies and the plan never
+				// converges — the escape hatch is raw_component, not a softer diagnostic.
+				Config:      config("com.apple.applicationaccess", `jsonencode({ zzNotARealKey = true })`),
+				ExpectError: regexp.MustCompile(`does not define`),
+				PlanOnly:    true,
+			},
+			{
 				// The payload type is matched case-sensitively by the service.
 				Config: config("com.apple.Dock", `jsonencode({ orientation = "left" })`),
 				// Terraform wraps diagnostic text at roughly 80 columns, so the pattern must stay

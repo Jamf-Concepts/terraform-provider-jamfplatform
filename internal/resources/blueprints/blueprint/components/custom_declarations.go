@@ -14,6 +14,12 @@ import (
 )
 
 // CustomDeclarationsComponent represents a strongly-typed custom DDM declarations component.
+//
+// Prefer apple_declarations: it carries the same declarations to the same devices, and Jamf renders
+// those as typed forms generated from Apple's schemas rather than as an opaque JSON blob. This
+// component's payloads are checked against Apple's schemas during plan for the same reason — the
+// platform validates none of it — and there is no switch to turn that off. A declaration that
+// should not be checked belongs in raw_component, which is the escape hatch.
 type CustomDeclarationsComponent struct {
 	Declarations []CustomDeclarationModel `tfsdk:"declaration"`
 }
@@ -40,12 +46,14 @@ func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationChannelTypeSystem, blueprints.DeclarationChannelTypeUser)},
 					},
 					"kind": schema.StringAttribute{
-						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.",
-						Required:            true,
-						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationKindConfiguration, blueprints.DeclarationKindAsset)},
+						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`. " +
+							"An activation or management declaration cannot be expressed here: deliver one with " +
+							"`apple_declarations`, which derives the kind from the declaration type.",
+						Required:   true,
+						Validators: []validator.String{stringvalidator.OneOf(blueprints.DeclarationKindConfiguration, blueprints.DeclarationKindAsset)},
 					},
 					"payload": schema.StringAttribute{
-						MarkdownDescription: "JSON-encoded payload object for the declaration.",
+						MarkdownDescription: "JSON-encoded payload object for the declaration." + AppleDeclarationsBehaviour,
 						Required:            true,
 					},
 					"type": schema.StringAttribute{

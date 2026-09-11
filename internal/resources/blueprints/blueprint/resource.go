@@ -207,10 +207,13 @@ func sharedComponentAttributes(deprecation string) map[string]schema.Attribute {
 			Attributes:          components.AudioAccessorySettingsComponentSchema(),
 		},
 		"custom_declarations": schema.SingleNestedAttribute{
-			MarkdownDescription: "Custom declarations component for managing custom DDM declarations with system or user channel types.",
-			Optional:            true,
-			DeprecationMessage:  deprecation,
-			Attributes:          components.CustomDeclarationsComponentSchema(),
+			MarkdownDescription: "**\"Custom Declarations\"** in the Jamf Pro blueprint editor. " +
+				"Manages custom declarative device management declarations with system or user channel types. " +
+				"Prefer `apple_declarations`, which delivers the same declarations and renders them as typed forms in Jamf Pro.",
+			Optional:           true,
+			DeprecationMessage: deprecation,
+			Attributes:         components.CustomDeclarationsComponentSchema(),
+			Validators:         []validator.Object{customDeclarationsSchemaValidator()},
 		},
 		"disk_management_settings": schema.SingleNestedAttribute{
 			MarkdownDescription: "Disk management settings component for controlling external and network storage restrictions.",
@@ -282,6 +285,19 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		"name": schema.StringAttribute{
 			MarkdownDescription: "Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, the platform assigns a default name.",
 			Optional:            true,
+		},
+		// apple_declarations is deliberately NOT in sharedComponentAttributes: the flat top-level
+		// authoring style is deprecated and removed on or after 2026-10-22, so a component
+		// introduced now is offered only inside a block.
+		"apple_declarations": schema.SingleNestedAttribute{
+			MarkdownDescription: "**\"All Declarations\"** in the Jamf Pro blueprint editor. " +
+				"Delivers any Apple declarative device management declaration, and the provider checks each payload " +
+				"against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro " +
+				"renders these as typed forms generated from Apple's schemas, where a custom declaration shows only " +
+				"an opaque JSON blob.",
+			Optional:   true,
+			Attributes: components.AppleDeclarationsComponentSchema(),
+			Validators: []validator.Object{appleDeclarationsSchemaValidator()},
 		},
 		"activation_conditions": schema.StringAttribute{
 			MarkdownDescription: activationConditionsDescription("this block"),
