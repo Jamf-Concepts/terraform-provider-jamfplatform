@@ -1583,6 +1583,28 @@ Eventual-consistency and retry are **consumer concerns**, not transport concerns
 - `IsNotFoundError(err)` — `404` (and the classic `400 INVALID_ID`); use in every `Read`/`Delete`.
 - `IsClientError(err)` — any `4xx`; distinguishes an accepted-but-misleading `4xx` (treat as success-with-warning on a fire-and-trust delete) from a `5xx`/transport failure that must surface.
 - `IsServerError(err)` — `5xx`.
+- `IsGatewayUnrouted(err)` — the **gateway's** own `404 page not found`, meaning the request reached no Jamf service.
+- `IsEdgeBlocked(err)` — an HTML error page from a CDN, WAF or IP allowlist, meaning the same thing one layer further out.
+
+**Both of the last two must be excluded anywhere a status decides whether to clear
+state.** Neither reply came from a Jamf service, so reading either as "the object is gone"
+deletes a live object from state — silently, and across the whole estate, since a refresh
+then empties the state file and `terraform plan` reports a clean set of creates with exit
+status `0`. `IsNotFoundError` already excludes both. A resource classifying a status itself
+must do so explicitly: `ebook`'s `isAcceptedAsyncDelete` is the worked example. The trap is
+that an edge page carries whatever status the edge chose and **CloudFront chooses `404`
+among them**, so it is not caught by excluding the gateway's plain-text reply.
+
+`IsEdgeBlocked` is a thin `errors.Is(err, jamfplatform.ErrUnexpectedResponse)` check, so the
+classification stays the SDK's — which is what makes it safe. SDK v1.0.0 marks an edge page
+and deliberately exempts Jamf Pro's own HTML "Status page" template, so a classic `404`
+keeps meaning "deleted". Never widen this to "an HTML `404` is never gone": every
+`/proclassic` `Read` depends on the opposite.
+
+Testing either one needs `internal/testhelpers/gatewaystub`, not a hand-built
+`*APIResponseError`. The marker is attached inside the SDK's unexported transport, so no
+exported constructor can produce a marked error and a fabricated one asserts only that the
+provider agrees with itself.
 
 For genuinely transient Pro states (`429`, `423 Locked` on in-flight async ops, `409` on stale `PATCH`/`PUT`), keep retry logic in-resource until **3 or more** resources need it, then extract a shared `RetryWithBackoff(ctx, op, isRetriable, maxAttempts)` (same deferred-abstraction discipline as shared schemas). `device_group`'s propagation-delete retry is the current in-resource precedent.
 
