@@ -508,13 +508,44 @@ func IsGatewayUnrouted(err error) bool {
 	return apiErr.HasStatus(http.StatusNotFound) && strings.TrimSpace(apiErr.Body) == gatewayUnroutedBody
 }
 
+// IsEdgeBlocked reports whether err is an HTML error page served by something in
+// front of Jamf — a CDN, WAF, IP allowlist or the gateway's own error template —
+// rather than a response any Jamf service produced.
+//
+// It is the same question IsGatewayUnrouted asks about the gateway's plain-text
+// 404, one layer further out, and it decides the same thing: whether a Read may
+// delete a resource from state. An edge page carries whatever status the edge
+// chose, and CloudFront chooses 404 among them, so a 404 is not evidence the
+// object is gone — see IsNotFoundError, which excludes this for exactly the
+// reason it excludes IsGatewayUnrouted.
+//
+// The classification is the SDK's, not a body match here. Before SDK v1.0.0 there
+// was nothing to match on: an edge page arrived as a plain *APIResponseError
+// carrying the raw HTML, indistinguishable from a Jamf 404 by status and
+// distinguishable from one only by scraping markup this package does not own.
+// v1.0.0 marks it with ErrUnexpectedResponse and, deliberately, excludes Jamf
+// Pro's own "Status page" template from that marking — so a classic 404, which
+// is also HTML and which 177 call sites depend on reading as "gone", keeps
+// answering false here and true from IsNotFoundError.
+//
+// Seen in CI rather than reasoned about: a CloudFront 502 on the pro lane
+// (run 34471595582) and 504s on the pro and securitycloud lanes (34202213638,
+// 34128074623), each of which dumped thirty lines of the CloudFront error page
+// into a Terraform diagnostic. The dump is what SDK v1.0.0 fixed; this is the
+// other half, which the sentinel made detectable.
+func IsEdgeBlocked(err error) bool {
+	return errors.Is(err, jamfplatform.ErrUnexpectedResponse)
+}
+
 // IsNotFoundError reports whether an error represents a "resource is gone"
 // response from the Jamf API. Matches HTTP 404 (the conventional shape) AND
 // HTTP 400 with an `INVALID_ID` error detail.
 //
-// A gateway-unrouted 404 is excluded: it reports that the request reached no
-// Jamf service at all, so answering "the object is gone" would delete a live
-// object from state. See IsGatewayUnrouted.
+// Two 404s that did not come from a Jamf service are excluded, because each
+// reports that the request reached no Jamf service at all and answering "the
+// object is gone" would delete a live object from state: the gateway's own
+// unrouted 404 (IsGatewayUnrouted) and an edge error page, which CloudFront
+// serves with a 404 among other statuses (IsEdgeBlocked).
 //
 // Some Pro v1 endpoints — confirmed for `/device-enrollments/{id}` and
 // `/volume-purchasing-locations/{id}` — return `400 Bad Request` with an
@@ -533,7 +564,7 @@ func IsNotFoundError(err error) bool {
 	if !ok {
 		return false
 	}
-	if IsGatewayUnrouted(err) {
+	if IsGatewayUnrouted(err) || IsEdgeBlocked(err) {
 		return false
 	}
 	if apiErr.HasStatus(http.StatusNotFound) {
