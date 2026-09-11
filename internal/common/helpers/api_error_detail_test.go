@@ -96,7 +96,7 @@ func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
 			t.Errorf("the address was looked up, so the operator should not also be told to run "+
 				"the command:\n%s", detail)
 		}
-		if strings.Contains(detail, "Run the command again") {
+		if strings.Contains(detail, "Re-run the command") {
 			t.Errorf("a blocked request is described as transient, so the operator will re-run it "+
 				"instead of fixing the allowlist:\n%s", detail)
 		}
@@ -121,7 +121,7 @@ func TestAPIErrorDetail_SplitsBlockFromGatewayFailure(t *testing.T) {
 			Status: http.StatusGatewayTimeout, ContentType: "text/html", Body: gatewaystub.CloudFrontPage(gatewaystub.CloudFrontGatewayTimeout),
 		}))
 
-		if !strings.Contains(detail, "Run the command again") {
+		if !strings.Contains(detail, "Re-run the command") {
 			t.Errorf("a gateway failure does not say to run it again:\n%s", detail)
 		}
 		if strings.Contains(detail, "203.0.113.10") || strings.Contains(detail, EgressIPLookupURL) {

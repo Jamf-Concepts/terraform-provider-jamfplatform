@@ -21,48 +21,42 @@ const EgressIPLookupURL = egressip.LookupURL
 // already handled there.
 var egressIPLookup = egressip.Lookup
 
-// edgeBlockGuidance names the remedy for a standing block: the address an
-// allowlist or WAF rule is written against.
-//
-// The address is printed as a command rather than looked up, which is the one
-// place this differs from the provider's authentication diagnostic. That one
-// runs once per apply and can afford three seconds of network. This runs
-// wherever a resource reports an API failure, and an edge block fails every
-// in-flight resource at once, so a lookup here would multiply one outage into a
-// burst of third-party calls on a path the operator is already waiting on.
-const edgeBlockPreamble = "A CDN, firewall or IP allowlist answered instead of the API, so the request never " +
-	"reached the service and nothing changed.\n\n"
+// edgeBlockPreamble states what happened, in the order an operator needs it:
+// the request did not arrive, what answered instead, and that nothing was
+// written. The last clause matters most — an apply that failed part-way is the
+// first thing they will worry about.
+const edgeBlockPreamble = "The request did not reach the Jamf API. A CDN, firewall or IP allowlist answered " +
+	"instead; no changes were made.\n\n"
 
 // edgeBlockKnownAddress is used when the lookup succeeded, which is the common
 // case: the echo service is not the host being blocked, so a Jamf-side
 // allowlist refusing this caller does not stop it answering.
-//
-// It names two owners because the page could have come from either end and the
-// operator cannot tell which from the summary above. Their own proxy or firewall
-// intercepting the request is theirs to find; a Jamf-side allowlist refusing
-// this address is not something they can inspect, so all they can do is hand the
-// address over. An earlier draft told them to "check whether it is allowed",
-// which is the half they have no way to do.
-const edgeBlockKnownAddress = "This host's public IP address is %s. Ask your network team whether outbound traffic " +
-	"to the Jamf API is being intercepted, and give the address to Jamf Support to check against the allowlist."
+const edgeBlockKnownAddress = "Egress IP address: %s\n\n" + edgeBlockSteps
 
-// edgeBlockUnknownAddress is the fallback. It prints a command rather than
+// edgeBlockUnknownAddress is the fallback. It prints the command rather than
 // omitting the address, because an operator who cannot reach the echo service
-// from this host can still run the command from somewhere that shares its
-// egress — and because the same restriction that blocked the lookup is itself a
-// clue about what is in front of Jamf.
-const edgeBlockUnknownAddress = "Find this host's public IP address with `curl -s " + EgressIPLookupURL +
-	"`. Ask your network team whether outbound traffic to the Jamf API is being intercepted, and give the " +
-	"address to Jamf Support to check against the allowlist."
+// from this host can still run it from somewhere sharing the same egress.
+const edgeBlockUnknownAddress = "Egress IP address: run `curl -s " + EgressIPLookupURL + "`\n\n" + edgeBlockSteps
+
+// edgeBlockSteps is the action, one step per party who can take it.
+//
+// Two steps because the page could have come from either end and the summary
+// above cannot tell the operator which. Their own proxy or firewall
+// intercepting the request is theirs to find; a Jamf-side allowlist refusing
+// this address is not something they can inspect, so handing the address over is
+// the whole of their part. An earlier draft told them to "check whether it is
+// allowed", which is the half they have no way to do.
+const edgeBlockSteps = "1. Confirm with your network team that outbound traffic to the Jamf API is not intercepted.\n" +
+	"2. Provide the egress IP address, status and request id to Jamf Support."
 
 // gatewayFailureGuidance covers a 5xx page, which needs the opposite remedy to a
 // block: the SDK has already retried it, so the answer is to run again rather
 // than to go hunting for an allowlist. The split is the one the SDK's godoc asks
 // consumers to make.
-const gatewayFailureGuidance = "The gateway answered with an error page, so the request never reached the service " +
-	"and nothing changed.\n\n" +
-	"The provider retried and got the same page. Run the command again in a few minutes. Your credentials " +
-	"and network access are fine."
+const gatewayFailureGuidance = "The request did not reach the Jamf API. The gateway answered with an error page; " +
+	"no changes were made.\n\n" +
+	"The provider has already retried. Re-run the command in a few minutes. Credentials and network " +
+	"access are not the cause."
 
 // APIErrorDetail renders err as the detail of a Terraform diagnostic, appending
 // what to do about it when the response came from something other than Jamf.
