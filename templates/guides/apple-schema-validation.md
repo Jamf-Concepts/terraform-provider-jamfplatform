@@ -102,7 +102,7 @@ Until an upgrade is available, deliver the payload or declaration through `raw_c
 
 `raw_component` passes your configuration to Jamf Pro as written, so nothing checks it. The keys below are Jamf's own names. Everywhere else the provider hands you attribute names matching the blueprint editor; here you write what Jamf stores.
 
-Move the declaration into `raw_component` under the identifier the typed component would have used, and JSON-encode the configuration:
+Move the declaration into `raw_component` under the identifier the typed component would have used, and JSON-encode the configuration. Delete it from `apple_declarations` in the same edit. The provider rejects a block that sets both and reports `Component configured twice`.
 
 ```hcl
 component_blocks = [
@@ -134,7 +134,7 @@ Set `payloadKey` yourself. It is the 1-based position of the declaration within 
 
 ## Delivering a legacy configuration profile payload unchecked
 
-**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. Split them and the apply writes that component twice, and the provider stops reconciling the payloads you left in `legacy_payloads`, so it never reports drift on those again.
+**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. The provider rejects a partial move with `Component configured twice` and writes nothing, so move every payload in the block or leave them where they are.
 
 Before:
 
