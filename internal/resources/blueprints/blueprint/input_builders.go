@@ -261,9 +261,9 @@ func rawComponentOverlapDiags(rawComponents []ComponentModel, attributes []typed
 		}
 		diags.AddError(
 			"Component configured twice",
-			attribute.name+" and a raw_component both manage the same component. The platform stores both copies "+
-				"and the provider can represent only one of them, so the other would reach devices without ever "+
-				"appearing in a plan. Keep one of the two.",
+			attribute.name+" and a raw_component both manage the same component. Keep one of the two: the "+
+				"platform stores both copies and the provider can hold only one in state, so the other would "+
+				"reach devices without appearing in a plan.",
 		)
 	}
 

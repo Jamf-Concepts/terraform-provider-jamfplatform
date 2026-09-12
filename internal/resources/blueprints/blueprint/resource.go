@@ -191,11 +191,8 @@ func sharedComponentAttributes(deprecation string) map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"raw_component": schema.SetNestedAttribute{
 			MarkdownDescription: "Raw component configuration using key-value pairs. " +
-				"Use it for a component this resource has no attribute for, or to manage one without the checks its " +
-				"own attribute applies. Do not declare a component here that another component attribute set " +
-				"alongside it already manages: the platform stores both copies and only one of them can be " +
-				"represented in state, so the other would reach devices without ever appearing in a plan. Keep one " +
-				"of the two.",
+				"Use it for a component this resource has no attribute for, or to manage one without its " +
+				"attribute's checks. A component managed by its own attribute cannot also be declared here.",
 			Optional:           true,
 			DeprecationMessage: deprecation,
 			NestedObject: schema.NestedAttributeObject{

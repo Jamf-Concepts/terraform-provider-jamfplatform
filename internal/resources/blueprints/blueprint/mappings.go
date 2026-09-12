@@ -69,7 +69,7 @@ const legacyPayloadSettingsBehaviour = "The platform validates each payload agai
 	"Each of those is an **error**: Jamf drops a key it does not recognise while reporting success, so a payload " +
 	"carrying one never applies. To skip the checks, move **every** legacy payload in the same block to a " +
 	"single `raw_component` with identifier `com.jamf.ddm-configuration-profile`. The platform stores a " +
-	"block's legacy payloads as one component, so a partial move is refused: keep them all here or move them all. " +
+	"block's legacy payloads as one component, so move them all or leave them all here. " +
 	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
 	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
 	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +

@@ -148,8 +148,8 @@ func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings
 				" The provider's schemas come from apple/device-management %s. If Apple has published this since,"+
 					" upgrade the provider; to deliver these payloads without these checks, move every legacy payload"+
 					" in the same block to a single raw_component with identifier com.jamf.ddm-configuration-profile."+
-					" The platform stores a block's legacy payloads as one component, so a partial move is refused:"+
-					" keep them all in legacy_payloads or move them all.",
+					" The platform stores a block's legacy payloads as one component, so move them all or leave"+
+					" them all here.",
 				appleprofiles.ProvenanceSummary(),
 			)
 		}
