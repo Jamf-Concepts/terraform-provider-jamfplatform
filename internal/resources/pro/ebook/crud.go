@@ -278,7 +278,10 @@ func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	cleared := ebookScopeClassesCleared(payload)
 	if cleared != nil {
 		if err := put(cleared); err != nil {
-			resp.Diagnostics.AddError("Error updating Jamf Pro ebook", helpers.APIErrorDetail(err))
+			resp.Diagnostics.AddError(
+				"Error updating Jamf Pro ebook, and its scope classes may now be empty",
+				fmt.Sprintf("Jamf Pro stores an ebook's scope classes only while the stored list is empty, so the provider empties the list in one request and restores it in a second. The first request failed for ebook %s. An error return is not proof that nothing was applied, because a deadline that expires in flight leaves the write committed, so scope.targets.class_ids may now be empty in Jamf Pro. If your configuration declares class_ids, apply again to restore them. If it leaves the category unmanaged, check the ebook's scope in Jamf Pro before the next apply. (response: %s)", plan.ID.ValueString(), helpers.APIErrorDetail(err)),
+			)
 			return
 		}
 	}
