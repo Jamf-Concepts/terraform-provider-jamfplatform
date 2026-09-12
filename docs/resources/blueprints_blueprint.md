@@ -304,30 +304,28 @@ resource "jamfplatform_blueprints_blueprint" "apple_declarations" {
   component_blocks = [
     {
       name = "Siri and intelligence"
-      apple_declarations = {
-        declaration = [
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.siri.settings"
-            payload = jsonencode({
-              Enabled                   = true
-              AllowUserGeneratedContent = false
-              AllowWhileLocked          = false
-              ForceProfanityFilter      = true
-            })
-          },
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.intelligence.settings"
-            payload = jsonencode({
-              AllowGenmoji               = false
-              AllowImagePlayground       = false
-              AllowWritingTools          = true
-              ForceOnDeviceOnlyDictation = true
-            })
-          },
-        ]
-      }
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.siri.settings"
+          payload = jsonencode({
+            Enabled                   = true
+            AllowUserGeneratedContent = false
+            AllowWhileLocked          = false
+            ForceProfanityFilter      = true
+          })
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.intelligence.settings"
+          payload = jsonencode({
+            AllowGenmoji               = false
+            AllowImagePlayground       = false
+            AllowWritingTools          = true
+            ForceOnDeviceOnlyDictation = true
+          })
+        },
+      ]
     },
   ]
 }
@@ -343,30 +341,57 @@ resource "jamfplatform_blueprints_blueprint" "apple_declarations_with_asset" {
   component_blocks = [
     {
       name = "Sudoers configuration file"
-      apple_declarations = {
-        declaration = [
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.asset.data"
-            payload = jsonencode({
-              Reference = {
-                DataURL        = "https://cdn.example.com/ddm/sudoers-config.zip"
-                ContentType    = "application/zip"
-                "Hash-SHA-256" = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-              }
-              Authentication = { Type = "MDM" }
-            })
-          },
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.services.configuration-files"
-            payload = jsonencode({
-              ServiceType        = "com.apple.sudo"
-              DataAssetReference = "$PAYLOAD_1"
-            })
-          },
-        ]
-      }
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.asset.data"
+          payload = jsonencode({
+            Reference = {
+              DataURL        = "https://cdn.example.com/ddm/sudoers-config.zip"
+              ContentType    = "application/zip"
+              "Hash-SHA-256" = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            }
+            Authentication = { Type = "MDM" }
+          })
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.services.configuration-files"
+          payload = jsonencode({
+            ServiceType        = "com.apple.sudo"
+            DataAssetReference = "$PAYLOAD_1"
+          })
+        },
+      ]
+    },
+  ]
+}
+
+# A payload can also come from a `.json` file, which is how one exported from DDM Explorer
+# (https://apps.apple.com/gb/app/ddm-explorer/id6754861743) arrives. The provider keeps the file's
+# formatting and key order in state, so `plan` stays empty until the file changes.
+resource "jamfplatform_blueprints_blueprint" "apple_declarations_from_files" {
+  name        = "Passcode and Disk Management"
+  description = "Managed by Terraform"
+  deployed    = false
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "Baseline declarations"
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.passcode.settings"
+          payload = file("${path.module}/declarations/passcode.settings.json")
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.diskmanagement.settings"
+          payload = file("${path.module}/declarations/diskmanagement.settings.json")
+        },
+      ]
     },
   ]
 }
@@ -511,7 +536,7 @@ Optional:
 
 - `activation_conditions` (String) Optional activation condition expression that further restricts which scoped devices this block applies to; when omitted, this block applies to every device in the targeted device groups. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the syntax; the easiest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by Platform UUID, so ordinary interpolation keeps a condition in sync with a managed group, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`.
 - `ai_governance` (Attributes) AI Governance component. Delivers published AI policy versions, such as managed Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the [AI Governance policies guide](../guides/ai-governance-policies). (see [below for nested schema](#nestedatt--component_blocks--ai_governance))
-- `apple_declarations` (Attributes) **"All Declarations"** in the Jamf Pro blueprint editor. Delivers any Apple declarative device management declaration, and the provider checks each payload against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro renders these as typed forms generated from Apple's schemas, where a custom declaration shows only an opaque JSON blob. (see [below for nested schema](#nestedatt--component_blocks--apple_declarations))
+- `apple_declarations` (Attributes List) **"All Declarations"** in the Jamf Pro blueprint editor. Delivers any Apple declarative device management declaration, and the provider checks each payload against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro renders these as typed forms generated from Apple's schemas, where a custom declaration is an opaque JSON blob. Ordered: a payload may reference another declaration in this list with `$PAYLOAD_n`, where `n` is the referenced declaration's 1-based position. (see [below for nested schema](#nestedatt--component_blocks--apple_declarations))
 - `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--component_blocks--audio_accessory_settings))
 - `custom_declarations` (Attributes) **"Custom Declarations"** in the Jamf Pro blueprint editor. Manages custom declarative device management declarations with system or user channel types. Prefer `apple_declarations`, which delivers the same declarations and renders them as typed forms in Jamf Pro. (see [below for nested schema](#nestedatt--component_blocks--custom_declarations))
 - `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--component_blocks--disk_management_settings))
@@ -548,19 +573,11 @@ Required:
 <a id="nestedatt--component_blocks--apple_declarations"></a>
 ### Nested Schema for `component_blocks.apple_declarations`
 
-Optional:
-
-- `declaration` (Attributes List) An Apple declaration to deliver. Ordered: a payload may reference another declaration in this component with `$PAYLOAD_n`, where `n` is its 1-based position in this list. (see [below for nested schema](#nestedatt--component_blocks--apple_declarations--declaration))
-
-<a id="nestedatt--component_blocks--apple_declarations--declaration"></a>
-### Nested Schema for `component_blocks.apple_declarations.declaration`
-
 Required:
 
 - `channel` (String) The channel the declaration applies to. Valid values are `SYSTEM` (the device channel) and `USER`.
-- `payload` (String) The declaration's payload as a JSON object string, authored with `jsonencode(...)`. Keys are Apple's own, spelled as Apple declares them. Jamf Pro stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches, so they include keys Apple has published but not yet released, and they are embedded in the provider release you have installed: a key newer than that release reads as unrecognised until you upgrade the provider. To skip the check, use `raw_component`.
+- `payload` (String) The declaration's payload as a JSON object string. Write it with `jsonencode({ ... })`, or read a `.json` file with `file("${path.module}/example.json")`. The provider keeps the formatting and key order you wrote. Keys are Apple's own, spelled as Apple declares them. Jamf Pro stores a payload without validating it and drops any key it does not recognise, so a misspelled key never reaches a device. The provider checks each payload against Apple's schemas during `plan` and reports an unrecognised or miscased key, a wrong value type, a missing required key, a value outside a declared set, and a number outside a declared range. The schemas cover Apple's release and current seed branches, so they include keys Apple has published but not yet released, and they are embedded in the provider release you have installed: a key newer than that release reads as unrecognised until you upgrade the provider. To skip the check, use `raw_component`.
 - `type` (String) The Apple declaration type, for example `com.apple.configuration.passcode.settings`. Matched exactly: Jamf Pro delivers nothing for a type spelled differently, including in case.
-
 
 
 <a id="nestedatt--component_blocks--audio_accessory_settings"></a>

@@ -276,30 +276,28 @@ resource "jamfplatform_blueprints_blueprint" "apple_declarations" {
   component_blocks = [
     {
       name = "Siri and intelligence"
-      apple_declarations = {
-        declaration = [
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.siri.settings"
-            payload = jsonencode({
-              Enabled                   = true
-              AllowUserGeneratedContent = false
-              AllowWhileLocked          = false
-              ForceProfanityFilter      = true
-            })
-          },
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.intelligence.settings"
-            payload = jsonencode({
-              AllowGenmoji               = false
-              AllowImagePlayground       = false
-              AllowWritingTools          = true
-              ForceOnDeviceOnlyDictation = true
-            })
-          },
-        ]
-      }
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.siri.settings"
+          payload = jsonencode({
+            Enabled                   = true
+            AllowUserGeneratedContent = false
+            AllowWhileLocked          = false
+            ForceProfanityFilter      = true
+          })
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.intelligence.settings"
+          payload = jsonencode({
+            AllowGenmoji               = false
+            AllowImagePlayground       = false
+            AllowWritingTools          = true
+            ForceOnDeviceOnlyDictation = true
+          })
+        },
+      ]
     },
   ]
 }
@@ -315,30 +313,57 @@ resource "jamfplatform_blueprints_blueprint" "apple_declarations_with_asset" {
   component_blocks = [
     {
       name = "Sudoers configuration file"
-      apple_declarations = {
-        declaration = [
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.asset.data"
-            payload = jsonencode({
-              Reference = {
-                DataURL        = "https://cdn.example.com/ddm/sudoers-config.zip"
-                ContentType    = "application/zip"
-                "Hash-SHA-256" = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-              }
-              Authentication = { Type = "MDM" }
-            })
-          },
-          {
-            channel = "SYSTEM"
-            type    = "com.apple.configuration.services.configuration-files"
-            payload = jsonencode({
-              ServiceType        = "com.apple.sudo"
-              DataAssetReference = "$PAYLOAD_1"
-            })
-          },
-        ]
-      }
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.asset.data"
+          payload = jsonencode({
+            Reference = {
+              DataURL        = "https://cdn.example.com/ddm/sudoers-config.zip"
+              ContentType    = "application/zip"
+              "Hash-SHA-256" = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            }
+            Authentication = { Type = "MDM" }
+          })
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.services.configuration-files"
+          payload = jsonencode({
+            ServiceType        = "com.apple.sudo"
+            DataAssetReference = "$PAYLOAD_1"
+          })
+        },
+      ]
+    },
+  ]
+}
+
+# A payload can also come from a `.json` file, which is how one exported from DDM Explorer
+# (https://apps.apple.com/gb/app/ddm-explorer/id6754861743) arrives. The provider keeps the file's
+# formatting and key order in state, so `plan` stays empty until the file changes.
+resource "jamfplatform_blueprints_blueprint" "apple_declarations_from_files" {
+  name        = "Passcode and Disk Management"
+  description = "Managed by Terraform"
+  deployed    = false
+
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "Baseline declarations"
+      apple_declarations = [
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.passcode.settings"
+          payload = file("${path.module}/declarations/passcode.settings.json")
+        },
+        {
+          channel = "SYSTEM"
+          type    = "com.apple.configuration.diskmanagement.settings"
+          payload = file("${path.module}/declarations/diskmanagement.settings.json")
+        },
+      ]
     },
   ]
 }

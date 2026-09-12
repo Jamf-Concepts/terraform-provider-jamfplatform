@@ -11,6 +11,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/appledeclarations"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 )
@@ -103,18 +104,59 @@ func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block Co
 	}
 
 	r.collectStronglyTypedComponents(&allComponents, &diags, block)
+	r.appendAppleDeclarations(&allComponents, &diags, block.AppleDeclarations)
 
 	return allComponents, diags
+}
+
+// appendAppleDeclarations assembles the Apple declarations component from a block's declaration
+// list and appends it. An empty list writes no component, the same as omitting the attribute: there
+// is nothing a component holding no declarations would express.
+//
+// kind and payloadKey are derived rather than authored — see AppleDeclarationModel.
+func (r *BlueprintResource) appendAppleDeclarations(allComponents *[]blueprints.Component, diags *diag.Diagnostics, declarations []AppleDeclarationModel) {
+	if len(declarations) == 0 {
+		return
+	}
+
+	wire := make([]blueprints.CustomDeclaration, 0, len(declarations))
+	for idx, declaration := range declarations {
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payload); err != nil {
+			diags.AddError(
+				"Invalid Apple declaration payload",
+				"payload for declaration type "+declaration.Type.ValueString()+
+					" must be a JSON object string (write it with jsonencode or read it from a .json file): "+helpers.APIErrorDetail(err),
+			)
+			return
+		}
+
+		declarationType := declaration.Type.ValueString()
+		wire = append(wire, blueprints.CustomDeclaration{
+			ChannelType: declaration.ChannelType.ValueString(),
+			Kind:        appledeclarations.KindForType(declarationType),
+			Payload:     payload,
+			PayloadKey:  idx + 1,
+			Type:        declarationType,
+		})
+	}
+
+	configJSON, err := json.Marshal(blueprints.CustomDeclarationsConfiguration{Declarations: wire})
+	if err != nil {
+		diags.AddError("Error encoding Apple declarations configuration", "Could not encode configuration to JSON: "+helpers.APIErrorDetail(err))
+		return
+	}
+
+	*allComponents = append(*allComponents, blueprints.Component{
+		Identifier:    appleDeclarationsIdentifier,
+		Configuration: json.RawMessage(configJSON),
+	})
 }
 
 // collectStronglyTypedComponents processes all strongly-typed components of a block.
 func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, block ComponentBlockModel) {
 	if block.AIGovernance != nil {
 		r.collectSingleComponent(allComponents, diags, block.AIGovernance, "AI governance")
-	}
-
-	if block.AppleDeclarations != nil {
-		r.collectSingleComponent(allComponents, diags, block.AppleDeclarations, "apple declarations")
 	}
 
 	if block.AudioAccessorySettings != nil {

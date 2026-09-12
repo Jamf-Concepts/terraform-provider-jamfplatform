@@ -7,7 +7,10 @@ package blueprint_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -27,10 +30,8 @@ func appleDeclarationsConfig(scopeSuffix, name, declarations string) string {
 
 			component_blocks = [
 				{
-					name = "Apple Declarations"
-					apple_declarations = {
-						declaration = %s
-					}
+					name               = "Apple Declarations"
+					apple_declarations = %s
 				},
 			]
 		}
@@ -91,23 +92,23 @@ func TestAccResource_Blueprint_AppleDeclarations(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.#", "1"),
+						"component_blocks.0.apple_declarations.#", "1"),
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.0.type",
+						"component_blocks.0.apple_declarations.0.type",
 						"com.apple.configuration.siri.settings"),
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.0.channel", "SYSTEM"),
+						"component_blocks.0.apple_declarations.0.channel", "SYSTEM"),
 				),
 			},
 			{
 				Config: appleDeclarationsConfig("appledecl", name, twoDeclarations),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.#", "2"),
+						"component_blocks.0.apple_declarations.#", "2"),
 					// Order is meaningful — $PAYLOAD_n counts positions — so the second entry must
 					// come back second rather than wherever a set would have put it.
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.1.type",
+						"component_blocks.0.apple_declarations.1.type",
 						"com.apple.configuration.diskmanagement.settings"),
 				),
 			},
@@ -125,12 +126,10 @@ func TestAccResource_Blueprint_AppleDeclarations(t *testing.T) {
 // or > survives a real apply and then plans empty.
 //
 // Both Terraform's jsonencode() and Go's encoding/json HTML-escape those three characters, so the
-// value the provider reads back from the wire matches the one it planned. That agreement is load
-// bearing and non-obvious: payload is a plain string attribute, byte-compared with no semantic
-// equality, so making FromRawConfiguration emit unescaped output — which reads like a fix — breaks
-// the FIRST apply with "Provider produced inconsistent result after apply". This test was written
-// after that exact mistake was made and caught here. Every other fixture in this file is free of
-// those characters, so none of them covers it.
+// canonical encoding the provider derives from the wire matches what jsonencode() produced. An
+// import relies on that: flattenAppleDeclarations keeps the author's bytes when the two are
+// semantically equal, but an import has none to keep, so the canonical encoding is what lands in
+// state. Every other fixture in this file is free of those characters.
 //
 // The declaration type also gives the MANAGEMENT kind its only acceptance coverage. That kind is
 // absent from the SDK's DeclarationKindValues() and was wire-verified accepted on 2026-09-10.
@@ -163,7 +162,7 @@ func TestAccResource_Blueprint_AppleDeclarations_HTMLEscapedPayload(t *testing.T
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.0.type",
+						"component_blocks.0.apple_declarations.0.type",
 						"com.apple.management.organization-info"),
 				),
 			},
@@ -255,10 +254,10 @@ func TestAccResource_Blueprint_AppleDeclarations_PayloadReferences(t *testing.T)
 				Config: appleDeclarationsConfig("appleref", name, withReference),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.#", "2"),
+						"component_blocks.0.apple_declarations.#", "2"),
 					// The asset must stay first, or the reference below it points elsewhere.
 					resource.TestCheckResourceAttr(resourceName,
-						"component_blocks.0.apple_declarations.declaration.0.type",
+						"component_blocks.0.apple_declarations.0.type",
 						"com.apple.asset.data"),
 				),
 			},
@@ -505,6 +504,252 @@ func TestAccResource_Blueprint_RawComponentSkipsSchemaValidation(t *testing.T) {
 			},
 			{
 				Config: config,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_AppleDeclarations_FilePayload covers a payload read from a .json file
+// with file(), which is how one exported from a tool such as DDM Explorer arrives.
+//
+// The file's own formatting is the assertion: it is indented with unsorted keys, while the platform
+// re-serialises what it stored compact with keys sorted. Without flattenAppleDeclarations keeping
+// the author's bytes, the first apply fails as inconsistent. The second step proves the round trip
+// settles; the third proves an edit to the file is still seen, so formatting is preserved without
+// content being ignored.
+func TestAccResource_Blueprint_AppleDeclarations_FilePayload(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-apple-decl-file-" + suffix
+
+	// Deliberately indented, with keys out of alphabetical order and a trailing newline: every
+	// difference from the canonical encoding the platform hands back.
+	const payloadJSON = `{
+  "ForceProfanityFilter": true,
+  "Enabled": true,
+  "AllowUserGeneratedContent": false
+}
+`
+	const editedPayloadJSON = `{
+  "ForceProfanityFilter": false,
+  "Enabled": true,
+  "AllowUserGeneratedContent": false
+}
+`
+
+	directory := t.TempDir()
+	payloadPath := filepath.Join(directory, "siri.settings.json")
+	writePayloadFile := func(t *testing.T, contents string) {
+		t.Helper()
+		if err := os.WriteFile(payloadPath, []byte(contents), 0o600); err != nil {
+			t.Fatalf("writing the payload fixture: %v", err)
+		}
+	}
+	writePayloadFile(t, payloadJSON)
+
+	declaration := fmt.Sprintf(`[
+		{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.siri.settings"
+			payload = file(%q)
+		},
+	]`, payloadPath)
+
+	resourceName := "jamfplatform_blueprints_blueprint.test_apple_decl"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// A rewritten payload fails this step with "inconsistent result after apply".
+				Config: appleDeclarationsConfig("appledeclfile", name, declaration),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.0.payload", payloadJSON),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclfile", name, declaration),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				PreConfig: func() { writePayloadFile(t, editedPayloadJSON) },
+				Config:    appleDeclarationsConfig("appledeclfile", name, declaration),
+				Check: resource.TestCheckResourceAttr(resourceName,
+					"component_blocks.0.apple_declarations.0.payload", editedPayloadJSON),
+			},
+		},
+	})
+}
+
+// Declaration fixtures for the ordering test. Each payload is distinct, so an alignment that picks
+// the wrong element shows up as a wrong payload rather than only a wrong type.
+const (
+	siriDeclaration = `{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.siri.settings"
+			payload = jsonencode({ Enabled = true })
+		}`
+	passcodeDeclaration = `{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.passcode.settings"
+			payload = jsonencode({ MinimumLength = 8 })
+		}`
+	diskDeclaration = `{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.diskmanagement.settings"
+			payload = jsonencode({ Restrictions = { ExternalStorage = "ReadOnly" } })
+		}`
+)
+
+// declarationList renders declaration fixtures as an HCL list body.
+func declarationList(declarations ...string) string {
+	return "[\n\t\t" + strings.Join(declarations, ",\n\t\t") + ",\n\t]"
+}
+
+// TestAccResource_Blueprint_AppleDeclarations_ListOrdering is the test a set could not pass.
+//
+// Order is the component's meaning: payloadKey is the 1-based position and a $PAYLOAD_n reference
+// resolves against it, so reordering the configuration has to reorder what Jamf stores and what
+// comes back into state. Three declarations rather than two, because a two-element reorder is also
+// a swap and a wrong implementation can survive that.
+//
+// The reorder and the removal from the middle are also the two edits that exercise the read path's
+// alignment — one moves every position's prior payload to a different declaration, the other
+// returns fewer declarations than state holds. Each step asserts the payload as well as the type.
+func TestAccResource_Blueprint_AppleDeclarations_ListOrdering(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-apple-decl-order-" + suffix
+
+	resourceName := "jamfplatform_blueprints_blueprint.test_apple_decl"
+	attr := func(index int, field string) string {
+		return fmt.Sprintf("component_blocks.0.apple_declarations.%d.%s", index, field)
+	}
+	declarationAt := func(index int, declarationType, payload string) resource.TestCheckFunc {
+		return resource.ComposeAggregateTestCheckFunc(
+			resource.TestCheckResourceAttr(resourceName, attr(index, "type"), declarationType),
+			resource.TestCheckResourceAttr(resourceName, attr(index, "payload"), payload),
+		)
+	}
+
+	const (
+		siriPayload     = `{"Enabled":true}`
+		passcodePayload = `{"MinimumLength":8}`
+		diskPayload     = `{"Restrictions":{"ExternalStorage":"ReadOnly"}}`
+
+		siriType     = "com.apple.configuration.siri.settings"
+		passcodeType = "com.apple.configuration.passcode.settings"
+		diskType     = "com.apple.configuration.diskmanagement.settings"
+	)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: appleDeclarationsConfig("appledeclorder", name,
+					declarationList(siriDeclaration, passcodeDeclaration, diskDeclaration)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "component_blocks.0.apple_declarations.#", "3"),
+					declarationAt(0, siriType, siriPayload),
+					declarationAt(1, passcodeType, passcodePayload),
+					declarationAt(2, diskType, diskPayload),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclorder", name,
+					declarationList(siriDeclaration, passcodeDeclaration, diskDeclaration)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// Reordered, not edited. A set would report no change at all here; a list must
+				// apply one, and every position's declaration must move with it.
+				Config: appleDeclarationsConfig("appledeclorder", name,
+					declarationList(diskDeclaration, siriDeclaration, passcodeDeclaration)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectNonEmptyPlan()},
+				},
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "component_blocks.0.apple_declarations.#", "3"),
+					declarationAt(0, diskType, diskPayload),
+					declarationAt(1, siriType, siriPayload),
+					declarationAt(2, passcodeType, passcodePayload),
+				),
+			},
+			{
+				// The middle declaration removed, so the server returns fewer than state holds.
+				Config: appleDeclarationsConfig("appledeclorder", name,
+					declarationList(diskDeclaration, passcodeDeclaration)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "component_blocks.0.apple_declarations.#", "2"),
+					declarationAt(0, diskType, diskPayload),
+					declarationAt(1, passcodeType, passcodePayload),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclorder", name,
+					declarationList(diskDeclaration, passcodeDeclaration)),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_AppleDeclarations_RepeatedType covers two declarations of one type in a
+// component, which the platform accepts. It is why the read path aligns a prior payload by position:
+// by type, the first entry would reconcile against both and the second would diff for ever.
+func TestAccResource_Blueprint_AppleDeclarations_RepeatedType(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-apple-decl-repeat-" + suffix
+
+	const repeated = `[
+		{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.passcode.settings"
+			payload = jsonencode({ MinimumLength = 8 })
+		},
+		{
+			channel = "USER"
+			type    = "com.apple.configuration.passcode.settings"
+			payload = jsonencode({ MinimumLength = 6 })
+		},
+	]`
+
+	resourceName := "jamfplatform_blueprints_blueprint.test_apple_decl"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: appleDeclarationsConfig("appledeclrepeat", name, repeated),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "component_blocks.0.apple_declarations.#", "2"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.0.channel", "SYSTEM"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.0.payload", `{"MinimumLength":8}`),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.1.channel", "USER"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.1.payload", `{"MinimumLength":6}`),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclrepeat", name, repeated),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
 				},

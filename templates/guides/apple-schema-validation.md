@@ -23,6 +23,37 @@ Case counts in a declaration, for both the key names and the declaration type. `
 
 Legacy configuration profile payloads are more forgiving about case, so a spelling that carried in a profile is no evidence it will carry in a declaration. Check it against Apple's schema when you move one across.
 
+## Authoring a declaration payload
+
+`payload` is a JSON object string. Write it inline or read it from a file; both of these are equivalent:
+
+```hcl
+component_blocks = [
+  {
+    name = "Baseline declarations"
+    apple_declarations = [
+      {
+        channel = "SYSTEM"
+        type    = "com.apple.configuration.siri.settings"
+        payload = jsonencode({
+          Enabled              = true
+          ForceProfanityFilter = true
+        })
+      },
+      {
+        channel = "SYSTEM"
+        type    = "com.apple.configuration.passcode.settings"
+        payload = file("${path.module}/declarations/passcode.settings.json")
+      },
+    ]
+  },
+]
+```
+
+The provider keeps the formatting and key order you wrote. Jamf Pro re-serialises a stored payload compact with its keys sorted, so the provider compares the two as JSON and keeps your bytes when they describe the same object. Without that, an indented file would be rewritten in state on the first read and diff on every plan after it.
+
+Use `file()` for a payload you did not write by hand. [DDM Explorer](https://apps.apple.com/gb/app/ddm-explorer/id6754861743) builds declarations and sends them to a test device: assemble one there, export its payload as JSON, and commit the file beside your configuration. You do not need `jsondecode`, because `payload` takes the file's text as it stands.
+
 ## The findings
 
 | Finding | What it means | Can an old snapshot explain it? |
@@ -153,6 +184,7 @@ Moving a block to `raw_component` shows up in the plan as one component destroye
 
 | To look up | Where |
 |---|---|
+| Building a declaration payload against a test device | [DDM Explorer](https://apps.apple.com/gb/app/ddm-explorer/id6754861743) |
 | Every declaration type and key the provider checks | [Apple's declarative device management schemas](https://github.com/apple/device-management/tree/release/declarative) |
 | Every payload type and key the provider checks | [Apple's configuration profile schemas](https://github.com/apple/device-management/tree/release/mdm/profiles) |
 | Blueprints themselves | [Blueprints Guide](https://learn.jamf.com/r/en-US/Jamf-Blueprints-Guide) |

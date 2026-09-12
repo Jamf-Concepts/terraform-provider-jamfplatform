@@ -35,21 +35,21 @@ import (
 // Applied to both declaration-bearing components. apple_declarations is the typed surface;
 // custom_declarations delivers identical declarations with identical exposure, so leaving it
 // unchecked would only relocate the silent failure.
-type declarationSchemaValidator struct {
-	// ordered is true for the component whose declarations are a list, where a finding can be
-	// addressed to the exact element. A set has no stable index, so those findings land on the
-	// collection and name the declaration type instead.
-	ordered bool
-}
+//
+// They differ in shape, not in rules, and the shape decides which method runs. apple_declarations
+// is a list of declarations, so ValidateList addresses a finding to the exact element and can
+// range-check a $PAYLOAD_n reference. custom_declarations is an object wrapping a set, which has no
+// stable index, so ValidateObject lands a finding on the collection and names the declaration type.
+type declarationSchemaValidator struct{}
 
-// appleDeclarationsSchemaValidator validates the apple_declarations component.
-func appleDeclarationsSchemaValidator() validator.Object {
-	return declarationSchemaValidator{ordered: true}
+// appleDeclarationsSchemaValidator validates the apple_declarations list.
+func appleDeclarationsSchemaValidator() validator.List {
+	return declarationSchemaValidator{}
 }
 
 // customDeclarationsSchemaValidator validates the custom_declarations component.
 func customDeclarationsSchemaValidator() validator.Object {
-	return declarationSchemaValidator{ordered: false}
+	return declarationSchemaValidator{}
 }
 
 func (v declarationSchemaValidator) Description(ctx context.Context) string {
@@ -64,52 +64,57 @@ func (v declarationSchemaValidator) MarkdownDescription(context.Context) string 
 	)
 }
 
-// ValidateObject checks every declaration the component carries.
+// ValidateList checks every declaration in the apple_declarations list, addressing each finding to
+// the element it came from. Only this surface checks $PAYLOAD_n references, because only a list has
+// the positions they name.
+//
+// An element Terraform has yet to compute cannot be read into the model, and that is not an error —
+// the wire decides it. An element that reads but carries an unknown type or payload still warns,
+// from validateDeclarationPayload.
+func (v declarationSchemaValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+	if !helpers.IsConfiguredValue(req.ConfigValue) {
+		return
+	}
+
+	var declarations []AppleDeclarationModel
+	if diags := req.ConfigValue.ElementsAs(ctx, &declarations, false); diags.HasError() {
+		return
+	}
+
+	for i, declaration := range declarations {
+		at := req.Path.AtListIndex(i).AtName("payload")
+		resp.Diagnostics.Append(validateDeclarationPayload(
+			types.StringNull(), declaration.Type, declaration.Payload, at, "",
+		)...)
+		resp.Diagnostics.Append(validatePayloadReferences(
+			declaration.Payload, len(declarations), at,
+		)...)
+	}
+}
+
+// ValidateObject checks every declaration the custom_declarations component carries.
 //
 // A failure to read the component into its model is reported rather than swallowed:
 // UnhandledUnknownAsEmpty already absorbs a value Terraform has yet to compute, and every model
 // field is a types.String, which carries unknown natively, so the only cause left is the model and
 // the object type having diverged. Returning clean on that would leave this validator passing every
 // configuration forever with no diagnostic to say why.
-//
-// Only the ordered component checks $PAYLOAD_n references, because only a list has the positions
-// they name.
 func (v declarationSchemaValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
 	if !helpers.IsConfiguredValue(req.ConfigValue) {
 		return
 	}
 
-	base := req.Path.AtName("declaration")
-	options := basetypes.ObjectAsOptions{
+	var component components.CustomDeclarationsComponent
+	diags := req.ConfigValue.As(ctx, &component, basetypes.ObjectAsOptions{
 		UnhandledNullAsEmpty:    true,
 		UnhandledUnknownAsEmpty: true,
-	}
-
-	if v.ordered {
-		var component components.AppleDeclarationsComponent
-		diags := req.ConfigValue.As(ctx, &component, options)
-		resp.Diagnostics.Append(diags...)
-		if diags.HasError() {
-			return
-		}
-		for i, declaration := range component.Declarations {
-			at := base.AtListIndex(i).AtName("payload")
-			resp.Diagnostics.Append(validateDeclarationPayload(
-				types.StringNull(), declaration.Type, declaration.Payload, at, "",
-			)...)
-			resp.Diagnostics.Append(validatePayloadReferences(
-				declaration.Payload, len(component.Declarations), at,
-			)...)
-		}
-		return
-	}
-
-	var component components.CustomDeclarationsComponent
-	diags := req.ConfigValue.As(ctx, &component, options)
+	})
 	resp.Diagnostics.Append(diags...)
 	if diags.HasError() {
 		return
 	}
+
+	base := req.Path.AtName("declaration")
 	for _, declaration := range component.Declarations {
 		resp.Diagnostics.Append(validateDeclarationPayload(
 			declaration.Kind, declaration.Type, declaration.Payload,

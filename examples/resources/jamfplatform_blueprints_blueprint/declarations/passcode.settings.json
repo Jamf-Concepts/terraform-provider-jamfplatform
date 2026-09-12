@@ -1,0 +1,8 @@
+{
+  "RequirePasscode": true,
+  "MinimumLength": 8,
+  "RequireAlphanumericPasscode": true,
+  "MaximumFailedAttempts": 10,
+  "MaximumInactivityInMinutes": 5,
+  "MinimumComplexCharacters": 1
+}

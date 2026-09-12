@@ -12,6 +12,12 @@ const (
 	blueprintDeploymentStateNotDeployed = blueprints.DeploymentStateStateNotDeployed
 )
 
+// appleDeclarationsIdentifier is the wire identifier of "All Declarations" in the Jamf Pro
+// blueprint editor, which the apple_declarations attribute is named for. An identifier is API
+// plumbing and must not reach user-facing text (see STYLE_GUIDE §Attribute names mirror the Jamf
+// Pro admin UI).
+const appleDeclarationsIdentifier = "com.jamf.ddm-strict"
+
 // stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations.
 var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ai-governance":                   {},

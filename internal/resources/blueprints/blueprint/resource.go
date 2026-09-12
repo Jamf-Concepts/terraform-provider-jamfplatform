@@ -73,6 +73,17 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Version:             4,
+		MarkdownDescription: "Manages a Jamf blueprint. Requires **Blueprints API** access." + resourcePrivileges,
+		Attributes:          blueprintSchemaAttributes(ctx),
+	}
+}
+
+// blueprintSchemaAttributes returns the current top-level attribute set. It is a function rather
+// than an inline literal in Schema so blueprintSchemaV3 can derive the prior schema from it and
+// change only the one attribute that changed, instead of transcribing every other.
+func blueprintSchemaAttributes(ctx context.Context) map[string]schema.Attribute {
 	attributes := map[string]schema.Attribute{
 		"id": schema.StringAttribute{
 			MarkdownDescription: "The unique identifier for the blueprint.",
@@ -156,11 +167,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 
 	maps.Copy(attributes, sharedComponentAttributes(componentAttrDeprecation))
 
-	resp.Schema = schema.Schema{
-		Version:             3,
-		MarkdownDescription: "Manages a Jamf blueprint. Requires **Blueprints API** access." + resourcePrivileges,
-		Attributes:          attributes,
-	}
+	return attributes
 }
 
 // activationConditionsDescription returns the shared MarkdownDescription for an activation-condition
@@ -289,15 +296,38 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		// apple_declarations is deliberately NOT in sharedComponentAttributes: the flat top-level
 		// authoring style is deprecated and removed on or after 2026-10-22, so a component
 		// introduced now is offered only inside a block.
-		"apple_declarations": schema.SingleNestedAttribute{
+		"apple_declarations": schema.ListNestedAttribute{
 			MarkdownDescription: "**\"All Declarations\"** in the Jamf Pro blueprint editor. " +
 				"Delivers any Apple declarative device management declaration, and the provider checks each payload " +
 				"against Apple's published schemas during `plan`. Prefer this over `custom_declarations`: Jamf Pro " +
-				"renders these as typed forms generated from Apple's schemas, where a custom declaration shows only " +
-				"an opaque JSON blob.",
+				"renders these as typed forms generated from Apple's schemas, where a custom declaration is an " +
+				"opaque JSON blob. Ordered: a payload may reference another declaration in this list with " +
+				"`$PAYLOAD_n`, where `n` is the referenced declaration's 1-based position.",
 			Optional:   true,
-			Attributes: components.AppleDeclarationsComponentSchema(),
-			Validators: []validator.Object{appleDeclarationsSchemaValidator()},
+			Validators: []validator.List{appleDeclarationsSchemaValidator()},
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"channel": schema.StringAttribute{
+						MarkdownDescription: "The channel the declaration applies to. Valid values are `SYSTEM` (the device channel) and `USER`.",
+						Required:            true,
+						Validators: []validator.String{
+							stringvalidator.OneOf(blueprints.DeclarationChannelTypeSystem, blueprints.DeclarationChannelTypeUser),
+						},
+					},
+					"type": schema.StringAttribute{
+						MarkdownDescription: "The Apple declaration type, for example `com.apple.configuration.passcode.settings`. " +
+							"Matched exactly: Jamf Pro delivers nothing for a type spelled differently, including in case.",
+						Required: true,
+					},
+					"payload": schema.StringAttribute{
+						MarkdownDescription: "The declaration's payload as a JSON object string. Write it with `jsonencode({ ... })`, " +
+							"or read a `.json` file with `file(\"${path.module}/example.json\")`. The provider keeps the formatting and " +
+							"key order you wrote. Keys are Apple's own, spelled as Apple declares them." +
+							components.AppleDeclarationsBehaviour,
+						Required: true,
+					},
+				},
+			},
 		},
 		"activation_conditions": schema.StringAttribute{
 			MarkdownDescription: activationConditionsDescription("this block"),

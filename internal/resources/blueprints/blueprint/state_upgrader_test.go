@@ -4,11 +4,14 @@
 package blueprint
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 )
 
 func TestSliceToPointer_Empty(t *testing.T) {
@@ -293,5 +296,110 @@ func TestUpgradeLegacyPayloadsFromString_NoSettings(t *testing.T) {
 	payload := items[0].(map[string]any)
 	if _, ok := payload["settings"]; ok {
 		t.Error("expected no settings key when no extra keys")
+	}
+}
+
+// TestBlueprintResourceModelV3Upgrade covers the v3 to v4 upgrade: apple_declarations stops being
+// an object wrapping a `declaration` list and becomes the list.
+//
+// Without this upgrader, state written by v0.33.0 cannot be decoded against the new schema at all,
+// so `terraform plan` fails before it reaches the configuration. It is unit-tested because an
+// acceptance test cannot write state from an older provider build.
+func TestBlueprintResourceModelV3Upgrade(t *testing.T) {
+	declaration := AppleDeclarationModel{
+		ChannelType: types.StringValue("SYSTEM"),
+		Payload:     types.StringValue(`{"Enabled":true}`),
+		Type:        types.StringValue("com.apple.configuration.siri.settings"),
+	}
+
+	prior := blueprintResourceModelV3{
+		ID:   types.StringValue("6fdc7ca2-b1cb-4053-b0c1-b2316aabf1dc"),
+		Name: types.StringValue("Baseline"),
+		ComponentBlocks: []componentBlockModelV3{
+			{
+				Name:              types.StringValue("Declarations"),
+				AppleDeclarations: &appleDeclarationsComponentV3{Declarations: []AppleDeclarationModel{declaration}},
+				LegacyPayloads: []BlockLegacyPayloadModel{
+					{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{"tilesize":48}`)},
+				},
+			},
+			{
+				Name:           types.StringValue("Passcode only"),
+				PasscodePolicy: &components.PasscodePolicyComponent{},
+			},
+			{
+				Name:              types.StringValue("Empty declarations"),
+				AppleDeclarations: &appleDeclarationsComponentV3{},
+			},
+		},
+	}
+
+	upgraded := prior.upgrade()
+
+	if upgraded.ID != prior.ID || upgraded.Name != prior.Name {
+		t.Errorf("scalars did not carry across: %+v", upgraded)
+	}
+	if len(upgraded.ComponentBlocks) != 3 {
+		t.Fatalf("expected 3 blocks, got %d", len(upgraded.ComponentBlocks))
+	}
+
+	first := upgraded.ComponentBlocks[0]
+	if len(first.AppleDeclarations) != 1 {
+		t.Fatalf("expected the declaration list to be unwrapped, got %+v", first.AppleDeclarations)
+	}
+	if first.AppleDeclarations[0] != declaration {
+		t.Errorf("declaration changed during the upgrade: %+v", first.AppleDeclarations[0])
+	}
+	// Everything else in the block has to survive, or the upgrade silently deletes components from
+	// the blueprint on the next apply.
+	if len(first.LegacyPayloads) != 1 {
+		t.Errorf("legacy payloads were dropped: %+v", first.LegacyPayloads)
+	}
+	if upgraded.ComponentBlocks[1].PasscodePolicy == nil {
+		t.Error("a block with no declarations lost its other components")
+	}
+	if upgraded.ComponentBlocks[1].AppleDeclarations != nil {
+		t.Errorf("an absent component became a list: %+v", upgraded.ComponentBlocks[1].AppleDeclarations)
+	}
+	// An empty list writes no component, so state must not hold one either.
+	if upgraded.ComponentBlocks[2].AppleDeclarations != nil {
+		t.Errorf("an empty declaration list must upgrade to absent, got %+v", upgraded.ComponentBlocks[2].AppleDeclarations)
+	}
+}
+
+// TestBlueprintSchemaV3MatchesTheStateItDecodes pins the two things the derived prior schema has to
+// get right: apple_declarations in its old object shape, and the version it claims.
+func TestBlueprintSchemaV3MatchesTheStateItDecodes(t *testing.T) {
+	prior := blueprintSchemaV3(context.Background())
+
+	if prior.Version != 3 {
+		t.Errorf("Version = %d, want 3", prior.Version)
+	}
+
+	blocks, ok := prior.Attributes["component_blocks"].(schema.ListNestedAttribute)
+	if !ok {
+		t.Fatal("component_blocks is missing or not a ListNestedAttribute")
+	}
+	declarations, ok := blocks.NestedObject.Attributes["apple_declarations"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatal("apple_declarations must be a SingleNestedAttribute in the v3 schema")
+	}
+	if _, ok := declarations.Attributes["declaration"].(schema.ListNestedAttribute); !ok {
+		t.Error("apple_declarations.declaration must be a ListNestedAttribute in the v3 schema")
+	}
+
+	// Deriving the prior schema must not leave the live one mutated, or every later plan would see
+	// the old shape.
+	var resp resource.SchemaResponse
+	NewBlueprintResource().(*BlueprintResource).Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	current, ok := resp.Schema.Attributes["component_blocks"].(schema.ListNestedAttribute)
+	if !ok {
+		t.Fatal("current component_blocks is missing or not a ListNestedAttribute")
+	}
+	if _, ok := current.NestedObject.Attributes["apple_declarations"].(schema.ListNestedAttribute); !ok {
+		t.Error("the live apple_declarations is no longer a ListNestedAttribute")
+	}
+	if resp.Schema.Version != 4 {
+		t.Errorf("current Version = %d, want 4", resp.Schema.Version)
 	}
 }

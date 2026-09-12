@@ -195,9 +195,17 @@ than from a table; two of the four kinds it derives are a dated **gateway wideni
 `POST /blueprints/v1/blueprints` accepted `ACTIVATION` and `MANAGEMENT` and stored both verbatim on
 the EU gateway, 2026-09-10 — and `enum_literals_test.go` is the tripwire for the day a spec ingest
 catches up. The blueprint resource wires this in through `declaration_validators.go` for both
-declaration-bearing components: `apple_declarations`, a list, so a finding lands on the exact element
-and `$PAYLOAD_n` cross-references are range-checked, and `custom_declarations`, a set, so a finding
-names the declaration type instead. What none of this can prove is that Jamf tracks the *same* seed
+declaration-bearing components: `apple_declarations`, a list *of declarations* — the attribute is
+the list, not an object wrapping one, so a finding lands on the exact element and `$PAYLOAD_n`
+cross-references are range-checked — and `custom_declarations`, a set, so a finding names the
+declaration type instead. That shape is why `apple_declarations` is assembled in the blueprint
+package (`appendAppleDeclarations`, `flattenAppleDeclarations`) rather than in `components/`, the
+same split `legacy_payloads` has and for the same reason: neither wire component is a typed object a
+`ComponentConverter` can own, and both need what the components package cannot see — the blueprint's
+name for one, the prior state for the other. The prior state is what lets `payload` be authored with
+`file()`: an authored JSON string is kept whenever it is semantically equal to what Jamf
+re-serialised, aligned **by position** since two declarations of one type in a block are legal.
+What none of this can prove is that Jamf tracks the *same* seed
 branch the table unions — that is inferred from `siri.settings.AllowSiriAI` appearing in the Jamf
 picker while absent from release, so re-probe it first if false positives reappear for keys the UI
 offers. User guidance is in `docs/guides/apple-schema-validation.md`.
