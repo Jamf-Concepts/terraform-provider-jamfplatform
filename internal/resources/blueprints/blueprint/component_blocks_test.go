@@ -539,3 +539,64 @@ func TestBuildTypedComponent_UndecodableConfigurationWarns(t *testing.T) {
 		t.Errorf("expected a warning naming com.jamf.ai-governance, got %v", diags)
 	}
 }
+
+// TestCollectBlockComponents_AppleDeclarationsAndRawComponentConflict pins the overlap the wire
+// cannot represent: the platform stores two components sharing one identifier, and the read path
+// keys them by identifier, so the block must be rejected rather than written.
+func TestCollectBlockComponents_AppleDeclarationsAndRawComponentConflict(t *testing.T) {
+	r := &BlueprintResource{}
+	block := ComponentBlockModel{
+		Name: types.StringValue("Block A"),
+		Components: []ComponentModel{
+			{Identifier: types.StringValue(appleDeclarationsIdentifier), Configuration: types.MapNull(types.StringType)},
+		},
+		AppleDeclarations: []AppleDeclarationModel{
+			appleDeclaration("com.apple.configuration.passcode.settings", `{"RequireAlphanumericPasscode":true}`),
+		},
+	}
+
+	components, diags := r.collectBlockComponents(context.Background(), block)
+	if !diags.HasError() {
+		t.Fatal("expected an error for a block setting both apple_declarations and a raw_component for that component")
+	}
+	if len(components) != 0 {
+		t.Fatalf("expected no components to be built, got %+v", components)
+	}
+
+	summary := diags.Errors()[0].Summary()
+	detail := diags.Errors()[0].Detail()
+	if !strings.Contains(detail, "apple_declarations") || !strings.Contains(detail, "raw_component") {
+		t.Errorf("error must name both attributes, got %q / %q", summary, detail)
+	}
+	if strings.Contains(summary, appleDeclarationsIdentifier) || strings.Contains(detail, appleDeclarationsIdentifier) {
+		t.Errorf("user-facing text must not carry the wire identifier, got %q / %q", summary, detail)
+	}
+}
+
+// TestBuildSteps_AppleDeclarationsAndRawComponentConflictEmitsNoStep proves the rejection blocks
+// the write: the conflicting block contributes no step, so nothing reaches the wire.
+func TestBuildSteps_AppleDeclarationsAndRawComponentConflictEmitsNoStep(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name: types.StringValue("BP"),
+		ComponentBlocks: []ComponentBlockModel{
+			{
+				Name: types.StringValue("Block A"),
+				Components: []ComponentModel{
+					{Identifier: types.StringValue(appleDeclarationsIdentifier), Configuration: types.MapNull(types.StringType)},
+				},
+				AppleDeclarations: []AppleDeclarationModel{
+					appleDeclaration("com.apple.configuration.passcode.settings", `{"RequireAlphanumericPasscode":true}`),
+				},
+			},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if !diags.HasError() {
+		t.Fatal("expected an error from the conflicting block")
+	}
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+}

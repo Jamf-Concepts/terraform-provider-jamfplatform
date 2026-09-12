@@ -69,15 +69,20 @@ func (v declarationSchemaValidator) MarkdownDescription(context.Context) string 
 // the positions they name.
 //
 // An element Terraform has yet to compute cannot be read into the model, and that is not an error —
-// the wire decides it. An element that reads but carries an unknown type or payload still warns,
-// from validateDeclarationPayload.
+// the wire decides it, which is why the elements are read with unhandled unknowns allowed. An
+// element that reads but carries an unknown type or payload still warns, from
+// validateDeclarationPayload. What is left once the unknown element is tolerated is the model and
+// the element type having diverged, and that is reported rather than swallowed, for the reason
+// ValidateObject gives: returning clean on it would leave this validator passing every
+// configuration for ever with no diagnostic to say why.
 func (v declarationSchemaValidator) ValidateList(ctx context.Context, req validator.ListRequest, resp *validator.ListResponse) {
 	if !helpers.IsConfiguredValue(req.ConfigValue) {
 		return
 	}
 
 	var declarations []AppleDeclarationModel
-	if diags := req.ConfigValue.ElementsAs(ctx, &declarations, false); diags.HasError() {
+	if diags := req.ConfigValue.ElementsAs(ctx, &declarations, true); diags.HasError() {
+		resp.Diagnostics.Append(diags...)
 		return
 	}
 

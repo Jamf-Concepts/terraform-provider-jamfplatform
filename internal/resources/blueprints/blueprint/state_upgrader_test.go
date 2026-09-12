@@ -9,7 +9,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 )
@@ -401,5 +404,184 @@ func TestBlueprintSchemaV3MatchesTheStateItDecodes(t *testing.T) {
 	}
 	if resp.Schema.Version != 4 {
 		t.Errorf("current Version = %d, want 4", resp.Schema.Version)
+	}
+}
+
+// blueprintStateV3 is a verbatim schema-version-3 state document, frozen. It records what schema
+// version 3 actually wrote — most importantly a component block carrying apple_declarations in its
+// old single-object-wrapping-a-list shape — and must never be regenerated from the live schema:
+// regenerating it would make it agree with whatever the schema has since become, which is the one
+// thing TestBlueprintSchemaV3DecodesFrozenV3State exists to detect. It populates a first block's
+// apple_declarations, legacy_payloads and passcode_policy, leaves a second block's components
+// absent, and carries every remaining attribute as an explicit JSON null, the way Terraform writes
+// state.
+const blueprintStateV3 = `{
+  "id": "3f6c1d8e-4b2a-4c77-9e51-0a2b6d9f1c34",
+  "name": "Frozen v3 blueprint",
+  "description": "A blueprint written by schema version 3.",
+  "deployed": true,
+  "device_groups": ["3a1f0c72-5d88-4e19-b6a2-9c7e4f10d5bb"],
+  "activation_conditions": "@status(os.version) >= \"15.0\"",
+  "created": "2026-01-14T09:12:33Z",
+  "updated": "2026-02-02T17:45:01Z",
+  "deployment_state": "SUCCEEDED",
+  "timeouts": {"create": "10m", "read": null, "update": "10m", "delete": null},
+  "legacy_payloads": null,
+  "raw_component": null,
+  "audio_accessory_settings": null,
+  "custom_declarations": null,
+  "disk_management_settings": null,
+  "math_settings": null,
+  "passcode_policy": null,
+  "safari_bookmarks": null,
+  "safari_extensions": null,
+  "safari_settings": null,
+  "service_background_tasks": null,
+  "service_configuration_files": null,
+  "software_update": null,
+  "software_update_settings": null,
+  "component_blocks": [
+    {
+      "name": "Baseline",
+      "activation_conditions": "@status(os.version) >= \"15.0\"",
+      "apple_declarations": {
+        "declaration": [
+          {
+            "channel": "DEVICE",
+            "payload": "{\"Enabled\":true}",
+            "type": "com.apple.configuration.softwareupdate.enforcement.specific"
+          },
+          {
+            "channel": "USER",
+            "payload": "{\"PayloadContentIdentifiers\":[]}",
+            "type": "com.apple.configuration.services.configuration-files"
+          }
+        ]
+      },
+      "legacy_payloads": [
+        {
+          "payload_type": "com.apple.applicationaccess",
+          "settings": "{\"allowCamera\":false}"
+        }
+      ],
+      "passcode_policy": {
+        "change_at_next_auth": null,
+        "custom_regex_description": null,
+        "custom_regex_pattern": null,
+        "failed_attempts_reset_in_minutes": null,
+        "maximum_failed_attempts": 6,
+        "maximum_grace_period_in_minutes": null,
+        "maximum_inactivity_in_minutes": null,
+        "maximum_passcode_age_in_days": null,
+        "minimum_complex_characters": null,
+        "minimum_length": 8,
+        "passcode_reuse_limit": null,
+        "require_alphanumeric_passcode": false,
+        "require_complex_passcode": null,
+        "require_passcode": true
+      },
+      "ai_governance": null,
+      "raw_component": null,
+      "audio_accessory_settings": null,
+      "custom_declarations": null,
+      "disk_management_settings": null,
+      "math_settings": null,
+      "safari_bookmarks": null,
+      "safari_extensions": null,
+      "safari_settings": null,
+      "service_background_tasks": null,
+      "service_configuration_files": null,
+      "software_update": null,
+      "software_update_settings": null
+    },
+    {
+      "name": "Empty",
+      "activation_conditions": null,
+      "apple_declarations": null,
+      "legacy_payloads": null,
+      "passcode_policy": null,
+      "ai_governance": null,
+      "raw_component": null,
+      "audio_accessory_settings": null,
+      "custom_declarations": null,
+      "disk_management_settings": null,
+      "math_settings": null,
+      "safari_bookmarks": null,
+      "safari_extensions": null,
+      "safari_settings": null,
+      "service_background_tasks": null,
+      "service_configuration_files": null,
+      "software_update": null,
+      "software_update_settings": null
+    }
+  ]
+}`
+
+// TestBlueprintSchemaV3DecodesFrozenV3State proves the derived prior schema can still read real
+// state. blueprintSchemaV3 builds itself from the live attribute set, so an attribute whose type
+// changes — exactly what this change did to apple_declarations — silently reshapes the v3 schema
+// out from under state a user has on disk, and a shape assertion against the derived schema cannot
+// see it. Running a frozen document through the whole 3 → 4 upgrade can: decoding it with the same
+// options the framework uses, then reading it into the frozen blueprintResourceModelV3, so the next
+// reshape of any component_blocks attribute fails here instead of inside a user's upgrade.
+func TestBlueprintSchemaV3DecodesFrozenV3State(t *testing.T) {
+	ctx := context.Background()
+	r := NewBlueprintResource().(*BlueprintResource)
+
+	upgrader, ok := r.UpgradeState(ctx)[3]
+	if !ok {
+		t.Fatal("no state upgrader is registered for schema version 3")
+	}
+
+	priorSchema := upgrader.PriorSchema
+	if priorSchema == nil {
+		t.Fatal("the version 3 upgrader declares no prior schema")
+	}
+
+	raw := tfprotov6.RawState{JSON: []byte(blueprintStateV3)}
+	priorValue, err := raw.UnmarshalWithOpts(priorSchema.Type().TerraformType(ctx), tfprotov6.UnmarshalOpts{
+		ValueFromJSONOpts: tftypes.ValueFromJSONOpts{IgnoreUndefinedAttributes: true},
+	})
+	if err != nil {
+		t.Fatalf("the derived v3 schema no longer decodes real v3 state: %v", err)
+	}
+
+	var currentSchema resource.SchemaResponse
+	r.Schema(ctx, resource.SchemaRequest{}, &currentSchema)
+
+	req := resource.UpgradeStateRequest{
+		State:    &tfsdk.State{Raw: priorValue, Schema: *priorSchema},
+		RawState: &raw,
+	}
+	resp := resource.UpgradeStateResponse{
+		State: tfsdk.State{
+			Raw:    tftypes.NewValue(currentSchema.Schema.Type().TerraformType(ctx), nil),
+			Schema: currentSchema.Schema,
+		},
+	}
+	upgrader.StateUpgrader(ctx, req, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("upgrading frozen v3 state failed: %v", resp.Diagnostics.Errors())
+	}
+
+	var upgraded BlueprintResourceModel
+	if diags := resp.State.Get(ctx, &upgraded); diags.HasError() {
+		t.Fatalf("reading the upgraded state failed: %v", diags.Errors())
+	}
+
+	if len(upgraded.ComponentBlocks) != 2 {
+		t.Fatalf("ComponentBlocks length = %d, want 2", len(upgraded.ComponentBlocks))
+	}
+	if got := len(upgraded.ComponentBlocks[0].AppleDeclarations); got != 2 {
+		t.Errorf("the first block carries %d declarations, want 2", got)
+	}
+	if upgraded.ComponentBlocks[1].AppleDeclarations != nil {
+		t.Errorf("the second block gained declarations: %+v", upgraded.ComponentBlocks[1].AppleDeclarations)
+	}
+	if upgraded.ComponentBlocks[0].PasscodePolicy == nil {
+		t.Error("the first block lost its passcode_policy")
+	}
+	if got := len(upgraded.ComponentBlocks[0].LegacyPayloads); got != 1 {
+		t.Errorf("the first block carries %d legacy payloads, want 1", got)
 	}
 }

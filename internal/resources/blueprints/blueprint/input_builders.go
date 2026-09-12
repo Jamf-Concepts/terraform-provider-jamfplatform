@@ -67,9 +67,24 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 // component values. Legacy payloads are collected separately by the caller because the flat
 // (dynamic) and block (JSON-string) shapes differ. The flat top-level authoring style reuses this
 // by passing data.flatComponentsAsBlock(); each entry in component_blocks passes its own carrier.
+//
+// A block authoring apple_declarations alongside a raw_component for the same component is rejected
+// before anything is built, so the block emits nothing. The platform stores both: a step carrying
+// two components with one identifier is accepted and echoed back in full, and the read path keys
+// components by identifier, so one of the two becomes unrepresentable in state. The read side's own
+// guard is keyed off the prior raw set and so cannot catch the first apply.
 func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block ComponentBlockModel) ([]blueprints.Component, diag.Diagnostics) {
 	var allComponents []blueprints.Component
 	var diags diag.Diagnostics
+
+	if _, handledAsRaw := rawIdentifierSet(block.Components)[appleDeclarationsIdentifier]; handledAsRaw && len(block.AppleDeclarations) > 0 {
+		diags.AddError(
+			"Apple declarations declared twice in one block",
+			"This block sets apple_declarations and also manages the same component as a raw_component. "+
+				"Jamf stores both, and the provider can represent only one of them. Keep one of the two.",
+		)
+		return nil, diags
+	}
 
 	for _, comp := range block.Components {
 		component := blueprints.Component{

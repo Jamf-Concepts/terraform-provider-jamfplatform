@@ -180,6 +180,34 @@ func TestFlattenAppleDeclarationsKeepsTheAuthoredPayloadFormatting(t *testing.T)
 	}
 }
 
+// TestFlattenAppleDeclarationsKeepsAnAuthoredExplicitNull pins the reconciliation against the
+// declarations service's own treatment of a null. A legacy configuration profile payload's
+// null-valued key is dropped by the service, but a declaration payload's is stored and echoed back
+// verbatim — EU gateway, 2026-09-12 — so the comparison has to prune both sides. Pruning only the
+// authored side mismatches here, state takes the canonical encoding instead of the authored bytes,
+// and because payload is Required the framework rejects the apply as an inconsistent result.
+func TestFlattenAppleDeclarationsKeepsAnAuthoredExplicitNull(t *testing.T) {
+	authored := "{\n  \"Enabled\": true,\n  \"ForceProfanityFilter\": null\n}\n"
+	prior := []AppleDeclarationModel{appleDeclaration("com.apple.configuration.siri.settings", authored)}
+
+	var diags diag.Diagnostics
+	declarations := flattenAppleDeclarations(&diags,
+		prior,
+		declarationComponents(`{"declarations":[{"channelType":"SYSTEM","kind":"CONFIGURATION","payloadKey":1,"type":"com.apple.configuration.siri.settings","payload":{"Enabled":true,"ForceProfanityFilter":null}}]}`),
+		nil,
+	)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags.Errors())
+	}
+	if len(declarations) != 1 {
+		t.Fatalf("expected 1 declaration, got %d", len(declarations))
+	}
+	if got := declarations[0].Payload.ValueString(); got != authored {
+		t.Errorf("payload was rewritten:\n want %q\n  got %q", authored, got)
+	}
+}
+
 // TestFlattenAppleDeclarationsAlignsPriorByPosition pins that a prior payload is matched by
 // position, not by declaration type. Two declarations of one type in a component are legal, so
 // matching by type would reconcile the wrong one.

@@ -443,10 +443,12 @@ func restoreRedactedValues(wire, authored any) any {
 }
 
 // pruneJSONNulls returns value with every null-valued object key removed, recursively through
-// objects and arrays. The blueprints service discards a null-valued payload key rather than storing
-// it, so a settings object authored with explicit nulls (com.apple.notificationsettings is the
-// common case) never comes back key-for-key. Pruning the authored side before comparing lets an
-// author keep their nulls in configuration without manufacturing a diff. A key the author gave a
+// objects and arrays. A legacy configuration profile payload's null-valued key is discarded rather
+// than stored, so a settings object authored with explicit nulls (com.apple.notificationsettings is
+// the common case) never comes back key-for-key; a declaration payload's null is stored instead, so
+// there the pruning runs on both sides and cancels out (see jsonStringMatchesObject). Pruning
+// before comparing lets an author keep their nulls in configuration without manufacturing a diff.
+// A key the author gave a
 // non-null value keeps its place, so a genuine discard — a key the service does not recognise, which
 // it drops silently — still reads as a mismatch instead of being masked away.
 func pruneJSONNulls(value any) any {
@@ -654,12 +656,19 @@ func flattenBlockLegacyPayloads(prior []BlockLegacyPayloadModel, apiComponentsBy
 
 // jsonStringMatchesObject reports whether a JSON object string the author wrote is semantically
 // identical to the object the server returned, comparing canonical JSON encodings (sorted keys,
-// float64 numbers) with the authored side's explicit nulls pruned (see pruneJSONNulls). It is what
+// float64 numbers) with the explicit nulls pruned from both sides (see pruneJSONNulls). It is what
 // keeps an authored JSON string stable when the server echoes an equivalent value.
 //
 // Both JSON-string attributes in this resource use it — a legacy payload's settings and an Apple
-// declaration's payload — because both services accept an object, store it their own way, and
-// re-serialise it on the way out, and both drop a key whose value is null rather than storing one.
+// declaration's payload — because both services accept an object, store it their own way and
+// re-serialise it on the way out. The two differ on what becomes of a key whose value is null, and
+// pruning both sides is what lets one helper serve both. A legacy configuration profile payload's
+// null key is dropped, so the server value has no null to prune and pruning it is a no-op. An Apple
+// declaration payload's null key is stored and echoed back verbatim: on the EU gateway, 2026-09-12,
+// a POST /blueprints/v1/blueprints carrying payload {"Enabled":true,"ForceProfanityFilter":null} was
+// read back with the null intact. Pruning only the authored side would then mismatch, state would
+// take the canonical encoding rather than the authored bytes, and because payload is Required the
+// framework would reject the apply as an inconsistent result.
 func jsonStringMatchesObject(prior types.String, settings map[string]any) bool {
 	if prior.IsNull() || prior.IsUnknown() {
 		return false
@@ -675,7 +684,7 @@ func jsonStringMatchesObject(prior types.String, settings map[string]any) bool {
 		return false
 	}
 
-	settingsBytes, err := json.Marshal(settings)
+	settingsBytes, err := json.Marshal(pruneJSONNulls(settings))
 	if err != nil {
 		return false
 	}

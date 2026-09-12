@@ -50,9 +50,29 @@ component_blocks = [
 ]
 ```
 
-The provider keeps the formatting and key order you wrote. Jamf Pro re-serialises a stored payload compact with its keys sorted, so the provider compares the two as JSON and keeps your bytes when they describe the same object. Without that, an indented file would be rewritten in state on the first read and diff on every plan after it.
+The provider keeps the formatting and key order you wrote. Jamf Pro re-serialises a stored payload compact with its keys sorted, so the provider compares the two as JSON and keeps your bytes when they describe the same object. Without that, an indented file would be rewritten in state on the first read and diff on every plan after it. The comparison runs position by position, so it holds for a change Terraform itself makes. A declaration reordered directly in the Jamf Pro blueprint editor is compared against an unrelated prior payload, and its authored formatting is replaced by Jamf Pro's compact encoding, so the plan reads as a formatting change on top of the reorder it is correcting. The next apply settles it.
 
 Use `file()` for a payload you did not write by hand. [DDM Explorer](https://apps.apple.com/gb/app/ddm-explorer/id6754861743) builds declarations and sends them to a test device: assemble one there, export its payload as JSON, and commit the file beside your configuration. You do not need `jsondecode`, because `payload` takes the file's text as it stands.
+
+## Rewriting an `apple_declarations` block from v0.33.0
+
+`apple_declarations` is the list of declarations. In `v0.33.0` it was an object holding a `declaration` list, so a configuration written against that release needs its brackets changed:
+
+```hcl
+# Before (v0.33.0)
+apple_declarations = {
+  declaration = [
+    { channel = "SYSTEM", type = "…", payload = jsonencode({ … }) },
+  ]
+}
+
+# After
+apple_declarations = [
+  { channel = "SYSTEM", type = "…", payload = jsonencode({ … }) },
+]
+```
+
+State carries across on its own, through a state upgrader that runs on the first plan after the upgrade, so the configuration is the only thing to edit. Nothing else about the attribute changed, and the same declarations reach the same devices.
 
 ## The findings
 

@@ -522,3 +522,23 @@ func TestAppleDeclarationsValidateListSkipsUnresolvedList(t *testing.T) {
 		})
 	}
 }
+
+// TestAppleDeclarationsValidateListToleratesAnUnknownElement checks a declaration Terraform has yet
+// to compute is read without error, which is what lets a model/element-type divergence be the only
+// thing ElementsAs still reports.
+func TestAppleDeclarationsValidateListToleratesAnUnknownElement(t *testing.T) {
+	elementType := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"channel": types.StringType,
+		"payload": types.StringType,
+		"type":    types.StringType,
+	}}
+
+	list, diags := types.ListValue(elementType, []attr.Value{types.ObjectUnknown(elementType.AttrTypes)})
+	if diags.HasError() {
+		t.Fatalf("building the declaration list: %v", diags)
+	}
+
+	if diags := validateDeclarationList(t, list); diags.HasError() {
+		t.Errorf("an unknown element produced errors: %v", diags.Errors())
+	}
+}
