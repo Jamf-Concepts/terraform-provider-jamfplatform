@@ -589,6 +589,65 @@ func TestAccResource_Blueprint_AppleDeclarations_FilePayload(t *testing.T) {
 	})
 }
 
+// TestAccResource_Blueprint_AppleDeclarations_NullPayloadKey covers a payload carrying an explicit
+// null, which the schema check treats as absent and therefore lets through to the wire.
+//
+// A declaration payload's null key is stored and echoed back verbatim, unlike a legacy
+// configuration profile payload's, which the service discards. Comparing an authored payload
+// against the server's with nulls pruned from one side only rejects the author's bytes, state takes
+// the canonical encoding instead, and because payload is Required the apply fails as an
+// inconsistent result. The file is indented with unsorted keys, so only the reconciliation can keep
+// it. The second step proves the round trip settles rather than diffing on the null for ever.
+func TestAccResource_Blueprint_AppleDeclarations_NullPayloadKey(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-apple-decl-null-" + suffix
+
+	const payloadJSON = `{
+  "ForceProfanityFilter": null,
+  "Enabled": true
+}
+`
+
+	directory := t.TempDir()
+	payloadPath := filepath.Join(directory, "siri.settings.json")
+	if err := os.WriteFile(payloadPath, []byte(payloadJSON), 0o600); err != nil {
+		t.Fatalf("writing the payload fixture: %v", err)
+	}
+
+	declaration := fmt.Sprintf(`[
+		{
+			channel = "SYSTEM"
+			type    = "com.apple.configuration.siri.settings"
+			payload = file(%q)
+		},
+	]`, payloadPath)
+
+	resourceName := "jamfplatform_blueprints_blueprint.test_apple_decl"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// A pruned comparison fails this step with "inconsistent result after apply".
+				Config: appleDeclarationsConfig("appledeclnull", name, declaration),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName,
+						"component_blocks.0.apple_declarations.0.payload", payloadJSON),
+				),
+			},
+			{
+				Config: appleDeclarationsConfig("appledeclnull", name, declaration),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
 // Declaration fixtures for the ordering test. Each payload is distinct, so an alignment that picks
 // the wrong element shows up as a wrong payload rather than only a wrong type.
 const (
