@@ -25,9 +25,10 @@ import (
 // applies — the same reasoning as internal/common/appledeclarations. The escape hatch is the same
 // too, but it is per block rather than per payload: appendLegacyConfigProfile folds every payload in
 // a block into one com.jamf.ddm-configuration-profile component, so a partial move is rejected by
-// rawComponentOverlapDiags rather than written as two copies of that component. The embedded tables are refreshed daily so that erroring on an
-// unrecognised name cannot block a working configuration for long, and a finding that the snapshot
-// could explain says so and names it. See internal/common/appleprofiles.
+// rawComponentOverlapDiags rather than written as two copies of that component. The embedded tables
+// are refreshed daily so that erroring on an unrecognised name cannot block a working configuration
+// for long, and a finding that the snapshot could explain says so and names it. See
+// internal/common/appleprofiles.
 type legacyPayloadSchemaValidator struct{}
 
 // blockLegacyPayloadSchemaValidator validates a component block's typed legacy payload list, whose

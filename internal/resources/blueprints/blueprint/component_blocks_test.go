@@ -688,7 +688,67 @@ func TestCollectBlockComponents_EveryTypedAttributeConflictsWithRawComponent(t *
 			if strings.Contains(summary, attribute.identifier) || strings.Contains(detail, attribute.identifier) {
 				t.Errorf("user-facing text must not carry the wire identifier, got %q / %q", summary, detail)
 			}
+			if !strings.Contains(detail, block.Name.ValueString()) {
+				t.Errorf("error must locate the block it is in, got %q", detail)
+			}
 		})
+	}
+}
+
+// TestRawComponentOverlapDiags_UnnamedBlockOmitsTheLocator keeps the locator optional: a block with
+// no name, and the deprecated flat style, have nothing to name, so the message reads as one sentence
+// rather than trailing an empty quotation.
+func TestRawComponentOverlapDiags_UnnamedBlockOmitsTheLocator(t *testing.T) {
+	overlap := []typedComponentAttribute{{name: "passcode_policy", identifier: "com.jamf.ddm.passcode-settings"}}
+	raw := []ComponentModel{
+		{Identifier: types.StringValue("com.jamf.ddm.passcode-settings"), Configuration: types.MapNull(types.StringType)},
+	}
+
+	diags := rawComponentOverlapDiags("", raw, overlap)
+	if len(diags.Errors()) != 1 {
+		t.Fatalf("expected exactly one error, got %v", diags.Errors())
+	}
+
+	detail := diags.Errors()[0].Detail()
+	if strings.Contains(detail, "component block") {
+		t.Errorf("an unnamed block must not be located, got %q", detail)
+	}
+	if !strings.Contains(detail, "passcode_policy and a raw_component both manage the same component.") {
+		t.Errorf("expected the unlocated sentence, got %q", detail)
+	}
+}
+
+// TestBuildSteps_ConflictingBlockReportsOnlyTheOverlap proves a rejected block stops there: its
+// legacy payloads are not collected afterwards, so an author is not also handed an error about
+// payloads in a block that was already refused.
+func TestBuildSteps_ConflictingBlockReportsOnlyTheOverlap(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name: types.StringValue("BP"),
+		ComponentBlocks: []ComponentBlockModel{
+			{
+				Name:           types.StringValue("Block A"),
+				PasscodePolicy: &components.PasscodePolicyComponent{},
+				LegacyPayloads: []BlockLegacyPayloadModel{
+					{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{}`)},
+					{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{}`)},
+				},
+				Components: []ComponentModel{
+					{Identifier: types.StringValue("com.jamf.ddm.passcode-settings"), Configuration: types.MapNull(types.StringType)},
+				},
+			},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+	if len(diags.Errors()) != 1 {
+		t.Fatalf("expected only the overlap error, got %v", diags.Errors())
+	}
+	if summary := diags.Errors()[0].Summary(); summary != "Component configured twice" {
+		t.Errorf("expected the overlap error, got %q", summary)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
+	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -36,7 +37,9 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 		steps := make([]blueprints.BlueprintStep, 0, len(data.ComponentBlocks))
 		for _, block := range data.ComponentBlocks {
 			components, blockDiags := r.collectBlockComponents(ctx, block)
-			r.collectBlockLegacyPayloads(&components, &blockDiags, block.LegacyPayloads, blueprintName)
+			if !blockDiags.HasError() {
+				r.collectBlockLegacyPayloads(&components, &blockDiags, block.LegacyPayloads, blueprintName)
+			}
 			diags.Append(blockDiags...)
 			if blockDiags.HasError() {
 				continue
@@ -53,7 +56,7 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 	flatBlock := data.flatComponentsAsBlock()
 	components, flatDiags := r.collectBlockComponents(ctx, flatBlock)
 	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
-		flatDiags.Append(rawComponentOverlapDiags(flatBlock.Components, []typedComponentAttribute{
+		flatDiags.Append(rawComponentOverlapDiags("", flatBlock.Components, []typedComponentAttribute{
 			{name: "legacy_payloads", identifier: legacyConfigProfileIdentifier},
 		})...)
 		if !flatDiags.HasError() {
@@ -94,7 +97,7 @@ func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block Co
 	var diags diag.Diagnostics
 
 	typedAttributes := populatedTypedComponentAttributes(block)
-	if overlaps := rawComponentOverlapDiags(block.Components, typedAttributes); overlaps.HasError() {
+	if overlaps := rawComponentOverlapDiags(block.Name.ValueString(), block.Components, typedAttributes); overlaps.HasError() {
 		return nil, overlaps
 	}
 
@@ -251,9 +254,17 @@ func populatedTypedComponentAttributes(block ComponentBlockModel) []typedCompone
 // rawComponentOverlapDiags reports every populated strongly-typed attribute that manages the same
 // component as one of the block's raw_component entries, one error per overlap. See
 // collectBlockComponents for why an overlap cannot be written.
-func rawComponentOverlapDiags(rawComponents []ComponentModel, attributes []typedComponentAttribute) diag.Diagnostics {
+//
+// blockName locates the overlap for an author who has many blocks, and is empty for the deprecated
+// flat style, which has only the one implicit step to look at.
+func rawComponentOverlapDiags(blockName string, rawComponents []ComponentModel, attributes []typedComponentAttribute) diag.Diagnostics {
 	var diags diag.Diagnostics
 	rawIdentifiers := rawIdentifierSet(rawComponents)
+
+	in := ""
+	if blockName != "" {
+		in = " in component block " + strconv.Quote(blockName)
+	}
 
 	for _, attribute := range attributes {
 		if _, handledAsRaw := rawIdentifiers[attribute.identifier]; !handledAsRaw {
@@ -261,7 +272,7 @@ func rawComponentOverlapDiags(rawComponents []ComponentModel, attributes []typed
 		}
 		diags.AddError(
 			"Component configured twice",
-			attribute.name+" and a raw_component both manage the same component. Keep one of the two: the "+
+			attribute.name+" and a raw_component both manage the same component"+in+". Keep one of the two: the "+
 				"platform stores both copies and the provider can hold only one in state, so the other would "+
 				"reach devices without appearing in a plan.",
 		)
