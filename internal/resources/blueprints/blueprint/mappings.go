@@ -18,6 +18,12 @@ const (
 // Pro admin UI).
 const appleDeclarationsIdentifier = "com.jamf.ddm-strict"
 
+// legacyConfigProfileIdentifier is the wire identifier of the component a block's legacy payloads
+// are folded into, which the legacy_payloads attribute writes. Like appleDeclarationsIdentifier it
+// is named here because no components/ converter owns it — the component is assembled in this
+// package — and it must not reach user-facing text.
+const legacyConfigProfileIdentifier = "com.jamf.ddm-configuration-profile"
+
 // stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations.
 var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ai-governance":                   {},
@@ -62,9 +68,8 @@ const legacyPayloadSettingsBehaviour = "The platform validates each payload agai
 	"or a missing required key is reported before an apply rather than failing one. " +
 	"Each of those is an **error**: Jamf drops a key it does not recognise while reporting success, so a payload " +
 	"carrying one never applies. To skip the checks, move **every** legacy payload in the same block to a " +
-	"single `raw_component` with identifier `com.jamf.ddm-configuration-profile` — the platform stores a " +
-	"block's legacy payloads as one component, so a partial move would write that component twice and stop " +
-	"the payloads left behind from being reconciled against the platform. " +
+	"single `raw_component` with identifier `com.jamf.ddm-configuration-profile`. The platform stores a " +
+	"block's legacy payloads as one component, so a partial move is refused: keep them all here or move them all. " +
 	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
 	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
 	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +

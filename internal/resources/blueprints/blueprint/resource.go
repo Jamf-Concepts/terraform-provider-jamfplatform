@@ -190,9 +190,14 @@ func activationConditionsDescription(appliesTo string) string {
 func sharedComponentAttributes(deprecation string) map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"raw_component": schema.SetNestedAttribute{
-			MarkdownDescription: "Raw component configuration using key-value pairs.",
-			Optional:            true,
-			DeprecationMessage:  deprecation,
+			MarkdownDescription: "Raw component configuration using key-value pairs. " +
+				"Use it for a component this resource has no attribute for, or to manage one without the checks its " +
+				"own attribute applies. Do not declare a component here that another component attribute set " +
+				"alongside it already manages: the platform stores both copies and only one of them can be " +
+				"represented in state, so the other would reach devices without ever appearing in a plan. Keep one " +
+				"of the two.",
+			Optional:           true,
+			DeprecationMessage: deprecation,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"identifier": schema.StringAttribute{
