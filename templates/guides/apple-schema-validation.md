@@ -23,6 +23,57 @@ Case counts in a declaration, for both the key names and the declaration type. `
 
 Legacy configuration profile payloads are more forgiving about case, so a spelling that carried in a profile is no evidence it will carry in a declaration. Check it against Apple's schema when you move one across.
 
+## Authoring a declaration payload
+
+`payload` is a JSON object string. Write it inline or read it from a file; both of these are equivalent:
+
+```hcl
+component_blocks = [
+  {
+    name = "Baseline declarations"
+    apple_declarations = [
+      {
+        channel = "SYSTEM"
+        type    = "com.apple.configuration.siri.settings"
+        payload = jsonencode({
+          Enabled              = true
+          ForceProfanityFilter = true
+        })
+      },
+      {
+        channel = "SYSTEM"
+        type    = "com.apple.configuration.passcode.settings"
+        payload = file("${path.module}/declarations/passcode.settings.json")
+      },
+    ]
+  },
+]
+```
+
+The provider keeps the formatting and key order you wrote. Jamf Pro re-serialises a stored payload compact with its keys sorted, so the provider compares the two as JSON and keeps your bytes when they describe the same object. Without that, an indented file would be rewritten in state on the first read and diff on every plan after it. The comparison runs position by position, so it holds for a change Terraform itself makes. A declaration reordered directly in the Jamf Pro blueprint editor is compared against an unrelated prior payload, and its authored formatting is replaced by Jamf Pro's compact encoding, so the plan reads as a formatting change on top of the reorder it is correcting. The next apply settles it.
+
+Use `file()` for a payload you did not write by hand. [DDM Explorer](https://apps.apple.com/gb/app/ddm-explorer/id6754861743) builds declarations and sends them to a test device: assemble one there, export its payload as JSON, and commit the file beside your configuration. You do not need `jsondecode`, because `payload` takes the file's text as it stands.
+
+## Rewriting an `apple_declarations` block from v0.33.0
+
+`apple_declarations` is the list of declarations. In `v0.33.0` it was an object holding a `declaration` list, so a configuration written against that release needs its brackets changed:
+
+```hcl
+# Before (v0.33.0)
+apple_declarations = {
+  declaration = [
+    { channel = "SYSTEM", type = "…", payload = jsonencode({ … }) },
+  ]
+}
+
+# After
+apple_declarations = [
+  { channel = "SYSTEM", type = "…", payload = jsonencode({ … }) },
+]
+```
+
+State carries across on its own, through a state upgrader that runs on the first plan after the upgrade, so the configuration is the only thing to edit. Nothing else about the attribute changed, and the same declarations reach the same devices.
+
 ## The findings
 
 | Finding | What it means | Can an old snapshot explain it? |
@@ -51,7 +102,7 @@ Until an upgrade is available, deliver the payload or declaration through `raw_c
 
 `raw_component` passes your configuration to Jamf Pro as written, so nothing checks it. The keys below are Jamf's own names. Everywhere else the provider hands you attribute names matching the blueprint editor; here you write what Jamf stores.
 
-Move the declaration into `raw_component` under the identifier the typed component would have used, and JSON-encode the configuration:
+Move the declaration into `raw_component` under the identifier the typed component would have used, and JSON-encode the configuration. Delete it from `apple_declarations` in the same edit. The provider rejects a block that sets both and reports `Component configured twice`.
 
 ```hcl
 component_blocks = [
@@ -83,7 +134,7 @@ Set `payloadKey` yourself. It is the 1-based position of the declaration within 
 
 ## Delivering a legacy configuration profile payload unchecked
 
-**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. Split them and the apply writes that component twice, and the provider stops reconciling the payloads you left in `legacy_payloads`, so it never reports drift on those again.
+**Move the whole block's payloads, not the one that failed.** Every `legacy_payloads` entry in a component block folds into a single `com.jamf.ddm-configuration-profile` component whose `payloadContent` is the array of payloads. The provider rejects a partial move with `Component configured twice` and writes nothing, so move every payload in the block or leave them where they are.
 
 Before:
 
@@ -153,6 +204,7 @@ Moving a block to `raw_component` shows up in the plan as one component destroye
 
 | To look up | Where |
 |---|---|
+| Building a declaration payload against a test device | [DDM Explorer](https://apps.apple.com/gb/app/ddm-explorer/id6754861743) |
 | Every declaration type and key the provider checks | [Apple's declarative device management schemas](https://github.com/apple/device-management/tree/release/declarative) |
 | Every payload type and key the provider checks | [Apple's configuration profile schemas](https://github.com/apple/device-management/tree/release/mdm/profiles) |
 | Blueprints themselves | [Blueprints Guide](https://learn.jamf.com/r/en-US/Jamf-Blueprints-Guide) |

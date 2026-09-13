@@ -63,11 +63,13 @@ func updateComponentBlocksFromAPI(ctx context.Context, diags *diag.Diagnostics, 
 	for i, step := range blueprint.Steps {
 		var priorRaw map[string]struct{}
 		var priorLegacy []BlockLegacyPayloadModel
+		var priorDeclarations []AppleDeclarationModel
 		priorName := types.StringNull()
 		priorActivation := types.StringNull()
 		if i < len(prior) {
 			priorRaw = rawIdentifierSet(prior[i].Components)
 			priorLegacy = prior[i].LegacyPayloads
+			priorDeclarations = prior[i].AppleDeclarations
 			priorName = prior[i].Name
 			priorActivation = prior[i].ActivationConditions
 		}
@@ -76,6 +78,7 @@ func updateComponentBlocksFromAPI(ctx context.Context, diags *diag.Diagnostics, 
 		block.Name = helpers.ReconcileOptionalStringPointer(step.Name, priorName)
 		block.ActivationConditions = helpers.ReconcileOptionalStringPointer(step.ActivationPredicate, priorActivation)
 		block.LegacyPayloads = flattenBlockLegacyPayloads(priorLegacy, apiComponentsByID, priorRaw)
+		block.AppleDeclarations = flattenAppleDeclarations(diags, priorDeclarations, apiComponentsByID, priorRaw)
 		blocks = append(blocks, block)
 	}
 
@@ -133,8 +136,8 @@ func rawIdentifierSet(components []ComponentModel) map[string]struct{} {
 
 // mapStepComponents converts one wire step's raw and strongly-typed components into a
 // ComponentBlockModel carrier, and returns the step's components keyed by identifier so the caller
-// can flatten legacy payloads. It leaves Name, ActivationConditions, and LegacyPayloads unset — the
-// caller reconciles those.
+// can flatten the components assembled here rather than in the components package. It leaves Name,
+// ActivationConditions, LegacyPayloads and AppleDeclarations unset — the caller reconciles those.
 //
 // retainBlockOnlyAsRaw keeps a blockOnlyComponentIdentifiers component in raw_component instead of
 // skipping it as strongly typed, and only the flat-mode caller sets it: block mode has a typed
@@ -183,10 +186,6 @@ func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step bluepr
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components of a block from the
 // API response.
 func updateStronglyTypedComponentsFromAPI(diags *diag.Diagnostics, block *ComponentBlockModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
-	block.AppleDeclarations = buildTypedComponent[components.AppleDeclarationsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm-strict", func(raw json.RawMessage, target *components.AppleDeclarationsComponent) error {
-		return target.FromRawConfiguration(raw)
-	})
-
 	block.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(raw json.RawMessage, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
@@ -260,16 +259,23 @@ func buildTypedComponent[T any](diags *diag.Diagnostics, apiComponentsByID map[s
 
 	var component T
 	if err := populate(config, &component); err != nil {
-		diags.AddWarning(
-			"Blueprint component configuration could not be read",
-			"Jamf returned a configuration for the "+identifier+" component that this provider could not decode, so "+
-				"the component is absent from state. A configuration declaring it will keep proposing to add it until "+
-				"the configuration Jamf holds can be read. Reported while decoding: "+err.Error(),
-		)
+		appendUndecodableComponentWarning(diags, identifier, err)
 		return nil
 	}
 
 	return &component
+}
+
+// appendUndecodableComponentWarning reports a component configuration this provider cannot read,
+// naming the identifier so an operator can find it in the Jamf Pro editor. See buildTypedComponent
+// for why this is a warning rather than an error.
+func appendUndecodableComponentWarning(diags *diag.Diagnostics, identifier string, err error) {
+	diags.AddWarning(
+		"Blueprint component configuration could not be read",
+		"Jamf returned a configuration for the "+identifier+" component that this provider could not decode, so "+
+			"the component is absent from state. A configuration declaring it will keep proposing to add it until "+
+			"the configuration Jamf holds can be read. Reported while decoding: "+err.Error(),
+	)
 }
 
 // parseComponentConfiguration returns the raw JSON configuration of a component by its identifier.
@@ -437,10 +443,12 @@ func restoreRedactedValues(wire, authored any) any {
 }
 
 // pruneJSONNulls returns value with every null-valued object key removed, recursively through
-// objects and arrays. The blueprints service discards a null-valued payload key rather than storing
-// it, so a settings object authored with explicit nulls (com.apple.notificationsettings is the
-// common case) never comes back key-for-key. Pruning the authored side before comparing lets an
-// author keep their nulls in configuration without manufacturing a diff. A key the author gave a
+// objects and arrays. A legacy configuration profile payload's null-valued key is discarded rather
+// than stored, so a settings object authored with explicit nulls (com.apple.notificationsettings is
+// the common case) never comes back key-for-key; a declaration payload's null is stored instead, so
+// there the pruning runs on both sides and cancels out (see jsonStringMatchesObject). Pruning
+// before comparing lets an author keep their nulls in configuration without manufacturing a diff.
+// A key the author gave a
 // non-null value keeps its place, so a genuine discard — a key the service does not recognise, which
 // it drops silently — still reads as a mismatch instead of being masked away.
 func pruneJSONNulls(value any) any {
@@ -545,6 +553,61 @@ func priorSettingsFromBlockPayloads(prior []BlockLegacyPayloadModel) map[string]
 	return settingsByType
 }
 
+// flattenAppleDeclarations renders the wire Apple declarations into a block's declaration list.
+// When the author manages the component as a raw_component the prior value is left untouched.
+//
+// Each prior payload string is kept when it is semantically identical to the server value, so a
+// payload read from a file, or a jsonencode() the platform re-serialised, stays as the author wrote
+// it. That is what makes file() a usable way to author one, and it is the same reconciliation a
+// legacy payload's settings gets. Position is the identity — payloadKey is derived from it — so the
+// prior declaration at index i is the one the server's index i came from; two declarations of one
+// type in a block are legal, so matching by type would reconcile the wrong one.
+//
+// No declarations reads as absent rather than as an empty list: an empty list writes no component,
+// so a non-null empty list in state could only ever diff.
+func flattenAppleDeclarations(diags *diag.Diagnostics, prior []AppleDeclarationModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) []AppleDeclarationModel {
+	if _, handledAsRaw := rawIdentifiers[appleDeclarationsIdentifier]; handledAsRaw {
+		return prior
+	}
+
+	rawJSON, ok := parseComponentConfiguration(apiComponentsByID, appleDeclarationsIdentifier)
+	if !ok {
+		return nil
+	}
+
+	var config blueprints.CustomDeclarationsConfiguration
+	if err := json.Unmarshal(rawJSON, &config); err != nil {
+		appendUndecodableComponentWarning(diags, appleDeclarationsIdentifier, err)
+		return nil
+	}
+	if len(config.Declarations) == 0 {
+		return nil
+	}
+
+	declarations := make([]AppleDeclarationModel, 0, len(config.Declarations))
+	for i, declaration := range config.Declarations {
+		entry := AppleDeclarationModel{
+			ChannelType: types.StringValue(declaration.ChannelType),
+			Type:        types.StringValue(declaration.Type),
+		}
+
+		switch {
+		case i < len(prior) && jsonStringMatchesObject(prior[i].Payload, declaration.Payload):
+			entry.Payload = prior[i].Payload
+		default:
+			encoded, err := json.Marshal(declaration.Payload)
+			if err != nil {
+				appendUndecodableComponentWarning(diags, appleDeclarationsIdentifier, err)
+				return nil
+			}
+			entry.Payload = types.StringValue(string(encoded))
+		}
+
+		declarations = append(declarations, entry)
+	}
+	return declarations
+}
+
 // flattenBlockLegacyPayloads renders the wire legacy payloads into a block's typed list, with each
 // payload's settings as a canonical JSON string. When the user manages the configuration profile as
 // a raw_component the prior value is left untouched. For each payload, the prior settings string is
@@ -577,7 +640,7 @@ func flattenBlockLegacyPayloads(prior []BlockLegacyPayloadModel, apiComponentsBy
 		switch {
 		case !hasSettings:
 			entry.Settings = types.StringNull()
-		case settingsStringMatchesJSON(priorByType[payloadType], settings):
+		case jsonStringMatchesObject(priorByType[payloadType], settings):
 			entry.Settings = priorByType[payloadType]
 		default:
 			if encoded, err := json.Marshal(settings); err == nil {
@@ -591,11 +654,22 @@ func flattenBlockLegacyPayloads(prior []BlockLegacyPayloadModel, apiComponentsBy
 	return result
 }
 
-// settingsStringMatchesJSON reports whether a prior settings JSON string is semantically identical
-// to a server-derived settings map, comparing canonical JSON encodings (sorted keys, float64
-// numbers) with the authored side's explicit nulls pruned (see pruneJSONNulls). It keeps a block's
-// settings string stable when the server echoes an equivalent value.
-func settingsStringMatchesJSON(prior types.String, settings map[string]any) bool {
+// jsonStringMatchesObject reports whether a JSON object string the author wrote is semantically
+// identical to the object the server returned, comparing canonical JSON encodings (sorted keys,
+// float64 numbers) with the explicit nulls pruned from both sides (see pruneJSONNulls). It is what
+// keeps an authored JSON string stable when the server echoes an equivalent value.
+//
+// Both JSON-string attributes in this resource use it — a legacy payload's settings and an Apple
+// declaration's payload — because both services accept an object, store it their own way and
+// re-serialise it on the way out. The two differ on what becomes of a key whose value is null, and
+// pruning both sides is what lets one helper serve both. A legacy configuration profile payload's
+// null key is dropped, so the server value has no null to prune and pruning it is a no-op. An Apple
+// declaration payload's null key is stored and echoed back verbatim: on the EU gateway, 2026-09-12,
+// a POST /blueprints/v1/blueprints carrying payload {"Enabled":true,"ForceProfanityFilter":null} was
+// read back with the null intact. Pruning only the authored side would then mismatch, state would
+// take the canonical encoding rather than the authored bytes, and because payload is Required the
+// framework would reject the apply as an inconsistent result.
+func jsonStringMatchesObject(prior types.String, settings map[string]any) bool {
 	if prior.IsNull() || prior.IsUnknown() {
 		return false
 	}
@@ -610,7 +684,7 @@ func settingsStringMatchesJSON(prior types.String, settings map[string]any) bool
 		return false
 	}
 
-	settingsBytes, err := json.Marshal(settings)
+	settingsBytes, err := json.Marshal(pruneJSONNulls(settings))
 	if err != nil {
 		return false
 	}

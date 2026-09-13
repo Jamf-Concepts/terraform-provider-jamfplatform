@@ -36,8 +36,8 @@ func TestBlueprintResource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	if s.Version != 3 {
-		t.Errorf("expected schema version 3, got %d", s.Version)
+	if s.Version != 4 {
+		t.Errorf("expected schema version 4, got %d", s.Version)
 	}
 
 	requiredAttrs := []string{"name", "deployed", "device_groups"}
@@ -189,17 +189,18 @@ func TestBlueprintResource_SchemaDeclarationValidators(t *testing.T) {
 		t.Fatal("component_blocks is missing or not a ListNestedAttribute")
 	}
 
-	cases := map[string]struct {
-		attributes  map[string]resourceschema.Attribute
-		name        string
-		wantOrdered bool
+	// The same validator is attached through a different interface on each: apple_declarations is a
+	// list, custom_declarations an object wrapping a set. Each attribute's kind is asserted too,
+	// because reshaping one would move where a finding lands without failing anything else.
+	objectCases := map[string]struct {
+		attributes map[string]resourceschema.Attribute
+		name       string
 	}{
-		"component_blocks[].apple_declarations":  {block.NestedObject.Attributes, "apple_declarations", true},
-		"component_blocks[].custom_declarations": {block.NestedObject.Attributes, "custom_declarations", false},
-		"custom_declarations":                    {resp.Schema.Attributes, "custom_declarations", false},
+		"component_blocks[].custom_declarations": {block.NestedObject.Attributes, "custom_declarations"},
+		"custom_declarations":                    {resp.Schema.Attributes, "custom_declarations"},
 	}
 
-	for label, tc := range cases {
+	for label, tc := range objectCases {
 		t.Run(label, func(t *testing.T) {
 			attribute, ok := tc.attributes[tc.name].(resourceschema.SingleNestedAttribute)
 			if !ok {
@@ -207,13 +208,8 @@ func TestBlueprintResource_SchemaDeclarationValidators(t *testing.T) {
 			}
 			found := false
 			for _, attached := range attribute.Validators {
-				declarations, ok := attached.(declarationSchemaValidator)
-				if !ok {
-					continue
-				}
-				found = true
-				if declarations.ordered != tc.wantOrdered {
-					t.Errorf("ordered = %v, want %v", declarations.ordered, tc.wantOrdered)
+				if _, ok := attached.(declarationSchemaValidator); ok {
+					found = true
 				}
 			}
 			if !found {
@@ -221,4 +217,20 @@ func TestBlueprintResource_SchemaDeclarationValidators(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("component_blocks[].apple_declarations", func(t *testing.T) {
+		attribute, ok := block.NestedObject.Attributes["apple_declarations"].(resourceschema.ListNestedAttribute)
+		if !ok {
+			t.Fatal("component_blocks[].apple_declarations is missing or not a ListNestedAttribute")
+		}
+		found := false
+		for _, attached := range attribute.Validators {
+			if _, ok := attached.(declarationSchemaValidator); ok {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("no declaration schema validator is attached to component_blocks[].apple_declarations")
+		}
+	})
 }

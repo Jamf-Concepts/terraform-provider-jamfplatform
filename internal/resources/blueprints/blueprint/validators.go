@@ -24,11 +24,11 @@ import (
 // and discards the key, so a warning would leave the operator with a payload that silently never
 // applies — the same reasoning as internal/common/appledeclarations. The escape hatch is the same
 // too, but it is per block rather than per payload: appendLegacyConfigProfile folds every payload in
-// a block into one com.jamf.ddm-configuration-profile component, so moving a single payload to
-// raw_component would write that component twice and leave the payloads still declared as
-// legacy_payloads unreconciled. The embedded tables are refreshed daily so that erroring on an
-// unrecognised name cannot block a working configuration for long, and a finding that the snapshot
-// could explain says so and names it. See internal/common/appleprofiles.
+// a block into one com.jamf.ddm-configuration-profile component, so a partial move is rejected by
+// rawComponentOverlapDiags rather than written as two copies of that component. The embedded tables
+// are refreshed daily so that erroring on an unrecognised name cannot block a working configuration
+// for long, and a finding that the snapshot could explain says so and names it. See
+// internal/common/appleprofiles.
 type legacyPayloadSchemaValidator struct{}
 
 // blockLegacyPayloadSchemaValidator validates a component block's typed legacy payload list, whose
@@ -149,8 +149,8 @@ func appendPayloadProblems(diags *diag.Diagnostics, payloadType string, settings
 				" The provider's schemas come from apple/device-management %s. If Apple has published this since,"+
 					" upgrade the provider; to deliver these payloads without these checks, move every legacy payload"+
 					" in the same block to a single raw_component with identifier com.jamf.ddm-configuration-profile."+
-					" The platform stores a block's legacy payloads as one component, so moving only this payload"+
-					" would write that component twice and stop the others being reconciled.",
+					" The platform stores a block's legacy payloads as one component, so move them all or leave"+
+					" them all here.",
 				appleprofiles.ProvenanceSummary(),
 			)
 		}

@@ -6,14 +6,17 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 )
 
 // --- Schema ---
@@ -351,7 +354,7 @@ func typedComponentCases() []typedComponentCase {
 			schemaAttribute: "apple_declarations",
 			configuration:   json.RawMessage(`{"declarations":[{"channelType":"SYSTEM","kind":"CONFIGURATION","payloadKey":1,"type":"com.apple.configuration.siri.settings","payload":{"Enabled":true}}]}`),
 			populated: func(b ComponentBlockModel) bool {
-				return b.AppleDeclarations != nil && len(b.AppleDeclarations.Declarations) == 1
+				return len(b.AppleDeclarations) == 1
 			},
 		},
 		{
@@ -538,4 +541,320 @@ func TestBuildTypedComponent_UndecodableConfigurationWarns(t *testing.T) {
 	if !found {
 		t.Errorf("expected a warning naming com.jamf.ai-governance, got %v", diags)
 	}
+}
+
+// TestCollectBlockComponents_AppleDeclarationsAndRawComponentConflict pins the overlap the wire
+// cannot represent: the platform stores two components sharing one identifier, and the read path
+// keys them by identifier, so the block must be rejected rather than written.
+func TestCollectBlockComponents_AppleDeclarationsAndRawComponentConflict(t *testing.T) {
+	r := &BlueprintResource{}
+	block := ComponentBlockModel{
+		Name: types.StringValue("Block A"),
+		Components: []ComponentModel{
+			{Identifier: types.StringValue(appleDeclarationsIdentifier), Configuration: types.MapNull(types.StringType)},
+		},
+		AppleDeclarations: []AppleDeclarationModel{
+			appleDeclaration("com.apple.configuration.passcode.settings", `{"RequireAlphanumericPasscode":true}`),
+		},
+	}
+
+	components, diags := r.collectBlockComponents(context.Background(), block)
+	if !diags.HasError() {
+		t.Fatal("expected an error for a block setting both apple_declarations and a raw_component for that component")
+	}
+	if len(components) != 0 {
+		t.Fatalf("expected no components to be built, got %+v", components)
+	}
+
+	summary := diags.Errors()[0].Summary()
+	detail := diags.Errors()[0].Detail()
+	if !strings.Contains(detail, "apple_declarations") || !strings.Contains(detail, "raw_component") {
+		t.Errorf("error must name both attributes, got %q / %q", summary, detail)
+	}
+	if strings.Contains(summary, appleDeclarationsIdentifier) || strings.Contains(detail, appleDeclarationsIdentifier) {
+		t.Errorf("user-facing text must not carry the wire identifier, got %q / %q", summary, detail)
+	}
+}
+
+// TestBuildSteps_AppleDeclarationsAndRawComponentConflictEmitsNoStep proves the rejection blocks
+// the write: the conflicting block contributes no step, so nothing reaches the wire.
+func TestBuildSteps_AppleDeclarationsAndRawComponentConflictEmitsNoStep(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name: types.StringValue("BP"),
+		ComponentBlocks: []ComponentBlockModel{
+			{
+				Name: types.StringValue("Block A"),
+				Components: []ComponentModel{
+					{Identifier: types.StringValue(appleDeclarationsIdentifier), Configuration: types.MapNull(types.StringType)},
+				},
+				AppleDeclarations: []AppleDeclarationModel{
+					appleDeclaration("com.apple.configuration.passcode.settings", `{"RequireAlphanumericPasscode":true}`),
+				},
+			},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if !diags.HasError() {
+		t.Fatal("expected an error from the conflicting block")
+	}
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+}
+
+// blockWithEveryTypedAttribute returns a block that populates every strongly-typed component
+// attribute. The typed values are zero-valued on purpose: the overlap guard runs before any
+// component is built, so what a converter would emit is irrelevant to these tests.
+func blockWithEveryTypedAttribute() ComponentBlockModel {
+	return ComponentBlockModel{
+		Name:                      types.StringValue("Every attribute"),
+		AIGovernance:              &components.AIGovernanceComponent{},
+		AppleDeclarations:         []AppleDeclarationModel{appleDeclaration("com.apple.configuration.passcode.settings", `{"RequireAlphanumericPasscode":true}`)},
+		AudioAccessorySettings:    &components.AudioAccessorySettingsComponent{},
+		CustomDeclarations:        &components.CustomDeclarationsComponent{},
+		DiskManagementSettings:    &components.DiskManagementPolicyComponent{},
+		MathSettings:              &components.MathSettingsComponent{},
+		PasscodePolicy:            &components.PasscodePolicyComponent{},
+		SafariBookmarks:           &components.SafariBookmarksComponent{},
+		SafariExtensions:          &components.SafariExtensionsComponent{},
+		SafariSettings:            &components.SafariSettingsComponent{},
+		ServiceBackgroundTasks:    &components.ServiceBackgroundTasksComponent{},
+		ServiceConfigurationFiles: &components.ServiceConfigurationFilesComponent{},
+		SoftwareUpdate:            &components.SoftwareUpdateComponent{},
+		SoftwareUpdateSettings:    &components.SoftwareUpdateSettingsComponent{},
+		LegacyPayloads:            []BlockLegacyPayloadModel{{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{}`)}},
+	}
+}
+
+// TestPopulatedTypedComponentAttributes_CoversEveryTypedComponent pins the mapping the overlap guard
+// is built on: every component the read path treats as strongly typed must be reachable from some
+// Terraform attribute, or a new typed component ships with the overlap unguarded again.
+func TestPopulatedTypedComponentAttributes_CoversEveryTypedComponent(t *testing.T) {
+	mapped := make(map[string]string, len(stronglyTypedComponentIdentifiers))
+	for _, attribute := range populatedTypedComponentAttributes(blockWithEveryTypedAttribute()) {
+		if attribute.name == "" {
+			t.Errorf("attribute for %q has no Terraform attribute name to report an overlap against", attribute.identifier)
+		}
+		if previous, duplicated := mapped[attribute.identifier]; duplicated {
+			t.Errorf("identifier %q is claimed by both %s and %s", attribute.identifier, previous, attribute.name)
+		}
+		mapped[attribute.identifier] = attribute.name
+	}
+
+	for identifier := range stronglyTypedComponentIdentifiers {
+		if _, ok := mapped[identifier]; !ok {
+			t.Errorf("no strongly-typed attribute maps to %q, so a raw_component overlapping it cannot be caught", identifier)
+		}
+	}
+	for identifier, name := range mapped {
+		if _, ok := stronglyTypedComponentIdentifiers[identifier]; !ok {
+			t.Errorf("%s writes %q, which stronglyTypedComponentIdentifiers does not list, so the read path would not treat it as typed", name, identifier)
+		}
+	}
+}
+
+// TestCollectBlockComponents_EveryTypedAttributeConflictsWithRawComponent generalises the Apple
+// declarations case to every strongly-typed attribute: each one, set alongside a raw_component for
+// the component it writes, is rejected before anything is built. Overlapping one identifier while
+// every other typed attribute is set also proves the guard reports that attribute alone.
+func TestCollectBlockComponents_EveryTypedAttributeConflictsWithRawComponent(t *testing.T) {
+	r := &BlueprintResource{}
+
+	for _, attribute := range populatedTypedComponentAttributes(blockWithEveryTypedAttribute()) {
+		t.Run(attribute.name, func(t *testing.T) {
+			block := blockWithEveryTypedAttribute()
+			block.Components = []ComponentModel{
+				{Identifier: types.StringValue(attribute.identifier), Configuration: types.MapNull(types.StringType)},
+			}
+
+			built, diags := r.collectBlockComponents(context.Background(), block)
+			if !diags.HasError() {
+				t.Fatalf("expected an error for %s set alongside a raw_component for the same component", attribute.name)
+			}
+			if len(built) != 0 {
+				t.Fatalf("expected no components to be built, got %+v", built)
+			}
+			if len(diags.Errors()) != 1 {
+				t.Fatalf("expected exactly one error, got %d: %v", len(diags.Errors()), diags.Errors())
+			}
+
+			summary := diags.Errors()[0].Summary()
+			detail := diags.Errors()[0].Detail()
+			if !strings.Contains(detail, attribute.name) || !strings.Contains(detail, "raw_component") {
+				t.Errorf("error must name both attributes, got %q / %q", summary, detail)
+			}
+			if strings.Contains(summary, attribute.identifier) || strings.Contains(detail, attribute.identifier) {
+				t.Errorf("user-facing text must not carry the wire identifier, got %q / %q", summary, detail)
+			}
+			if !strings.Contains(detail, block.Name.ValueString()) {
+				t.Errorf("error must locate the block it is in, got %q", detail)
+			}
+		})
+	}
+}
+
+// TestRawComponentOverlapDiags_UnnamedBlockOmitsTheLocator keeps the locator optional: a block with
+// no name, and the deprecated flat style, have nothing to name, so the message reads as one sentence
+// rather than trailing an empty quotation.
+func TestRawComponentOverlapDiags_UnnamedBlockOmitsTheLocator(t *testing.T) {
+	overlap := []typedComponentAttribute{{name: "passcode_policy", identifier: "com.jamf.ddm.passcode-settings"}}
+	raw := []ComponentModel{
+		{Identifier: types.StringValue("com.jamf.ddm.passcode-settings"), Configuration: types.MapNull(types.StringType)},
+	}
+
+	diags := rawComponentOverlapDiags("", raw, overlap)
+	if len(diags.Errors()) != 1 {
+		t.Fatalf("expected exactly one error, got %v", diags.Errors())
+	}
+
+	detail := diags.Errors()[0].Detail()
+	if strings.Contains(detail, "component block") {
+		t.Errorf("an unnamed block must not be located, got %q", detail)
+	}
+	if !strings.Contains(detail, "passcode_policy and a raw_component both manage the same component.") {
+		t.Errorf("expected the unlocated sentence, got %q", detail)
+	}
+}
+
+// TestBuildSteps_ConflictingBlockReportsOnlyTheOverlap proves a rejected block stops there: its
+// legacy payloads are not collected afterwards, so an author is not also handed an error about
+// payloads in a block that was already refused.
+func TestBuildSteps_ConflictingBlockReportsOnlyTheOverlap(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name: types.StringValue("BP"),
+		ComponentBlocks: []ComponentBlockModel{
+			{
+				Name:           types.StringValue("Block A"),
+				PasscodePolicy: &components.PasscodePolicyComponent{},
+				LegacyPayloads: []BlockLegacyPayloadModel{
+					{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{}`)},
+					{PayloadType: types.StringValue("com.apple.dock"), Settings: types.StringValue(`{}`)},
+				},
+				Components: []ComponentModel{
+					{Identifier: types.StringValue("com.jamf.ddm.passcode-settings"), Configuration: types.MapNull(types.StringType)},
+				},
+			},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+	if len(diags.Errors()) != 1 {
+		t.Fatalf("expected only the overlap error, got %v", diags.Errors())
+	}
+	if summary := diags.Errors()[0].Summary(); summary != "Component configured twice" {
+		t.Errorf("expected the overlap error, got %q", summary)
+	}
+}
+
+// TestCollectBlockComponents_RawComponentForAnotherComponentIsAccepted keeps the guard from
+// swallowing the supported case: a raw_component for a component no typed attribute in the block
+// writes is not an overlap.
+func TestCollectBlockComponents_RawComponentForAnotherComponentIsAccepted(t *testing.T) {
+	r := &BlueprintResource{}
+	block := ComponentBlockModel{
+		Name:           types.StringValue("Block A"),
+		PasscodePolicy: &components.PasscodePolicyComponent{},
+		Components: []ComponentModel{
+			{Identifier: types.StringValue("com.jamf.ddm.safari-settings"), Configuration: types.MapNull(types.StringType)},
+		},
+	}
+
+	built, diags := r.collectBlockComponents(context.Background(), block)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags.Errors())
+	}
+	if len(built) != 2 {
+		t.Fatalf("expected the raw component and the typed component, got %+v", built)
+	}
+}
+
+// TestBuildSteps_TypedAndRawComponentConflictEmitsNoStep proves the rejection blocks the write for a
+// typed attribute other than apple_declarations: the conflicting block contributes no step.
+func TestBuildSteps_TypedAndRawComponentConflictEmitsNoStep(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name: types.StringValue("BP"),
+		ComponentBlocks: []ComponentBlockModel{
+			{
+				Name:           types.StringValue("Block A"),
+				PasscodePolicy: &components.PasscodePolicyComponent{},
+				Components: []ComponentModel{
+					{Identifier: types.StringValue("com.jamf.ddm.passcode-settings"), Configuration: types.MapNull(types.StringType)},
+				},
+			},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if !diags.HasError() {
+		t.Fatal("expected an error from the conflicting block")
+	}
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+}
+
+// TestBuildSteps_FlatLegacyPayloadsAndRawComponentConflictEmitsNoStep covers the one overlap the
+// deprecated flat authoring style has to check for itself, because flatComponentsAsBlock cannot
+// carry the dynamic legacy payload value.
+func TestBuildSteps_FlatLegacyPayloadsAndRawComponentConflictEmitsNoStep(t *testing.T) {
+	r := &BlueprintResource{}
+	data := &BlueprintResourceModel{
+		Name:           types.StringValue("BP"),
+		LegacyPayloads: flatLegacyPayloadsValue(t),
+		Components: []ComponentModel{
+			{Identifier: types.StringValue(legacyConfigProfileIdentifier), Configuration: types.MapNull(types.StringType)},
+		},
+	}
+
+	steps, diags := r.buildSteps(context.Background(), data)
+	if !diags.HasError() {
+		t.Fatal("expected an error for legacy_payloads set alongside a raw_component for the same component")
+	}
+	if len(steps) != 0 {
+		t.Fatalf("expected no steps, got %+v", steps)
+	}
+
+	detail := diags.Errors()[0].Detail()
+	if !strings.Contains(detail, "legacy_payloads") || !strings.Contains(detail, "raw_component") {
+		t.Errorf("error must name both attributes, got %q", detail)
+	}
+	if strings.Contains(detail, legacyConfigProfileIdentifier) {
+		t.Errorf("user-facing text must not carry the wire identifier, got %q", detail)
+	}
+}
+
+// flatLegacyPayloadsValue builds a valid deprecated top-level legacy_payloads value: one payload
+// whose settings arrive as an object rather than the JSON string a block uses.
+func flatLegacyPayloadsValue(t *testing.T) types.Dynamic {
+	t.Helper()
+
+	settings, diags := types.ObjectValue(
+		map[string]attr.Type{"tilesize": types.NumberType},
+		map[string]attr.Value{"tilesize": types.NumberValue(big.NewFloat(32))},
+	)
+	if diags.HasError() {
+		t.Fatalf("building settings: %v", diags)
+	}
+
+	payload, diags := types.ObjectValue(
+		map[string]attr.Type{"payload_type": types.StringType, "settings": settings.Type(context.Background())},
+		map[string]attr.Value{"payload_type": types.StringValue("com.apple.dock"), "settings": settings},
+	)
+	if diags.HasError() {
+		t.Fatalf("building payload: %v", diags)
+	}
+
+	payloads, diags := types.TupleValue([]attr.Type{payload.Type(context.Background())}, []attr.Value{payload})
+	if diags.HasError() {
+		t.Fatalf("building payload list: %v", diags)
+	}
+
+	return types.DynamicValue(payloads)
 }

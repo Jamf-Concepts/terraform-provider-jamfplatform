@@ -7,10 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
+	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/jamf/terraform-provider-jamfplatform/internal/common/appledeclarations"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 )
@@ -23,6 +25,10 @@ const flatStepName = "Declaration group"
 // mode (component_blocks set) it emits one step per block, preserving order, per-block name, and
 // per-block activation condition. In the deprecated flat mode it emits the single "Declaration
 // group" step carrying every top-level component and the top-level activation condition.
+//
+// A block's legacy payloads are checked for a raw_component overlap inside collectBlockComponents,
+// which carries them; the deprecated flat value is not carried there, because the flat (dynamic) and
+// block (JSON-string) shapes differ, so flat mode checks that one overlap itself.
 func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResourceModel) ([]blueprints.BlueprintStep, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	blueprintName := data.Name.ValueString()
@@ -31,7 +37,9 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 		steps := make([]blueprints.BlueprintStep, 0, len(data.ComponentBlocks))
 		for _, block := range data.ComponentBlocks {
 			components, blockDiags := r.collectBlockComponents(ctx, block)
-			r.collectBlockLegacyPayloads(&components, &blockDiags, block.LegacyPayloads, blueprintName)
+			if !blockDiags.HasError() {
+				r.collectBlockLegacyPayloads(&components, &blockDiags, block.LegacyPayloads, blueprintName)
+			}
 			diags.Append(blockDiags...)
 			if blockDiags.HasError() {
 				continue
@@ -45,11 +53,21 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 		return steps, diags
 	}
 
-	components, flatDiags := r.collectBlockComponents(ctx, data.flatComponentsAsBlock())
+	flatBlock := data.flatComponentsAsBlock()
+	components, flatDiags := r.collectBlockComponents(ctx, flatBlock)
 	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
-		r.collectLegacyPayloads(&components, &flatDiags, data.LegacyPayloads, blueprintName)
+		flatDiags.Append(rawComponentOverlapDiags("", flatBlock.Components, []typedComponentAttribute{
+			{name: "legacy_payloads", identifier: legacyConfigProfileIdentifier},
+		})...)
+		if !flatDiags.HasError() {
+			r.collectLegacyPayloads(&components, &flatDiags, data.LegacyPayloads, blueprintName)
+		}
 	}
 	diags.Append(flatDiags...)
+
+	if flatDiags.HasError() {
+		return nil, diags
+	}
 
 	stepName := flatStepName
 	steps := []blueprints.BlueprintStep{
@@ -66,9 +84,22 @@ func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResou
 // component values. Legacy payloads are collected separately by the caller because the flat
 // (dynamic) and block (JSON-string) shapes differ. The flat top-level authoring style reuses this
 // by passing data.flatComponentsAsBlock(); each entry in component_blocks passes its own carrier.
+//
+// A block authoring a strongly-typed component alongside a raw_component for the same component is
+// rejected before anything is built, so the block emits nothing. The platform stores both: a step
+// carrying two components with one identifier is accepted and echoed back in full — wire-probed on
+// the EU gateway 2026-09-12 for a passcode settings pair and a legacy configuration profile pair,
+// and earlier for a declarations pair — and the read path keys components by identifier, so one of
+// the two becomes unrepresentable in state. Each attribute's read-side guard is keyed off the prior
+// raw set and so cannot catch the first apply that creates the overlap.
 func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block ComponentBlockModel) ([]blueprints.Component, diag.Diagnostics) {
 	var allComponents []blueprints.Component
 	var diags diag.Diagnostics
+
+	typedAttributes := populatedTypedComponentAttributes(block)
+	if overlaps := rawComponentOverlapDiags(block.Name.ValueString(), block.Components, typedAttributes); overlaps.HasError() {
+		return nil, overlaps
+	}
 
 	for _, comp := range block.Components {
 		component := blueprints.Component{
@@ -102,67 +133,163 @@ func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block Co
 		allComponents = append(allComponents, component)
 	}
 
-	r.collectStronglyTypedComponents(&allComponents, &diags, block)
+	r.collectStronglyTypedComponents(&allComponents, &diags, typedAttributes)
+	r.appendAppleDeclarations(&allComponents, &diags, block.AppleDeclarations)
 
 	return allComponents, diags
 }
 
-// collectStronglyTypedComponents processes all strongly-typed components of a block.
-func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, block ComponentBlockModel) {
-	if block.AIGovernance != nil {
-		r.collectSingleComponent(allComponents, diags, block.AIGovernance, "AI governance")
+// appendAppleDeclarations assembles the Apple declarations component from a block's declaration
+// list and appends it. An empty list writes no component, the same as omitting the attribute: there
+// is nothing a component holding no declarations would express.
+//
+// kind and payloadKey are derived rather than authored — see AppleDeclarationModel.
+func (r *BlueprintResource) appendAppleDeclarations(allComponents *[]blueprints.Component, diags *diag.Diagnostics, declarations []AppleDeclarationModel) {
+	if len(declarations) == 0 {
+		return
 	}
 
-	if block.AppleDeclarations != nil {
-		r.collectSingleComponent(allComponents, diags, block.AppleDeclarations, "apple declarations")
+	wire := make([]blueprints.CustomDeclaration, 0, len(declarations))
+	for idx, declaration := range declarations {
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payload); err != nil {
+			diags.AddError(
+				"Invalid Apple declaration payload",
+				"payload for declaration type "+declaration.Type.ValueString()+
+					" must be a JSON object string (write it with jsonencode or read it from a .json file): "+helpers.APIErrorDetail(err),
+			)
+			return
+		}
+
+		declarationType := declaration.Type.ValueString()
+		wire = append(wire, blueprints.CustomDeclaration{
+			ChannelType: declaration.ChannelType.ValueString(),
+			Kind:        appledeclarations.KindForType(declarationType),
+			Payload:     payload,
+			PayloadKey:  idx + 1,
+			Type:        declarationType,
+		})
 	}
 
-	if block.AudioAccessorySettings != nil {
-		r.collectSingleComponent(allComponents, diags, block.AudioAccessorySettings, "audio accessory settings")
+	configJSON, err := json.Marshal(blueprints.CustomDeclarationsConfiguration{Declarations: wire})
+	if err != nil {
+		diags.AddError("Error encoding Apple declarations configuration", "Could not encode configuration to JSON: "+helpers.APIErrorDetail(err))
+		return
 	}
 
-	if block.CustomDeclarations != nil {
-		r.collectSingleComponent(allComponents, diags, block.CustomDeclarations, "custom declarations")
+	*allComponents = append(*allComponents, blueprints.Component{
+		Identifier:    appleDeclarationsIdentifier,
+		Configuration: json.RawMessage(configJSON),
+	})
+}
+
+// typedComponentAttribute is one strongly-typed component attribute a block populates, paired with
+// the wire identifier it writes. The Terraform attribute name travels with it so an overlap with
+// raw_component is reported against the attribute an author wrote rather than the identifier it
+// writes: an identifier is API plumbing and must not reach user-facing text (see STYLE_GUIDE
+// §Attribute names mirror the Jamf Pro admin UI).
+//
+// component is nil for the two attributes assembled in this package rather than in components/ —
+// apple_declarations and legacy_payloads — which the collector therefore skips.
+type typedComponentAttribute struct {
+	name       string
+	label      string
+	identifier string
+	component  components.ComponentConverter
+}
+
+// populatedTypedComponentAttributes reports the strongly-typed component attributes the block sets,
+// in the order their components are written. It is the single place that knows which attribute
+// writes which component, and two callers need that mapping: the collector builds each one, and the
+// raw_component overlap guard names the attribute it collides with. A converter's own GetIdentifier
+// is the identifier's source, so no converter's identifier is restated here.
+//
+// Attribute order is the order the platform receives the components in, so a new entry goes where
+// its component should sit rather than alphabetically.
+func populatedTypedComponentAttributes(block ComponentBlockModel) []typedComponentAttribute {
+	candidates := []struct {
+		name      string
+		label     string
+		set       bool
+		component components.ComponentConverter
+	}{
+		{"ai_governance", "AI governance", block.AIGovernance != nil, block.AIGovernance},
+		{"audio_accessory_settings", "audio accessory settings", block.AudioAccessorySettings != nil, block.AudioAccessorySettings},
+		{"custom_declarations", "custom declarations", block.CustomDeclarations != nil, block.CustomDeclarations},
+		{"disk_management_settings", "disk management settings", block.DiskManagementSettings != nil, block.DiskManagementSettings},
+		{"math_settings", "math settings", block.MathSettings != nil, block.MathSettings},
+		{"passcode_policy", "passcode policy", block.PasscodePolicy != nil, block.PasscodePolicy},
+		{"safari_bookmarks", "safari bookmarks", block.SafariBookmarks != nil, block.SafariBookmarks},
+		{"safari_extensions", "safari extensions", block.SafariExtensions != nil, block.SafariExtensions},
+		{"safari_settings", "safari settings", block.SafariSettings != nil, block.SafariSettings},
+		{"service_background_tasks", "service background tasks", block.ServiceBackgroundTasks != nil, block.ServiceBackgroundTasks},
+		{"service_configuration_files", "service configuration files", block.ServiceConfigurationFiles != nil, block.ServiceConfigurationFiles},
+		{"software_update", "software update", block.SoftwareUpdate != nil, block.SoftwareUpdate},
+		{"software_update_settings", "software update settings", block.SoftwareUpdateSettings != nil, block.SoftwareUpdateSettings},
 	}
 
-	if block.DiskManagementSettings != nil {
-		r.collectSingleComponent(allComponents, diags, block.DiskManagementSettings, "disk management settings")
+	attributes := make([]typedComponentAttribute, 0, len(candidates)+2)
+	for _, candidate := range candidates {
+		if !candidate.set {
+			continue
+		}
+		attributes = append(attributes, typedComponentAttribute{
+			name:       candidate.name,
+			label:      candidate.label,
+			identifier: candidate.component.GetIdentifier(),
+			component:  candidate.component,
+		})
 	}
 
-	if block.MathSettings != nil {
-		r.collectSingleComponent(allComponents, diags, block.MathSettings, "math settings")
+	if len(block.AppleDeclarations) > 0 {
+		attributes = append(attributes, typedComponentAttribute{name: "apple_declarations", identifier: appleDeclarationsIdentifier})
+	}
+	if len(block.LegacyPayloads) > 0 {
+		attributes = append(attributes, typedComponentAttribute{name: "legacy_payloads", identifier: legacyConfigProfileIdentifier})
 	}
 
-	if block.PasscodePolicy != nil {
-		r.collectSingleComponent(allComponents, diags, block.PasscodePolicy, "passcode policy")
+	return attributes
+}
+
+// rawComponentOverlapDiags reports every populated strongly-typed attribute that manages the same
+// component as one of the block's raw_component entries, one error per overlap. See
+// collectBlockComponents for why an overlap cannot be written.
+//
+// blockName locates the overlap for an author who has many blocks, and is empty for the deprecated
+// flat style, which has only the one implicit step to look at.
+func rawComponentOverlapDiags(blockName string, rawComponents []ComponentModel, attributes []typedComponentAttribute) diag.Diagnostics {
+	var diags diag.Diagnostics
+	rawIdentifiers := rawIdentifierSet(rawComponents)
+
+	in := ""
+	if blockName != "" {
+		in = " in component block " + strconv.Quote(blockName)
 	}
 
-	if block.SafariBookmarks != nil {
-		r.collectSingleComponent(allComponents, diags, block.SafariBookmarks, "safari bookmarks")
+	for _, attribute := range attributes {
+		if _, handledAsRaw := rawIdentifiers[attribute.identifier]; !handledAsRaw {
+			continue
+		}
+		diags.AddError(
+			"Component configured twice",
+			attribute.name+" and a raw_component both manage the same component"+in+". Keep one of the two: the "+
+				"platform stores both copies and the provider can hold only one in state, so the other would "+
+				"reach devices without appearing in a plan.",
+		)
 	}
 
-	if block.SafariExtensions != nil {
-		r.collectSingleComponent(allComponents, diags, block.SafariExtensions, "safari extensions")
-	}
+	return diags
+}
 
-	if block.SafariSettings != nil {
-		r.collectSingleComponent(allComponents, diags, block.SafariSettings, "safari settings")
-	}
-
-	if block.ServiceBackgroundTasks != nil {
-		r.collectSingleComponent(allComponents, diags, block.ServiceBackgroundTasks, "service background tasks")
-	}
-
-	if block.ServiceConfigurationFiles != nil {
-		r.collectSingleComponent(allComponents, diags, block.ServiceConfigurationFiles, "service configuration files")
-	}
-
-	if block.SoftwareUpdate != nil {
-		r.collectSingleComponent(allComponents, diags, block.SoftwareUpdate, "software update")
-	}
-
-	if block.SoftwareUpdateSettings != nil {
-		r.collectSingleComponent(allComponents, diags, block.SoftwareUpdateSettings, "software update settings")
+// collectStronglyTypedComponents builds each strongly-typed component the block populates, in
+// attribute order. apple_declarations and legacy_payloads carry no converter and are assembled by
+// their own appenders.
+func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, attributes []typedComponentAttribute) {
+	for _, attribute := range attributes {
+		if attribute.component == nil {
+			continue
+		}
+		r.collectSingleComponent(allComponents, diags, attribute.component, attribute.label)
 	}
 }
 
@@ -287,7 +414,7 @@ func (r *BlueprintResource) appendLegacyConfigProfile(allComponents *[]blueprint
 	}
 
 	*allComponents = append(*allComponents, blueprints.Component{
-		Identifier:    "com.jamf.ddm-configuration-profile",
+		Identifier:    legacyConfigProfileIdentifier,
 		Configuration: json.RawMessage(configJSON),
 	})
 }

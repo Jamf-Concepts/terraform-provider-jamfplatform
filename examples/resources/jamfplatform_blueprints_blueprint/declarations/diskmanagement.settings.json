@@ -1,0 +1,6 @@
+{
+  "Restrictions": {
+    "ExternalStorage": "ReadOnly",
+    "NetworkStorage": "Allowed"
+  }
+}

@@ -255,3 +255,43 @@ func TestCustomDeclarations_ToClientComponent(t *testing.T) {
 		t.Fatal("expected non-nil configuration")
 	}
 }
+
+// htmlEscapedPayload is what Terraform's jsonencode() emits for a payload containing &, < and >: it
+// HTML-escapes all three, exactly as Go's encoding/json does by default. The match is what makes a
+// payload round-trip on import, where there is no prior value to reconcile against and the
+// canonical encoding is what lands in state.
+//
+// Do not "fix" FromRawConfiguration to emit unescaped output. It looks like a bug and is not one:
+// with SetEscapeHTML(false), the first `terraform apply` fails as "inconsistent result after apply"
+// because the planned value carries \u0026 where state then carries a bare &. Wire-verified, and
+// guarded at apply by TestAccResource_Blueprint_AppleDeclarations_HTMLEscapedPayload.
+const htmlEscapedPayload = `{"Reference":{"ContentType":"application/zip","DataURL":"https://cdn.example.com/ddm?a=1\u0026b=2"},"note":"a\u003cb and b\u003ea"}`
+
+func TestCustomDeclarations_FromRawConfiguration_PayloadKeepsHTMLEscaping(t *testing.T) {
+	original := &CustomDeclarationsComponent{
+		Declarations: []CustomDeclarationModel{
+			{
+				ChannelType: types.StringValue("SYSTEM"),
+				Kind:        types.StringValue("ASSET"),
+				Payload:     types.StringValue(htmlEscapedPayload),
+				Type:        types.StringValue("com.apple.asset.data"),
+			},
+		},
+	}
+
+	rawCfg, err := original.ToRawConfiguration()
+	if err != nil {
+		t.Fatalf("ToRawConfiguration error: %v", err)
+	}
+
+	restored := &CustomDeclarationsComponent{}
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
+		t.Fatalf("FromRawConfiguration error: %v", err)
+	}
+	if len(restored.Declarations) != 1 {
+		t.Fatalf("expected 1 declaration, got %d", len(restored.Declarations))
+	}
+	if got := restored.Declarations[0].Payload.ValueString(); got != htmlEscapedPayload {
+		t.Errorf("payload did not round-trip byte-identically:\n want %s\n  got %s", htmlEscapedPayload, got)
+	}
+}

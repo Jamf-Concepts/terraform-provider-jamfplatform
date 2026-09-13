@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/jamf/terraform-provider-jamfplatform/internal/common/appledeclarations"
 )
@@ -17,7 +20,7 @@ import (
 // would land in a real configuration.
 func declarationPath() path.Path {
 	return path.Root("component_blocks").AtListIndex(0).
-		AtName("apple_declarations").AtName("declaration").AtListIndex(0).AtName("payload")
+		AtName("apple_declarations").AtListIndex(0).AtName("payload")
 }
 
 // TestValidateDeclarationPayloadAcceptsValid checks the happy path produces no diagnostics, so the
@@ -397,5 +400,145 @@ func TestDeclarationValidatorDescription(t *testing.T) {
 	_, release := appledeclarations.Provenance()
 	if release != "" && !strings.Contains(description, release) {
 		t.Errorf("description %q does not name the upstream release %q", description, release)
+	}
+}
+
+// declarationListValue builds an apple_declarations list value from (type, payload) pairs, all on
+// the SYSTEM channel, so a test can drive ValidateList the way the framework does.
+func declarationListValue(t *testing.T, declarations ...[2]string) types.List {
+	t.Helper()
+
+	elementType := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"channel": types.StringType,
+		"payload": types.StringType,
+		"type":    types.StringType,
+	}}
+
+	elements := make([]attr.Value, 0, len(declarations))
+	for _, declaration := range declarations {
+		element, diags := types.ObjectValue(elementType.AttrTypes, map[string]attr.Value{
+			"channel": types.StringValue("SYSTEM"),
+			"payload": types.StringValue(declaration[1]),
+			"type":    types.StringValue(declaration[0]),
+		})
+		if diags.HasError() {
+			t.Fatalf("building a declaration element: %v", diags)
+		}
+		elements = append(elements, element)
+	}
+
+	list, diags := types.ListValue(elementType, elements)
+	if diags.HasError() {
+		t.Fatalf("building the declaration list: %v", diags)
+	}
+	return list
+}
+
+// appleDeclarationsListPath is the path the framework passes ValidateList.
+func appleDeclarationsListPath() path.Path {
+	return path.Root("component_blocks").AtListIndex(0).AtName("apple_declarations")
+}
+
+// validateDeclarationList runs the list validator over a value and returns its diagnostics.
+func validateDeclarationList(t *testing.T, list types.List) diag.Diagnostics {
+	t.Helper()
+
+	var resp validator.ListResponse
+	appleDeclarationsSchemaValidator().ValidateList(
+		context.Background(),
+		validator.ListRequest{Path: appleDeclarationsListPath(), ConfigValue: list},
+		&resp,
+	)
+	return resp.Diagnostics
+}
+
+// TestAppleDeclarationsValidateListAddressesTheElement pins that a finding lands on the declaration
+// that caused it: `apple_declarations[1].payload`, not the collection. A path built from the wrong
+// nesting level would fail nothing else.
+func TestAppleDeclarationsValidateListAddressesTheElement(t *testing.T) {
+	diags := validateDeclarationList(t, declarationListValue(t,
+		[2]string{"com.apple.configuration.siri.settings", `{"Enabled":true}`},
+		[2]string{"com.apple.configuration.siri.settings", `{"ZzNotAKey":true}`},
+	))
+
+	if !diags.HasError() {
+		t.Fatal("an undeclared key in the second declaration produced no error")
+	}
+
+	want := appleDeclarationsListPath().AtListIndex(1).AtName("payload")
+	for _, reported := range diags.Errors() {
+		withPath, ok := reported.(diag.DiagnosticWithPath)
+		if !ok {
+			t.Fatalf("diagnostic carries no path: %v", reported)
+		}
+		if !withPath.Path().Equal(want) {
+			t.Errorf("path = %s, want %s", withPath.Path(), want)
+		}
+	}
+}
+
+// TestAppleDeclarationsValidateListChecksReferencesAgainstTheList checks a $PAYLOAD_n reference is
+// range-checked against the list's own length. The positions are the provider's derivation from
+// list order, so nothing else can catch a reference past the end.
+func TestAppleDeclarationsValidateListChecksReferencesAgainstTheList(t *testing.T) {
+	inRange := declarationListValue(t,
+		[2]string{"com.apple.asset.data", `{"Reference":{"DataURL":"https://example.com/a.zip","ContentType":"application/zip","Hash-SHA-256":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"},"Authentication":{"Type":"MDM"}}`},
+		[2]string{"com.apple.configuration.services.configuration-files", `{"ServiceType":"com.apple.sudo","DataAssetReference":"$PAYLOAD_1"}`},
+	)
+	if diags := validateDeclarationList(t, inRange); diags.HasError() {
+		t.Fatalf("a reference to the first declaration produced errors: %v", diags.Errors())
+	}
+
+	pastTheEnd := declarationListValue(t,
+		[2]string{"com.apple.configuration.services.configuration-files", `{"ServiceType":"com.apple.sudo","DataAssetReference":"$PAYLOAD_2"}`},
+	)
+	diags := validateDeclarationList(t, pastTheEnd)
+	if !diags.HasError() {
+		t.Fatal("a reference past the end of the list produced no error")
+	}
+	if detail := diags.Errors()[0].Detail(); !strings.Contains(detail, "1 declaration") {
+		t.Errorf("detail does not count the list: %s", detail)
+	}
+}
+
+// TestAppleDeclarationsValidateListSkipsUnresolvedList checks an absent or not-yet-computed list is
+// left alone rather than read as zero declarations, which would turn every `$PAYLOAD_n` in an
+// interpolated configuration into a plan error.
+func TestAppleDeclarationsValidateListSkipsUnresolvedList(t *testing.T) {
+	elementType := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"channel": types.StringType,
+		"payload": types.StringType,
+		"type":    types.StringType,
+	}}
+
+	for name, list := range map[string]types.List{
+		"null":    types.ListNull(elementType),
+		"unknown": types.ListUnknown(elementType),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if diags := validateDeclarationList(t, list); len(diags) != 0 {
+				t.Errorf("an unresolved list produced diagnostics: %v", diags)
+			}
+		})
+	}
+}
+
+// TestAppleDeclarationsValidateListToleratesAnUnknownElement checks a declaration Terraform has yet
+// to compute is read without error, which is what lets a model/element-type divergence be the only
+// thing ElementsAs still reports.
+func TestAppleDeclarationsValidateListToleratesAnUnknownElement(t *testing.T) {
+	elementType := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"channel": types.StringType,
+		"payload": types.StringType,
+		"type":    types.StringType,
+	}}
+
+	list, diags := types.ListValue(elementType, []attr.Value{types.ObjectUnknown(elementType.AttrTypes)})
+	if diags.HasError() {
+		t.Fatalf("building the declaration list: %v", diags)
+	}
+
+	if diags := validateDeclarationList(t, list); diags.HasError() {
+		t.Errorf("an unknown element produced errors: %v", diags.Errors())
 	}
 }

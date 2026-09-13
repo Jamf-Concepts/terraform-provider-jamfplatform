@@ -135,6 +135,18 @@ func (r *BlueprintResource) UpgradeState(ctx context.Context) map[int64]resource
 				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
+		3: {
+			PriorSchema: blueprintSchemaV3(ctx),
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var old blueprintResourceModelV3
+				resp.Diagnostics.Append(req.State.Get(ctx, &old)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				resp.Diagnostics.Append(resp.State.Set(ctx, old.upgrade())...)
+			},
+		},
 	}
 }
 
@@ -813,4 +825,154 @@ func softwareUpdateSettingsSchemaV2() map[string]schema.Attribute {
 			},
 		},
 	}
+}
+
+// blueprintResourceModelV3 is the v3 state model. It differs from BlueprintResourceModel in one
+// place: each component block's apple_declarations was an object wrapping a `declaration` list
+// rather than the list of declarations itself. Every other field is identical, and the duplication
+// is what tfsdk reflection costs — a struct cannot override one field of another.
+type blueprintResourceModelV3 struct {
+	ID                        types.String                                   `tfsdk:"id"`
+	Name                      types.String                                   `tfsdk:"name"`
+	Description               types.String                                   `tfsdk:"description"`
+	Deployed                  types.Bool                                     `tfsdk:"deployed"`
+	DeviceGroups              types.Set                                      `tfsdk:"device_groups"`
+	ActivationConditions      types.String                                   `tfsdk:"activation_conditions"`
+	ComponentBlocks           []componentBlockModelV3                        `tfsdk:"component_blocks"`
+	Components                []ComponentModel                               `tfsdk:"raw_component"`
+	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
+	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
+	MathSettings              *components.MathSettingsComponent              `tfsdk:"math_settings"`
+	PasscodePolicy            *components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
+	SafariBookmarks           *components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
+	SafariExtensions          *components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
+	SafariSettings            *components.SafariSettingsComponent            `tfsdk:"safari_settings"`
+	ServiceBackgroundTasks    *components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
+	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
+	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
+	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
+	LegacyPayloads            types.Dynamic                                  `tfsdk:"legacy_payloads"`
+	Created                   types.String                                   `tfsdk:"created"`
+	Updated                   types.String                                   `tfsdk:"updated"`
+	DeploymentState           types.String                                   `tfsdk:"deployment_state"`
+	Timeouts                  resourceTimeouts.Value                         `tfsdk:"timeouts"`
+}
+
+// componentBlockModelV3 is one v3 component block.
+type componentBlockModelV3 struct {
+	Name                      types.String                                   `tfsdk:"name"`
+	ActivationConditions      types.String                                   `tfsdk:"activation_conditions"`
+	Components                []ComponentModel                               `tfsdk:"raw_component"`
+	AIGovernance              *components.AIGovernanceComponent              `tfsdk:"ai_governance"`
+	AppleDeclarations         *appleDeclarationsComponentV3                  `tfsdk:"apple_declarations"`
+	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
+	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
+	MathSettings              *components.MathSettingsComponent              `tfsdk:"math_settings"`
+	PasscodePolicy            *components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
+	SafariBookmarks           *components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
+	SafariExtensions          *components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
+	SafariSettings            *components.SafariSettingsComponent            `tfsdk:"safari_settings"`
+	ServiceBackgroundTasks    *components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
+	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
+	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
+	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
+	LegacyPayloads            []BlockLegacyPayloadModel                      `tfsdk:"legacy_payloads"`
+}
+
+// appleDeclarationsComponentV3 is the object apple_declarations used to be.
+type appleDeclarationsComponentV3 struct {
+	Declarations []AppleDeclarationModel `tfsdk:"declaration"`
+}
+
+// upgrade rewrites v3 state for the current schema by unwrapping each block's declaration list.
+// An absent component stays absent, and a component holding no declarations becomes an absent list
+// rather than an empty one: an empty list writes no component, so state must not carry one.
+func (m blueprintResourceModelV3) upgrade() *BlueprintResourceModel {
+	upgraded := &BlueprintResourceModel{
+		ID:                        m.ID,
+		Name:                      m.Name,
+		Description:               m.Description,
+		Deployed:                  m.Deployed,
+		DeviceGroups:              m.DeviceGroups,
+		ActivationConditions:      m.ActivationConditions,
+		Components:                m.Components,
+		AudioAccessorySettings:    m.AudioAccessorySettings,
+		CustomDeclarations:        m.CustomDeclarations,
+		DiskManagementSettings:    m.DiskManagementSettings,
+		MathSettings:              m.MathSettings,
+		PasscodePolicy:            m.PasscodePolicy,
+		SafariBookmarks:           m.SafariBookmarks,
+		SafariExtensions:          m.SafariExtensions,
+		SafariSettings:            m.SafariSettings,
+		ServiceBackgroundTasks:    m.ServiceBackgroundTasks,
+		ServiceConfigurationFiles: m.ServiceConfigurationFiles,
+		SoftwareUpdate:            m.SoftwareUpdate,
+		SoftwareUpdateSettings:    m.SoftwareUpdateSettings,
+		LegacyPayloads:            m.LegacyPayloads,
+		Created:                   m.Created,
+		Updated:                   m.Updated,
+		DeploymentState:           m.DeploymentState,
+		Timeouts:                  m.Timeouts,
+	}
+
+	for _, block := range m.ComponentBlocks {
+		upgradedBlock := ComponentBlockModel{
+			Name:                      block.Name,
+			ActivationConditions:      block.ActivationConditions,
+			Components:                block.Components,
+			AIGovernance:              block.AIGovernance,
+			AudioAccessorySettings:    block.AudioAccessorySettings,
+			CustomDeclarations:        block.CustomDeclarations,
+			DiskManagementSettings:    block.DiskManagementSettings,
+			MathSettings:              block.MathSettings,
+			PasscodePolicy:            block.PasscodePolicy,
+			SafariBookmarks:           block.SafariBookmarks,
+			SafariExtensions:          block.SafariExtensions,
+			SafariSettings:            block.SafariSettings,
+			ServiceBackgroundTasks:    block.ServiceBackgroundTasks,
+			ServiceConfigurationFiles: block.ServiceConfigurationFiles,
+			SoftwareUpdate:            block.SoftwareUpdate,
+			SoftwareUpdateSettings:    block.SoftwareUpdateSettings,
+			LegacyPayloads:            block.LegacyPayloads,
+		}
+		if block.AppleDeclarations != nil && len(block.AppleDeclarations.Declarations) > 0 {
+			upgradedBlock.AppleDeclarations = block.AppleDeclarations.Declarations
+		}
+		upgraded.ComponentBlocks = append(upgraded.ComponentBlocks, upgradedBlock)
+	}
+
+	return upgraded
+}
+
+// blueprintSchemaV3 returns the v3 schema: the current one with apple_declarations in the shape it
+// had then. It is derived from the live attribute set rather than transcribed, because one
+// attribute changed and a hand-copied component block would duplicate every other. The prior
+// schemas above already share the live components.*ComponentSchema() functions for the same reason.
+func blueprintSchemaV3(ctx context.Context) *schema.Schema {
+	blockAttributes := componentBlockAttributes()
+	blockAttributes["apple_declarations"] = schema.SingleNestedAttribute{
+		Optional: true,
+		Attributes: map[string]schema.Attribute{
+			"declaration": schema.ListNestedAttribute{
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"channel": schema.StringAttribute{Required: true},
+						"payload": schema.StringAttribute{Required: true},
+						"type":    schema.StringAttribute{Required: true},
+					},
+				},
+			},
+		},
+	}
+
+	attributes := blueprintSchemaAttributes(ctx)
+	attributes["component_blocks"] = schema.ListNestedAttribute{
+		Optional:     true,
+		NestedObject: schema.NestedAttributeObject{Attributes: blockAttributes},
+	}
+
+	return &schema.Schema{Version: 3, Attributes: attributes}
 }

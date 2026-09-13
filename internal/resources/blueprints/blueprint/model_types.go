@@ -77,7 +77,7 @@ type ComponentBlockModel struct {
 	ActivationConditions      types.String                                   `tfsdk:"activation_conditions"`
 	Components                []ComponentModel                               `tfsdk:"raw_component"`
 	AIGovernance              *components.AIGovernanceComponent              `tfsdk:"ai_governance"`
-	AppleDeclarations         *components.AppleDeclarationsComponent         `tfsdk:"apple_declarations"`
+	AppleDeclarations         []AppleDeclarationModel                        `tfsdk:"apple_declarations"`
 	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
 	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
 	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
@@ -91,6 +91,26 @@ type ComponentBlockModel struct {
 	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
 	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
 	LegacyPayloads            []BlockLegacyPayloadModel                      `tfsdk:"legacy_payloads"`
+}
+
+// AppleDeclarationModel is one Apple declaration in a component block's apple_declarations list.
+//
+// The list is the component: a block carries its declarations directly, because the
+// com.jamf.ddm-strict component has no field other than its declarations. So this one is assembled
+// in this package rather than in components/ — see appendAppleDeclarations and
+// flattenAppleDeclarations, and legacy_payloads for the same split.
+//
+// A list rather than a set because the order is part of the meaning: a payload names another
+// declaration by its position through the `$PAYLOAD_n` placeholder.
+//
+// Neither `kind` nor `payloadKey` is a field here. The kind follows from the type's reverse-domain
+// prefix and the key from the 1-based index, so both are derived on write. Asking for either would
+// only add a value an author can get wrong: the platform accepts any pairing and passes a mismatch
+// to the device, making it a silent failure rather than a caught one.
+type AppleDeclarationModel struct {
+	ChannelType types.String `tfsdk:"channel"`
+	Payload     types.String `tfsdk:"payload"`
+	Type        types.String `tfsdk:"type"`
 }
 
 // BlockLegacyPayloadModel is one legacy configuration profile payload inside a component block.
